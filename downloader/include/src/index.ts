@@ -3,7 +3,10 @@ import { spawn } from "node:child_process"
 import { existsSync, readdirSync, unlinkSync, readFileSync } from "node:fs";
 import { Buffer } from "node:buffer";
 import { console } from "node:inspector";
-import { truncate } from "node:fs/promises";
+import { truncate, mkdir } from "node:fs/promises";
+import download_ffmpeg from './install_ffmpeg.ts'
+import download_ytdlp from './yt-dlp_download.ts'
+import download_spotdlp from './spot-dlp_download.ts'
 
 
 export default class Downloader {
@@ -20,10 +23,12 @@ export default class Downloader {
     private spotify_client_id: string | undefined;
     private token: string | undefined = "";
     private spot_errors: string | undefined = "";
+    private curr_folder: string | undefined = "";
 
     constructor(options: Downloader_options) {
         // folder
         this.folder = options.download_folder || "";
+        this.curr_folder = options.curr_folder || "";
 
         // options
         this.spot_errors = options.spot_errors || "";
@@ -389,7 +394,7 @@ export default class Downloader {
         })
     }
 
-    async checking() {
+    async checking(): Promise<void> {
         // get all filename in a folder
         const files = readdirSync(this.folder);
         for (const file of files) {
@@ -406,7 +411,7 @@ export default class Downloader {
         }
     }
 
-    async download() {
+    async download(): Promise<void> {
         while (this.download_queue.length > 0) {
             const downloader = this.download_queue.shift() as Download_queue;
             try {
@@ -423,5 +428,38 @@ export default class Downloader {
                 console.error(e)
             }
         }
+    }
+
+    async check_env(): Promise<void> {
+        // check if ../support/ffmpeg/ffmpeg.exe ffplay.exe ffprobe exist
+        const ffmpeg_path = `${this.curr_folder}\\include\\support\\ffmpeg\\ffmpeg.exe`;
+        const ffplay_path = `${this.curr_folder}\\include\\support\\ffmpeg\\ffplay.exe`;
+        const ffprobe_path = `${this.curr_folder}\\include\\support\\ffmpeg\\ffprobe.exe`;
+        const ytdlp_path = `${this.curr_folder}\\include\\support\\yt-dlp.exe`;
+        const spotdlp_path = `${this.curr_folder}\\include\\support\\spot-dlp.exe`;
+
+
+        await mkdir(`${this.curr_folder}\\include\\support`, { recursive: true })
+
+        if (!existsSync(ffmpeg_path) || !existsSync(ffplay_path) || !existsSync(ffprobe_path)) {
+            await mkdir(`${this.curr_folder}\\temping`, { recursive: true })
+            console.warn("FFmpeg not found. Downloading...");
+            // await download_ffmpeg(this.curr_folder as string);
+            await download_ffmpeg(this.curr_folder as string);
+        }
+
+        if (!existsSync(ytdlp_path)) {
+            console.warn("yt-dlp not found. Downloading...");
+            // await downloadLatestYTDLP(this.curr_folder as string);
+            await download_ytdlp(this.curr_folder as string)
+        }
+
+        if (!existsSync(spotdlp_path)) {
+            console.warn("spot-dlp not found. Downloading...");
+            // await downloadLatestSpotDLP(this.curr_folder as string);
+            await download_spotdlp(this.curr_folder as string)
+        }
+
+
     }
 }

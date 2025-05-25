@@ -52,10 +52,10 @@ const folder = folderPath;
 const links = argv._.map(String);
 const ext = argv.format ? argv.format : Audio_format.m4a;
 
-const ffmpeg = `${executableDir}\\support\\ffmpeg\\ffmpeg.exe`,
-    ytdlp = `${executableDir}\\support\\yt-dlp.exe`,
-    spotdlp = `${executableDir}\\support\\spot-dlp.exe`,
-    spot_errors = `${executableDir}\\BE\\spot.txt`;
+const ffmpeg = `${executableDir}\\include\\support\\ffmpeg\\ffmpeg.exe`,
+    ytdlp = `${executableDir}\\include\\support\\yt-dlp.exe`,
+    spotdlp = `${executableDir}\\include\\support\\spot-dlp.exe`,
+    spot_errors = `${executableDir}\\include\\BE\\spot.txt`;
 
 console.log("Your download folder is ", folder);
 
@@ -64,6 +64,7 @@ const downloader = new Downloader({
     spotdlp: spotdlp,
     ffmpeg: ffmpeg,
     download_folder: folder,
+    curr_folder: executableDir,
     spot_errors: spot_errors,
     audio_format: ext as Audio_format,
     youtube_api_key: env.Youtube_Api_key,
@@ -80,6 +81,9 @@ async function run() {
         console.error("No folder found, please use --folder or -f to specify the folder");
         return;
     }
+
+    await downloader.check_env();
+
     await downloader.add_to_queue({
         mode: download_mode.audio,
         link: links

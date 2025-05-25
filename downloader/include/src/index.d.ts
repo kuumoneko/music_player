@@ -26,7 +26,7 @@ export default class Downloader {
     fetchAlbumVideos_spotify(id: string): Promise<any>
 
     get_all_videos_from_playlist(id: string): Promise<void>
-    
+
     search_youtube_video(search: string): Promise<any>
 
     get_all_videos_from_playlist_spotify(id: string): Promise<void>
@@ -46,4 +46,6 @@ export default class Downloader {
     download_Spotify_mp3(video: Download_queue): Promise<string>
 
     download(): Promise<void>
+
+    check_env(): Promise<void>
 }

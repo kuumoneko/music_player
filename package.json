@@ -5,11 +5,8 @@
   "type": "module",
   "scripts": {
     "run": "npm --loader ts-node/esm index.ts",
-    "build test exe": "deno compile --no-check --allow-env --allow-read  --allow-net --allow-write --allow-run ./test/lmao.ts",
-    "build index exe": "deno compile --no-check --allow-env --allow-read --allow-net --allow-write --allow-run ./index.ts",
-    "build dist exe": "deno compile --no-check --allow-env --allow-read --allow-net --allow-write --allow-run --output downloader ./downloader/index.ts",
-    "index": "node --trace-warnings --trace-deprecation --loader ts-node/esm  \"e:\\downloader\\index.ts\"",
-    "test": "node --trace-warnings --trace-deprecation --loader ts-node/esm  \"e:\\downloader\\downloader\\src\\install_ffmpeg.ts\""
+    "build index exe": "deno compile --no-check --allow-env --allow-read --allow-net --allow-write --allow-run ./downloader/index.ts",
+    "index": "node --trace-warnings --trace-deprecation --loader ts-node/esm  \"e:\\music_downloader\\downloader\\index.ts\""
   },
   "author": "",
   "license": "ISC",

@@ -27,6 +27,7 @@ export interface Downloader_options {
     spotdlp?: string,
     ffmpeg?: string,
     download_folder?: string,
+    curr_folder?: string,
     spot_errors?: string,
     audio_format?: Audio_format,
     youtube_api_key?: string,
