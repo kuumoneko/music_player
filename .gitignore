@@ -1,0 +1,9 @@
+/test
+/.vscode
+/checking answer
+/node_modules
+/tsconfig.json
+/downloader/downloader.exe
+/downloader/include/support
+/downloader/include/BE/env.json
+/downloader/include/BE/spot.txt
