@@ -3,7 +3,7 @@
 ## Version
 
 ```shell
-1.0.0
+1.0.1
 ```
 
 ## Description
@@ -12,9 +12,7 @@ A tool used to download music from youtube and spotify
 
 ## Update
 
-- Change ffmpeg to 7.1.1
-
-- Change yt-dlp to 2025.05.22
+- Install ffmpeg, yt-dlp, spot-downloader
 
 ## Usage
 
