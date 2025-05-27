@@ -3,7 +3,7 @@
 ## Version
 
 ```shell
-1.0.1
+1.0.2
 ```
 
 ## Description
@@ -12,7 +12,7 @@ A tool used to download music from youtube and spotify
 
 ## Update
 
-- Install ffmpeg, yt-dlp, spot-downloader
+- Fix LookupError: Track not found
 
 ## Usage
 
