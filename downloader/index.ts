@@ -1,5 +1,6 @@
 // system
 import path from 'node:path';
+import { mkdir } from 'node:fs/promises';
 
 // project types
 import Downloader from "./include/src/index.ts";
@@ -73,11 +74,13 @@ const downloader = new Downloader({
 });
 
 async function run() {
+    await mkdir(`${folder}`, { recursive: true });
+
     if (links.length == 0) {
         console.error("No links found");
         return;
     }
-    if (folder == "No folder found") {
+    if (folder as string == "No folder found") {
         console.error("No folder found, please use --folder or -f to specify the folder");
         return;
     }

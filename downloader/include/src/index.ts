@@ -93,7 +93,6 @@ export default class Downloader {
 
     async fetchVideos(id: string = ''): Promise<any> {
         const pagetoken = '';
-        // https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id=Ks-_Mh1QhMc&key=[YOUR_API_KEY]'
         const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${id}&key=${this.youtube_api_key}&pageToken=${pagetoken}`;
         const response = await fetch(url);
         const data = await response.json();
@@ -135,12 +134,10 @@ export default class Downloader {
             headers: { 'Authorization': `Bearer ${this.token}` },
         });
         const data = await response.json();
-
         return data;
     }
 
     async get_all_videos_from_playlist(id: string = '') {
-        // console.log(id)
         let videos: any[] = [];
         let pageToken = '';
         do {
@@ -150,7 +147,6 @@ export default class Downloader {
         } while (pageToken);
 
         videos.forEach((video: any) => {
-            // console.log(video)
             const temping = {
                 link: `https://www.youtube.com/watch?v=${video.snippet.resourceId.videoId}`,
                 title: this.format_title(video.snippet.title),
@@ -158,7 +154,6 @@ export default class Downloader {
                 format: `${this.audio_format}`,
                 from: "youtube"
             }
-            // this.download_queue.push(temping)
             this.checking_queue.push(temping)
         })
     }
@@ -204,11 +199,9 @@ export default class Downloader {
     }
 
     async add_link(link: string) {
-        // console.log(link)
         // if link from youtube
         if (link.includes("youtu")) {
             const youtube_link = link.split(link.includes("?si=") ? "?si=" : "&si=")[0];
-            // console.log(youtube_link)
             // short form
             let temp: string = "";
             if (youtube_link.includes("youtu.be")) {
@@ -224,7 +217,6 @@ export default class Downloader {
                 }
             }
             if (temp.length > 20) {
-                // console.log("lmao")
                 await this.get_all_videos_from_playlist(temp);
                 const temping = {
                     link: youtube_link,
@@ -264,7 +256,6 @@ export default class Downloader {
                         'Authorization': 'Basic ' + (Buffer.from(client_id + ':' + client_secret).toString('base64')),
                     },
                 });
-
                 const data = await response.json();
                 this.token = data.access_token;
             }
@@ -310,19 +301,15 @@ export default class Downloader {
         mode: download_mode,
         link: string | string[]
     }) {
-
         if (typeof options.link == "string") {
             const link: string = options.link;
             await this.add_link(link)
-
         }
         else {
             for (const link of options.link) {
                 await this.add_link(link)
             }
         }
-        // writeFileSync("../BE/download.json", JSON.stringify(this.download_queue), { encoding: "utf8" })
-        // writeFileSync("../BE/checking.json", JSON.stringify(this.checking_queue), { encoding: "utf8" })
     }
 
     download_Youtube_mp3(video: Download_queue): Promise<string> {
@@ -359,7 +346,7 @@ export default class Downloader {
                 "--save-errors", `${this.spot_errors}`,
                 "--format", `${this.audio_format}`, "--preload",
                 "--output", `${this.folder}\\{title}`,
-                video.link
+                `${(video.formatlink) ? `${video.link + "|" + video.formatlink}` : `${video.link}`}`
             ], {
                 stdio: [
                     "ignore", 'inherit', 'ignore'
@@ -369,21 +356,21 @@ export default class Downloader {
             child.on('close', async (code: number) => {
                 const temp = readFileSync(this.spot_errors as string, "utf-8");
                 const error_line = temp.split("\n").filter((data: string) => {
-                    return data.includes("AudioProviderError")
+                    return data.includes("Error:")
                 })
                 for (const error of error_line) {
                     const error_video = error.split(' - ')[0]
                     const error_spot = await this.fetchTrackVideos_spotify(error_video.split("/track/")[1]) as any;
                     const search_on_youtube = await this.search_youtube_video(error_spot.name);
                     const video = search_on_youtube.items[0];
-                    const temping = {
+                    const temping: Download_queue = {
                         link: `https://www.youtube.com/watch?v=${video.id.videoId}`,
-                        title: "",// this.format_title(error_spot.name),
+                        formatlink: error_video,
+                        title: "",
                         mode: "music",
                         format: `${this.audio_format}`,
-                        from: "youtube"
+                        from: "spotify"
                     }
-                    // this.checking_queue.push(temping)
                     this.download_queue.push(temping)
                 }
                 resolve(`Finish download ${video.title}${this.audio_format}`);
@@ -398,12 +385,12 @@ export default class Downloader {
         // get all filename in a folder
         const files = readdirSync(this.folder);
         for (const file of files) {
-            const checked = this.checking_queue.find(item => item.title == file.split(`${this.audio_format}`)[0])
+            const checked = this.checking_queue.find(item => item.title == file.split(`.${this.audio_format}`)[0])
             if (!checked) {
                 // delete that file in download folder
                 try {
                     unlinkSync(`${this.folder}\\${file}`); // Delete the file
-                    console.warn(`Deleted: ${file}`);
+                    console.log(`Deleted: ${file}`);
                 } catch (error) {
                     console.error(`Error deleting ${file}:`, error);
                 }
@@ -412,6 +399,7 @@ export default class Downloader {
     }
 
     async download(): Promise<void> {
+        await mkdir(`${this.folder}`, { recursive: true })
         while (this.download_queue.length > 0) {
             const downloader = this.download_queue.shift() as Download_queue;
             try {
@@ -431,32 +419,27 @@ export default class Downloader {
     }
 
     async check_env(): Promise<void> {
-        // check if ../support/ffmpeg/ffmpeg.exe ffplay.exe ffprobe exist
         const ffmpeg_path = `${this.curr_folder}\\include\\support\\ffmpeg\\ffmpeg.exe`;
         const ffplay_path = `${this.curr_folder}\\include\\support\\ffmpeg\\ffplay.exe`;
         const ffprobe_path = `${this.curr_folder}\\include\\support\\ffmpeg\\ffprobe.exe`;
         const ytdlp_path = `${this.curr_folder}\\include\\support\\yt-dlp.exe`;
         const spotdlp_path = `${this.curr_folder}\\include\\support\\spot-dlp.exe`;
 
-
         await mkdir(`${this.curr_folder}\\include\\support`, { recursive: true })
 
         if (!existsSync(ffmpeg_path) || !existsSync(ffplay_path) || !existsSync(ffprobe_path)) {
             await mkdir(`${this.curr_folder}\\temping`, { recursive: true })
             console.warn("FFmpeg not found. Downloading...");
-            // await download_ffmpeg(this.curr_folder as string);
             await download_ffmpeg(this.curr_folder as string);
         }
 
         if (!existsSync(ytdlp_path)) {
             console.warn("yt-dlp not found. Downloading...");
-            // await downloadLatestYTDLP(this.curr_folder as string);
             await download_ytdlp(this.curr_folder as string)
         }
 
         if (!existsSync(spotdlp_path)) {
             console.warn("spot-dlp not found. Downloading...");
-            // await downloadLatestSpotDLP(this.curr_folder as string);
             await download_spotdlp(this.curr_folder as string)
         }
 

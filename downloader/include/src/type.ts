@@ -1,6 +1,6 @@
-
 export interface Download_queue {
     link: string,
+    formatlink?: string,
     title: string,
     mode: string,
     format: string,
