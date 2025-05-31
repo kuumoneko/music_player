@@ -4,6 +4,7 @@
 /node_modules
 /tsconfig.json
 /downloader/downloader.exe
+/downloader/test.ts
 /downloader/include/support
 /downloader/include/BE/env.json
 /downloader/include/BE/spot.txt

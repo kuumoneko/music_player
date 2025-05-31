@@ -33,6 +33,12 @@ const argv = yargs(hideBin(process.argv)) // Call yargs() here and pass processe
         description: "The format of the music file\nNow support mp3 and m4a",
         type: 'string'
     })
+    // check for update
+    .option('check-for-update', {
+        alias: 'cfu',
+        description: "Check for update",
+        type: 'boolean'
+    })
     .help() // Add help option
     .version("1.0.0")
     .alias('help', 'h')

@@ -63,23 +63,20 @@ export default class Downloader {
         return this.ffmpeg
     }
 
-    format_title(title: string) {
-        const emojiPattern = new RegExp(
-            "[\u2600-\u27BF\u2B00-\u2BFF\u2300-\u23FF\u1F000-\u1FFFF]", "gu"
-        );
-        const regionalIndicatorPattern = new RegExp(
-            "[\u1F1E6-\u1F1FF]{2}", "gu"
-        );
-        const invalidCharsPattern = /[|/?*:<>]/g;
+    format_title(title: string): string {
+        const emojiAndSymbolPattern =
+            /[\u2600-\u27FF\u2B00-\u2BFF\u2300-\u23FF\u{1F000}-\u{1FFFF}\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}]/gu;
+        const regionalIndicatorPattern = /[\u{1F1E6}-\u{1F1FF}]{2}/gu;
+        const invalidCharsPattern = /[|/?*:<>"]/g;
         const multipleSpacesPattern = /\s+/g;
         const trimSpacesPattern = /(^\s+|\s+$)/g;
         let cleanedTitle = title;
 
-        cleanedTitle = cleanedTitle.replaceAll(regionalIndicatorPattern, "");
-        cleanedTitle = cleanedTitle.replaceAll(emojiPattern, "");
-        cleanedTitle = cleanedTitle.replaceAll(invalidCharsPattern, "");
-        cleanedTitle = cleanedTitle.replaceAll(multipleSpacesPattern, " ");
-        cleanedTitle = cleanedTitle.replaceAll(trimSpacesPattern, "");
+        cleanedTitle = cleanedTitle.replace(regionalIndicatorPattern, "");
+        cleanedTitle = cleanedTitle.replace(emojiAndSymbolPattern, "");
+        cleanedTitle = cleanedTitle.replace(invalidCharsPattern, "");
+        cleanedTitle = cleanedTitle.replace(multipleSpacesPattern, " ");
+        cleanedTitle = cleanedTitle.replace(trimSpacesPattern, "");
 
         return cleanedTitle;
     }
@@ -288,7 +285,7 @@ export default class Downloader {
                 const video = await this.fetchTrackVideos_spotify(spotify_link);
                 this.checking_queue.push({
                     link: `https://open.spotify.com/track/${video.id}`,
-                    title: this.format_title(video.name),
+                    title: video.name,
                     mode: "music",
                     format: `${this.audio_format}`,
                     from: "spotify"
@@ -361,7 +358,7 @@ export default class Downloader {
                 for (const error of error_line) {
                     const error_video = error.split(' - ')[0]
                     const error_spot = await this.fetchTrackVideos_spotify(error_video.split("/track/")[1]) as any;
-                    const search_on_youtube = await this.search_youtube_video(error_spot.name);
+                    const search_on_youtube = await this.search_youtube_video(`${error_spot.artists[0].name} ${error_spot.name}}`);
                     const video = search_on_youtube.items[0];
                     const temping: Download_queue = {
                         link: `https://www.youtube.com/watch?v=${video.id.videoId}`,
