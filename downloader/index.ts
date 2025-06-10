@@ -33,11 +33,15 @@ const argv = yargs(hideBin(process.argv)) // Call yargs() here and pass processe
         description: "The format of the music file\nNow support mp3 and m4a",
         type: 'string'
     })
-    // check for update
-    .option('check-for-update', {
-        alias: 'cfu',
-        description: "Check for update",
-        type: 'boolean'
+    // check for update, will update later
+    // .option('check-for-update', {
+    //     alias: 'cfu',
+    //     description: "Check for update",
+    //     type: 'boolean'
+    // })
+    .option('nocheck', {
+        description: "Checking to delete the track that dont have in links",
+        type: "boolean"
     })
     .help() // Add help option
     .version("1.0.0")
@@ -58,6 +62,8 @@ else {
 const folder = folderPath;
 const links = argv._.map(String);
 const ext = argv.format ? argv.format : Audio_format.m4a;
+const checking = argv.nocheck ? false : true;
+
 
 const ffmpeg = `${executableDir}\\include\\support\\ffmpeg\\ffmpeg.exe`,
     ytdlp = `${executableDir}\\include\\support\\yt-dlp.exe`,
@@ -98,7 +104,10 @@ async function run() {
         link: links
     })
 
-    await downloader.checking();
+    if (checking == true) {
+        await downloader.checking();
+    }
+
 
     await downloader.download();
 }
