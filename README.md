@@ -3,7 +3,7 @@
 ## Version
 
 ```shell
-1.0.3
+1.0.4
 ```
 
 ## Description
@@ -12,7 +12,7 @@ A tool used to download music from youtube and spotify
 
 ## Update
 
-- Fix Format Title
+- Add no checking parameter
 
 ## Usage
 
