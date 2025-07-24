@@ -1,36 +1,50 @@
-# Music downloader
+# Online Judge
 
-## Version
+> Front-end: React.js
+>
+> Back-end: Node.js
 
-```shell
-1.0.4
+## Available Scripts
+
+In the project directory, you can run:
+
+### `npm start`
+
+Runs the app in the development mode.\
+Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+
+The page will reload if you make edits.\
+You will also see any lint errors in the console.
+
+### `npm run data_server`
+
+Runs the backend server.\
+It will run at [http://localhost:3001](http://localhost:3001) by defaults.
+
+The server will reload if you make edits.\
+You will also see any lint errors in the console.
+
+### Change server mode
+
+- Open `src/index.tsx`
+- Change the server mode
+
+```tsx
+enum ServerMode {
+    production = "production",
+    test = "test",
+}
+
+// Server mode will be here
+const mode = ServerMode.production; // or Servermode.test
 ```
 
-## Description
+## Learn More
 
-A tool used to download music from youtube and spotify
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-## Update
+To learn React, check out the [React documentation](https://reactjs.org/).
 
-- Add no checking parameter
+## Contributor
 
-## Usage
-
-```shell
- downloader [OPTIONS] [--] URL [URL...]
-```
-
-## Options
-
-```shell
--h, --help          Print help text and exit
--v, --version       Print version and exit
--f, --folder        Chose your download folder
--fm, --format       Chose your format, support mp3 and m4a
-```
-
-## Third party
-
-- [ffmpeg](https://github.com/FFmpeg/FFmpeg)
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
-- [spot-dlp](https://github.com/spotDL/spotify-downloader)
+- [kuumoneko](https://github.com/kuumoneko)

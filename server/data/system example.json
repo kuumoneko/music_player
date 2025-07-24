@@ -1,0 +1,9 @@
+{
+    "Youtube_Api_key": [
+        "YOUR YOUTUBE API KEYS"
+    ],
+    "Spotify_Api_key": "Your spotify api key",
+    "Spotify_client": "Yout spotify client id",
+    "port": "your port example 3001, change it, then you need to change in other files",
+    "web": "Your Google credential json"
+}

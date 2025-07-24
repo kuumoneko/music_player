@@ -3,10 +3,20 @@
 /checking answer
 /node_modules
 /tsconfig.json
-/downloader/downloader.exe
-/downloader/test.ts
-/downloader/include/support
-/downloader/include/BE/env.json
-/downloader/include/BE/spot.txt
-/downloader/temping.
-downloader.exe
+/server/node_modules
+/app
+/build
+.eslintrc
+.hintrc
+build.ts
+src/test
+server/support
+/dist/
+server/data/localfile
+server/data/download.txt
+server/data/spot.txt
+server/data/system.json
+server/data/track.json
+server/data/user.json
+server/data/userplaylists.json
+src/server/components/footer/index.tsx
