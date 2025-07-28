@@ -14,4 +14,3 @@
 /src/electron/data/*
 !/src/electron/data/*example*
 build.ts
-/electron/*
