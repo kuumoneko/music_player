@@ -18,7 +18,7 @@ export default function Download({ list }: { list: any[] }) {
             try {
                 async function get_download_status() {
                     if (!status) return;
-                    const data = await fetch_data(Data.download);
+                    const data = await fetch_data(Data.download_status);
                     // const data = await get("/download_status");
                     if (data.status == "done") {
                         setstatus(Status.done);

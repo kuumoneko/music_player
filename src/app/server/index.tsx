@@ -8,7 +8,7 @@ import { goto } from "./common/utils/url.ts"
 import MainContent from './pages/index.tsx';
 import Nav from './common/components/Navigator/index.tsx';
 import { running } from '../prerun.tsx';
-import { Data, fetch_data, get } from './common/utils/fetch.ts';
+import { Data, fetch_data } from './common/utils/fetch.ts';
 
 
 export default function Server() {

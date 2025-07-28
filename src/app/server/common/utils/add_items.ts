@@ -1,5 +1,5 @@
 import { Track } from "../../../../types/index.ts";
-import { get } from "./fetch.ts";
+import { Data, fetch_data } from "./fetch.ts";
 
 export const add_items = async (source: string, mode: string, id: string, after_tracks: any[]) => {
     // console.log("add items")
@@ -13,7 +13,24 @@ export const add_items = async (source: string, mode: string, id: string, after_
         url = `/liked songs/${source}`;
     }
 
-    const data = await get(url);
+    let data;;
+
+    if (mode === "playlist") {
+        data = await fetch_data(Data.playlist, { where: source, id: id })
+    }
+    else if (mode === "track") {
+        data = await fetch_data(Data.track, { where: source, id: id })
+
+    }
+    else if (mode === "local") {
+        data = await fetch_data(Data.local)
+
+    }
+    else if (mode === "liked songs") {
+        data = await fetch_data(Data.likedsongs, { where: source })
+
+    }
+    // const data = await get(url);
 
     // const res = await fetch(url, {
     //     method: "GET",
