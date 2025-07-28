@@ -61,7 +61,7 @@ export default class Downloader {
             google_client_secret: options.google_client_secret,
             redirect_uris: options.redirect_uris,
             port: options.port || 3000,
-        }, mode)
+        })
 
         // status
         this.stastus = Status.idle;
@@ -139,22 +139,6 @@ export default class Downloader {
 
         return cleanedTitle;
     }
-
-
-    // async get_all_videos_from_playlist(id: string = '') {
-    //     const videos = await this.music.search(`https://www.youtube.com/playlist?list=${id}`);
-    //     return videos;
-    // }
-
-    // async get_all_videos_from_playlist_spotify(id: string = '') {
-    //     const videos = await this.music.spotify.fetchPlaylistVideos_spotify(`https://open.spotify.com/playlist/${id}`);
-    //     return videos;
-    // }
-
-    // async get_all_videos_from_album_spotify(id: string = '') {
-    //     const videos = await this.music.spotify.fetchAlbumVideos_spotify(`https://open.spotify.com/album/${id}`);
-    //     return videos;
-    // }
 
     async add_link(link: string) {
         const { source, mode, id } = this.music.convert_link(link);

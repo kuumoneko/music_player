@@ -16,7 +16,7 @@ export enum Data {
 
 export function fetch_data(what: Data, data?: any): Promise<any> {
     return new Promise((resolve, reject) => {
-        const api = (window as any).electronAPI;
+        const api = window.electronAPI;
         if (api) {
             if (what === Data.login) {
                 api.login(data);
@@ -28,16 +28,16 @@ export function fetch_data(what: Data, data?: any): Promise<any> {
                 api.download(data);
             }
             else if (what === Data.download_status) {
-                api.download_status(data);
+                api.download_status();
             }
             else if (what === Data.user) {
-                api.user(data);
+                api.user();
             }
             else if (what === Data.localfile) {
                 api.localfile(data);
             }
             else if (what === Data.local) {
-                api.local(data);
+                api.local();
             }
             else if (what === Data.search) {
                 api.search(data);
@@ -52,7 +52,7 @@ export function fetch_data(what: Data, data?: any): Promise<any> {
                 api.likedsongs(data);
             }
             else if (what === Data.userplaylist) {
-                api.user_playlists(data);
+                api.user_playlists();
             }
             else if (what === Data.stream) {
                 api.stream(data)
@@ -64,12 +64,10 @@ export function fetch_data(what: Data, data?: any): Promise<any> {
                     if (data.from as Data === what) {
                         resolve(data.data)
                     }
-
                 }
                 else {
                     reject(data.message)
                 }
-
             });
         }
     })

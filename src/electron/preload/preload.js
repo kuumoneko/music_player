@@ -1,5 +1,4 @@
 import pkg from 'electron'
-// import { Audio_format } from './types/index.ts';
 const { contextBridge, ipcRenderer } = pkg
 
 

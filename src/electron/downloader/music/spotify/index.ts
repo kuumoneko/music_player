@@ -1,6 +1,6 @@
 /* eslint-disable no-loop-func */
 import axios from "axios";
-import { Album, Mode, Music_options, Playlist, Search, Track, User } from "../../../types/index.ts";
+import { Album, Music_options, Playlist, Search, Track, User } from "../../../types/index.ts";
 import { Buffer } from "node:buffer"
 
 export default class Spotify {
@@ -8,15 +8,14 @@ export default class Spotify {
     private spotify_client_id: string | undefined;
     private token: string | undefined = "";
     private access_token: string | undefined = "";
-    private mode: Mode;
     private port: number = 3000;
 
 
-    constructor(options: Music_options, mode: Mode) {
+    constructor(options: Music_options) {
         // client API
         this.spotify_api_key = options.spotify_api_key;
         this.spotify_client_id = options.spotify_client;
-        this.mode = mode;
+        // this.mode = mode;
         this.port = options.port || 3000;
     }
 
@@ -78,13 +77,7 @@ export default class Spotify {
                         },
                     }
                 );
-                // console.log(response.data)
                 const { access_token, refresh_token } = response.data;
-                // const userResponse = await axios.get('https://api.spotify.com/v1/me', {
-                //     headers: {
-                //         'Authorization': `Bearer ${access_token}`,
-                //     },
-                // });
                 const spotifyUser = await this.getme(access_token);
                 resolve({
                     user: spotifyUser,
@@ -102,8 +95,6 @@ export default class Spotify {
     refreshSpotifyToken(token: string) {
         return new Promise(async (resolve, reject) => {
             try {
-                // const clientId = this.spotify_client_id; // Replace with your client ID
-                // const clientSecret = this.spotify_api_key; // Replace with your client secret
                 const url = "https://accounts.spotify.com/api/token";
 
                 const payload = {

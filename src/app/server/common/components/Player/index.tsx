@@ -55,7 +55,7 @@ export default function Player({
 
     const sleep_type = ["nosleep", "after 5 minutes", "after 10 minutes", "after 15 minutes", "after 30 minutes", "after 45 minutes", "after 1 hours", "end of this track"];
     const [sleep, setsleep] = useState(sleep_types.no);
-    const [sleep_time, setsleep_time] = useState<string | number>(sleep_types.no)
+    // const [sleep_time, setsleep_time] = useState<string | number>(sleep_types.no)
 
 
     useEffect(() => {
@@ -125,22 +125,7 @@ export default function Player({
         try {
             // Fetch the stream URL from your backend
             const data = await fetch_data(Data.stream, { where: source, mode: "track", id: id })
-            // const data = await post(`/stream/${source}`, { id: id, mode: "track" });
-            // const response = await fetch(`http://localhost:3001/stream/${source}`, {
-            //     method: "POST",
-            //     headers: {
-            //         "Content-Type": "application/json",
-            //     },
-            //     body: JSON.stringify({
-            //         id: id,
-            //         mode: "track"
-            //     })
-            // });
-            // if (!response.ok) {
-            //     throw new Error('Failed to get audio stream from server.');
-            // }
-            // const data = await response.json();
-            // console.log(data)
+
             if (source === "local") {
                 const mimeType = "audio/m4a"
                 const binary = atob(data.url);
@@ -164,7 +149,6 @@ export default function Player({
             setTimeout(() => {
                 setplayed(true)
             }, 500);
-            // setplayed(true)
         } catch (error) {
             console.error(error);
             localStorage.setItem("playing", JSON.stringify({
@@ -288,19 +272,16 @@ export default function Player({
             default:
                 kill_time = "end of this track"
         }
-        setsleep_time(kill_time)
+        // setsleep_time(kill_time)
         localStorage.setItem("kill time", typeof kill_time === 'string' ? kill_time : String(kill_time));
 
     }, [sleep])
-
-    // useEffect(() => {
-    //     console.log(sleep_time);
-    // }, [sleep_time])
 
 
     useEffect(() => {
         const run = window.setInterval(() => {
             if (!audioRef.current) return;
+            const repeat = localStorage.getItem("repeat")
             // console.log(repeat, ' ', audioRef.current?.ended);
             if (repeat === "one" && audioRef.current.ended) {
                 audioRef.current.currentTime = 0;
@@ -394,13 +375,6 @@ export default function Player({
                             source: source,
                             thumbnail: track.thumbnail,
                         }));
-
-                        // getUrl(source, track.id).then(() => {
-                        //     if (audioRef.current) {
-                        //         audioRef.current.play().catch(e => console.error("Error playing next track:", e));
-                        //     }
-                        // });
-
                     }
                 }
 
@@ -439,6 +413,15 @@ export default function Player({
                 return <span className="w-[100%] flex flex-row-reverse">End</span>;
         }
     }
+
+    useEffect(() => {
+        async function run() {
+            if (shuffle === "enable") {
+                
+            }
+        }
+    }, [shuffle]);
+
 
     return (
         <div className="player h-[35%] w-[90%] bg-slate-200 dark:bg-slate-700 text-black dark:text-white mt-[15px] rounded-xl flex justify-between items-center px-[5px] m-0 select-none" >

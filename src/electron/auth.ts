@@ -1,7 +1,7 @@
 import pkg from 'electron'
 const { BrowserWindow } = pkg
 
-export function createAuthWindow(url: string) {
+export function createAuthWindow(url: string, port: number) {
     return new Promise((resolve, reject) => {
         let authWindow = new BrowserWindow({
             width: 600,
@@ -19,7 +19,7 @@ export function createAuthWindow(url: string) {
 
 
         authWindow.webContents.on('did-navigate', (event, newUrl) => {
-            if (newUrl.startsWith('http://localhost:3000')) {
+            if (newUrl.startsWith(`http://localhost:${port}`)) {
                 event.preventDefault(); // Stop the navigation
 
                 const parsedUrl = new URL(newUrl);
@@ -44,7 +44,7 @@ export function createAuthWindow(url: string) {
         authWindow.webContents.on('did-fail-load', (event: any, oldUrl: any, newUrl: any, isMainFrame: any) => {
             const url = isMainFrame;
 
-            if (url.startsWith('http://localhost:3000')) {
+            if (url.startsWith(`http://localhost:${port}`)) {
                 event.preventDefault(); // Stop the navigation
 
                 const parsedUrl = new URL(url);

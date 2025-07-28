@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { Server_mode } from "../types/index.ts"
 import { createRoot } from 'react-dom/client';
 
+import "./electron.d.ts"
 const root_element = document.getElementById("root");
 
 const root = createRoot(root_element as HTMLElement);

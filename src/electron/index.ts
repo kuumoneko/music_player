@@ -5,15 +5,15 @@ import path from "node:path"
 import { writeFileSync, readFileSync, statSync, promises, Dirent } from "node:fs"
 import * as mm from 'music-metadata';
 import { createAuthWindow } from "./auth.ts"
-import { Audio_format, Mode, Playlist } from './types/index.ts'
+import { Audio_format, Mode, Playlist, Server_mode } from './types/index.ts'
 import Downloader from './downloader/index.ts'
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.ts"
 import express from "express";
 import cors from 'cors';
 
-
-
 const { app, BrowserWindow, ipcMain, Menu } = pkg
+
+const mode: Mode = Mode.deploy;
 
 
 const generateRandomString = (length: number) => {
@@ -21,8 +21,6 @@ const generateRandomString = (length: number) => {
     const values = crypto.getRandomValues(new Uint8Array(length));
     return values.reduce((acc, x) => acc + possible[x % possible.length], "");
 }
-
-
 
 // let backendProcess;
 let mainWindow: pkg.BrowserWindow;
@@ -37,9 +35,10 @@ const system = getDataFromDatabase(executableDir, "data", "system");
 
 
 const port = Number(system["port"] as string) || 3000;
+
 const server = express();
 const corsOptions = {
-    origin: ["http://localhost:3000"],
+    origin: system.web?.redirect_uris ? system.web.redirect_uris : ["http://localhost:3000"],
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
 };
@@ -49,17 +48,12 @@ server.use(express.json());
 
 server.listen(port, () => {
     console.log(`Server is running successfully on port ${port}`);
-    console.log(`CORS is configured for origin: ${"http://localhost:3000"}`);
+    console.log(`CORS is configured for origin: http://localhost:${port}`);
 });
 
 server.get("/", (req, res) => {
-    // console.log(req.url)
-    const url = new URL(`http://localhost:${port}${req.url}`);
-    res.status(200).json({
-        code: url.searchParams.get("code")
-    })
+    res.status(204)
 })
-
 
 let downloader = new Downloader({
     ytdlp: path.join(executableDir, 'support', 'yt-dlp.exe'),
@@ -77,7 +71,7 @@ let downloader = new Downloader({
     spotify_client: system.Spotify_client,
     port: port
 
-}, Mode.deploy);
+}, mode as Mode);
 
 setInterval(() => {
     async function run() {
@@ -89,9 +83,6 @@ setInterval(() => {
             local: data.local
         }
 
-        // console.log(data?.youtube?.expires, ' ', data?.spotify?.expires, ' ', new Date().getTime());
-
-        // const now = new Date().getTime();
         let lmao = false;
 
         if (data.youtube.expires && data.youtube.expires <= new Date().getTime()) {
@@ -99,17 +90,14 @@ setInterval(() => {
             const Youtube = await downloader.music.youtube.refreshYoutubeToken(data.youtube.refresh_token) as any;
             if (Youtube) {
                 const user = await downloader.music.youtube.fetch_youtube_user(Youtube.access_token);
-
                 res.youtube = {
                     access_token: Youtube.access_token,
                     expires: Youtube.expires,
                     refresh_token_expires: Youtube.refresh_token_expires_in,
                     refresh_token: res.youtube.refresh_token,
                     user: user
-
                 }
             }
-            // console.log("youtube: ", Youtube)
         }
 
         if (data.spotify.expires && data.spotify.expires <= new Date().getTime()) {
@@ -124,8 +112,6 @@ setInterval(() => {
                     user: user
                 }
             }
-            // console.log("spotify: ", spotifyUser)
-
         }
 
         if (lmao) {
@@ -143,7 +129,8 @@ setInterval(() => {
                 google_client_secret: system.web.client_secret,
                 redirect_uris: system.web.redirect_uris,
                 spotify_api_key: system.Spotify_Api_key,
-                spotify_client: system.Spotify_client
+                spotify_client: system.Spotify_client,
+                port: port
             }, downloader.mode)
         }
     }
@@ -156,14 +143,18 @@ function createWindow() {
         height: 1060,
         autoHideMenuBar: true,
         webPreferences: {
-            preload: "E:\\project\\src\\electron\\preload.js",
+            preload: path.join(__dirname, "../../../src/electron/preload/preload.js"),
             nodeIntegration: true,
             contextIsolation: true,
         },
     });
 
-    console.log(path.join(__dirname, "../../../build/index.html"))
-    mainWindow.loadURL(path.join(__dirname, "../../../build/index.html"));
+    const load_from = (mode === Mode.deploy) ? path.join(__dirname, "../../../build/index.html") : "http://localhost:3000"
+
+    console.log(load_from);
+
+
+    mainWindow.loadURL(load_from);
     mainWindow.webContents.openDevTools();
 
     Menu.setApplicationMenu(null);
@@ -218,18 +209,10 @@ enum Data {
 }
 
 const give_error = (event: any, from: Data, message: string) => {
-    event.reply('received_data', { message: message, ok: false });
+    event.reply('received_data', { message: message, ok: false, from: from });
 }
 
 const give_data = (event: any, from: Data, data: any = {}) => {
-    // console.log(event)
-    // const a: any = {};
-    // const keys = Object.keys(data);
-    // keys.forEach((key: string) => {
-    //     a[key] = data[key];
-    // })
-    // a.data = data;
-    // a.ok = true
     event.reply('received_data', {
         ok: true,
         data: data,
@@ -241,7 +224,7 @@ const give_data = (event: any, from: Data, data: any = {}) => {
 ipcMain.on("login", async (event: any, data: { where: string }) => {
     const { where } = data;
     let authUrl: string;
-    const redirectUri = `http://localhost:3000`
+    const redirectUri = `http://localhost:${port}`
 
     try {
         if (where === "youtube") {
@@ -259,7 +242,7 @@ ipcMain.on("login", async (event: any, data: { where: string }) => {
                 'user-library-read'
             ].join(' '))}&state=${generateRandomString(16)}`;
         }
-        const token: string = await createAuthWindow(authUrl) as string;
+        const token: string = await createAuthWindow(authUrl, port) as string;
 
         let data: any;
         const user = getDataFromDatabase(executableDir, "data", "user");

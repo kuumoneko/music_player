@@ -1,4 +1,4 @@
-import { Mode, Music_options, Playlist, Search, Track } from "../../../types/index.ts";
+import {  Music_options, Playlist, Search, Track } from "../../../types/index.ts";
 
 export default class Youtube {
     private maxResults = 200;
@@ -6,31 +6,24 @@ export default class Youtube {
     private youtube_api_key: string[] | undefined;
     private google_client: string | undefined;
     private google_client_secret: string | undefined;
-    private redirect_uris: string[] = []
-    private mode: Mode;
     private port: number = 3000;
 
 
-    constructor(options: Music_options, mode: Mode) {
+    constructor(options: Music_options) {
         // client API
         this.youtube_api_key = options.youtube_api_key;
         this.google_client = options.google_client_id;
         this.google_client_secret = options.google_client_secret;
-        this.redirect_uris = options.redirect_uris || []
-        this.mode = mode;
         this.port = options.port || 3000;
     }
 
     async fetch_youtube_user(access_token: string = ''): Promise<any> {
-        // await this.get_token();
-        // console.log(access_token)
         const url = `https://youtube.googleapis.com/youtube/v3/channels?part=snippet%2CcontentDetails%2Cstatistics&mine=true&key=${this.youtube_api_key ? this.youtube_api_key[0] : ''}`
         const response = await fetch(url, {
             method: 'GET',
             headers: { 'Authorization': `Bearer ${access_token}` },
         });
         const data = await response.json();
-        // console.log(data)
         return {
             type: "youtube:user",
             name: data.items[0].snippet.title,
@@ -49,13 +42,6 @@ export default class Youtube {
 
     async gettoken(token: string) {
         try {
-            // console.log({
-            //     client_id: this.google_client,
-            //     client_secret: this.google_client_secret,
-            //     redirect_uri: (this.mode === Mode.deploy) ? this.redirect_uris[0] : this.redirect_uris[1],
-            //     grant_type: 'authorization_code',
-            //     code: token,
-            // })
             const ticket = await fetch(`https://oauth2.googleapis.com/token`, {
                 method: 'POST',
                 headers: {
@@ -70,7 +56,6 @@ export default class Youtube {
                 })
             });
             const data = await ticket.json();
-            // console.log(data)
             return data;
         } catch (error) {
             console.error("Error verifying Google ID token:", error);

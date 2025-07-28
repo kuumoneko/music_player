@@ -1,7 +1,6 @@
 import pkg from 'electron'
-import { Audio_format } from './types/index.ts';
+import { Audio_format } from '../types/index.ts';
 const { contextBridge, ipcRenderer } = pkg
-
 
 contextBridge.exposeInMainWorld('electronAPI', {
     // auth

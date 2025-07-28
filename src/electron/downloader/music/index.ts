@@ -1,24 +1,24 @@
 import Spotify from "./spotify/index.ts";
-import { Mode, Music_options } from "../../types/index.ts";
+import { Music_options } from "../../types/index.ts";
 import Youtube from "./youtube/index.ts";
 
 export default class Music {
     public youtube: Youtube;
     public spotify: Spotify;
 
-    constructor(options: Music_options, mode: Mode) {
+    constructor(options: Music_options) {
         this.youtube = new Youtube({
             youtube_api_key: options.youtube_api_key,
             google_client_id: options.google_client_id,
             google_client_secret: options.google_client_secret,
             redirect_uris: options.redirect_uris,
             port: options.port || 3000
-        }, mode)
+        })
         this.spotify = new Spotify({
             spotify_api_key: options.spotify_api_key,
             spotify_client: options.spotify_client,
             port: options.port || 3000
-        }, mode)
+        })
     }
 
     convert_link(link: string) {
