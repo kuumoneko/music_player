@@ -396,12 +396,8 @@ export default class Youtube {
         } as Track
     }
 
-    // https://youtube.googleapis.com/youtube/v3/search?part=snippet&maxResults=30&q=Xe%20%C4%90%E1%BA%A1p%20Th%C3%B9y%20Chi&key=AIzaSyA0jwZ5rah9kfz0BDbui6ls-wX2G6pcMqg
-    // https://youtube.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=Xe%20%C4%90%E1%BA%A1p%20Th%C3%B9y%20Chi&key=AIzaSyA0jwZ5rah9kfz0BDbui6ls-wX2G6pcMqg
-
     async search_youtube_video(search: string = ''): Promise<Search> {
         // const pagetoken = '';
-        // https://youtube.googleapis.com/youtube/v3/search?part=snippet&maxResults=25&q=surfing&key=AIzaSyA0jwZ5rah9kfz0BDbui6ls-wX2G6pcMqg
         const url = `https://youtube.googleapis.com/youtube/v3/search?part=snippet&maxResults=30&q=${encodeURIComponent(search)}&key=${this.randomm(this.youtube_api_key?.slice(1) as string[])}`
         const response = await fetch(url);
         let data: any[] | any = await response.json();

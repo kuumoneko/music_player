@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// electron/main.js
 import pkg from 'electron'
 import path from "node:path"
 import { writeFileSync, readFileSync, statSync, promises, Dirent } from "node:fs"
 import * as mm from 'music-metadata';
 import { createAuthWindow } from "./auth.ts"
-import { Audio_format, Mode, Playlist, Server_mode } from './types/index.ts'
+import { Audio_format, Mode, Playlist } from './types/index.ts'
 import Downloader from './downloader/index.ts'
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.ts"
 import express from "express";
@@ -13,7 +11,7 @@ import cors from 'cors';
 
 const { app, BrowserWindow, ipcMain, Menu } = pkg
 
-const mode: Mode = Mode.deploy;
+const mode: Mode = Mode.test;
 
 
 const generateRandomString = (length: number) => {
@@ -33,28 +31,26 @@ const executableDir = path.join(__dirname, "../../../src/electron")
 
 const system = getDataFromDatabase(executableDir, "data", "system");
 
-
 const port = Number(system["port"] as string) || 3000;
 
+// - - - - - Node express server for getting auth code from Youtube or Spotify - - - - - -
 const server = express();
 const corsOptions = {
-    origin: system.web?.redirect_uris ? system.web.redirect_uris : ["http://localhost:3000"],
+    origin: system.web?.redirect_uris ? system.web.redirect_uris : [`http://localhost:${port}`],
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
 };
-
 server.use(cors(corsOptions));
 server.use(express.json());
-
 server.listen(port, () => {
     console.log(`Server is running successfully on port ${port}`);
     console.log(`CORS is configured for origin: http://localhost:${port}`);
 });
-
 server.get("/", (req, res) => {
     res.status(204)
 })
 
+// - - - - - - Downloader class - - - - - - 
 let downloader = new Downloader({
     ytdlp: path.join(executableDir, 'support', 'yt-dlp.exe'),
     spotdlp: path.join(executableDir, 'support', 'spot-dlp.exe'),
@@ -73,6 +69,7 @@ let downloader = new Downloader({
 
 }, mode as Mode);
 
+// - - - - - - Check if access_token is expired - - - - - - - 
 setInterval(() => {
     async function run() {
         const data = getDataFromDatabase(executableDir, "data", "user");
@@ -137,6 +134,8 @@ setInterval(() => {
     run();
 }, 1000);
 
+
+// - - - -  - main electron app - - - -  - -
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1680,
@@ -150,15 +149,9 @@ function createWindow() {
     });
 
     const load_from = (mode === Mode.deploy) ? path.join(__dirname, "../../../build/index.html") : "http://localhost:3000"
-
-    console.log(load_from);
-
-
     mainWindow.loadURL(load_from);
     mainWindow.webContents.openDevTools();
-
     Menu.setApplicationMenu(null);
-
     mainWindow.on('closed', () => {
         try { mainWindow.close(); } catch { }
     });
@@ -443,7 +436,7 @@ ipcMain.on("local", async (e) => {
             // return res.status(400).json({ message:  });
         }
 
-        const locall = JSON.parse(readFileSync(`${executableDir}\\BE\\localfile\\local.json`, { encoding: "utf-8" }) as string)
+        const locall = JSON.parse(readFileSync(`${executableDir}\\data\\localfile\\local.json`, { encoding: "utf-8" }) as string)
 
         const folderPath = local.folder;
         const dirents = await promises.readdir(folderPath, { withFileTypes: true });
@@ -529,7 +522,7 @@ ipcMain.on("local", async (e) => {
         }
 
 
-        writeFileSync(`${executableDir}\\BE\\localfile\\local.json`, JSON.stringify(files))
+        writeFileSync(`${executableDir}\\data\\localfile\\local.json`, JSON.stringify(files))
 
         return give_data(e, Data.local, {
             type: "local:folder",

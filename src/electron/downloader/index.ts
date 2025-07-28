@@ -315,6 +315,7 @@ export default class Downloader {
     }
 
     async check_env(): Promise<void> {
+        this.set_status(Status.downloading);
         const ffmpeg_path = `${this.curr_folder}\\support\\ffmpeg\\ffmpeg.exe`;
         const ffplay_path = `${this.curr_folder}\\support\\ffmpeg\\ffplay.exe`;
         const ffprobe_path = `${this.curr_folder}\\support\\ffmpeg\\ffprobe.exe`;
@@ -338,6 +339,8 @@ export default class Downloader {
             console.warn("spot-dlp not found. Downloading...");
             await download_spotdlp(this.curr_folder as string)
         }
+
+        this.set_status(Status.idle);
     }
 
     async getAudioURLAlternative(id: string): Promise<string> {

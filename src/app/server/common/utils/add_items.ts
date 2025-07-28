@@ -4,16 +4,16 @@ import { Data, fetch_data } from "./fetch.ts";
 export const add_items = async (source: string, mode: string, id: string, after_tracks: any[]) => {
     // console.log("add items")
 
-    let url = `/${mode}/${source}/${id}`;
+    // let url = `/${mode}/${source}/${id}`;
 
-    if (source === "local") {
-        url = `/local/`;
-    }
-    else if (mode === "liked songs") {
-        url = `/liked songs/${source}`;
-    }
+    // if (source === "local") {
+    //     url = `/local/`;
+    // }
+    // else if (mode === "liked songs") {
+    //     url = `/liked songs/${source}`;
+    // }
 
-    let data;;
+    let data: any;
 
     if (mode === "playlist") {
         data = await fetch_data(Data.playlist, { where: source, id: id })
@@ -30,16 +30,6 @@ export const add_items = async (source: string, mode: string, id: string, after_
         data = await fetch_data(Data.likedsongs, { where: source })
 
     }
-    // const data = await get(url);
-
-    // const res = await fetch(url, {
-    //     method: "GET",
-    //     headers: {
-    //         "Content-Type": "application/json"
-    //     }
-    // })
-
-    // const data = await res.json();
 
     const tracks = data.tracks as Track[];
 

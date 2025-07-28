@@ -417,7 +417,7 @@ export default function Player({
     useEffect(() => {
         async function run() {
             if (shuffle === "enable") {
-                
+
             }
         }
     }, [shuffle]);
@@ -466,43 +466,18 @@ export default function Player({
             <div className='flex flex-col items-center'>
                 <div className={`controls flex flex-row gap-[10px] ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}>
                     <button className='mx-[2px] p-[2px] cursor-default select-none' onClick={() => {
-                        if (shuffle === "disable") {
-                            setshuffle("enable");
-                            localStorage.setItem("shuffle", "enable")
-                        }
-                        else {
-                            setshuffle("disable");
-                            localStorage.setItem("shuffle", "disable")
-                        }
+                        const new_shuffle = (shuffle === "disable") ? "enable" : "disable";
+                        setshuffle(new_shuffle)
+                        localStorage.setItem("shuffle", new_shuffle)
                     }}>
-                        {
-                            shuffle === "disable" ? (
-                                <FontAwesomeIcon icon={faShuffle} />
-                            ) : (
-                                <FontAwesomeIcon icon={faShuffle} className='text-red-500' />
-                            )
-                        }
+                        <FontAwesomeIcon icon={faShuffle} className={shuffle === "disable" ? "" : "text-red-500"} />
                     </button>
                     <button className={`mx-[2px] p-[2px] cursor-default select-none ${JSON.parse(localStorage.getItem("playedsongs") || "[]").length === 0 ? 'opacity-50 pointer-events-none' : ''}`} onClick={() => {
                         let playedsongs: any[] = JSON.parse(localStorage.getItem("playedsongs") || "[]");
                         const playing = JSON.parse(localStorage.getItem("playing") as string);
                         const queue = JSON.parse(localStorage.getItem("play queue") as string);
+                        const backward = playedsongs.pop();
 
-
-                        const backward = playedsongs[playedsongs.length - 1];
-                        playedsongs.shift();
-
-                        const temp = [
-                            {
-                                artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
-                                duration: playing.duration,
-                                id: playing.id,
-                                name: playing.name,
-                                source: playing.source,
-                                thumbnail: playing.thumbnail,
-                            },
-                            ...queue
-                        ]
                         localStorage.setItem("playing", JSON.stringify({
                             artists: typeof backward.artists === "string" ? backward.artists : backward.artists.map((artist: any) => artist.name).join(", "),
                             duration: backward.duration,
@@ -514,18 +489,22 @@ export default function Player({
 
                         localStorage.setItem("playedsongs", JSON.stringify(playedsongs))
 
-                        localStorage.setItem("play queue", JSON.stringify(temp));
+                        localStorage.setItem("play queue", JSON.stringify([
+                            {
+                                artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
+                                duration: playing.duration,
+                                id: playing.id,
+                                name: playing.name,
+                                source: playing.source,
+                                thumbnail: playing.thumbnail,
+                            },
+                            ...queue
+                        ]));
                     }}>
                         <FontAwesomeIcon icon={faStepBackward} />
                     </button>
                     <button className='mx-[2px] p-[2px] cursor-default select-none' onClick={() => { setplayed(!played); }}>
-                        {
-                            played ? (
-                                <FontAwesomeIcon icon={faPause} />
-                            ) : (
-                                <FontAwesomeIcon icon={faPlay} />
-                            )
-                        }
+                        <FontAwesomeIcon icon={played ? faPause : faPlay} />
                     </button>
                     <button className='mx-[2px] p-[2px] cursor-default select-none' onClick={() => {
                         let playedsongs: any[] = JSON.parse(localStorage.getItem("playedsongs") || "[]");
@@ -593,7 +572,7 @@ export default function Player({
                                 // setTime(0);
                             }
                             else {
-                                const tracks = nextfrom.tracks;
+                                const tracks: any[] = nextfrom.tracks;
                                 tracks.shift();
 
                                 add_items(source, mode, id, tracks)
@@ -607,13 +586,6 @@ export default function Player({
                                     source: source,
                                     thumbnail: track.thumbnail,
                                 }));
-
-                                // getUrl(source, track.id).then(() => {
-                                //     if (audioRef.current) {
-                                //         audioRef.current.play().catch(e => console.error("Error playing next track:", e));
-                                //     }
-                                // });
-
                             }
                         }
 
@@ -621,37 +593,16 @@ export default function Player({
                         <FontAwesomeIcon icon={faStepForward} />
                     </button>
                     <button className='relative mx-[2px] p-[2px] cursor-default select-none' onClick={() => {
-                        if (repeat === "disable") {
-                            setrepeat("enable");
-                            localStorage.setItem("repeat", "enable")
-                        }
-                        else if (repeat === "enable") {
-                            setrepeat("one");
-                            localStorage.setItem("repeat", "one")
-
-                        }
-                        else {
-                            setrepeat("disable");
-                            localStorage.setItem("repeat", "disable")
-                        }
+                        const new_repeat = (repeat === "disable") ? "enable" : (repeat === "enable") ? "one" : "disable";
+                        setrepeat(new_repeat);
+                        localStorage.setItem("repeat", new_repeat)
                     }}>
+                        <FontAwesomeIcon icon={faRepeat} className={(repeat === "enable" ? "text-red-500" : (repeat === "one") ? "text-green-500" : "")} />
                         {
-                            repeat === "disable" ? (
-                                <FontAwesomeIcon icon={faRepeat} />
-                            ) : (
-                                repeat === "enable" ? (
-                                    (
-                                        <FontAwesomeIcon icon={faRepeat} className='text-red-500' />
-                                    )
-                                ) : (
-
-                                    <>
-                                        <FontAwesomeIcon icon={faRepeat} className='text-green-500' />
-                                        <span className="absolute inset-0 flex items-center justify-center text-white text-[8px] font-bold pointer-events-none">
-                                            1
-                                        </span>
-                                    </>
-                                )
+                            repeat === "one" && (
+                                <span className="absolute inset-0 flex items-center justify-center text-white text-[8px] font-bold pointer-events-none">
+                                    1
+                                </span>
                             )
                         }
                     </button>

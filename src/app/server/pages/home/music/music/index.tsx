@@ -160,7 +160,7 @@ export function Show({ list, source, id, mode }: { list: any[], source: string, 
                                                 <FontAwesomeIcon icon={faListDots} />
                                             </span>
                                             <span className={`mr-[10px] ${mode === "local" ? 'opacity-50 pointer-events-none' : ''}`} onClick={() => {
-                                                
+
                                                 const queue = JSON.parse(localStorage.getItem("download queue") as string) || [];
                                                 queue.push({
                                                     name: item.track.name,
@@ -268,7 +268,12 @@ export function Showw({ name, thumbnail, duration, releaseDate, artists, source,
                                                         [other_tracks[i], other_tracks[j]] = [other_tracks[j], other_tracks[i]];
                                                     }
                                                 }
-                                                localStorage.setItem("play queue", JSON.stringify(other_tracks));
+                                                localStorage.setItem("nextfrom", JSON.stringify({
+                                                    from: "local:local:local",
+                                                    tracks: other_tracks.slice(0, 20)
+                                                }));
+
+                                                // localStorage.setItem("play queue", JSON.stringify(other_tracks.slice(0, 20)));
                                             }
                                         }
                                     }}>
