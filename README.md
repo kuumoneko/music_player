@@ -1,4 +1,4 @@
-# Online Judge
+# Music downloader web app
 
 > Front-end: React.js
 >
