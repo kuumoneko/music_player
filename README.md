@@ -1,41 +1,10 @@
 # Music downloader web app
 
 > A Music web app built on React.js and Electron
+> UPDATE NOTE:
+> download with spotify is not available, when you start to download spotify playlist or track, it will return an error and done start any thing
 
-## Available Scripts
-
-In the project directory, you can run:
-
-### `npm start`****
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
-
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
-
-### `npm run data_server`
-
-Runs the backend server.\
-It will run at [http://localhost:3001](http://localhost:3001) by defaults.
-
-The server will reload if you make edits.\
-You will also see any lint errors in the console.
-
-### Change server mode
-
-- Open `src/index.tsx`
-- Change the server mode
-
-```tsx
-enum ServerMode {
-    production = "production",
-    test = "test",
-}
-
-// Server mode will be here
-const mode = ServerMode.production; // or Servermode.test
-```
+## Usage for developers and users will be added later, Im fixing something
 
 ## Learn More
 
