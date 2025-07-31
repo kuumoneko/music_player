@@ -1,30 +1,24 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "allowJs": true,
-    "skipLibCheck": true,
+    "target": "es2022",
+    "module": "nodenext",
+    "outDir": "./app",
+    "rootDir": "./",
+    "strict": false,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "module": "ESNext",
-    "moduleResolution": "Node",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
+    "sourceMap": false,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "allowImportingTsExtensions": true,
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ]
+    "skipLibCheck": true
   },
   "include": [
-    "./build.ts"
+    "./build_electron.ts"
   ],
   "exclude": [
-    "./node_modules"
+    "./src/electron/node_modules",
+    "node_modules",
+    "**/*.json",
+    "**/*.txt",
+    "./src/electron",
   ]
 }
