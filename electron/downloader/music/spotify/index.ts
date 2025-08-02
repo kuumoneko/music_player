@@ -1,6 +1,6 @@
 /* eslint-disable no-loop-func */
 import axios from "axios";
-import { Album, Music_options, Playlist, Search, Track, User } from "../../../types/index.js";
+import { Album, Artist, Music_options, Playlist, Search, Track, User, UserPlaylist } from "../../../types/index.js";
 import { Buffer } from "node:buffer"
 
 export default class Spotify {
@@ -27,6 +27,27 @@ export default class Spotify {
         return this.access_token;
     }
 
+    async fetch_data(
+        url: string,
+        access_token?: string) {
+        try {
+            await this.get_token();
+
+            const response = await fetch(`${url}`, {
+                method: "GET",
+                headers: {
+                    'Authorization': `Bearer ${(access_token && access_token !== "") ? access_token : this.token}`,
+                    'Content-Type': 'application/json',
+                }
+            })
+            const data = await response.json();
+
+            return data;
+        }
+        catch (e) {
+            throw new Error(e);
+        }
+    }
 
     async get_token() {
         if (this.token === "") {
@@ -46,17 +67,6 @@ export default class Spotify {
             // console.log(data)
             this.token = data.access_token;
         }
-    }
-
-    async getme(token: string) {
-        const userResponse = await axios.get('https://api.spotify.com/v1/me', {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            },
-        });
-
-        const spotifyUser = userResponse.data;
-        return spotifyUser
     }
 
     verifySpotifyToken(token: string) {
@@ -123,15 +133,13 @@ export default class Spotify {
         })
     }
 
+    async getme(token: string) {
+        return await this.fetch_data('https://api.spotify.com/v1/me', token)
+    }
 
     async fetch_spotify_user(id: string = ''): Promise<User> {
-        await this.get_token();
         const url = `https://api.spotify.com/v1/users/${id}`
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${this.token}` },
-        });
-        const data = await response.json();
+        const data = await this.fetch_data(url)
         return {
             type: "spotify:user",
             name: data.display_name,
@@ -139,186 +147,57 @@ export default class Spotify {
         };
     }
 
-    async fetch_spotify_user_playlists(id: string = '', access_token: string): Promise<any> {
-        await this.get_token();
+    async fetch_spotify_user_playlists(id: string = '', access_token: string): Promise<UserPlaylist> {
         const url = `https://api.spotify.com/v1/users/${id}/playlists`
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${access_token}` },
-        });
-        let video = await response.json();
 
-        let tracks: any[] = video.items.map((item: any) => {
-            return {
-                playlistName: item.name,
-                playlistId: item.id,
-                authorName: item.owner.display_name,
-                thumbnail: item.images[0].url || null
-            }
-        });
+        try {
+            let video = await this.fetch_data(url, access_token);
 
-        while (video.next) {
-            const url = video?.next || video.tracks?.next;
-            const response = await fetch(url, {
-                headers: {
-                    'Authorization': `Bearer ${access_token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-            video = await response.json();
-            tracks.push(...video.items.map((item: any) => {
-                // fix here
+            let tracks: any[] = video.items.map((item: any) => {
                 return {
                     playlistName: item.name,
                     playlistId: item.id,
                     authorName: item.owner.display_name,
                     thumbnail: item.images[0].url || null
                 }
-            }))
+            });
+
+            while (video.next) {
+                const url = video?.next || video.tracks?.next;
+                video = await this.fetch_data(url, access_token);
+                tracks.push(...video.items.map((item: any) => {
+                    return {
+                        playlistName: item.name,
+                        playlistId: item.id,
+                        authorName: item.owner.display_name,
+                        thumbnail: item.images[0].url || null
+                    }
+                }))
+            }
+
+            return {
+                type: "spotify:userplaylists",
+                playlists: tracks
+            }
         }
-
-
-        return {
-            type: "spotify:userplaylists",
-            // thumbnail: thumbnail,
-            playlists: tracks
+        catch (e) {
+            console.error(e);
+            return {
+                type: "spotify:userplaylist",
+                error: e
+            }
         }
 
     }
 
 
     async fetch_spotify_user_saved_playlists(access_token: string = ''): Promise<Playlist> {
-        await this.get_token();
         const url = ` https://api.spotify.com/v1/me/tracks`
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${access_token !== '' ? access_token : this.token}` },
-        });
-        let video = await response.json();
-        let duration: number = 0;
-
-        console.log(video)
-
-        let tracks: Track[] = video.items
-            .filter((item: any) => item.track !== null)
-            .map((item: any) => {
-                duration += item.track.duration_ms;
-                return {
-                    type: "spotify:track",
-                    thumbnail: item.track.album.images[item.track.album.images.length - 1]?.url || null,
-                    artists: item.track.artists.map((artist: any) => {
-                        return {
-                            name: artist.name
-                        }
-                    }),
-                    track: {
-                        name: item.track.name,
-                        id: item.track.id,
-                        duration: item.track.duration_ms, // in miliseconds
-                        releaseDate: item.track.album.release_date,
-                    }
-                } as Track
-            });
-
-
-        while (video.tracks?.next || video.next) {
-            const url = video.tracks?.next || video.next;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${access_token !== '' ? access_token : this.token}` },
-            });
-            video = await response.json();
-
-            console.log(video)
-
-            tracks.push(...video.items
-                .filter((item: any) => item.track !== null)
-                .map((item: any) => {
-                    duration += item.track.duration_ms;
-                    return {
-                        type: "spotify:track",
-                        thumbnail: item.track.album.images[item.track.album.images.length - 1]?.url || null,
-                        artists: item.track.artists.map((artist: any) => {
-                            return {
-                                name: artist.name
-                            }
-                        }),
-                        track: {
-                            name: item.track.name,
-                            id: item.track.id,
-                            duration: item.track.duration_ms, // in miliseconds
-                            releaseDate: item.track.album.release_date,
-                        }
-                    }
-                }))
-        };
-
-        return {
-            type: "spotify:playlists",
-            thumbnail: "",
-            name: "liked songs",
-            duration: duration,
-            id: "",
-            tracks: tracks
-        }
-    }
-
-    async search_spotify_video(search: string = ''): Promise<Search> {
-        await this.get_token();
-        const url = `https://api.spotify.com/v1/search?q=${search}&type=track&limit=25`
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${this.token}` },
-        });
-        const data = await response.json();
-        return {
-            type: "spotify:search",
-            tracks: data.tracks.items.map((item: any) => {
-                return {
-                    type: "spotify:track",
-                    thumbnail: item.album.images[item.album.images.length - 1]?.url || null,
-                    artists: item.artists.map((artist: any) => {
-                        return {
-                            name: artist.name
-                        }
-                    }),
-                    track: {
-                        name: item.name,
-                        id: item.id,
-                        duration: item.duration_ms, // in miliseconds
-                        releaseDate: item.album.release_date,
-                    }
-                }
-            })
-        }
-    }
-
-
-    async fetchPlaylistVideos_spotify(link: string = '', token?: string): Promise<Playlist> {
-        await this.get_token();
-
-        const url = (link.includes("spot")) ? link : `https://api.spotify.com/v1/playlists/${link}`;
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${token ? token : this.token}` },
-        });
-        let video = await response.json();
-
-        if (video.error?.status === 404 || video.error?.status === 400 || video.error?.status === 401) {
-            return {
-                error: video.message,
-                type: "spotify:error",
-                tracks: [],
-                name: "",
-                duration: 0,
-                id: "",
-                thumbnail: ""
-            }
-        }
-        else {
-
+        let video = await this.fetch_data(url, access_token);
+        try {
             let duration: number = 0;
-            let tracks: Track[] = video.tracks.items
+
+            let tracks: Track[] = video.items
                 .filter((item: any) => item.track !== null)
                 .map((item: any) => {
                     duration += item.track.duration_ms;
@@ -336,21 +215,19 @@ export default class Spotify {
                             duration: item.track.duration_ms, // in miliseconds
                             releaseDate: item.track.album.release_date,
                         }
-                    }
+                    } as Track
                 });
-            const thumbnail = video.images[video.images.length - 1].url,
-                name = video.name,
-                id = video.id;
+
 
             while (video.tracks?.next || video.next) {
-                const temp = video.tracks?.next || video.next
-
-                const url = (temp.includes("spot")) ? temp : `https://api.spotify.com/v1/playlists/${temp}`;
+                const url = video.tracks?.next || video.next;
                 const response = await fetch(url, {
                     method: 'GET',
-                    headers: { 'Authorization': `Bearer ${token ? token : this.token}` },
+                    headers: { 'Authorization': `Bearer ${access_token !== '' ? access_token : this.token}` },
                 });
                 video = await response.json();
+
+                console.log(video)
 
                 tracks.push(...video.items
                     .filter((item: any) => item.track !== null)
@@ -375,80 +252,267 @@ export default class Spotify {
             };
 
             return {
-                type: "spotify:playlist",
-                name: name,
+                type: "spotify:playlists",
+                thumbnail: "",
+                name: "liked songs",
                 duration: duration,
-                id: id,
-                thumbnail: thumbnail,
+                id: "",
                 tracks: tracks
+            }
+        }
+        catch (e) {
+            console.error(e);
+            return {
+                type: "spotify:playlists",
+                error: e
+            }
+        }
+    }
+
+    async search_spotify_video(search: string = ''): Promise<Search> {
+        const url = `https://api.spotify.com/v1/search?q=${search}&type=track&limit=25`
+
+        try {
+            const data = await this.fetch_data(url);
+            return {
+                type: "spotify:search",
+                tracks: data.tracks.items.map((item: any) => {
+                    return {
+                        type: "spotify:track",
+                        thumbnail: item.album.images[item.album.images.length - 1]?.url || null,
+                        artists: item.artists.map((artist: any) => {
+                            return {
+                                name: artist.name
+                            }
+                        }),
+                        track: {
+                            name: item.name,
+                            id: item.id,
+                            duration: item.duration_ms, // in miliseconds
+                            releaseDate: item.album.release_date,
+                        }
+                    }
+                })
+            }
+        }
+        catch (e) {
+            console.error(e);
+            return {
+                type: "spotify:track",
+                error: e
+            }
+        }
+
+    }
+
+
+    async fetchPlaylistVideos_spotify(link: string = '', token?: string): Promise<Playlist> {
+        const url = `https://api.spotify.com/v1/playlists/${link}`;
+
+        try {
+            let video = await this.fetch_data(url, token);
+
+            if (video.error?.status === 404 || video.error?.status === 400 || video.error?.status === 401) {
+                return {
+                    error: video.message,
+                    type: "spotify:error",
+                    tracks: [],
+                    name: "",
+                    duration: 0,
+                    id: "",
+                    thumbnail: ""
+                }
+            }
+            else {
+
+                let duration: number = 0;
+                let tracks: Track[] = video.tracks.items
+                    .filter((item: any) => item.track !== null)
+                    .map((item: any) => {
+                        duration += item.track.duration_ms;
+                        return {
+                            type: "spotify:track",
+                            thumbnail: item.track.album.images[item.track.album.images.length - 1]?.url || null,
+                            artists: item.track.artists.map((artist: any) => {
+                                return {
+                                    name: artist.name
+                                }
+                            }),
+                            track: {
+                                name: item.track.name,
+                                id: item.track.id,
+                                duration: item.track.duration_ms, // in miliseconds
+                                releaseDate: item.track.album.release_date,
+                            }
+                        }
+                    });
+                const thumbnail = video.images[video.images.length - 1].url,
+                    name = video.name,
+                    id = video.id;
+
+                while (video.tracks?.next || video.next) {
+                    const temp = video.tracks?.next || video.next
+
+                    const url = (temp.includes("spot")) ? temp : `https://api.spotify.com/v1/playlists/${temp}`;
+                    video = await this.fetch_data(url, token)
+
+                    tracks.push(...video.items
+                        .filter((item: any) => item.track !== null)
+                        .map((item: any) => {
+                            duration += item.track.duration_ms;
+                            return {
+                                type: "spotify:track",
+                                thumbnail: item.track.album.images[item.track.album.images.length - 1]?.url || null,
+                                artists: item.track.artists.map((artist: any) => {
+                                    return {
+                                        name: artist.name
+                                    }
+                                }),
+                                track: {
+                                    name: item.track.name,
+                                    id: item.track.id,
+                                    duration: item.track.duration_ms, // in miliseconds
+                                    releaseDate: item.track.album.release_date,
+                                }
+                            }
+                        }))
+                };
+
+                return {
+                    type: "spotify:playlist",
+                    name: name,
+                    duration: duration,
+                    id: id,
+                    thumbnail: thumbnail,
+                    tracks: tracks
+                }
+            }
+        }
+        catch (e) {
+            console.error(e);
+            return {
+                type: "spotify:playlist",
+                error: e
             }
         }
 
     }
 
     async fetchTrackVideos_spotify(id: string = ''): Promise<Track> {
-        await this.get_token();
         const url = `https://api.spotify.com/v1/tracks/${id}`;
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${this.token}` },
-        });
-        const video = await response.json();
-        return {
-            type: "spotify:track",
-            thumbnail: video.album.images[video.album.images.length - 1]?.url || null,
-            artists: video.artists.map((artist: any) => {
-                return {
-                    name: artist.name
+        try {
+            const video = await this.fetch_data(url);
+            return {
+                type: "spotify:track",
+                thumbnail: video.album.images[video.album.images.length - 1]?.url || null,
+                artists: video.artists.map((artist: any) => {
+                    return {
+                        name: artist.name
+                    }
+                }),
+                track: {
+                    name: video.name,
+                    id: video.id,
+                    duration: video.duration_ms, // in miliseconds
+                    releaseDate: video.album.release_date,
                 }
-            }),
-            track: {
-                name: video.name,
-                id: video.id,
-                duration: video.duration_ms, // in miliseconds
-                releaseDate: video.album.release_date,
+            };
+        }
+        catch (e) {
+            return {
+                type: "spotify:track",
+                error: e
             }
-        };
+        }
     }
 
     async fetchAlbumVideos_spotify(id: string = ''): Promise<Album> {
-        await this.get_token();
         const url = `https://api.spotify.com/v1/albums/${id}`;
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${this.token}` },
-        });
-        const video = await response.json();
-        return {
-            type: "spotify:album",
-            name: video.name,
-            id: video.id,
-            duration: video.tracks.items.map((item: any) => item.duration_ms).reduce((a: number, b: number) => a + b, 0),
-            releaseDate: video.release_date,
-            artists: video.artists.map((artist: any) => {
-                return {
-                    name: artist.name
-                }
-            }),
-            thumbnail: video.images[video.images.length - 1].url,
-            tracks: video.tracks.items.map((item: any) => {
-                return {
-                    type: "spotify:track",
-                    artists: video.artists.map((artist: any) => {
-                        return {
-                            name: artist.name
-                        }
-                    }),
-                    thumbnail: video.images[video.images.length - 1].url,
-                    track: {
-                        name: item.name,
-                        id: item.id,
-                        duration: item.duration_ms, // in miliseconds
-                        releaseDate: video.release_date,
+
+        try {
+            const video = await this.fetch_data(url);
+            return {
+                type: "spotify:album",
+                name: video.name,
+                id: video.id,
+                duration: video.tracks.items.map((item: any) => item.duration_ms).reduce((a: number, b: number) => a + b, 0),
+                releaseDate: video.release_date,
+                artists: video.artists.map((artist: any) => {
+                    return {
+                        name: artist.name
                     }
-                } as Track
-            })
-        };
+                }),
+                thumbnail: video.images[video.images.length - 1].url,
+                tracks: video.tracks.items.map((item: any) => {
+                    return {
+                        type: "spotify:track",
+                        artists: video.artists.map((artist: any) => {
+                            return {
+                                name: artist.name
+                            }
+                        }),
+                        thumbnail: video.images[video.images.length - 1].url,
+                        track: {
+                            name: item.name,
+                            id: item.id,
+                            duration: item.duration_ms, // in miliseconds
+                            releaseDate: video.release_date,
+                        }
+                    } as Track
+                })
+            };
+        }
+        catch (e) {
+            return {
+                type: "spotify:album",
+                error: e
+            }
+        }
     }
 
+
+    async fetch_user_following_artists(access_token: string = ''): Promise<Artist[]> {
+        const url = `https://api.spotify.com/v1/me/following?type=artist&limit=50`;
+
+        try {
+            let data = await this.fetch_data(url, access_token);
+
+            let artists: Artist[] = data.artists.items
+                .filter((item: any) => item.track !== null)
+                .map((item: any) => {
+                    return {
+                        type: "spotify:artist",
+                        thumbnail: item.images[item.images.length - 1]?.url || null,
+                        name: item.name,
+                        id: item.id
+                    }
+                });
+
+            while (data.next) {
+                data = await this.fetch_data(data.next, access_token);
+
+                artists.push(...data.items
+                    .filter((item: any) => item.track !== null)
+                    .map((item: any) => {
+                        return {
+                            type: "spotify:artist",
+                            thumbnail: item.images[item.images.length - 1]?.url || null,
+                            name: item.name,
+                            id: item.id
+                        }
+                    }))
+            };
+
+            return artists
+        }
+        catch (e) {
+            console.error(e);
+            return [
+                {
+                    name: "",
+                    error: e
+                }
+            ]
+        }
+    }
 }

@@ -1,4 +1,3 @@
-/* eslint-disable no-loop-func */
 import pkg from "electron";
 import path from "node:path";
 import {
@@ -10,15 +9,13 @@ import {
 } from "node:fs";
 import * as mm from "music-metadata";
 import { createAuthWindow } from "./auth.js";
-import { Audio_format, Download_item, Mode, Playlist, Track } from "./types/index.js";
+import { Audio_format, Download_item, Mode, Playlist, Track, Artist } from "./types/index.js";
 import Downloader from "./downloader/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.js";
 import express from "express";
 import cors from "cors";
 import { createMultipleFiles } from "./env.js";
 const { app, BrowserWindow, ipcMain, Menu } = pkg;
-
-
 
 const mode: Mode = Mode.react;
 
@@ -30,7 +27,6 @@ const generateRandomString = (length: number) => {
 };
 
 
-// let backendProcess;
 let mainWindow: pkg.BrowserWindow;
 const executablePath = process.execPath;
 
@@ -266,6 +262,7 @@ enum Data {
     likedsongs = "likedsongs",
     userplaylist = "userplaylist",
     stream = "stream",
+    likedartists = "likedartists"
 }
 
 const give_error = (event: any, from: Data, message: string) => {
@@ -308,6 +305,7 @@ ipcMain.on("login", async (event: any, data: { where: string }) => {
                     [
                         "user-read-private",
                         "user-read-email",
+                        "user-follow-read",
                         "playlist-modify-public",
                         "user-library-read",
                     ].join(" ")
@@ -320,7 +318,7 @@ ipcMain.on("login", async (event: any, data: { where: string }) => {
 
         if (where === "youtube") {
             const gg_token: any = await downloader.music.youtube.gettoken(token);
-            console.log(gg_token);
+
             data = await downloader.music.youtube.fetch_youtube_user(
                 gg_token.access_token
             );
@@ -426,32 +424,36 @@ ipcMain.on("download", async (
             if (mode === "playlist") {
                 if (source === "youtube") {
                     const temp: Playlist = (dataa as Playlist)
-                    tracks_to_download.push(...temp.tracks.map((track: Track) => {
-                        return {
-                            title: downloader.format_title(track.track.name),
-                            id: track.track.id,
+                    const download_items: Download_item[] = [];
+                    for (const item of temp.tracks as Track[]) {
+                        download_items.push({
+                            title: downloader.format_title(item.track?.name as string) || "",
+                            id: item.track?.id || "",
                             metadata: {
-                                artist: track.artists[0].name,
-                                year: track.track.releaseDate,
-                                thumbnail: track.thumbnail
+                                artist: (item.artists as any)[0].name || "",
+                                year: item.track?.releaseDate || "",
+                                thumbnail: item.thumbnail || ""
                             }
-                        }
-                    }))
+                        })
+                    }
+
+                    tracks_to_download.push(...download_items);
+
                 }
                 else if (source === "spotify") {
                     const temp: Playlist = (dataa as Playlist)
 
-                    for (const item of temp.tracks) {
+                    for (const item of (temp.tracks as Track[])) {
                         const matching_video: Track | null = await downloader.music.youtube.findMatchingVideo(item);
-                        const spotify_video: Track = await downloader.music.spotify.fetchTrackVideos_spotify(item.track.id);
+                        const spotify_video: Track = await downloader.music.spotify.fetchTrackVideos_spotify(item.track?.id || "");
                         if (matching_video !== null) {
                             tracks_to_download.push({
-                                title: downloader.format_title(spotify_video.track.name),
-                                id: matching_video.track.id,
+                                title: downloader.format_title(spotify_video.track?.name as string) || "",
+                                id: matching_video.track?.id || "",
                                 metadata: {
-                                    artist: spotify_video.artists[0].name,
-                                    year: spotify_video.track.releaseDate,
-                                    thumbnail: spotify_video.thumbnail
+                                    artist: (spotify_video.artists as any)[0].name,
+                                    year: spotify_video.track?.releaseDate || "",
+                                    thumbnail: spotify_video.thumbnail || ""
                                 }
                             })
                         }
@@ -462,27 +464,27 @@ ipcMain.on("download", async (
                 if (source === "youtube") {
                     const temp: Track = (dataa as Track)
                     tracks_to_download.push({
-                        title: downloader.format_title(temp.track.name),
-                        id: temp.track.id,
+                        title: downloader.format_title(temp.track?.name as string) || "",
+                        id: temp.track?.id || "",
                         metadata: {
-                            artist: temp.artists[0].name,
-                            year: temp.track.releaseDate,
-                            thumbnail: temp.thumbnail
+                            artist: (temp.artists as any)[0].name || "",
+                            year: temp.track?.releaseDate || "",
+                            thumbnail: temp.thumbnail || ""
                         }
                     })
                 }
                 else if (source === "spotify") {
                     const temp: Track | null = await downloader.music.youtube.findMatchingVideo(dataa as Track);
-                    const spotify_video: Track = await downloader.music.spotify.fetchTrackVideos_spotify((dataa as Track).track.id);
+                    const spotify_video: Track = await downloader.music.spotify.fetchTrackVideos_spotify((dataa as Track).track?.id || "");
 
                     if (temp !== null) {
                         tracks_to_download.push({
-                            title: downloader.format_title(spotify_video.track.name),
-                            id: temp.track.id,
+                            title: downloader.format_title(spotify_video.track?.name as string) || "",
+                            id: temp.track?.id || "",
                             metadata: {
-                                artist: spotify_video.artists[0].name,
-                                year: spotify_video.track.releaseDate,
-                                thumbnail: spotify_video.thumbnail
+                                artist: (spotify_video.artists as any)[0].name || "",
+                                year: spotify_video.track?.releaseDate || "",
+                                thumbnail: spotify_video.thumbnail || ""
                             }
                         })
                     }
@@ -496,7 +498,6 @@ ipcMain.on("download", async (
         }
 
         downloader.download_queue = tracks_to_download;
-        downloader.checking_queue = tracks_to_download;
         writeDataToDatabase(executableDir, "data", "test", tracks_to_download);
 
         const { local } = getDataFromDatabase(executableDir, "data", "user");
@@ -838,7 +839,7 @@ ipcMain.on("playlist", async (e, req: { where: string; id: string }) => {
                 playlist = await downloader.music.youtube.fetchPlaylistVideos(id);
             }
 
-            const check = playlist.tracks.map((track: any) => {
+            const check = (playlist.tracks as Track[]).map((track: any) => {
                 return {
                     type: "youtube:track",
                     thumbnail: track.thumbnail,
@@ -931,7 +932,7 @@ ipcMain.on("playlist", async (e, req: { where: string; id: string }) => {
                     spotify.access_token
                 );
 
-            playlist.tracks.forEach((track: any) => {
+            (playlist.tracks as Track[]).forEach((track: any) => {
                 data.spotify[track.track.id] = {
                     thumbnail: track.thumbnail,
                     artists: track.artists,
@@ -1082,77 +1083,137 @@ ipcMain.on("user_playlists", async (e) => {
     }
 });
 
-ipcMain.on(
-    "stream",
-    async (e, req: { where: string; mode: string; id: string }) => {
-        const { where, mode, id } = req;
-        try {
-            if (!id) {
-                return give_error(e, Data.stream, "Music ID is required");
-            }
-
-            if (!mode) {
-                return give_error(e, Data.stream, "Music Mode is required");
-            }
-
-            if (where === "local") {
-                const audioBuffer = readFileSync(id);
-                const base64Audio = audioBuffer.toString("base64");
-
-                return give_data(e, Data.stream, {
-                    url: base64Audio,
-                });
-            }
-
-            let musicId = "";
-            const data = getDataFromDatabase(executableDir, "data", "track");
-            if (data[where][id] && data[where][id]?.music_url !== null) {
-                const ress = await fetch(data[where][id].music_url, {
-                    method: "HEAD",
-                });
-
-                if (ress.status !== 403) {
-                    ;
-                    return give_data(e, Data.stream, {
-                        url: data[where][id].music_url,
-                    });
-                }
-            }
-
-            if (where === "youtube") {
-                musicId = id;
-            } else {
-                const track = await downloader.music.spotify.fetchTrackVideos_spotify(
-                    id
-                );
-
-                const findYtbTrack = await downloader.music.youtube.findMatchingVideo(
-                    track
-                );
-                if (!findYtbTrack) {
-                    return give_error(e, Data.stream, "Music not found");
-                }
-
-                musicId = findYtbTrack.track.id;
-            }
-
-            const bestAudio = await downloader.getAudioURLAlternative(musicId);
-
-            data[where][id] = {
-                ...data[where][id],
-                music_url: bestAudio,
-            };
-
-            writeDataToDatabase(executableDir, "data", "track", data);
-
-            return give_data(e, Data.stream, { url: bestAudio });
-        } catch (error) {
-            console.error("Error fetching audio stream:", error);
-            return give_error(
-                e,
-                Data.stream,
-                "Internal server error while getting stream url"
-            );
+ipcMain.on("stream", async (e, req: { where: string, mode: string, id: string }) => {
+    const { where, mode, id } = req;
+    try {
+        if (!id) {
+            return give_error(e, Data.stream, "Music ID is required");
         }
+
+        if (!mode) {
+            return give_error(e, Data.stream, "Music Mode is required");
+        }
+
+        if (where === "local") {
+            const audioBuffer = readFileSync(id);
+            const base64Audio = audioBuffer.toString("base64");
+
+            return give_data(e, Data.stream, {
+                url: base64Audio,
+            });
+        }
+
+        let musicId = "";
+        const data = getDataFromDatabase(executableDir, "data", "track");
+        if (data[where][id] && data[where][id]?.music_url !== null) {
+            const ress = await fetch(data[where][id].music_url, {
+                method: "HEAD",
+            });
+
+            if (ress.status !== 403) {
+                ;
+                return give_data(e, Data.stream, {
+                    url: data[where][id].music_url,
+                });
+            }
+        }
+
+        if (where === "youtube") {
+            musicId = id;
+        } else {
+            const track = await downloader.music.spotify.fetchTrackVideos_spotify(
+                id
+            );
+
+            const findYtbTrack = await downloader.music.youtube.findMatchingVideo(
+                track
+            );
+            if (!findYtbTrack) {
+                return give_error(e, Data.stream, "Music not found");
+            }
+
+            musicId = findYtbTrack.track?.id || "";
+        }
+
+        const bestAudio = await downloader.getAudioURLAlternative(musicId);
+
+        data[where][id] = {
+            ...data[where][id],
+            music_url: bestAudio,
+        };
+
+        writeDataToDatabase(executableDir, "data", "track", data);
+
+        return give_data(e, Data.stream, { url: bestAudio });
+    } catch (error) {
+        console.error("Error fetching audio stream:", error);
+        return give_error(
+            e,
+            Data.stream,
+            "Internal server error while getting stream url"
+        );
     }
+}
 );
+
+ipcMain.on("likedartists", async (e) => {
+    const {
+        youtube,
+        spotify,
+    }: {
+        youtube: {
+            refresh_token: string;
+            access_token: string;
+            expires: number;
+        };
+        spotify: {
+            id: string;
+            refresh_token: string;
+            access_token: string;
+            expires: number;
+        };
+    } = getDataFromDatabase(executableDir, "data", "user");
+
+    try {
+        let spotify_artists: Artist[] = [],
+            youtube_artists: Artist[] = [];
+
+        if (spotify.access_token !== null && spotify.access_token !== undefined) {
+            spotify_artists = await downloader.music.spotify.fetch_user_following_artists(spotify.access_token);
+
+            if (
+                spotify_artists[0].error
+            ) {
+                throw new Error(spotify_artists[0].error);
+            }
+        }
+
+        if (youtube.access_token !== null && youtube.access_token !== undefined) {
+            youtube_artists = await downloader.music.youtube.fetch_user_sub_channel(youtube.access_token)
+
+            if (
+                youtube_artists[0].error
+            ) {
+                throw new Error(youtube_artists[0].error);
+            }
+        }
+
+        return give_data(e, Data.likedartists, {
+            youtube:
+                youtube_artists.length > 0
+                    ? youtube_artists
+                    : ["Youtube Account is not connected"],
+            spotify:
+                spotify_artists.length > 0
+                    ? spotify_artists
+                    : ["Spotify Account is not connected"],
+        });
+    } catch (e) {
+        console.error(e);
+        return give_error(
+            e,
+            Data.likedartists,
+            "Internal server error while getting user liked artists"
+        );
+    }
+})

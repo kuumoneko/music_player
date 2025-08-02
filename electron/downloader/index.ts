@@ -1,23 +1,16 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Downloader_options, Audio_format, Status, Download_item, Track } from "../types/index.js";
-// import { spawn } from "node:child_process"
 import { existsSync, readdirSync, unlinkSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import download_ffmpeg from './env/install_ffmpeg.js'
-import download_ytdlp from './env/yt-dlp_download.js'
-import download_spotdlp from './env/spot-dlp_download.js'
 import Music from "./music/index.js";
 import ytdl from "@distube/ytdl-core";
 import axios from "axios";
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'node:fs';
 import path from 'node:path';
-import readline from "node:readline"
 
 export default class Downloader {
     public folder: string = ""
     public audio_format: string = Audio_format.mp3;
-    public checking_queue: Download_item[] = [];
     public download_queue: Download_item[] = [];
     public curr_folder: string | undefined = "";
     public stastus: Status = Status.idle;
@@ -47,17 +40,8 @@ export default class Downloader {
         this.stastus = Status.idle;
     }
 
-
-    async get_status(): Promise<any> {
-        return {
-            status: this.stastus,
-
-        };
-    }
-
-    getdownload() {
-        this.stastus = Status.idle;
-        return `${this.folder}\\download.7z`
+    async get_status(): Promise<{ status: Status }> {
+        return { status: this.stastus, };
     }
 
     set_status(status: Status) {
@@ -73,7 +57,6 @@ export default class Downloader {
     }
 
     clear_links() {
-        this.checking_queue = [];
         this.download_queue = [];
     }
 
@@ -84,7 +67,6 @@ export default class Downloader {
     get_audio_format() {
         return this.audio_format
     }
-
 
     get_queue() {
         return this.download_queue;
@@ -107,11 +89,12 @@ export default class Downloader {
 
         return cleanedTitle;
     }
+
     async checking(): Promise<void> {
         // get all filename in a folder
         const files = readdirSync(this.folder);
         for (const file of files) {
-            const checked = this.checking_queue.find(item => item.title === file.split(`.${this.audio_format}`)[0])
+            const checked = this.download_queue.find(item => item.title === file.split(`.${this.audio_format}`)[0])
             if (!checked) {
                 // delete that file in download folder
                 try {
@@ -127,14 +110,6 @@ export default class Downloader {
     sleep(ms: number) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-
-    renderProgressBar = (process_item: string, percent: number) => {
-        const barLength = 40;
-        const filledLength = Math.round((percent / 100) * barLength);
-        const bar = '█'.repeat(filledLength) + '-'.repeat(barLength - filledLength);
-        readline.cursorTo(process.stdout, 0);
-        process.stdout.write(`Downloading ${process_item}: [${bar}] ${percent.toFixed(1)}%`);
-    };
 
     donwloading(title: string, id: string, metadata: { artist: string, year: string, thumbnail: string }): Promise<any> {
         return new Promise(async (resolve, reject) => {
@@ -276,12 +251,12 @@ export default class Downloader {
                 const data = await this.music.youtube.findMatchingVideo(track);
                 if (data) {
                     this.download_queue.push({
-                        title: this.format_title(data.track.name),
-                        id: data.track.id,
+                        title: this.format_title(data.track?.name as string) || "",
+                        id: data.track?.id || '',
                         metadata: {
-                            artist: data.artists[0].name,
-                            year: data.track.releaseDate,
-                            thumbnail: data.thumbnail
+                            artist: (data.artists as any)[0].name || "",
+                            year: data.track?.releaseDate || "",
+                            thumbnail: data.thumbnail || ""
                         }
                     })
                 }
@@ -289,51 +264,16 @@ export default class Downloader {
         }
     }
 
-    async check_env(): Promise<void> {
-        this.set_status(Status.env);
-        const ffmpeg_path = `${this.curr_folder}\\support\\ffmpeg\\ffmpeg.exe`;
-        const ffplay_path = `${this.curr_folder}\\support\\ffmpeg\\ffplay.exe`;
-        const ffprobe_path = `${this.curr_folder}\\support\\ffmpeg\\ffprobe.exe`;
-        const ytdlp_path = `${this.curr_folder}\\support\\yt-dlp.exe`;
-        const spotdlp_path = `${this.curr_folder}\\support\\spot-dlp.exe`;
-
-        await mkdir(`${this.curr_folder}\\support`, { recursive: true })
-
-        if (!existsSync(ffmpeg_path) || !existsSync(ffplay_path) || !existsSync(ffprobe_path)) {
-            await mkdir(`${this.curr_folder}\\temping`, { recursive: true })
-            console.warn("FFmpeg not found. Downloading...");
-            await download_ffmpeg(this.curr_folder as string);
-        }
-
-        if (!existsSync(ytdlp_path)) {
-            console.warn("yt-dlp not found. Downloading...");
-            await download_ytdlp(this.curr_folder as string)
-        }
-
-        if (!existsSync(spotdlp_path)) {
-            console.warn("spot-dlp not found. Downloading...");
-            await download_spotdlp(this.curr_folder as string)
-        }
-
-        this.set_status(Status.idle);
-    }
-
     async getAudioURLAlternative(id: string): Promise<string> {
         try {
             const videoUrl = `https://www.youtube.com/watch?v=${id}`;
-
-            // console.log(this.youtube_access_token)
-
             const info = await ytdl.getInfo(videoUrl);
-
             const audioFormat = ytdl.chooseFormat(info.formats, {
                 filter: 'audioonly',
                 quality: 'highestaudio',
             });
-
             if (audioFormat && audioFormat.url) {
-                // console.log('Audio URL:', audioFormat.url);
-                return audioFormat.url; // You can return the URL to use in your React component
+                return audioFormat.url;
             } else {
                 throw new Error('Could not find a valid audio URL.')
             }

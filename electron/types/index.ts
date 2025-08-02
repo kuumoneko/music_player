@@ -52,6 +52,11 @@ export enum Status {
     prepare = "prepare"
 }
 
+export interface youtube_api_keys {
+    api_key: string,
+    reach_quota: boolean,
+    isAuth: boolean
+}
 
 export interface Downloader_options {
     ytdlp?: string,
@@ -61,7 +66,7 @@ export interface Downloader_options {
     curr_folder?: string,
     spot_errors?: string,
     audio_format?: Audio_format,
-    youtube_api_key?: string[],
+    youtube_api_key?: youtube_api_keys[],
     google_client_id?: string,
     google_client_secret?: string,
     redirect_uris?: string[],
@@ -81,7 +86,7 @@ export interface Download_queue {
 }
 
 export interface Music_options {
-    youtube_api_key?: string[],
+    youtube_api_key?: youtube_api_keys[],
     spotify_api_key?: string,
     spotify_client?: string,
     google_client_id?: string,
@@ -103,14 +108,18 @@ export enum Audio_format {
 
 
 export interface Artist {
+    type?: string | "spotify:artist" | "youtube:artist",
     name: string,
+    thumbnail?: string,
+    id?: string,
+    error?: string
 }
 
 export interface Track {
     type: string | "spotify:track" | "youtube:track",
-    thumbnail: string | "",
-    artists: Artist[],
-    track: {
+    thumbnail?: string | "",
+    artists?: Artist[],
+    track?: {
         name: string,
         id: string,
         duration: number | string, // in miliseconds
@@ -121,36 +130,49 @@ export interface Track {
 
 export interface Album {
     type: string | "spotify:album",
-    name: string,
-    id: string,
-    duration: number | string, // in miliseconds = sum of duration of tracks
-    releaseDate: string,
-    thumbnail: string,
-    artists: Artist[],
-    tracks: Track[],
+    name?: string,
+    id?: string,
+    duration?: number | string, // in miliseconds = sum of duration of tracks
+    releaseDate?: string,
+    thumbnail?: string,
+    artists?: Artist[],
+    tracks?: Track[],
     error?: string
 }
 
 export interface Playlist {
     type: string | "spotify:playlist" | "youtube:playlist",
-    name: string,
-    id: string,
-    duration: number | string, // in miliseconds = sum of duration of tracks
-    thumbnail: string,
-    tracks: Track[],
+    name?: string,
+    id?: string,
+    duration?: number | string, // in miliseconds = sum of duration of tracks
+    thumbnail?: string,
+    tracks?: Track[],
+    error?: string
+}
+
+interface PlaylistItem {
+    playlistName: string,
+    playlistId: string,
+    authorName: string,
+    thumbnail: string
+}
+
+export interface UserPlaylist {
+    type: string | "spotify:playlist" | "youtube:playlist",
+    playlists?: PlaylistItem[],
     error?: string
 }
 
 export interface Search {
     type: string | "spotify:search" | "youtube:search",
-    tracks: Track[],
+    tracks?: Track[],
     error?: string
 }
 
 export interface User {
     type: string | "spotify:user" | "youtube:user",
-    name: string,
-    thumbnail: string,
+    name?: string,
+    thumbnail?: string,
     error?: string
 }
 

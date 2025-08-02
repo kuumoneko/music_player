@@ -1,9 +1,26 @@
 {
     "Youtube_Api_key": [
-        "YOUR YOUTUBE API KEYS and the first api key is in the same project with the credential gg web"
+        {
+            "api_key": "Your api key is not in the same project with this credential",
+            "reach_quota": "boolean",
+            "isAuth": "true if it use for login and auth, in the same porject with the credential web"
+        }
     ],
-    "Spotify_Api_key": "Your spotify api key",
-    "Spotify_client": "Yout spotify client id",
-    "port": "your port example 3001, change it, then you need to change in other files",
-    "web": "Your Google credential json"
+    "Spotify_Api_key": "Your spotify api_key",
+    "Spotify_client": "Your spotify client_id",
+    "port": "your port for the express that use to get auth code, match with redirect_uris in both project google and spotify",
+    "web": {
+        "client_id": "your client_id",
+        "project_id": "project name",
+        "auth_uri": "string",
+        "token_uri": "string",
+        "auth_provider_x509_cert_url": "string",
+        "client_secret": "your client_secret",
+        "redirect_uris": [
+            "your redirect_uris"
+        ],
+        "javascript_origins": [
+            "your javascript_origins"
+        ]
+    }
 }
