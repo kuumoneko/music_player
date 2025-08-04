@@ -1,6 +1,7 @@
-import { Audio_format } from "../types";
+import { Audio_format } from "./types/index.ts";
+import Electron from "electron"
 
-export interface electronAPI {
+export interface electronAPI extends Electron.IpcMain {
     // auth
     login: (data: { where: string }) => void,
     logout: (data: { where: string }) => void,
@@ -22,9 +23,7 @@ export interface electronAPI {
     user_playlists: () => void,
     stream: (data: { where: string, mode: string, id: string }) => void,
 
-    // received
-    onDataReceived: (callback: any) => any,
-
+    onDataReceived: (callback: (data: any) => void) => void;
     // close
     close: () => void
 }

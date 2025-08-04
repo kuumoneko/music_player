@@ -25,8 +25,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     stream: (data: { where: string, mode: string, id: string }) => ipcRenderer.send("stream", (data)),
     likedartists: () => ipcRenderer.send("likedartists"),
 
-    // received
-    onDataReceived: (callback: any) => ipcRenderer.on("received_data", (event: any, data: any) => callback(data)),
+    onDataReceived: (resolve: (e: any) => void) => {
+        ipcRenderer.on("received_data", (e, data: any) => resolve(data));
+    },
 
     // close
     close: () => ipcRenderer.send("app-close")

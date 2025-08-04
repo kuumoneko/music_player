@@ -4,7 +4,9 @@
 >
 > UPDATE NOTE:
 >
-> I removed yt-dlp and spotify-download binary so the app will lighter, hehe
+> Fix reach max listener of ElectronAPI
+>
+> Refactor Player component
 
 ## Usage for developers and users will be added later, Im fixing something
 

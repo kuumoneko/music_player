@@ -1,6 +1,6 @@
 import { faDownload, faListDots, faPlay, faShare } from "@fortawesome/free-solid-svg-icons"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
-import { Track } from "../../../../../../types/index.ts";
+import { Track } from "../../../../../types/index.ts";
 import formatDuration from "../../../../common/utils/format.ts";
 import Loading from "../../../../common/components/Loading/index.tsx"
 

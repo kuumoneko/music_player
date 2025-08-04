@@ -16,61 +16,92 @@ export enum Data {
     stream = "stream"
 }
 
-export function fetch_data(what: Data, data?: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-        const api = window.electronAPI;
-        if (api) {
-            if (what === Data.login) {
-                api.login(data);
-            }
-            else if (what === Data.logout) {
-                api.logout(data);
-            }
-            else if (what === Data.download) {
-                api.download(data);
-            }
-            else if (what === Data.download_status) {
-                api.download_status();
-            }
-            else if (what === Data.user) {
-                api.user();
-            }
-            else if (what === Data.localfile) {
-                api.localfile(data);
-            }
-            else if (what === Data.local) {
-                api.local();
-            }
-            else if (what === Data.search) {
-                api.search(data);
-            }
-            else if (what === Data.track) {
-                api.track(data);
-            }
-            else if (what === Data.playlist) {
-                api.playlist(data);
-            }
-            else if (what === Data.likedsongs) {
-                api.likedsongs(data);
-            }
-            else if (what === Data.userplaylist) {
-                api.user_playlists();
-            }
-            else if (what === Data.stream) {
-                api.stream(data)
-            }
+let received_datas: any[] = []
 
-            api.onDataReceived((data: any) => {
-                console.log(data.data);
-                if (data.ok) {
-                    if (data.from as Data === what) {
-                        resolve(data.data)
-                    }
-                }
-                else {
-                    reject(data.message)
-                }
-            });
+const api = window.electronAPI;
+
+api.onDataReceived((data: any) => {
+    // console.log(data);
+    if (!data.ok) {
+        received_datas.push({
+            from: data.from,
+            message: data.message
+        })
+    }
+    else {
+        received_datas.push({
+            from: data.from,
+            data: data.data
+        })
+    }
+})
+
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+export function fetch_data(what: Data, data?: any): Promise<any> {
+    return new Promise(async (resolvee, reject) => {
+
+        // console.log(what)
+
+        if (!api) {
+            return;
         }
+
+        // Dispatch the appropriate IPC event
+        switch (what) {
+            case Data.login:
+                api.login(data);
+                break;
+            case Data.logout:
+                api.logout(data);
+                break;
+            case Data.download:
+                api.download(data);
+                break;
+            case Data.download_status:
+                api.download_status();
+                break;
+            case Data.user:
+                api.user();
+                break;
+            case Data.localfile:
+                api.localfile(data);
+                break;
+            case Data.local:
+                api.local();
+                break;
+            case Data.search:
+                api.search(data);
+                break;
+            case Data.track:
+                api.track(data);
+                break;
+            case Data.playlist:
+                api.playlist(data);
+                break;
+            case Data.likedsongs:
+                api.likedsongs(data);
+                break;
+            case Data.userplaylist:
+                api.user_playlists();
+                break;
+            case Data.stream:
+                api.stream(data);
+                break;
+
+        }
+
+        while (received_datas.findIndex((item: any) => { return item.from === what }) === -1) {
+            await sleep(1000);
+        };
+
+        const temp = received_datas.length - [...received_datas].reverse().findIndex((item: any) => { return item.from === what });
+        const received_data: any = received_datas.at(temp - 1);
+        received_datas = received_datas.filter((item: any) => { return item.from !== what });
+        resolvee(received_data.data)
+
     })
 }

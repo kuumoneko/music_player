@@ -1,4 +1,4 @@
-import { Track } from "../../../../types/index.ts";
+import { Track } from "../../../types/index.ts";
 import { Data, fetch_data } from "./fetch.ts";
 
 export const add_items = async (source: string, mode: string, id: string, after_tracks: any[]) => {

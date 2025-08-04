@@ -1,6 +1,7 @@
 import Sidebar from '../common/components/Sidebar/index.tsx';
 import Home from './home/index.tsx';
 import Player from '../common/components/Player/index.tsx';
+import Test_player from '../common/components/Player/test.tsx';
 
 export default function MainContent({ url, seturl }: { url: string, seturl: (a: string) => void }) {
     return (

@@ -4,8 +4,7 @@ import {
     writeFileSync,
     readFileSync,
     statSync,
-    promises,
-    Dirent,
+    promises
 } from "node:fs";
 import * as mm from "music-metadata";
 import { createAuthWindow } from "./auth.js";
@@ -265,7 +264,7 @@ enum Data {
     likedartists = "likedartists"
 }
 
-const give_error = (event: any, from: Data, message: string) => {
+const give_error = (event: pkg.IpcMainEvent, from: Data, message: string) => {
     event.reply("received_data", { message: message, ok: false, from: from });
 };
 
@@ -406,7 +405,9 @@ ipcMain.on("download", async (
         links: [{ source: string; mode: string; id: string }];
     }) => {
     try {
+        console.log("- - - - - - - - - - DOWNLOAD TIME - - - - - - - - - -")
         const { format, links } = data;
+        // console
 
         if (!links || (links.length as number) === 0) {
             return give_error(e, Data.download, "No links provided.");
@@ -415,17 +416,20 @@ ipcMain.on("download", async (
         downloader.set_audio_format(format as Audio_format);
         downloader.clear_links();
         const tracks_to_download: Download_item[] = [];
+        console.log(links)
 
         for (const link of links) {
             const { source, mode } = link;
             const dataa: Track | Playlist = await downloader.music.search(link)
 
+            // console.log(dataa)
 
             if (mode === "playlist") {
                 if (source === "youtube") {
                     const temp: Playlist = (dataa as Playlist)
                     const download_items: Download_item[] = [];
                     for (const item of temp.tracks as Track[]) {
+                        console.log(`${item.track?.name}`)
                         download_items.push({
                             title: downloader.format_title(item.track?.name as string) || "",
                             id: item.track?.id || "",
@@ -437,6 +441,8 @@ ipcMain.on("download", async (
                         })
                     }
 
+                    console.log(download_items)
+
                     tracks_to_download.push(...download_items);
 
                 }
@@ -446,6 +452,8 @@ ipcMain.on("download", async (
                     for (const item of (temp.tracks as Track[])) {
                         const matching_video: Track | null = await downloader.music.youtube.findMatchingVideo(item);
                         const spotify_video: Track = await downloader.music.spotify.fetchTrackVideos_spotify(item.track?.id || "");
+                        // console.log(`${item.track?.name}`)
+
                         if (matching_video !== null) {
                             tracks_to_download.push({
                                 title: downloader.format_title(spotify_video.track?.name as string) || "",
@@ -497,7 +505,9 @@ ipcMain.on("download", async (
 
         }
 
+
         downloader.download_queue = tracks_to_download;
+        console.log("------------------- hello----------------------")
         writeDataToDatabase(executableDir, "data", "test", tracks_to_download);
 
         const { local } = getDataFromDatabase(executableDir, "data", "user");
@@ -590,19 +600,13 @@ ipcMain.on("local", async (e) => {
             return give_error(e, Data.local, "Local music folder not set.");
         }
 
-        const locall = JSON.parse(
-            readFileSync(`${executableDir}\\data\\localfile\\local.json`, {
-                encoding: "utf-8",
-            }) as string
-        );
-
         const folderPath = local.folder;
         const dirents = await promises.readdir(folderPath, {
             withFileTypes: true,
         });
         const audioExtensions = [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"];
 
-        const files: any[] = locall || [];
+        const files: any[] = [];
 
         const audiofiles = dirents.filter(
             (dirent) =>
@@ -610,23 +614,7 @@ ipcMain.on("local", async (e) => {
                 audioExtensions.includes(path.extname(dirent.name).toLowerCase())
         );
 
-        const difer = audiofiles.filter(
-            (dirent: Dirent) =>
-                !locall.find((item: any) => {
-                    return item.track.id === `${folderPath}\\${dirent.name}`;
-                })
-        );
-
-        if (difer.length === 0) {
-            return give_data(e, Data.local, {
-                type: "local:folder",
-                name: path.basename(folderPath),
-                path: folderPath,
-                tracks: locall,
-            });
-        }
-
-        for (const dirent of difer) {
+        for (const dirent of audiofiles) {
             const filePath = path.join(folderPath, dirent.name);
             try {
                 const metadata = await mm.parseFile(filePath);
@@ -644,15 +632,7 @@ ipcMain.on("local", async (e) => {
                     ? `data:${picture.format};base64,${base64}`
                     : null;
 
-                function formatDate(dateStr: string) {
-                    if (!/^\d{8}$/.test(dateStr)) {
-                        throw new Error("Input must be exactly 8 digits");
-                    }
-                    return `${dateStr.slice(0, 4)}-${dateStr.slice(
-                        4,
-                        6
-                    )}-${dateStr.slice(6)}`;
-                }
+                // console.log(metadata.common)
 
                 files.push({
                     type: "local:track",
@@ -664,9 +644,7 @@ ipcMain.on("local", async (e) => {
                         id: `${folderPath}\\${dirent.name}`,
                         path: filePath,
                         duration: (metadata.format.duration || 0) * 1000,
-                        releaseDate: (metadata.common.date as string).includes("-")
-                            ? metadata.common.date
-                            : formatDate(metadata.common.date as string),
+                        releaseDate: "",
                     },
                     artists:
                         metadata.common.artists?.map((item: any) => ({
@@ -1095,9 +1073,8 @@ ipcMain.on("stream", async (e, req: { where: string, mode: string, id: string })
         }
 
         if (where === "local") {
-            const audioBuffer = readFileSync(id);
-            const base64Audio = audioBuffer.toString("base64");
-
+            // console.log(id);
+            const base64Audio = readFileSync(id);
             return give_data(e, Data.stream, {
                 url: base64Audio,
             });
@@ -1105,13 +1082,13 @@ ipcMain.on("stream", async (e, req: { where: string, mode: string, id: string })
 
         let musicId = "";
         const data = getDataFromDatabase(executableDir, "data", "track");
+        console.log(data[where][id])
         if (data[where][id] && data[where][id]?.music_url !== null) {
             const ress = await fetch(data[where][id].music_url, {
                 method: "HEAD",
             });
 
             if (ress.status !== 403) {
-                ;
                 return give_data(e, Data.stream, {
                     url: data[where][id].music_url,
                 });

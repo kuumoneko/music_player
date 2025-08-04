@@ -42,12 +42,16 @@ export default class Youtube {
             if (isAuth && (access_token === null || access_token === undefined)) {
                 throw new Error("Invalid access token when setting param isAuth is true")
             }
+
+            let header: any = {
+                'Content-Type': 'application/json',
+            };
+            if (isAuth) {
+                header['Authorization'] = `Bearer ${access_token}`
+            }
             const response = await fetch(`${url}&key=${key}`, {
                 method: "GET",
-                headers: {
-                    'Authorization': `Bearer ${access_token}`,
-                    'Content-Type': 'application/json',
-                }
+                headers: header
             })
             data = await response.json();
 
@@ -502,6 +506,7 @@ export default class Youtube {
         const artistName = (trackToMatch.artists as any)[0].name || "";
         const trackDuration: number = trackToMatch.track?.duration as number; // in ms
 
+        // console.log(trackName, ' ', artistName, ' ', trackDuration)
         if (!trackName || !artistName) {
             console.error("Track name or artist is missing.");
             return null;
@@ -509,9 +514,13 @@ export default class Youtube {
 
         // A good search query using the track name and artist.
         const searchQuery = `${trackName} ${artistName}`;
+        // console.log(searchQuery)
 
         try {
             let searchResults = (await this.search_youtube_video(searchQuery)).tracks as Track[]
+
+            // console.log(searchQuery);
+            // console.log(searchResults)
 
             const ids: string[] = searchResults.map((track: Track) => {
                 return track.track?.id || ""
@@ -533,6 +542,8 @@ export default class Youtube {
                     },
                 }
             })
+
+            // console.log(result_track)
 
 
             if (!searchResults || searchResults.length === 0) {
