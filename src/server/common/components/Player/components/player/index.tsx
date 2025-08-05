@@ -183,7 +183,7 @@ export default function PlayerUI() {
     useEffect(() => {
         const run = window.setInterval(() => {
             if (!audioRef.current) return;
-            setplayed(false)
+
             const repeat = localStorage.getItem("repeat")
             if (repeat === "one" && audioRef.current.ended) {
                 audioRef.current.currentTime = 0;
@@ -193,7 +193,7 @@ export default function PlayerUI() {
             }
             // the queue has the prior than the nextfrom :>
             else if (audioRef.current.ended && Time !== 0) {
-
+                setplayed(false)
                 let playQueue = JSON.parse(localStorage.getItem("play queue") || "[]");
                 let nextfrom = JSON.parse(localStorage.getItem("nextfrom") || "{}");
 
