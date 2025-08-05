@@ -422,8 +422,6 @@ ipcMain.on("download", async (
             const { source, mode } = link;
             const dataa: Track | Playlist = await downloader.music.search(link)
 
-            // console.log(dataa)
-
             if (mode === "playlist") {
                 if (source === "youtube") {
                     const temp: Playlist = (dataa as Playlist)

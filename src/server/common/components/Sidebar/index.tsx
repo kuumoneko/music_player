@@ -12,33 +12,16 @@ export default function Sidebar({
     url: string,
     seturl: (a: string) => void
 }) {
-    const [youtube, setyoutube] = useState(JSON.parse(localStorage.getItem("playlists") as string)?.youtube || []);
-    const [spotify, setspotify] = useState(JSON.parse(localStorage.getItem("playlists") as string)?.spotify || []);
+    const usr_playlists = JSON.parse(localStorage.getItem("playlists") as string) || {}
+    const [youtube, setyoutube] = useState(usr_playlists.youtube || []);
+    const [spotify, setspotify] = useState(usr_playlists.spotify || []);
 
     useEffect(() => {
         async function run() {
-            // const data = JSON.parse(localStorage.getItem("user") as string)
             const playlist = await fetch_data(Data.userplaylist);
-            // const playlist = await get("/user_playlist");
-
-            // const res = await fetch("http://localhost:3001/user_playlist", {
-            //     method: "GET",
-            //     headers: {
-            //         "Content-Type": "application/json"
-            //     }
-            // })
-
-            // if (res.status !== 200) {
-            //     return;
-            // }
-
-            // const playlist = await res.json();
 
             const ytb_temp: any[] = youtube.filter((item: any) => typeof item !== 'string') || [];
             const spt_temp: any[] = spotify.filter((item: any) => typeof item !== 'string') || [];
-
-            // console.log(ytb_temp)
-
 
             if (playlist.youtube.length > 0) {
                 const new_ytb_ply = (playlist.youtube as any[]).filter((item: any) =>
