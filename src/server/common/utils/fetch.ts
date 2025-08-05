@@ -21,7 +21,6 @@ let received_datas: any[] = []
 const api = window.electronAPI;
 
 api.onDataReceived((data: any) => {
-    // console.log(data);
     if (!data.ok) {
         received_datas.push({
             from: data.from,
@@ -36,21 +35,19 @@ api.onDataReceived((data: any) => {
     }
 })
 
-
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export function fetch_data(what: Data, data?: any): Promise<any> {
-    return new Promise(async (resolvee, reject) => {
+    return new Promise(async (resolve, reject) => {
 
-        // console.log(what)
+        received_datas = received_datas.filter((item: any) => { return item.from !== what });
 
         if (!api) {
             return;
         }
-
-        // Dispatch the appropriate IPC event
+        // call to ElectronAPI
         switch (what) {
             case Data.login:
                 api.login(data);
@@ -91,7 +88,6 @@ export function fetch_data(what: Data, data?: any): Promise<any> {
             case Data.stream:
                 api.stream(data);
                 break;
-
         }
 
         while (received_datas.findIndex((item: any) => { return item.from === what }) === -1) {
@@ -101,7 +97,6 @@ export function fetch_data(what: Data, data?: any): Promise<any> {
         const temp = received_datas.length - [...received_datas].reverse().findIndex((item: any) => { return item.from === what });
         const received_data: any = received_datas.at(temp - 1);
         received_datas = received_datas.filter((item: any) => { return item.from !== what });
-        resolvee(received_data.data)
-
+        resolve(received_data.data)
     })
 }
