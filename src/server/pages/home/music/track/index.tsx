@@ -11,7 +11,7 @@ export default function Track({ urll }: { urll: string }) {
 
     useEffect(() => {
         async function run() {
-            const data = await fetch_data(Data.playlist, { where: source, id: id })
+            const data = await fetch_data(Data.track, { where: source, id: id })
 
             settrack({
                 thumbnail: data.thumbnail,
