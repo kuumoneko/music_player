@@ -13,7 +13,9 @@ export enum Data {
     playlist = "playlist",
     likedsongs = "likedsongs",
     userplaylist = "userplaylist",
-    stream = "stream"
+    stream = "stream",
+    likedartists = "likedartists",
+    artist = "artist"
 }
 
 let received_datas: any[] = []
@@ -43,7 +45,7 @@ export function fetch_data(what: Data, data?: any): Promise<any> {
     return new Promise(async (resolve, reject) => {
 
         received_datas = received_datas.filter((item: any) => { return item.from !== what });
-
+        console.log(what)
         if (!api) {
             return;
         }
@@ -87,6 +89,12 @@ export function fetch_data(what: Data, data?: any): Promise<any> {
                 break;
             case Data.stream:
                 api.stream(data);
+                break;
+            case Data.likedartists:
+                api.likedartists();
+                break;
+            case Data.artist:
+                api.artist(data);
                 break;
         }
 

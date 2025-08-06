@@ -87,7 +87,11 @@ export enum Audio_format {
 
 
 export interface Artist {
+    type?: string | "spotify:artist" | "youtube:artist",
     name: string,
+    thumbnail?: string,
+    id?: string,
+    error?: string
 }
 
 export interface Track {

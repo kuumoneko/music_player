@@ -4,9 +4,15 @@
 >
 > UPDATE NOTE:
 >
-> Fix reach max listener of ElectronAPI
+> fix infinity loop in get api key
 >
-> Refactor Player component
+> add reached_date to refresh on day
+>
+> add Artist page
+>
+> add followed Artist option in side bar
+>
+> refactor code shorter
 
 ## Usage for developers and users will be added later, Im fixing something
 

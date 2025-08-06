@@ -1,8 +1,8 @@
-import { Artist, Music_options, Playlist, Search, Track, UserPlaylist, youtube_api_keys } from "../../../types/index.js";
+import { Artist, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist, youtube_api_keys } from "../../../types/index.js";
 
 export default class Youtube {
     private maxResults = 200;
-    private youtube_api_key: youtube_api_keys[];
+    public youtube_api_key: youtube_api_keys[];
     private google_client: string | undefined;
     private google_client_secret: string | undefined;
     private port: number = 3000;
@@ -64,13 +64,14 @@ export default class Youtube {
                     api_key: temp[indexx].api_key,
                     isAuth: temp[indexx].isAuth,
                     reach_quota: true,
+                    date_reached: new Date().toISOString().split('T')[0]
                 }
+                this.youtube_api_key = temp;
             }
             else if (data.error === null || data.error === undefined) {
                 done = true;
             }
         }
-
         return data;
     }
 
@@ -85,10 +86,7 @@ export default class Youtube {
             };
         }
         catch (e) {
-            return {
-                type: "error",
-                message: e
-            }
+            throw new Error(e);
         }
     }
 
@@ -113,13 +111,8 @@ export default class Youtube {
             });
             const data = await ticket.json();
             return data;
-        } catch (error) {
-            console.error("Error verifying Google ID token:", error);
-            return {
-                access_token: null,
-                refresh_token: null,
-                expires_in: null
-            };
+        } catch (e) {
+            throw new Error(e);
         }
     }
 
@@ -152,38 +145,20 @@ export default class Youtube {
                     });
                 }
 
-            } catch (error) {
-                console.error("Error refresh Youtube ID token:", error);
-                resolve({
-                    access_token: null,
-                    refresh_token_expires_in: null,
-                    expires: null
-                });
+            } catch (e) {
+                throw new Error(e);
             }
         })
     }
 
-
-    async fetch_youtube_user_playlist(access_token: string = '', pagetoken: string = ''): Promise<UserPlaylist> {
-        const url = `https://youtube.googleapis.com/youtube/v3/playlists?part=snippet%2CcontentDetails&mine=true&maxResults=${this.maxResults}&pageToken=${pagetoken}`
+    async fetch_youtube_user_playlist(access_token: string = ''): Promise<UserPlaylist> {
+        let pagetoken: string = '';
+        const tracks: any[] = [];
         try {
-            let video = await this.fetch_data(url, true, access_token);
-
-            const tracks: any[] = video.items.map((item: any) => {
-                return {
-                    playlistName: item.snippet.title,
-                    playlistId: item.id,
-                    authorName: item.snippet.channelTitle,
-                    thumbnail: item.snippet.thumbnails.default.url
-                }
-            })
-
-            while (video.nextPageToken) {
-                const url = `https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&maxResults=${this.maxResults}&myRating=like&pageToken=${video.nextPageToken}`;
-                video = await this.fetch_data(url, true, access_token);
-
+            while (pagetoken !== null && pagetoken !== undefined) {
+                const url = `https://youtube.googleapis.com/youtube/v3/playlists?part=snippet%2CcontentDetails&mine=true&maxResults=${this.maxResults}&pageToken=${pagetoken}`
+                const video = await this.fetch_data(url, true, access_token);
                 tracks.push(...video.items.map((item: any) => {
-                    // fix here
                     return {
                         playlistName: item.snippet.title,
                         playlistId: item.id,
@@ -191,49 +166,26 @@ export default class Youtube {
                         thumbnail: item.snippet.thumbnails.default.url
                     }
                 }))
+                pagetoken = video.nextPageToken;
             }
-
             return {
                 type: "youtube:userplaylists",
                 playlists: tracks
             }
         }
         catch (e) {
-            console.log(e);
-            return {
-                type: "youtube:userplaylists",
-                error: e
-            }
+            throw new Error(e);
         }
     }
 
-
-
-    async fetchLikedVideos(access_token: string, pagetoken: string = ''): Promise<any> {
-        const url = `https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&maxResults=${this.maxResults}&myRating=like&pageToken=${pagetoken}`;
+    async fetchLikedVideos(access_token: string): Promise<any> {
+        let pagetoken: string = '';
+        const tracks: any[] = [];
 
         try {
-            let video = await this.fetch_data(url, true, access_token)
-
-            const tracks: any[] = video.items.map((item: any) => {
-                return {
-                    type: "youtube:track",
-                    thumbnail: item.snippet.thumbnails.default.url || "",
-                    artists: [{
-                        name: item.snippet.channelTitle
-                    }],
-                    track: {
-                        name: item.snippet.title,
-                        id: item.id,
-                        duration: this.iso8601DurationToMilliseconds(item.contentDetails.duration), // in miliseconds
-                        releaseDate: item.snippet.publishedAt.split("T")[0],
-                    }
-                }
-            });
-
-            while (video.nextPageToken) {
-                const url = `https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&maxResults=${this.maxResults}&myRating=like&pageToken=${video.nextPageToken}`;
-                video = await this.fetch_data(url, true, access_token)
+            while (pagetoken !== null && pagetoken !== undefined) {
+                const url = `https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&maxResults=${this.maxResults}&myRating=like&pageToken=${pagetoken}`;
+                const video = await this.fetch_data(url, true, access_token)
 
                 tracks.push(...video.items.map((item: any) => {
                     return {
@@ -243,15 +195,16 @@ export default class Youtube {
                             name: item.snippet.channelTitle
                         }],
                         track: {
-                            name: item.title,
+                            name: item.snippet.title,
                             id: item.id,
                             duration: this.iso8601DurationToMilliseconds(item.contentDetails.duration), // in miliseconds
                             releaseDate: item.snippet.publishedAt.split("T")[0],
                         }
                     }
                 }))
-            }
 
+                pagetoken = video.nextPageToken;
+            }
 
             return {
                 type: "youtube:playlists",
@@ -263,14 +216,9 @@ export default class Youtube {
             }
         }
         catch (e) {
-            console.log(e);
-            return {
-                type: "youtube:playlists",
-                error: e
-            }
+            throw new Error(e);
         }
     }
-
 
     async fetch_youtube_playlist_data(id: string, access_token: string = ''): Promise<string | null> {
         const url = `https://youtube.googleapis.com/youtube/v3/playlists?part=snippet%2CcontentDetails&id=${id}&maxResults=25&fields=items.snippet.title`
@@ -278,40 +226,19 @@ export default class Youtube {
         return data.items[0].snippet.title || null;
     }
 
+    async fetchPlaylistVideos(id: string = '', access_token: string = ''): Promise<Playlist> {
+        let pagetoken: string = '';
+        const tracks: any[] = [];
 
-    async fetchPlaylistVideos(id: string = '', access_token: string = '', pagetoken: string = ''): Promise<Playlist> {
-
-        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=${this.maxResults}&playlistId=${id}&pageToken=${pagetoken}`;
         try {
-            let video = await this.fetch_data(url, (access_token !== ""), (access_token !== "") ? access_token : null)
+            let thumbnail: string = "";
+            while (pagetoken !== null && pagetoken !== undefined) {
+                const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=${this.maxResults}&playlistId=${id}&pageToken=${pagetoken}`;
+                const video = await this.fetch_data(url, (access_token !== ""), (access_token !== "") ? access_token : null);
 
-            const thumbnail = video.items[0].snippet.thumbnails.default.url;
-
-            const tracks: Track[] = [];
-            for (const item of video.items.filter((item: any) => {
-                return item.snippet.description !== "This video is private." && item.snippet.description !== "This video is unavailable.";
-            })) {
-                tracks.push({
-                    type: "youtube:track",
-                    thumbnail: item.snippet.thumbnails.default.url || "",
-                    artists: [
-                        {
-                            name: item.snippet.videoOwnerChannelTitle
-                        }
-                    ],
-                    track: {
-                        name: item.snippet.title,
-                        id: item.snippet.resourceId.videoId,
-                        releaseDate: item.snippet.publishedAt.split("T")[0],
-                    }
-                } as any)
-            }
-
-
-            while (video.nextPageToken) {
-                const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet,contentDetails&maxResults=${this.maxResults}&playlistId=${id}&pageToken=${video.nextPageToken}`;
-
-                video = await this.fetch_data(url, (access_token !== ""), (access_token !== "") ? access_token : null)
+                if (thumbnail === "") {
+                    thumbnail = video.items[0].snippet.thumbnails.default.url;
+                }
 
                 for (const item of video.items.filter((item: any) => {
                     return item.snippet.description !== "This video is private." && item.snippet.description !== "This video is unavailable.";
@@ -331,6 +258,7 @@ export default class Youtube {
                         }
                     } as any)
                 }
+                pagetoken = video.nextPageToken
             }
             const name = await this.fetch_youtube_playlist_data(id, access_token)
 
@@ -343,11 +271,7 @@ export default class Youtube {
             }
         }
         catch (e) {
-            console.log(e);
-            return {
-                type: "youtube:playlist",
-                error: e
-            }
+            throw new Error(e);
         }
     }
 
@@ -366,7 +290,6 @@ export default class Youtube {
         const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
         return totalSeconds * 1000;
     }
-
 
     async getdurations(ids: string[]): Promise<any[]> {
         const durations: any[] = [];
@@ -395,8 +318,7 @@ export default class Youtube {
             return durations;
         }
         catch (e) {
-            console.log(e);
-            return [];
+            throw new Error(e);
         }
     }
 
@@ -424,8 +346,7 @@ export default class Youtube {
             return durations;
         }
         catch (e) {
-            console.log(e);
-            return null
+            throw new Error(e);
         }
     }
 
@@ -451,11 +372,7 @@ export default class Youtube {
             } as Track
         }
         catch (e) {
-            console.log(e);
-            return {
-                type: "youtube:track",
-                error: e
-            }
+            throw new Error(e);
         }
     }
 
@@ -492,11 +409,7 @@ export default class Youtube {
             }
         }
         catch (e) {
-            console.log(e);
-            return {
-                type: "youtube:search",
-                error: e
-            }
+            throw new Error(e);
         }
     }
 
@@ -506,21 +419,15 @@ export default class Youtube {
         const artistName = (trackToMatch.artists as any)[0].name || "";
         const trackDuration: number = trackToMatch.track?.duration as number; // in ms
 
-        // console.log(trackName, ' ', artistName, ' ', trackDuration)
         if (!trackName || !artistName) {
-            console.error("Track name or artist is missing.");
-            return null;
+            throw new Error("Track name or artist is missing.");
         }
 
         // A good search query using the track name and artist.
         const searchQuery = `${trackName} ${artistName}`;
-        // console.log(searchQuery)
 
         try {
-            let searchResults = (await this.search_youtube_video(searchQuery)).tracks as Track[]
-
-            // console.log(searchQuery);
-            // console.log(searchResults)
+            let searchResults = (await this.search_youtube_video(searchQuery)).tracks as Track[];
 
             const ids: string[] = searchResults.map((track: Track) => {
                 return track.track?.id || ""
@@ -543,9 +450,6 @@ export default class Youtube {
                 }
             })
 
-            // console.log(result_track)
-
-
             if (!searchResults || searchResults.length === 0) {
                 return null;
             }
@@ -553,13 +457,13 @@ export default class Youtube {
             let bestMatch: Track | null = null;
             let bestScore = -1;
 
-            const DURATION_TOLERANCE_MS = 60 * 1000; // 60 seconds tolerance for scoring
+            const DURATION_TOLERANCE_MS = 60 * 1000;
 
             for (const ytVideo of result_track) {
                 const durationDifference = Math.abs(ytVideo.track.duration as number - trackDuration);
 
                 // Heuristic: ignore videos with a huge duration difference
-                if (durationDifference > DURATION_TOLERANCE_MS) { // 30 seconds
+                if (durationDifference > DURATION_TOLERANCE_MS) {
                     continue;
                 }
 
@@ -577,7 +481,6 @@ export default class Youtube {
                 else if (videoTitle.includes("official video") || videoTitle.includes("official music video")) score += 3;
                 else if (videoTitle.includes("lyrics")) score += 2;
 
-                // console.log(ytVideo.track.id, ' ', ytVideo.track.contentRating)
                 if (ytVideo.track.contentRating?.ytRating === "ytAgeRestricted") {
                     score -= 100
                 }
@@ -596,36 +499,18 @@ export default class Youtube {
             return bestMatch;
         }
         catch (e) {
-            console.log(e);;
-            return null
+            throw new Error(e);
         }
     }
 
-    async fetch_user_sub_channel(access_token: string = ''): Promise<Artist[]> {
-        const url = `https://youtube.googleapis.com/youtube/v3/subscriptions?part=snippet%2CcontentDetails&maxResults=${this.maxResults}&mine=true&fields=nextPageToken%2Citems(snippet(title%2Cthumbnails%2CresourceId(channelId)))`;
-        // let data = await this.fetch_data(url, true, access_token);
+    async fetch_user_sub_channel(access_token: string = ''): Promise<User_Artist> {
+        let pageToken: string = "";
+        const artists: Artist[] = [];
 
         try {
-
-            let data = await this.fetch_data(url, (access_token !== ""), (access_token !== "") ? access_token : null)
-
-            const artists: Artist[] = [];
-            for (const item of data.items.filter((item: any) => {
-                return item.snippet.description !== "This video is private." && item.snippet.description !== "This video is unavailable.";
-            })) {
-                artists.push({
-                    type: "youtube:artist",
-                    thumbnail: item.snippet.thumbnails.default.url || "",
-                    name: item.snippet.title,
-                    id: item.snippet.resourceId.channelId
-                } as any)
-            }
-
-
-            while (data.nextPageToken) {
-                const url = `https://youtube.googleapis.com/youtube/v3/subscriptions?part=snippet&maxResults=${this.maxResults}&mine=true&fields=nextPageToken%2Citems(snippet(title%2Cthumbnails%2CresourceId(channelId)))&pageToken=${data.nextPageToken}`;
-
-                data = await this.fetch_data(url, (access_token !== ""), (access_token !== "") ? access_token : null)
+            while (pageToken !== null && pageToken !== undefined) {
+                const url = `https://youtube.googleapis.com/youtube/v3/subscriptions?part=snippet%2CcontentDetails&maxResults=${this.maxResults}&mine=true&fields=nextPageToken%2Citems(snippet(title%2Cthumbnails%2CresourceId(channelId)))&pageToken=${pageToken}`;
+                const data = await this.fetch_data(url, (access_token !== ""), (access_token !== "") ? access_token : null);
 
                 for (const item of data.items.filter((item: any) => {
                     return item.snippet.description !== "This video is private." && item.snippet.description !== "This video is unavailable.";
@@ -633,23 +518,40 @@ export default class Youtube {
                     artists.push({
                         type: "youtube:artist",
                         thumbnail: item.snippet.thumbnails.default.url || "",
-
+                        name: item.snippet.title,
+                        id: item.snippet.resourceId.channelId
                     } as any)
                 }
-            }
 
-            return artists;
+                pageToken = data.nextPageToken
+            }
+            return {
+                type: "youtube:artists",
+                artists: artists
+            };
         }
         catch (e) {
-            console.log(e);
-            return [
-                {
-                    error: e,
-                    name: ""
-                }
-            ]
+            throw new Error(e);
         }
 
     }
 
+    async fetch_artist(id: string): Promise<Artist> {
+        try {
+            const url = `https://youtube.googleapis.com/youtube/v3/channels?part=snippet%2CcontentDetails%2Cstatistics&id=${id}`;
+            const item = (await this.fetch_data(url, false) as any).items[0];
+            const playlist_id = item.contentDetails.relatedPlaylists.uploads;
+            return {
+                type: "youtube:artist",
+                name: item.snippet.title,
+                id: item.id,
+                tracks: (await this.fetchPlaylistVideos(playlist_id)).tracks as Track[],
+                thumbnail: item.snippet.thumbnails.default.url || ""
+            }
+        }
+        catch (e) {
+            throw new Error(e);
+        }
+
+    }
 }

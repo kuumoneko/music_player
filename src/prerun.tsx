@@ -38,9 +38,17 @@ export const running = () => {
         }))
     }
 
-    const gett = JSON.parse(localStorage.getItem("playlists") as string)
-    if (check_storage("playlists") || gett.youtube === undefined || gett.spotify === undefined || gett.youtube.length === 0 || gett.spotify.length === 0) {
+    const get_playlists = JSON.parse(localStorage.getItem("playlists") as string)
+    if (check_storage("playlists") || get_playlists.youtube === undefined || get_playlists.spotify === undefined || get_playlists.youtube.length === 0 || get_playlists.spotify.length === 0) {
         localStorage.setItem("playlists", JSON.stringify({
+            youtube: [],
+            spotify: []
+        }))
+    }
+
+    const get_artists = JSON.parse(localStorage.getItem("artists") as string)
+    if (check_storage("artists") || get_artists.youtube === undefined || get_artists.spotify === undefined || get_artists.youtube.length === 0 || get_artists.spotify.length === 0) {
+        localStorage.setItem("artists", JSON.stringify({
             youtube: [],
             spotify: []
         }))

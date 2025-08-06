@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Show, Showw } from "../music";
 import { Data, fetch_data } from "../../../../common/utils/fetch.ts";
 
-export default function Local({ url }: { url: string }) {
+export default function Local() {
 
     const check = JSON.parse(localStorage.getItem("localfile") as string);
     const [localfile, setlocalfile] = useState(check ? check : []);

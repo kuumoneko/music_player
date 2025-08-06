@@ -58,12 +58,12 @@
     "webpack-cli": "^5.1.4"
   },
   "scripts": {
-    "testt": "node --no-warnings=ExperimentalWarning ./test/index.js",
+    "testt": "node --no-warnings=ExperimentalWarning --loader ts-node/esm test/api.ts",
     "start": "cross-env GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true react-scripts --openssl-legacy-provider start",
     "build": "react-scripts build",
     "build_app": "node --no-warnings=ExperimentalWarning --loader ts-node/esm build.ts",
     "electron-dev-ts-node": "wait-on http://localhost:3001 && electron electron/main.js",
-    "electron-dev-ts": "cross-env NODE_OPTIONS=\"--import tsx --trace-warnings --inspect=9229\"  electron electron/index.ts",
+    "electron-dev-ts": "cross-env NODE_OPTIONS=\"--import tsx --trace-warnings\"  electron electron/index.ts",
     "postelectron-build": "electron-builder -w"
   },
   "main": "electron/index.js",

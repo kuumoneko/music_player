@@ -3,7 +3,8 @@
         {
             "api_key": "Your api key is not in the same project with this credential",
             "reach_quota": "boolean",
-            "isAuth": "true if it use for login and auth, in the same porject with the credential web"
+            "isAuth": "true if it use for login and auth, in the same porject with the credential web, you need to have one at least",
+            "date_reached": "date that the api reached"
         }
     ],
     "Spotify_Api_key": "Your spotify api_key",

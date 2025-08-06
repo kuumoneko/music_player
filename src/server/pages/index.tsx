@@ -4,9 +4,9 @@ import Player from '../common/components/Player/index.tsx';
 
 export default function MainContent({ url, seturl }: { url: string, seturl: (a: string) => void }) {
     return (
-        <div className="main-content flex flex-col justify-between items-center h-[90%] w-[100vw] mt-5 p-0">
-            <div className="top flex flex-row justify-center h-[80%] w-[100vw] items-start">
-                <Sidebar url={url} seturl={seturl} />
+        <div className="main-content flex flex-col justify-between items-center h-[100%] w-screen mt-5 p-0">
+            <div className="top h-[80%] w-[100vw] flex flex-row justify-around">
+                <Sidebar seturl={seturl} />
                 <Home url={url} seturl={seturl} />
             </div>
             <div className="bottom h-[20%] w-[100%] flex justify-center">

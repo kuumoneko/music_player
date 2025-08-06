@@ -22,8 +22,13 @@ export interface electronAPI extends Electron.IpcMain {
     likedsongs: (data: { where: string }) => void,
     user_playlists: () => void,
     stream: (data: { where: string, mode: string, id: string }) => void,
+    likedartists: () => void,
+    artist: (data: { where: string, id: string }) => void,
 
+
+    // receive data
     onDataReceived: (callback: (data: any) => void) => void;
+
     // close
     close: () => void
 }

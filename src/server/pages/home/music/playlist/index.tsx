@@ -4,8 +4,6 @@ import { Data, fetch_data } from "../../../../common/utils/fetch.ts";
 
 export default function Playlist({ urll }: { urll: string }) {
     const tempping = urll.split("/").slice(3)
-    // const [source, setsource] = useState(urll.split("/").slice(3)[1]);
-    // const [id, setid] = useState(urll.split("/").slice(3)[2]);
     const [data, setdata] = useState(tempping[1] + "/" + tempping[2])
 
     const [playlist, setPlaylist] = useState([]);
@@ -13,28 +11,32 @@ export default function Playlist({ urll }: { urll: string }) {
     const [name, setname] = useState<any>(null);
     const [duration, setduration] = useState<any>(null);
 
+    const refesh = async (data_url: string) => {
+        const [source, id] = data_url.split("/")
+        const dataa = await fetch_data(Data.playlist, { where: source, id: id })
+        setthumbnail(dataa.thumbnail);
+        setname(dataa.name);
+        setduration(dataa.duration);
+        setPlaylist(dataa.tracks);
+    }
+
     useEffect(() => {
         const run = window.setInterval(() => {
             const lmao = localStorage.getItem("url") as string;
             const temp = lmao.split("/").slice(3)
+            const test = data;
             setdata(temp[1] + "/" + temp[2])
-
-        }, 100);
+            if (test[0] !== temp[1] || test[1] !== temp[2]) {
+                refesh(`${temp[1]}/${temp[2]}`)
+                setdata(temp[1] + "/" + temp[2])
+            }
+        }, 500);
         return () => window.clearInterval(run);
     })
 
     useEffect(() => {
-        async function run() {
-            const [source, id] = data.split("/")
-            const dataa = await fetch_data(Data.playlist, { where: source, id: id })
-            setthumbnail(dataa.thumbnail);
-            setname(dataa.name);
-            setduration(dataa.duration);
-            setPlaylist(dataa.tracks);
-        }
-
-        run();
-    }, [data])
+        refesh(data)
+    }, [])
 
     return (
         <>

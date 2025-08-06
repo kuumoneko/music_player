@@ -21,7 +21,7 @@ const handleCloseTab = () => {
     }
 };
 
-export default function PlayerUI() {
+export default function ControlUI() {
     const [played, setplayed] = useState(false);
     const [shuffle, setshuffle] = useState(localStorage.getItem("shuffle") || "disable");
     const [repeat, setrepeat] = useState(localStorage.getItem("repeat") || "disable");
@@ -58,11 +58,13 @@ export default function PlayerUI() {
         }
     }, [played]);
 
-    const getUrl = async (source: string, id: string) => {
+    const getUrl = async (source: string, id: string, autoplayed: boolean = true) => {
 
         if (id == "") { return }
 
         try {
+            setisloading(true)
+
             const data = await fetch_data(Data.stream, { where: source, mode: "track", id: id });
             if (source === "local") {
                 const audio_format = localStorage.getItem("preferredAudioFormat");
@@ -87,8 +89,10 @@ export default function PlayerUI() {
                 url: data.url,
             }));
             setTimeout(async () => {
-                // await audioRef.current.play()
-                setplayed(true)
+                if (autoplayed) {
+                    setplayed(true)
+                }
+                setisloading(false)
             }, 500)
         } catch (error) {
             console.error(error);
@@ -114,7 +118,7 @@ export default function PlayerUI() {
             if (!id) {
                 return;
             }
-            await getUrl(source, id);
+            await getUrl(source, id, false);
         }
         run();
     }, [])

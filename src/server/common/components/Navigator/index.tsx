@@ -58,7 +58,7 @@ export default function Nav({ url, seturl }: {
     }, [])
 
     return (
-        <div className="nav bg-slate-200 dark:bg-slate-700 h-[50px] w-[90%] flex justify-between items-center rounded-full p-6 ">
+        <div className="nav bg-slate-200 dark:bg-slate-700 h-[50px] w-[90%] flex justify-between items-center rounded-full p-6 mt-[10px]">
             <div className="home-icon flex flex-row items-center gap-[10px]">
                 <span className={`material-icons flex items-center gap-[5px] text-black dark:text-white cursor-default select-none ${JSON.parse(backward).length === 0 ? 'opacity-50 pointer-events-none' : ''}`} onClick={() => {
                     const backw: string[] = JSON.parse(localStorage.getItem("backward") as string) || [];

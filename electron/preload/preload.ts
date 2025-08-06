@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     user_playlists: () => ipcRenderer.send("user_playlists"),
     stream: (data: { where: string, mode: string, id: string }) => ipcRenderer.send("stream", (data)),
     likedartists: () => ipcRenderer.send("likedartists"),
+    artist: (data: { where: string, id: string }) => ipcRenderer.send("artist", (data)),
+
 
     onDataReceived: (resolve: (e: any) => void) => {
         ipcRenderer.on("received_data", (e, data: any) => resolve(data));

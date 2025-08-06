@@ -9,7 +9,7 @@ export default function Home({ url, seturl }: { url: string, seturl: (a: string)
     const urll = url.split("/").slice(3);
 
     return (
-        <div className="home text-gray-400 dark:text-neutral-200 no-underline bg-slate-200 dark:bg-slate-700 flex flex-col items-center rounded-xl w-[80%] h-[95%]">
+        <div className="home text-gray-400 dark:text-neutral-200 no-underline bg-slate-200 dark:bg-slate-700 flex flex-col items-center rounded-xl w-[80%] h-[100%]">
             <Search url={url} seturl={seturl} />
             {
                 urll[0] === "" && (
@@ -23,7 +23,7 @@ export default function Home({ url, seturl }: { url: string, seturl: (a: string)
                 )
             }
             {
-                (urll[0] === "liked_songs" || urll[0] === "playlist" || urll[0] === "album" || urll[0] === "track" || urll[0] === "local") && (
+                (["liked_songs", "playlist", "album", "track", "local", "artist"].includes(urll[0])) && (
                     <Music urll={url} />
                 )
             }

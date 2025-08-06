@@ -30,13 +30,10 @@ export interface Link_fetch {
     tracks: Link[]
 }
 
-
-
 export enum download_mode {
     video = "video",
     audio = "audio",
 }
-
 
 export enum Mode {
     react = "testreact",
@@ -55,7 +52,8 @@ export enum Status {
 export interface youtube_api_keys {
     api_key: string,
     reach_quota: boolean,
-    isAuth: boolean
+    isAuth: boolean,
+    date_reached: string,
 }
 
 export interface Downloader_options {
@@ -106,12 +104,18 @@ export enum Audio_format {
     wav = "wav"
 }
 
-
 export interface Artist {
     type?: string | "spotify:artist" | "youtube:artist",
+    tracks?: Track[],
     name: string,
     thumbnail?: string,
     id?: string,
+    error?: string
+}
+
+export interface User_Artist {
+    type?: string | "spotify:artist" | "youtube:artist",
+    artists?: Artist[],
     error?: string
 }
 

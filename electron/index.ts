@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import * as mm from "music-metadata";
 import { createAuthWindow } from "./auth.js";
-import { Audio_format, Download_item, Mode, Playlist, Track, Artist } from "./types/index.js";
+import { Audio_format, Download_item, Mode, Playlist, Track, Artist, User_Artist, youtube_api_keys } from "./types/index.js";
 import Downloader from "./downloader/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.js";
 import express from "express";
@@ -25,7 +25,7 @@ const generateRandomString = (length: number) => {
     return values.reduce((acc, x) => acc + possible[x % possible.length], "");
 };
 
-
+// - - - - - - Setup  - - - - -  - -
 let mainWindow: pkg.BrowserWindow;
 const executablePath = process.execPath;
 
@@ -47,13 +47,8 @@ const filesToCreate: any[] = [
     { folderPath: path.join(executableDir, "data"), filename: "userplaylists.json", fileContent: "{}" },
 ];
 
-// const FolderToCreate: string[] = [path.join(executableDir, "support")];
-
 createMultipleFiles(filesToCreate);
-// createFolders(FolderToCreate);
-
 const system = getDataFromDatabase(executableDir, "data", "system");
-
 const port = Number(system["port"] as string) || 3000;
 
 // - - - - - Node express server for getting auth code from Youtube or Spotify - - - - - -
@@ -77,6 +72,41 @@ server.get("/", (req, res) => {
     });
 });
 
+// - - - - - Check if api_key is reached quota - - - - - - 
+// (async () => {
+//     const keys: youtube_api_keys[] = system.Youtube_Api_key;
+//     const video_test_id: string = system.test_id;
+//     for (const key of keys) {
+//         if (key.reach_quota) {
+//             continue;
+//         }
+//         const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&id=${video_test_id}&key=${key.api_key}`;
+//         const res = await fetch(url, {
+//             headers: {
+//                 'Content-Type': 'application/json',
+//             }
+//         })
+//         const data = await res.json();
+//         if (data.error && data.error.code === 403 && data.error?.errors?.includes((item: any) => {
+//             return item.reason === "quotaExceeded"
+//         })) {
+//             temp.push({
+//                 api_key: key.api_key,
+//                 reach_quota: true,
+//                 isAuth: key.isAuth,
+//                 date_reached: new Date().toISOString().split('T')[0]
+//             })
+//         }
+//         else {
+//             temp.push({
+//                 api_key: key.api_key,
+//                 reach_quota: false,
+//                 isAuth: key.isAuth,
+//                 date_reached: ""
+//             })
+//         }
+//     }
+// })();
 
 // - - - - - - Downloader class - - - - - -
 let downloader: Downloader = new Downloader(
@@ -97,9 +127,6 @@ let downloader: Downloader = new Downloader(
         port: port
     }
 );
-
-// downloader.check_env();
-
 
 // - - - - - - Check if access_token is expired - - - - - - -
 setInterval(() => {
@@ -123,13 +150,9 @@ setInterval(() => {
             data.youtube.expires <= new Date().getTime()
         ) {
             lmao = true;
-            const Youtube = (await downloader.music.youtube.refreshYoutubeToken(
-                data.youtube.refresh_token
-            )) as any;
-            if (Youtube) {
-                const user = await downloader.music.youtube.fetch_youtube_user(
-                    Youtube.access_token
-                );
+            try {
+                const Youtube: any = await downloader.music.youtube.refreshYoutubeToken(data.youtube.refresh_token);
+                const user = await downloader.music.youtube.fetch_youtube_user(Youtube.access_token);
                 res.youtube = {
                     access_token: Youtube.access_token,
                     expires: Youtube.expires,
@@ -138,13 +161,14 @@ setInterval(() => {
                     user: user,
                 };
             }
-            else {
+            catch (e) {
+                console.error(e);
                 res.youtube = {
                     refresh_token: null,
                     access_token: null,
                     expires: null,
+                    user: null
                 };
-
             }
         }
 
@@ -153,10 +177,8 @@ setInterval(() => {
             data.spotify.expires <= new Date().getTime()
         ) {
             lmao = true;
-            const spotifyUser = (await downloader.music.spotify.refreshSpotifyToken(
-                data.spotify.refresh_token
-            )) as any;
-            if (spotifyUser) {
+            try {
+                const spotifyUser: any = await downloader.music.spotify.refreshSpotifyToken(data.spotify.refresh_token);
                 const user = await downloader.music.spotify.getme(
                     spotifyUser.access_token
                 );
@@ -167,6 +189,14 @@ setInterval(() => {
                         ? spotifyUser.refresh_token
                         : data.spotify.refresh_token,
                     user: user,
+                };
+            }
+            catch (e) {
+                res.spotify = {
+                    access_token: null,
+                    expires: null,
+                    refresh_token: null,
+                    user: null,
                 };
             }
         }
@@ -189,9 +219,33 @@ setInterval(() => {
                 }
             );
         }
+
+        const api_keys = downloader.music.youtube.youtube_api_key as youtube_api_keys[];
+        let temp = system;
+        temp.Youtube_Api_key = api_keys;
+        if (api_keys.length > 0) {
+            writeDataToDatabase(executableDir, "data", "system", temp);
+        }
     }
     run();
 }, 1000);
+
+// - - - - - check if reach time to refresh quota - - - - -
+
+setInterval(() => {
+    const now = new Date();
+    const utc_hour = now.getUTCHours();
+    const date = now.toISOString().split("T")[0];
+    const keys = downloader.music.youtube.youtube_api_key;
+
+    for (let key of keys) {
+        if (key.reach_quota && date !== key.date_reached && utc_hour >= 7) {
+            key.date_reached = "";
+            key.reach_quota = false;
+        }
+    }
+    downloader.music.youtube.youtube_api_key = keys;
+}, 15 * 60 * 1000); // 15 minutes
 
 // - - - -  - main electron app - - - -  - -
 
@@ -261,7 +315,8 @@ enum Data {
     likedsongs = "likedsongs",
     userplaylist = "userplaylist",
     stream = "stream",
-    likedartists = "likedartists"
+    likedartists = "likedartists",
+    artist = "artist"
 }
 
 const give_error = (event: pkg.IpcMainEvent, from: Data, message: string) => {
@@ -353,7 +408,7 @@ ipcMain.on("login", async (event: any, data: { where: string }) => {
 
         return give_data(event, Data.login, { user: data });
     } catch (e: any) {
-        console.log(e);
+        console.error(e);
         return give_error(event, Data.login, e);
     }
 });
@@ -407,7 +462,6 @@ ipcMain.on("download", async (
     try {
         console.log("- - - - - - - - - - DOWNLOAD TIME - - - - - - - - - -")
         const { format, links } = data;
-        // console
 
         if (!links || (links.length as number) === 0) {
             return give_error(e, Data.download, "No links provided.");
@@ -416,7 +470,6 @@ ipcMain.on("download", async (
         downloader.set_audio_format(format as Audio_format);
         downloader.clear_links();
         const tracks_to_download: Download_item[] = [];
-        console.log(links)
 
         for (const link of links) {
             const { source, mode } = link;
@@ -427,7 +480,6 @@ ipcMain.on("download", async (
                     const temp: Playlist = (dataa as Playlist)
                     const download_items: Download_item[] = [];
                     for (const item of temp.tracks as Track[]) {
-                        console.log(`${item.track?.name}`)
                         download_items.push({
                             title: downloader.format_title(item.track?.name as string) || "",
                             id: item.track?.id || "",
@@ -439,8 +491,6 @@ ipcMain.on("download", async (
                         })
                     }
 
-                    console.log(download_items)
-
                     tracks_to_download.push(...download_items);
 
                 }
@@ -450,7 +500,6 @@ ipcMain.on("download", async (
                     for (const item of (temp.tracks as Track[])) {
                         const matching_video: Track | null = await downloader.music.youtube.findMatchingVideo(item);
                         const spotify_video: Track = await downloader.music.spotify.fetchTrackVideos_spotify(item.track?.id || "");
-                        // console.log(`${item.track?.name}`)
 
                         if (matching_video !== null) {
                             tracks_to_download.push({
@@ -495,7 +544,7 @@ ipcMain.on("download", async (
                         })
                     }
                     else {
-                        console.log("Cant find matched video")
+                        console.error("Cant find matched video")
                     }
                 }
             }
@@ -509,7 +558,6 @@ ipcMain.on("download", async (
         writeDataToDatabase(executableDir, "data", "test", tracks_to_download);
 
         const { local } = getDataFromDatabase(executableDir, "data", "user");
-        console.log(local.folder);
         if (
             local.folder !== "" &&
             local.folder !== undefined &&
@@ -520,11 +568,12 @@ ipcMain.on("download", async (
         await downloader.checking();
         downloader.download();
         return give_data(e, Data.download);
-    } catch (error) {
+    } catch (e) {
+        console.error(e)
         return give_error(
             e,
             Data.download,
-            "Error in /download endpoint:" + error
+            "Error in /download endpoint:" + e
         );
     }
 }
@@ -630,8 +679,6 @@ ipcMain.on("local", async (e) => {
                     ? `data:${picture.format};base64,${base64}`
                     : null;
 
-                // console.log(metadata.common)
-
                 files.push({
                     type: "local:track",
                     track: {
@@ -704,6 +751,7 @@ ipcMain.on("search", async (e, data: { where: string; query: string }) => {
         );
     }
 });
+
 ipcMain.on("track", async (e, req: { where: string; id: string }) => {
     const { where, id } = req;
 
@@ -760,6 +808,7 @@ ipcMain.on("track", async (e, req: { where: string; id: string }) => {
         );
     }
 });
+
 ipcMain.on("playlist", async (e, req: { where: string; id: string }) => {
     const { where, id } = req;
 
@@ -937,6 +986,7 @@ ipcMain.on("playlist", async (e, req: { where: string; id: string }) => {
         );
     }
 });
+
 ipcMain.on("likedsongs", async (e, data: { where: string }) => {
     const { where } = data;
     const {
@@ -986,7 +1036,7 @@ ipcMain.on("likedsongs", async (e, data: { where: string }) => {
             return give_data(e, Data.likedsongs, liked_songs);
         }
     } catch (e) {
-        console.log(e);
+        console.error(e);
         return give_error(
             e,
             Data.likedsongs,
@@ -1071,7 +1121,6 @@ ipcMain.on("stream", async (e, req: { where: string, mode: string, id: string })
         }
 
         if (where === "local") {
-            // console.log(id);
             const base64Audio = readFileSync(id);
             return give_data(e, Data.stream, {
                 url: base64Audio,
@@ -1080,16 +1129,20 @@ ipcMain.on("stream", async (e, req: { where: string, mode: string, id: string })
 
         let musicId = "";
         const data = getDataFromDatabase(executableDir, "data", "track");
-        console.log(data[where][id])
-        if (data[where][id] && data[where][id]?.music_url !== null) {
-            const ress = await fetch(data[where][id].music_url, {
-                method: "HEAD",
-            });
 
-            if (ress.status !== 403) {
-                return give_data(e, Data.stream, {
-                    url: data[where][id].music_url,
-                });
+        if (data[where]) {
+            if (data[where][id]) {
+                if (data[where][id].music_url !== null) {
+                    const ress = await fetch(data[where][id].music_url, {
+                        method: "HEAD",
+                    });
+
+                    if (ress.status !== 403) {
+                        return give_data(e, Data.stream, {
+                            url: data[where][id].music_url,
+                        });
+                    }
+                }
             }
         }
 
@@ -1120,12 +1173,12 @@ ipcMain.on("stream", async (e, req: { where: string, mode: string, id: string })
         writeDataToDatabase(executableDir, "data", "track", data);
 
         return give_data(e, Data.stream, { url: bestAudio });
-    } catch (error) {
-        console.error("Error fetching audio stream:", error);
+    } catch (e) {
+        console.error("Error fetching audio stream:", e);
         return give_error(
             e,
             Data.stream,
-            "Internal server error while getting stream url"
+            "Internal server error while getting stream url: " + e
         );
     }
 }
@@ -1150,37 +1203,30 @@ ipcMain.on("likedartists", async (e) => {
     } = getDataFromDatabase(executableDir, "data", "user");
 
     try {
-        let spotify_artists: Artist[] = [],
-            youtube_artists: Artist[] = [];
+        let spotify_artists: User_Artist = {},
+            youtube_artists: User_Artist = {};
 
         if (spotify.access_token !== null && spotify.access_token !== undefined) {
             spotify_artists = await downloader.music.spotify.fetch_user_following_artists(spotify.access_token);
-
-            if (
-                spotify_artists[0].error
-            ) {
-                throw new Error(spotify_artists[0].error);
-            }
         }
 
         if (youtube.access_token !== null && youtube.access_token !== undefined) {
             youtube_artists = await downloader.music.youtube.fetch_user_sub_channel(youtube.access_token)
-
-            if (
-                youtube_artists[0].error
-            ) {
-                throw new Error(youtube_artists[0].error);
-            }
         }
-
+        writeDataToDatabase(executableDir, "data", "userartists", {
+            youtube:
+                (youtube_artists.artists as Artist[]).length > 0 ? (youtube_artists.artists) : [],
+            spotify:
+                (spotify_artists.artists as Artist[]).length > 0 ? (spotify_artists.artists) : [],
+        });
         return give_data(e, Data.likedartists, {
             youtube:
-                youtube_artists.length > 0
-                    ? youtube_artists
+                (youtube_artists.artists as Artist[]).length > 0
+                    ? youtube_artists.artists
                     : ["Youtube Account is not connected"],
             spotify:
-                spotify_artists.length > 0
-                    ? spotify_artists
+                (spotify_artists.artists as Artist[]).length > 0
+                    ? spotify_artists.artists
                     : ["Spotify Account is not connected"],
         });
     } catch (e) {
@@ -1190,5 +1236,24 @@ ipcMain.on("likedartists", async (e) => {
             Data.likedartists,
             "Internal server error while getting user liked artists"
         );
+    }
+})
+
+ipcMain.on("artist", async (e, data: { where: string, id: string }) => {
+    try {
+        let res: any = null;
+        const { where, id } = data;
+        console.log(where, ' ', id)
+        if (where === "youtube") {
+            res = await downloader.music.youtube.fetch_artist(id);
+        }
+        else {
+            res = await downloader.music.spotify.fetch_artists(id);
+        }
+        give_data(e, Data.artist, res)
+    }
+    catch (e) {
+        console.log(e)
+        give_error(e, Data.artist, e);
     }
 })

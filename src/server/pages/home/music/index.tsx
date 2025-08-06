@@ -1,7 +1,8 @@
-import LikedSongs from "./liked_songs";
-import Local from "./local";
-import Playlist from "./playlist";
-import Track from "./track";
+import Artist from "./artist/index.tsx";
+import LikedSongs from "./liked_songs/index.tsx"
+import Local from "./local/index.tsx"
+import Playlist from "./playlist/index.tsx"
+import Track from "./track/index.tsx"
 
 export default function Music({ urll }: { urll: string }) {
     const url = urll.split("/").slice(3);
@@ -23,9 +24,15 @@ export default function Music({ urll }: { urll: string }) {
     }
     else if (url[0] == "local") {
         return (
-            <Local url={urll} />
+            <Local />
         )
     }
+    else if (url[0] == "artist") {
+        return (
+            <Artist url={urll} />
+        )
+    }
+
 
     return (
         <>

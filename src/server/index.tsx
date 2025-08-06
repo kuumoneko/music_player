@@ -1,4 +1,3 @@
-// @ts-nocheck
 // react server
 import React, { useEffect, useState } from 'react';
 import "./index.css"
@@ -15,11 +14,9 @@ export default function Server() {
     const port = Number(localStorage.getItem("port") as string)
     const [url, seturl] = useState(localStorage.getItem("url") || `http://localhost:${port}/`);
 
-    // console.log(url)
     const general_url = window.location.href;
 
     if (general_url.includes("youtube.readonly") && general_url.includes("code=")) {
-        // console.log(`http://localhost:3000/settings/youtube/${general_url.split("&code=")[1].split("&scope=")[0]}`)
         goto(`/settings/youtube/${general_url.split("&code=")[1].split("&scope=")[0]}`, seturl)
         window.location.href = "/"
     }
