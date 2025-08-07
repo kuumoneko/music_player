@@ -1,9 +1,9 @@
 # Music downloader web app
 
 > A Music web app built on React.js and Electron
->
-> UPDATE NOTE:
->
+
+## UPDATE NOTE
+
 > fix infinity loop in get api key
 >
 > add reached_date to refresh on day
@@ -12,9 +12,19 @@
 >
 > add followed Artist option in side bar
 >
-> refactor code shorter
+> refactor downloader class code shorter
 
-## Usage for developers and users will be added later, Im fixing something
+## Notes for next commit
+
+> Refrsh api_key when now reach Midnight Pacific Time (PT), 8 AM UTC or 7 AM UTC during Day Saving Time (DST)
+>
+> Refactor code in electron
+>
+> Refactor code in Front end
+>
+> I will commit this version after testing refresh api_key
+
+## Usage will be added later, Im fixing something
 
 ## Learn More
 
