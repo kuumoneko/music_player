@@ -40,7 +40,7 @@ export default class Downloader {
         this.stastus = Status.idle;
     }
 
-    async get_status(): Promise<{ status: Status }> {
+    get_status(): { status: Status } {
         return { status: this.stastus, };
     }
 

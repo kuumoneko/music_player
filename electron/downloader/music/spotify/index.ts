@@ -206,6 +206,7 @@ export default class Spotify {
             }
         }
         catch (e) {
+            console.error(e);
             throw new Error(e);
         }
     }

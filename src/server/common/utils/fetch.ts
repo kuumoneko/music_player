@@ -105,6 +105,11 @@ export function fetch_data(what: Data, data?: any): Promise<any> {
         const temp = received_datas.length - [...received_datas].reverse().findIndex((item: any) => { return item.from === what });
         const received_data: any = received_datas.at(temp - 1);
         received_datas = received_datas.filter((item: any) => { return item.from !== what });
-        resolve(received_data.data)
+        if (received_data.message) {
+            resolve(received_data.message)
+        }
+        else {
+            resolve(received_data.data)
+        }
     })
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Show } from "../music";
+import { Show, Showw } from "../music";
 import { Data, fetch_data } from "../../../../common/utils/fetch.ts";
 
 export default function LikedSongs({ url }: { url: string }) {
@@ -49,7 +49,11 @@ export default function LikedSongs({ url }: { url: string }) {
         }, [])
 
         return (
-            <Show list={liked_songs} source={source} id="liked songs" mode="liked songs" />
+            <>
+                <Showw name={"liked songs"} thumbnail={""} duration={0} releaseDate="" playlist={liked_songs} source={source} id="liked songs" mode="liked songs" />
+                <Show list={liked_songs} source={source} id="liked songs" mode="liked songs" />
+            </>
+
         )
     }
 }

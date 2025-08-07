@@ -16,13 +16,11 @@
 
 ## Notes for next commit
 
-> Refrsh api_key when now reach Midnight Pacific Time (PT), 8 AM UTC or 7 AM UTC during Day Saving Time (DST)
+> Refresh api_key when now reach Midnight Pacific Time (PT), 8 AM UTC or 7 AM UTC during Day Saving Time (DST)
 >
 > Refactor code in electron
 >
 > Refactor code in Front end
->
-> I will commit this version after testing refresh api_key
 
 ## Usage will be added later, Im fixing something
 

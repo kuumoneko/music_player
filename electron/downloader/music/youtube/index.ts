@@ -17,14 +17,16 @@ export default class Youtube {
 
     chose_api_key(isAuth: boolean) {
         if (isAuth) {
-            return this.youtube_api_key.filter((item: youtube_api_keys) => {
+            const temp = this.youtube_api_key
+            return temp.find((item: youtube_api_keys) => {
                 return item.isAuth === true && item.reach_quota === false
-            })[0].api_key
+            })?.api_key
         }
         else {
-            return this.youtube_api_key.filter((item: youtube_api_keys) => {
+            const temp = this.youtube_api_key
+            return temp.find((item: youtube_api_keys) => {
                 return item.isAuth === false && item.reach_quota === false
-            })[0].api_key
+            })?.api_key
         }
     }
 
@@ -36,7 +38,7 @@ export default class Youtube {
         let data: any;
         while (!done) {
             const key = this.chose_api_key(isAuth);
-            if (key.length === 0) {
+            if (key?.length === 0 || key === undefined || key === null) {
                 throw new Error("Reach quota of all apikey, try to add new one")
             }
             if (isAuth && (access_token === null || access_token === undefined)) {

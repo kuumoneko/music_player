@@ -17,7 +17,6 @@ export default function Artist({
         async function run() {
 
             const artists = await fetch_data(Data.likedartists);
-            console.log(artists);
             setspotify(artists.spotify);
             setyoutube(artists.youtube);
             localStorage.setItem("artists", JSON.stringify({

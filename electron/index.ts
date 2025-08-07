@@ -72,61 +72,80 @@ server.get("/", (req, res) => {
     });
 });
 
-// - - - - - Check if api_key is reached quota - - - - - - 
-// (async () => {
-//     const keys: youtube_api_keys[] = system.Youtube_Api_key;
-//     const video_test_id: string = system.test_id;
-//     for (const key of keys) {
-//         if (key.reach_quota) {
-//             continue;
-//         }
-//         const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&id=${video_test_id}&key=${key.api_key}`;
-//         const res = await fetch(url, {
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             }
-//         })
-//         const data = await res.json();
-//         if (data.error && data.error.code === 403 && data.error?.errors?.includes((item: any) => {
-//             return item.reason === "quotaExceeded"
-//         })) {
-//             temp.push({
-//                 api_key: key.api_key,
-//                 reach_quota: true,
-//                 isAuth: key.isAuth,
-//                 date_reached: new Date().toISOString().split('T')[0]
-//             })
-//         }
-//         else {
-//             temp.push({
-//                 api_key: key.api_key,
-//                 reach_quota: false,
-//                 isAuth: key.isAuth,
-//                 date_reached: ""
-//             })
-//         }
-//     }
-// })();
-
-// - - - - - - Downloader class - - - - - -
-let downloader: Downloader = new Downloader(
-    {
-        ytdlp: path.join(executableDir, "support", "yt-dlp.exe"),
-        spotdlp: path.join(executableDir, "support", "spot-dlp.exe"),
-        ffmpeg: path.join(executableDir, "support", "ffmpeg", "ffmpeg.exe"),
-        download_folder: path.join(executableDir, "download"),
-        curr_folder: path.join(executableDir),
-        spot_errors: path.join(executableDir, "data", "spot.txt"),
-        audio_format: Audio_format.mp3,
-        youtube_api_key: system.Youtube_Api_key,
-        google_client_id: system.web.client_id,
-        google_client_secret: system.web.client_secret,
-        redirect_uris: system.web.redirect_uris,
-        spotify_api_key: system.Spotify_Api_key,
-        spotify_client: system.Spotify_client,
-        port: port
+// - - - - - Check if api_key is reached quota - - - - - -
+let downloader: Downloader = null as any
+let temp: youtube_api_keys[] = [];
+(async () => {
+    const keys: youtube_api_keys[] = system.Youtube_Api_key;
+    const video_test_id: string = system.test_id;
+    for (const key of keys) {
+        if (key.reach_quota) {
+            temp.push({
+                api_key: key.api_key,
+                reach_quota: true,
+                isAuth: key.isAuth,
+                date_reached: new Date().toISOString().split('T')[0]
+            })
+            continue;
+        }
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&id=${video_test_id}&key=${key.api_key}`;
+        const res = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        const data = await res.json();
+        const tempp = data.error?.errors?.filter((item: any) => {
+            return item.reason === "quotaExceeded"
+        }) || []
+        if (data.error !== null && data.error !== undefined && data.error.code === 403 && tempp.length > 0) {
+            temp.push({
+                api_key: key.api_key,
+                reach_quota: true,
+                isAuth: key.isAuth,
+                date_reached: new Date().toISOString().split('T')[0]
+            })
+        }
+        else {
+            temp.push({
+                api_key: key.api_key,
+                reach_quota: false,
+                isAuth: key.isAuth,
+                date_reached: ""
+            })
+        }
     }
-);
+})().then(() => {
+    // - - - - - - Downloader class - - - - - -
+    downloader = new Downloader(
+        {
+            ytdlp: path.join(executableDir, "support", "yt-dlp.exe"),
+            spotdlp: path.join(executableDir, "support", "spot-dlp.exe"),
+            ffmpeg: path.join(executableDir, "support", "ffmpeg", "ffmpeg.exe"),
+            download_folder: path.join(executableDir, "download"),
+            curr_folder: path.join(executableDir),
+            spot_errors: path.join(executableDir, "data", "spot.txt"),
+            audio_format: Audio_format.mp3,
+            youtube_api_key: temp.length > 0 ? temp : system.Youtube_api_key,
+            google_client_id: system.web.client_id,
+            google_client_secret: system.web.client_secret,
+            redirect_uris: system.web.redirect_uris,
+            spotify_api_key: system.Spotify_Api_key,
+            spotify_client: system.Spotify_client,
+            port: port
+        }
+    )
+});
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const wait_for_downloader = async () => {
+    while (downloader === null || downloader === undefined) {
+        await sleep(1000)
+    }
+}
 
 // - - - - - - Check if access_token is expired - - - - - - -
 setInterval(() => {
@@ -233,6 +252,7 @@ setInterval(() => {
 // - - - - - check if reach time to refresh quota - - - - -
 
 setInterval(() => {
+    if (downloader === null || downloader === undefined) { return }
     const now = new Date();
     const utc_hour = now.getUTCHours();
     const date = now.toISOString().split("T")[0];
@@ -248,7 +268,6 @@ setInterval(() => {
 }, 15 * 60 * 1000); // 15 minutes
 
 // - - - -  - main electron app - - - -  - -
-
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -339,6 +358,7 @@ const give_data = (event: pkg.IpcMainEvent, from: Data, data: any = {}) => {
 
 // - - - - - - AUTH - - - - -
 ipcMain.on("login", async (event: any, data: { where: string }) => {
+    await wait_for_downloader();
     const { where } = data;
     let authUrl: string;
     const redirectUri = `http://localhost:${port}`;
@@ -459,6 +479,8 @@ ipcMain.on("download", async (
         format: Audio_format;
         links: [{ source: string; mode: string; id: string }];
     }) => {
+    await wait_for_downloader();
+
     try {
         console.log("- - - - - - - - - - DOWNLOAD TIME - - - - - - - - - -")
         const { format, links } = data;
@@ -580,7 +602,9 @@ ipcMain.on("download", async (
 );
 
 ipcMain.on("download_status", async (e: any) => {
-    const temp = await downloader.get_status()
+    await wait_for_downloader();
+
+    const temp = downloader.get_status()
     return give_data(e, Data.download_status, {
         status: temp.status,
     });
@@ -597,6 +621,8 @@ ipcMain.on("user", (e) => {
 });
 
 ipcMain.on("localfile", async (e, req: { location: string }) => {
+    await wait_for_downloader();
+
     const { location } = req;
     if (!location || typeof location !== "string") {
         return give_error(
@@ -640,6 +666,8 @@ ipcMain.on("localfile", async (e, req: { location: string }) => {
 });
 
 ipcMain.on("local", async (e) => {
+    await wait_for_downloader();
+
     try {
         const { local } = getDataFromDatabase(executableDir, "data", "user");
 
@@ -738,6 +766,8 @@ ipcMain.on("local", async (e) => {
 // - - - - - DATA - - - -
 
 ipcMain.on("search", async (e, data: { where: string; query: string }) => {
+    await wait_for_downloader();
+
     const { where, query } = data;
     try {
         const result = await downloader.music.search(query, where);
@@ -753,6 +783,8 @@ ipcMain.on("search", async (e, data: { where: string; query: string }) => {
 });
 
 ipcMain.on("track", async (e, req: { where: string; id: string }) => {
+    await wait_for_downloader();
+
     const { where, id } = req;
 
     try {
@@ -810,6 +842,8 @@ ipcMain.on("track", async (e, req: { where: string; id: string }) => {
 });
 
 ipcMain.on("playlist", async (e, req: { where: string; id: string }) => {
+    await wait_for_downloader();
+
     const { where, id } = req;
 
     const {
@@ -974,7 +1008,6 @@ ipcMain.on("playlist", async (e, req: { where: string; id: string }) => {
             });
 
             writeDataToDatabase(executableDir, "data", "track", data);
-
             return give_data(e, Data.playlist, playlist);
         }
     } catch (e) {
@@ -988,6 +1021,8 @@ ipcMain.on("playlist", async (e, req: { where: string; id: string }) => {
 });
 
 ipcMain.on("likedsongs", async (e, data: { where: string }) => {
+    await wait_for_downloader();
+
     const { where } = data;
     const {
         youtube,
@@ -1046,6 +1081,8 @@ ipcMain.on("likedsongs", async (e, data: { where: string }) => {
 });
 
 ipcMain.on("user_playlists", async (e) => {
+    await wait_for_downloader();
+
     const {
         youtube,
         spotify,
@@ -1110,6 +1147,8 @@ ipcMain.on("user_playlists", async (e) => {
 });
 
 ipcMain.on("stream", async (e, req: { where: string, mode: string, id: string }) => {
+    await wait_for_downloader();
+
     const { where, mode, id } = req;
     try {
         if (!id) {
@@ -1185,6 +1224,8 @@ ipcMain.on("stream", async (e, req: { where: string, mode: string, id: string })
 );
 
 ipcMain.on("likedartists", async (e) => {
+    await wait_for_downloader();
+
     const {
         youtube,
         spotify,
@@ -1240,10 +1281,11 @@ ipcMain.on("likedartists", async (e) => {
 })
 
 ipcMain.on("artist", async (e, data: { where: string, id: string }) => {
+    await wait_for_downloader();
+
     try {
         let res: any = null;
         const { where, id } = data;
-        console.log(where, ' ', id)
         if (where === "youtube") {
             res = await downloader.music.youtube.fetch_artist(id);
         }

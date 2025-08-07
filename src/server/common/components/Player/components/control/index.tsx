@@ -58,6 +58,8 @@ export default function ControlUI() {
         }
     }, [played]);
 
+    const [duration, setduraion] = useState(0);
+
     const getUrl = async (source: string, id: string, autoplayed: boolean = true) => {
 
         if (id == "") { return }
@@ -82,6 +84,9 @@ export default function ControlUI() {
 
             audioRef.current = new Audio(data.url);
             audioRef.current.load();
+            audioRef.current.addEventListener('loadedmetadata', () => {
+                setduraion(audioRef.current.duration)
+            });
 
             localStorage.setItem("play_url", JSON.stringify({
                 id: id,
@@ -311,12 +316,11 @@ export default function ControlUI() {
                 </button>
             </div>
             <div className="player flex flex-row items-center ">
-                <span className='mr-[5px] cursor-default select-none'>
-                    {audioRef.current?.duration
-                        ? `${formatDuration(audioRef.current?.currentTime || 0)} / ${formatDuration(
-                            audioRef.current?.duration || 0
-                        )}`
-                        : 'Loading...'}
+                <span className='mr-[5px] cursor-default select-none text-xs'>
+                    {
+                        (duration !== 0) ? `${(audioRef.current?.currentTime) ? formatDuration(0) : formatDuration(audioRef.current?.currentTime)} / ${formatDuration(duration)}` :
+                            `Loading`
+                    }
                 </span>
 
                 <Slider name={"time"} width={"800"} reff={TimeSliderRef} value={Time} Change={(e: React.ChangeEvent<HTMLInputElement>) => {
