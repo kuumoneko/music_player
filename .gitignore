@@ -7,10 +7,9 @@
 /public
 .eslintrc
 .hintrc
-/electron/node_modules
-/electron/support
-/electron/data/*
-!/electron/data/*example*
-/electron/**/*.js
 build.ts
 build_electron.ts
+/server/data/**/*.json
+/server/data/**/*.txt
+!/server/data/example/**/*.json
+!/server/data/example/**/*.txt

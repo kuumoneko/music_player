@@ -34,6 +34,8 @@ export default class Downloader {
             google_client_secret: options.google_client_secret,
             redirect_uris: options.redirect_uris,
             port: options.port || 3000,
+            endpoints: options.endpoints,
+            database: options.curr_folder || ""
         })
 
         // status
@@ -247,8 +249,8 @@ export default class Downloader {
             }
             catch (e) {
                 console.error(e)
-                const track: Track = await this.music.youtube.fetchVideos(id);
-                const data = await this.music.youtube.findMatchingVideo(track);
+                const track: Track[] = await this.music.youtube.fetch_track([id]);
+                const data = await this.music.findMatchingVideo(track[0]);
                 if (data) {
                     this.download_queue.push({
                         title: this.format_title(data.track?.name as string) || "",
@@ -262,6 +264,7 @@ export default class Downloader {
                 }
             }
         }
+        this.set_status(Status.done);
     }
 
     async getAudioURLAlternative(id: string): Promise<string> {

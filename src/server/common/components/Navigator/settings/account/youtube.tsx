@@ -9,20 +9,24 @@ export default function Youtube_Account({
     url, seturl
 }: { url: string, seturl: (a: string) => void }) {
 
+
+
     let youtube: any = JSON.parse(localStorage.getItem("user") as string).youtube || null;
-    const [logined, setlogined] = useState(false);
+
+    const [credential, setcredential] = useState(url.split("youtube/")[1]);
+
 
     useEffect(() => {
-
-        async function login() {
-            if (logined === false) {
+        async function run() {
+            if (credential === "" || credential === null || credential === undefined) {
                 return;
             }
-            const data = await fetch_data(Data.login, { where: "youtube" });
+            // console.log(credential)
+            const data = await fetch_data(Data.auth, { code: credential, where: "youtube" });
+
             if (data.user == undefined) {
                 return goto("/settings", seturl)
             }
-
             localStorage.setItem("user", JSON.stringify({
                 spotify: JSON.parse(localStorage.getItem("user") as string).spotify,
                 youtube: {
@@ -34,8 +38,24 @@ export default function Youtube_Account({
             }));
             youtube = data.user;
             goto("/settings", seturl)
-            // window.location.reload();
+            window.location.href = "/";
             return;
+        }
+        run();
+    }, [credential])
+
+    const [logined, setlogined] = useState(false);
+
+    useEffect(() => {
+
+        async function login() {
+            if (logined === false) {
+                return;
+            }
+            const data = await fetch_data(Data.login, { where: "youtube" });
+            console.log(data);
+
+            window.location.href = data.url;
         }
         login();
     }, [logined])
@@ -45,7 +65,7 @@ export default function Youtube_Account({
     useEffect(() => {
         async function run() {
             await fetch_data(Data.logout, { where: "youtube" });
-            
+
             localStorage.setItem("user", JSON.stringify({
                 spotify: JSON.parse(localStorage.getItem("user") as string).spotify,
                 youtube: {
@@ -99,7 +119,7 @@ export default function Youtube_Account({
             {
                 (youtube.user.name !== "") && (
                     <span className="cursor-default flex flex-row-reverse items-center" onClick={() => {
-            
+
                         setlogout(true)
                     }}>
                         log out

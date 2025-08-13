@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Show, Showw } from "../music";
 import { Data, fetch_data } from "../../../../common/utils/fetch.ts";
+import Top from "../../../../common/components/Show_music/components/top.tsx";
+import List from "../../../../common/components/Show_music/components/list.tsx";
 
 export default function Local() {
 
@@ -16,8 +17,8 @@ export default function Local() {
 
     return (
         <>
-            <Showw name="local file" thumbnail={null} duration={0} releaseDate="" artists={[]} source="local" id="" mode="playlist" playlist={localfile} />
-            <Show list={localfile} source="local" id="local" mode="local" />
+            <Top name="local file" thumbnail={null} duration={0} releaseDate="" artists={[]} source="local" id="" mode="playlist" playlist={localfile} />
+            <List list={localfile} source="local" id="local" mode="local" />
         </>
 
     )

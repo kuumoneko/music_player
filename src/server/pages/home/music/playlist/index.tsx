@@ -1,49 +1,25 @@
 import { useEffect, useState } from "react";
-import { Show, Showw } from "../music";
 import { Data, fetch_data } from "../../../../common/utils/fetch.ts";
+import Top from "../../../../common/components/Show_music/components/top.tsx";
+import List from "../../../../common/components/Show_music/components/list.tsx";
+import Loading from "../../../../common/components/Loading/index.tsx";
 
-export default function Playlist({ urll }: { urll: string }) {
-    const tempping = urll.split("/").slice(3)
-    const [data, setdata] = useState(tempping[1] + "/" + tempping[2])
+export default function Playlist({ url }: { url: string }) {
+    const [dom, setdom] = useState(<Loading mode="Loading playlist" />);
 
-    const [playlist, setPlaylist] = useState([]);
-    const [thumbnail, setthumbnail] = useState<any>(null);
-    const [name, setname] = useState<any>(null);
-    const [duration, setduration] = useState<any>(null);
-
-    const refesh = async (data_url: string) => {
-        const [source, id] = data_url.split("/")
+    const refresh = async (source: string, id: string) => {
         const dataa = await fetch_data(Data.playlist, { where: source, id: id })
-        setthumbnail(dataa.thumbnail);
-        setname(dataa.name);
-        setduration(dataa.duration);
-        setPlaylist(dataa.tracks);
+        setdom(
+            <>
+                <Top name={dataa.name} thumbnail={dataa.thumbnail} duration={dataa.duration} source={source} id={id} mode={"playlist"} playlist={dataa.tracks} />
+                <List list={dataa.tracks} source={source} id={id} mode="playlist" />
+            </>
+        )
     }
 
     useEffect(() => {
-        const run = window.setInterval(() => {
-            const lmao = localStorage.getItem("url") as string;
-            const temp = lmao.split("/").slice(3)
-            const test = data;
-            setdata(temp[1] + "/" + temp[2])
-            if (test[0] !== temp[1] || test[1] !== temp[2]) {
-                refesh(`${temp[1]}/${temp[2]}`)
-                setdata(temp[1] + "/" + temp[2])
-            }
-        }, 500);
-        return () => window.clearInterval(run);
-    })
-
-    useEffect(() => {
-        refesh(data)
-    }, [])
-
-    return (
-        <>
-            <Showw name={name} thumbnail={thumbnail} duration={duration} source={data.split("/")[0]} id={data.split("/")[1]} mode={"playlist"} playlist={playlist} />
-            <Show list={playlist} source={data.split("/")[0]} id={data.split("/")[1]} mode="playlist" />
-        </>
-
-    )
-
+        const [source, id] = url.split("/").slice(4);
+        refresh(source, id)
+    }, [url])
+    return dom;
 }

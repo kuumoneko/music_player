@@ -14,12 +14,12 @@ export default function Music({ urll }: { urll: string }) {
     }
     else if (url[0] == "playlist") {
         return (
-            <Playlist urll={urll} />
+            <Playlist url={urll} />
         )
     }
     else if (url[0] == "track") {
         return (
-            <Track urll={urll} />
+            <Track url={urll} />
         )
     }
     else if (url[0] == "local") {
@@ -32,8 +32,6 @@ export default function Music({ urll }: { urll: string }) {
             <Artist url={urll} />
         )
     }
-
-
     return (
         <>
 

@@ -14,6 +14,9 @@ export default function LocalFile() {
     };
 
     useEffect(() => {
+        if (location === undefined || location === "undefined" || location === null || location.length === 0) {
+            return;
+        }
         async function run() {
             const data = await fetch_data(Data.localfile, { location: location });
             localStorage.setItem("local", data.folder)

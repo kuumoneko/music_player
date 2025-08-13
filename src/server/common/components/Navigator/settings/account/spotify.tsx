@@ -15,14 +15,15 @@ export default function Spotify_Account({
 
     let spotify: any = JSON.parse(localStorage.getItem("user") as string).spotify || null;
 
-    const [logined, setlogined] = useState(false);
+    const [credential, setcredential] = useState(url.split("spotify/")[1]);
+
 
     useEffect(() => {
-        async function login() {
-            if (logined === false) {
+        async function run() {
+            if (credential === "" || credential === null || credential === undefined) {
                 return;
             }
-            const data = await fetch_data(Data.login, { where: "spotify" })
+            const data = await fetch_data(Data.auth, { code: credential, where: "spotify" });
 
             if (data.user == undefined) {
                 return goto("/settings", seturl)
@@ -39,7 +40,24 @@ export default function Spotify_Account({
             }));
             spotify = data.user;
             goto("/settings", seturl)
+            window.location.href = "/";
             return;
+        }
+        run();
+    }, [credential])
+
+    const [logined, setlogined] = useState(false);
+
+    useEffect(() => {
+
+        async function login() {
+            if (logined === false) {
+                return;
+            }
+            const data = await fetch_data(Data.login, { where: "spotify" });
+            console.log(data);
+
+            window.location.href = data.url;
         }
         login();
     }, [logined])
@@ -66,6 +84,7 @@ export default function Spotify_Account({
             run()
         }
     }, [logout])
+
 
     return (
         <div>

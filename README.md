@@ -13,14 +13,20 @@
 > add followed Artist option in side bar
 >
 > refactor downloader class code shorter
-
-## Notes for next commit
-
-> Refresh api_key when now reach Midnight Pacific Time (PT), 8 AM UTC or 7 AM UTC during Day Saving Time (DST)
 >
-> Refactor code in electron
+> Optimize fetch data from youtube with etag to reduce quota
 >
-> Refactor code in Front end
+> Retry when Spotify reach quota limit
+>
+> Refactor main page
+>
+> Change Search youtube to third party to reduce quota
+>
+> Change back to Nodejs express backend to reduce app size
+>
+> Add pin artist and playlist into homepage
+>
+> Add new tracks from pin artist into homepage
 
 ## Usage will be added later, Im fixing something
 

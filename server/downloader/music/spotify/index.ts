@@ -1,45 +1,69 @@
 /* eslint-disable no-loop-func */
 import axios from "axios";
-import { Album, Artist, Music_options, Playlist, Search, Track, User, User_Artist, UserPlaylist } from "../../../types/index.js";
+import { Album, Artist, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist } from "../../../types/index.js";
 import { Buffer } from "node:buffer"
+import { readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 
 export default class Spotify {
     private spotify_api_key: string | undefined;
     private spotify_client_id: string | undefined;
     private token: string | undefined = "";
-    private access_token: string | undefined = "";
     private port: number = 3000;
+    private database: string;
 
     constructor(options: Music_options) {
         this.spotify_api_key = options.spotify_api_key;
         this.spotify_client_id = options.spotify_client;
         this.port = options.port || 3000;
+        this.database = options.database;
     }
 
-    set_access_token(token: string) {
-        this.access_token = token;
+    getdata(filename: string) {
+        return JSON.parse(readFileSync(path.join(this.database, `${filename}.json`), { encoding: "utf-8" }));
     }
 
-    get_access_token() {
-        return this.access_token;
+    writedata(filename: string, data: any) {
+        writeFileSync(path.join(this.database, `${filename}.json`), JSON.stringify(data), { encoding: "utf-8" });
+    }
+
+    sleep(ms: number) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     async fetch_data(
         url: string,
         access_token?: string) {
         try {
+            const max_retry = 10;
+            let time = 0;
             await this.get_token();
 
-            const response = await fetch(`${url}`, {
-                method: "GET",
-                headers: {
-                    'Authorization': `Bearer ${(access_token && access_token !== "") ? access_token : this.token}`,
-                    'Content-Type': 'application/json',
+            let done = false;
+            while (!done) {
+                if (time >= max_retry) {
+                    done = true;
+                    throw new Error("Cant fetch dataa from Spotify, reach max retry")
                 }
-            })
-            const data = await response.json();
+                const response = await fetch(`${url}`, {
+                    method: "GET",
+                    headers: {
+                        'Authorization': `Bearer ${(access_token && access_token !== "") ? access_token : this.token}`,
+                        'Content-Type': 'application/json',
+                    }
+                })
 
-            return data;
+                if (response.status === 429) {
+                    const retryAfter = response.headers.get('Retry-After');
+                    console.log(`Rate limit hit. Retry after ${retryAfter} seconds.`);
+                    time += 1;
+                    await this.sleep(Number(retryAfter) * 1000);
+                } else {
+                    const data = await response.json();
+                    done = true;
+                    return data;
+                }
+            }
         }
         catch (e) {
             throw new Error(e);
@@ -84,7 +108,7 @@ export default class Spotify {
                     }
                 );
                 const { access_token, refresh_token } = response.data;
-                const spotifyUser = await this.getme(access_token);
+                const spotifyUser = await this.get_me(access_token);
                 resolve({
                     user: spotifyUser,
                     refresh_token: refresh_token,
@@ -127,21 +151,17 @@ export default class Spotify {
         })
     }
 
-    async getme(token: string) {
-        return await this.fetch_data('https://api.spotify.com/v1/me', token)
-    }
-
-    async fetch_spotify_user(id: string = ''): Promise<User> {
-        const url = `https://api.spotify.com/v1/users/${id}`
-        const data = await this.fetch_data(url)
+    async get_me(token: string) {
+        const data = await this.fetch_data('https://api.spotify.com/v1/me', token)
         return {
-            type: "spotify:user",
             name: data.display_name,
-            thumbnail: data.images[0]?.url || "",
-        };
+            email: data.email,
+            id: data.id
+        }
     }
 
-    async fetch_spotify_user_playlists(id: string = '', access_token: string): Promise<UserPlaylist> {
+    async fetch_user_playlists(access_token: string): Promise<UserPlaylist> {
+        const { id } = await this.get_me(access_token);
         let url: string = `https://api.spotify.com/v1/users/${id}/playlists`
         const tracks: any[] = [];
         try {
@@ -167,7 +187,7 @@ export default class Spotify {
         }
     }
 
-    async fetch_spotify_user_saved_playlists(access_token: string = ''): Promise<Playlist> {
+    async fetch_liked_tracks(access_token: string = ''): Promise<Playlist> {
         let url = ` https://api.spotify.com/v1/me/tracks`
         const tracks: any[] = [];
         try {
@@ -183,7 +203,9 @@ export default class Spotify {
                             thumbnail: item.track.album.images[item.track.album.images.length - 1]?.url || null,
                             artists: item.track.artists.map((artist: any) => {
                                 return {
-                                    name: artist.name
+                                    name: artist.name,
+                                    id: artist.id
+
                                 }
                             }),
                             track: {
@@ -211,7 +233,7 @@ export default class Spotify {
         }
     }
 
-    async search_spotify_video(search: string = ''): Promise<Search> {
+    async search(search: string = ''): Promise<Search> {
         const url = `https://api.spotify.com/v1/search?q=${search}&type=track&limit=25`
 
         try {
@@ -224,7 +246,8 @@ export default class Spotify {
                         thumbnail: item.album.images[item.album.images.length - 1]?.url || null,
                         artists: item.artists.map((artist: any) => {
                             return {
-                                name: artist.name
+                                name: artist.name,
+                                id: artist.id
                             }
                         }),
                         track: {
@@ -243,20 +266,22 @@ export default class Spotify {
 
     }
 
-    async fetchPlaylistVideos_spotify(link: string = '', token?: string): Promise<Playlist> {
-        let url: string = `https://api.spotify.com/v1/playlists/${link}`,
-            thumbnail = "", name = "", id = "", duration = 0
+    async fetch_playlist(id: string = '', token?: string): Promise<Playlist> {
+        let url: string = `https://api.spotify.com/v1/playlists/${id}`,
+            thumbnail = "", name = "", duration = 0
         const tracks: any[] = [];
 
         try {
             while (url !== null && url !== undefined) {
                 const video = await this.fetch_data(url, token);
-                if (thumbnail === "" && name === "" && id === "") {
+
+                if (thumbnail === "" && name === "") {
                     thumbnail = video.images[video.images.length - 1].url;
                     name = video.name;
                     id = video.id;
                 }
-                tracks.push(...video.tracks.items
+                const temp = (url.includes("/tracks?")) ? video.items : video.tracks.items
+                tracks.push(...temp
                     .filter((item: any) => item.track !== null)
                     .map((item: any) => {
                         duration += item.track.duration_ms;
@@ -265,18 +290,19 @@ export default class Spotify {
                             thumbnail: item.track.album.images[item.track.album.images.length - 1]?.url || null,
                             artists: item.track.artists.map((artist: any) => {
                                 return {
-                                    name: artist.name
+                                    name: artist.name,
+                                    id: artist.id
                                 }
                             }),
                             track: {
                                 name: item.track.name,
                                 id: item.track.id,
-                                duration: item.track.duration_ms, // in miliseconds
+                                duration: item.track.duration_ms,
                                 releaseDate: item.track.album.release_date,
                             }
                         }
                     }))
-                url = video.next;
+                url = video?.tracks?.next || undefined;
             }
 
             return {
@@ -291,19 +317,46 @@ export default class Spotify {
         catch (e) {
             throw new Error(e);
         }
-
     }
 
-    async fetchTrackVideos_spotify(id: string = ''): Promise<Track> {
+    async fetch_track(id: string = ''): Promise<Track> {
         const url = `https://api.spotify.com/v1/tracks/${id}`;
         try {
+            const data = this.getdata("track");
+            if (data[id]) {
+                const video = data[id]
+                return {
+                    type: "spotify:track",
+                    thumbnail: video.thumbnail,
+                    artists: video.artists,
+                    track: video.track
+                }
+            }
             const video = await this.fetch_data(url);
+            data[id] = {
+                thumbnail: video.album.images[video.album.images.length - 1]?.url || null,
+                artists: video.artists.map((artist: any) => {
+                    return {
+                        name: artist.name,
+                        id: artist.id
+                    }
+                }),
+                track: {
+                    name: video.name,
+                    id: video.id,
+                    duration: video.duration_ms, // in miliseconds
+                    releaseDate: video.album.release_date,
+                },
+                matched: null
+            }
+            this.writedata("track", data);
             return {
                 type: "spotify:track",
                 thumbnail: video.album.images[video.album.images.length - 1]?.url || null,
                 artists: video.artists.map((artist: any) => {
                     return {
-                        name: artist.name
+                        name: artist.name,
+                        id: artist.id
                     }
                 }),
                 track: {
@@ -319,7 +372,7 @@ export default class Spotify {
         }
     }
 
-    async fetchAlbumVideos_spotify(id: string = ''): Promise<Album> {
+    async fetch_album(id: string = ''): Promise<Album> {
         const url = `https://api.spotify.com/v1/albums/${id}`;
 
         try {
@@ -332,7 +385,8 @@ export default class Spotify {
                 releaseDate: video.release_date,
                 artists: video.artists.map((artist: any) => {
                     return {
-                        name: artist.name
+                        name: artist.name,
+                        id: artist.id
                     }
                 }),
                 thumbnail: video.images[video.images.length - 1].url,
@@ -341,7 +395,8 @@ export default class Spotify {
                         type: "spotify:track",
                         artists: video.artists.map((artist: any) => {
                             return {
-                                name: artist.name
+                                name: artist.name,
+                                id: artist.id
                             }
                         }),
                         thumbnail: video.images[video.images.length - 1].url,
@@ -360,7 +415,7 @@ export default class Spotify {
         }
     }
 
-    async fetch_user_following_artists(access_token: string = ''): Promise<User_Artist> {
+    async fetch_following_artists(access_token: string = ''): Promise<User_Artist> {
         let url = `https://api.spotify.com/v1/me/following?type=artist&limit=50`;
         const artists: Artist[] = [];
 
@@ -390,7 +445,7 @@ export default class Spotify {
         }
     }
 
-    async fetch_artists(id: string): Promise<Artist> {
+    async fetch_artist(id: string): Promise<Artist> {
         let url = `https://api.spotify.com/v1/artists/${id}/albums?include_groups=single&limit=50`;
         const tracks: Track[] = [];
         try {
@@ -402,7 +457,8 @@ export default class Spotify {
                         thumbnail: item.images[item.images.length - 1].url || "",
                         artists: item.artists.map((artist: any) => {
                             return {
-                                name: artist.name
+                                name: artist.name,
+                                id: artist.name
                             }
                         }),
                         track: {
@@ -425,6 +481,21 @@ export default class Spotify {
         }
         catch (e) {
             throw new Error(e)
+        }
+    }
+
+    async get_new_tracks(ids: string[]) {
+        try {
+            const number_of_tracks_to_get = 5;
+            const tracks: Track[] = [];
+            for (const id of ids) {
+                const artist = await this.fetch_artist(id);
+                tracks.push(...(artist.tracks as Track[]).slice(0, number_of_tracks_to_get + 1));
+            }
+            return tracks;
+        }
+        catch (e) {
+            throw new Error(e);
         }
     }
 }

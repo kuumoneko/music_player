@@ -6,42 +6,21 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@distube/ytdl-core": "^4.16.12",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^4.17.23",
-    "@types/fluent-ffmpeg": "^2.1.27",
-    "@types/node": "^16.18.126",
-    "7zip-min": "^2.1.0",
-    "axios": "^1.10.0",
-    "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "ffmpeg-static": "^5.2.0",
-    "fluent-ffmpeg": "^2.1.3",
-    "fs": "^0.0.1-security",
-    "google-auth-library": "^10.2.0",
-    "music-metadata": "^11.7.0",
-    "ytdl-core": "^4.11.5"
-  },
-  "devDependencies": {
     "@babel/preset-react": "^7.27.1",
+    "@distube/ytdl-core": "^4.16.12",
     "@fortawesome/free-brands-svg-icons": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@hookform/resolvers": "^3.10.0",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.16",
-    "@types/glob": "^8.1.0",
-    "@types/mime-types": "^3.0.1",
-    "@types/react": "^18.3.23",
-    "@types/react-dom": "^18.3.7",
     "@typescript-eslint/parser": "^8.38.0",
     "@webpack-cli/generators": "^3.0.7",
-    "concurrently": "^9.2.0",
-    "cross-env": "^7.0.3",
-    "electron": "^37.2.0",
-    "electron-builder": "^26.0.12",
-    "electron-is-dev": "^3.0.1",
-    "esbuild": "^0.25.8",
-    "nodemon": "^3.1.10",
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "fs": "^0.0.1-security",
+    "music-metadata": "^11.7.0",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.58.1",
     "react-refresh": "^0.14.2",
@@ -50,23 +29,32 @@
     "react-router-dom": "^6.30.1",
     "react-scripts": "^5.0.1",
     "tailwindcss": "^3.4.17",
-    "ts-loader": "^9.5.2",
-    "ts-node": "^10.9.2",
-    "tsx": "^4.20.3",
-    "wait-on": "^8.0.3",
     "webpack": "^5.99.9",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "youtube-search-api": "^2.0.1",
+    "ytdl-core": "^4.11.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.23",
+    "@types/fluent-ffmpeg": "^2.1.27",
+    "@types/glob": "^8.1.0",
+    "@types/mime-types": "^3.0.1",
+    "@types/node": "^16.18.126",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "cross-env": "^7.0.3",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2"
   },
   "scripts": {
-    "testt": "node --no-warnings=ExperimentalWarning --loader ts-node/esm test/api.ts",
+    "testt": "node --no-warnings=ExperimentalWarning --loader ts-node/esm test/testt.ts",
     "start": "cross-env GENERATE_SOURCEMAP=false SKIP_PREFLIGHT_CHECK=true react-scripts --openssl-legacy-provider start",
     "build": "react-scripts build",
     "build_app": "node --no-warnings=ExperimentalWarning --loader ts-node/esm build.ts",
-    "electron-dev-ts-node": "wait-on http://localhost:3001 && electron electron/main.js",
-    "electron-dev-ts": "cross-env NODE_OPTIONS=\"--import tsx --trace-warnings\"  electron electron/index.ts",
-    "postelectron-build": "electron-builder -w"
+    "server": "nodemon --watch ./server --ext .ts --exec \"node --no-warnings=ExperimentalWarning --loader ts-node/esm server/index.ts\""
   },
-  "main": "electron/index.js",
+  "main": "src/index.js",
   "homepage": "./src/",
   "eslintConfig": {
     "extends": [
@@ -85,30 +73,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "build": {
-    "appId": "com.kuumoneko.musicplayer",
-    "files": [
-      {
-        "from": "electron",
-        "to": ".",
-        "filter": [
-          "**/*.js",
-          "package.json",
-          "data/**/*",
-          "!data/*example*",
-          "support/**/*"
-        ]
-      },
-      "build/static/**/*",
-      "build/index.html"
-    ],
-    "directories": {
-      "output": "dist"
-    },
-    "extraMetadata": {
-      "main": "index.js"
-    },
-    "extends": null
   }
 }

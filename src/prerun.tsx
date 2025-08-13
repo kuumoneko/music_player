@@ -137,4 +137,8 @@ export const running = () => {
     if (check_storage("volume")) {
         localStorage.setItem("volume", "50")
     }
+
+    if (check_storage("pin")) {
+        localStorage.setItem("pin", "[]")
+    }
 }

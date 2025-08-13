@@ -11,7 +11,6 @@ export function getDataFromDatabase(executableDir: string, folder: string, file:
         return JSON.parse(dataFromFile);
     } catch (error) {
         console.error(`Failed to read or parse database file: ${filePath}`, error);
-        // Exiting because system configuration is critical
         return null
     }
 }

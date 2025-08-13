@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Show } from "../music/music";
 import { Data, fetch_data } from "../../../common/utils/fetch.ts";
+import List from "../../../common/components/Show_music/components/list.tsx";
 
 export default function Show_search({ urll }: { urll: String }) {
     // get url
@@ -29,6 +29,6 @@ export default function Show_search({ urll }: { urll: String }) {
     }, [])
 
     return (
-        <Show list={search} source={url[2]} id="" mode="search" />
+        <List list={search} source={url[2]} id="" mode="search" />
     )
 }

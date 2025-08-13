@@ -33,17 +33,13 @@ export default function forward() {
             source: nextTrack.source,
             thumbnail: nextTrack.thumbnail,
         }));
-
         playQueue = playQueue.slice(1);  // Remove the played track from the queue
         localStorage.setItem("play queue", JSON.stringify(playQueue));
-
     }
     else if (nextfrom.from !== "") {
         const tracks = nextfrom.tracks;
         const [source, mode, id] = nextfrom.from.split(":");
         const track = tracks[0];
-
-
         if (mode == "track") {
             localStorage.setItem("playing", JSON.stringify({
                 artists: typeof track.artists === "string" ? track.artists : track.artists.map((artist: any) => artist.name).join(", "),

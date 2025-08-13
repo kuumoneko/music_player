@@ -1,44 +1,35 @@
 import { useEffect, useState } from "react";
-import { Show, Showw } from "../music/index.tsx";
 import { Data, fetch_data } from "../../../../common/utils/fetch.ts";
+import Top from "../../../../common/components/Show_music/components/top.tsx";
+import List from "../../../../common/components/Show_music/components/list.tsx";
+import Loading from "../../../../common/components/Loading/index.tsx";
 
-export default function Track({ urll }: { urll: string }) {
-    const url = urll.split("/").slice(3);
-    const source = url[1],
-        id = url[2];
+export default function Track({ url }: { url: string }) {
 
-    const [track, settrack] = useState<any>(null);
+    const [dom, setdom] = useState(<Loading mode="Loading track" />);
+
+    const refresh = async (source: string, id: string) => {
+        const dataa = await fetch_data(Data.track, { where: source, id: id })
+        setdom(
+            <>
+                <Top name={dataa?.track.name} thumbnail={dataa?.thumbnail} duration={dataa?.track.duration} releaseDate={dataa?.track.releaseDate} artists={dataa?.artists} source={source} id={id} mode={"track"} />
+                <List list={dataa !== null ? [
+                    {
+                        thumbnail: dataa?.thumbnail,
+                        track: dataa?.track,
+                        artists: dataa?.artists,
+                        name: dataa?.track.name,
+                        duration: dataa?.track.duration,
+                        releaseDate: dataa?.track.releaseDate
+                    }
+                ] : []} source={source} id={id} mode="track" />
+            </>
+        )
+    }
 
     useEffect(() => {
-        async function run() {
-            const data = await fetch_data(Data.track, { where: source, id: id })
-
-            settrack({
-                thumbnail: data.thumbnail,
-                track: data.track,
-                artists: data.artists,
-                name: data.track.name,
-                duration: data.track.duration,
-                releaseDate: data.track.releaseDate
-            })
-        }
-        run();
-    }, [])
-
-    return (
-        <>
-
-            <Showw name={track?.track.name} thumbnail={track?.thumbnail} duration={track?.track.duration} releaseDate={track?.track.releaseDate} artists={track?.artists} source={source} id={url[2]} mode={"track"} />
-            <Show list={track !== null ? [
-                {
-                    thumbnail: track?.thumbnail,
-                    track: track?.track,
-                    artists: track?.artists,
-                    name: track?.track.name,
-                    duration: track?.track.duration,
-                    releaseDate: track?.track.releaseDate
-                }
-            ] : []} source={source} id={url[2]} mode="track" />
-        </>
-    )
+        const [source, id] = url.split("/").slice(4);
+        refresh(source, id)
+    }, [url])
+    return dom
 }

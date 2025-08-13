@@ -43,7 +43,7 @@ export default function Artist({
 
                                 <div className="flex flex-row items-center">
                                     <span className="thumbnail">
-                                        <img src={item.thumbnail} alt="" height={50} width={50} />
+                                        <img src={item.thumbnail} alt="" height={50} width={50} className='rounded-full' />
                                     </span>
                                     <span className="title ml-[5px]">
                                         <span>
@@ -75,7 +75,7 @@ export default function Artist({
 
                                 <div className="flex flex-row items-center">
                                     <span className="thumbnail">
-                                        <img src={item.thumbnail} alt="" height={70} width={70} />
+                                        <img src={item.thumbnail} alt="" height={70} width={70} className='rounded-full' />
                                     </span>
                                     <span className="title ml-[5px]">
                                         <span>

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { add_items } from "../../../../utils/add_items.ts";
 import { fetch_data, Data } from "../../../../utils/fetch.ts";
 import { sleep_types } from "../../common/types/index.ts";
 import { faShuffle, faStepBackward, faPause, faPlay, faStepForward, faRepeat } from "@fortawesome/free-solid-svg-icons";
@@ -11,13 +10,16 @@ import forward from "./common/forward.ts";
 
 const handleCloseTab = () => {
     try {
-        const api = window.electronAPI;
-        if (api) {
-            api.close();
-        }
+        const { ipcRenderer } = window.require('electron');
+        ipcRenderer.send("app-close");
     }
     catch {
-        return "no";
+        try {
+            window.location.href = 'https://www.google.com';
+        }
+        catch {
+            return "no";
+        }
     }
 };
 
@@ -161,18 +163,21 @@ export default function ControlUI() {
         }
     }, [Time]);
 
+    const check_eot = (temp: sleep_types) => {
+        if (temp === sleep_types.eot && audioRef.current?.ended) {
+            localStorage.setItem("kill time", sleep_types.no)
+            const temp = handleCloseTab()
+            if (temp === "no") {
+                audioRef.current?.pause();
+                alert("I can't close this tab by script. Please close it by yourself.")
+            }
+        }
+    }
 
     useEffect(() => {
         const run = window.setInterval(() => {
             const temp = localStorage.getItem("kill time");
-            if (temp === sleep_types.eot && audioRef.current?.ended) {
-                localStorage.setItem("kill time", sleep_types.no)
-                const temp = handleCloseTab()
-                if (temp === "no") {
-                    audioRef.current?.pause();
-                    alert("We can't close this tab without open by script, so you need to close it.")
-                }
-            }
+            check_eot(temp as sleep_types)
             if (temp === sleep_types.no) {
                 return;
             }
@@ -185,7 +190,7 @@ export default function ControlUI() {
                     alert("We can't close this tab without open by script, so you need to close it.")
                 }
             }
-        }, 1000);
+        }, 500);
         return () => window.clearInterval(run);
     }, [])
 
@@ -194,81 +199,22 @@ export default function ControlUI() {
             if (!audioRef.current) return;
 
             const repeat = localStorage.getItem("repeat")
-            if (repeat === "one" && audioRef.current.ended) {
+
+            if ((repeat === "one" && audioRef.current.ended)) {
+                const temp = localStorage.getItem("kill time");
+                check_eot(temp as sleep_types)
+
                 audioRef.current.currentTime = 0;
                 audioRef.current.play().catch(e => console.error("Error playing audio:", e));
                 setplayed(true)
                 setTime(0)
             }
-            // the queue has the prior than the nextfrom :>
-            else if (audioRef.current.ended && Time !== 0) {
-                setplayed(false)
-                let playQueue = JSON.parse(localStorage.getItem("play queue") || "[]");
-                let nextfrom = JSON.parse(localStorage.getItem("nextfrom") || "{}");
+            else if (audioRef.current.ended) {
+                const temp = localStorage.getItem("kill time");
+                check_eot(temp as sleep_types)
 
-                let playedsongs = JSON.parse(localStorage.getItem("playedsongs") || "[]");
-                const playing = JSON.parse(localStorage.getItem("playing") as string);
-                playedsongs.push({
-                    artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
-                    duration: playing.duration,
-                    id: playing.id,
-                    name: playing.name,
-                    source: playing.source,
-                    thumbnail: playing.thumbnail,
-                })
-                localStorage.setItem("playedsongs", JSON.stringify(playedsongs));
-                playedsongs.push({
-                    artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
-                    duration: playing.duration,
-                    id: playing.id,
-                    name: playing.name,
-                    source: playing.source,
-                    thumbnail: playing.thumbnail,
-                })
-                localStorage.setItem("playedsongs", JSON.stringify(playedsongs));
-
-                if (playQueue && playQueue.length > 0) {
-                    const nextTrack = playQueue[0];
-
-                    localStorage.setItem("playing", JSON.stringify({
-                        artists: typeof nextTrack.artists === "string" ? nextTrack.artists : nextTrack.artists.map((artist: any) => artist.name).join(", "),
-                        duration: nextTrack.duration,
-                        id: nextTrack.id,
-                        name: nextTrack.name,
-                        source: nextTrack.source,
-                        thumbnail: nextTrack.thumbnail,
-                    }));
-                    playQueue = playQueue.slice(1);
-                    localStorage.setItem("play queue", JSON.stringify(playQueue));
-                }
-                else if (nextfrom.from !== "") {
-                    const tracks = nextfrom.tracks;
-                    const [source, mode, id] = nextfrom.from.split(":");
-                    const track = tracks[0];
-                    if (mode == "track") {
-                        localStorage.setItem("playing", JSON.stringify({
-                            artists: typeof track.artists === "string" ? track.artists : track.artists.map((artist: any) => artist.name).join(", "),
-                            duration: track.track.duration,
-                            id: track.track.id,
-                            name: track.track.name,
-                            source: source,
-                            thumbnail: track.thumbnail,
-                        }));
-                    }
-                    else {
-                        tracks.shift();
-                        add_items(source, mode, id, tracks)
-                        console.log(track)
-                        localStorage.setItem("playing", JSON.stringify({
-                            artists: typeof track.artists === "string" ? track.artists : track.artists.map((artist: any) => artist.name).join(", "),
-                            duration: track.duration,
-                            id: track.id,
-                            name: track.name,
-                            source: source,
-                            thumbnail: track.thumbnail,
-                        }));
-                    }
-                }
+                audioRef.current.currentTime = 0;
+                return forward();
             }
         }, 100);
         return () => window.clearInterval(run);
@@ -296,6 +242,7 @@ export default function ControlUI() {
                     <FontAwesomeIcon icon={played ? faPause : faPlay} />
                 </button>
                 <button className='mx-[2px] p-[2px] cursor-default select-none' onClick={() => {
+                    localStorage.setItem("play queue", "[]")
                     forward()
                 }}>
                     <FontAwesomeIcon icon={faStepForward} />
@@ -318,7 +265,7 @@ export default function ControlUI() {
             <div className="player flex flex-row items-center ">
                 <span className='mr-[5px] cursor-default select-none text-xs'>
                     {
-                        (duration !== 0) ? `${(audioRef.current?.currentTime) ? formatDuration(0) : formatDuration(audioRef.current?.currentTime)} / ${formatDuration(duration)}` :
+                        (duration !== 0) ? `${(audioRef.current?.currentTime) ? formatDuration(Time) : formatDuration(audioRef.current?.currentTime)} / ${formatDuration(duration)}` :
                             `Loading`
                     }
                 </span>

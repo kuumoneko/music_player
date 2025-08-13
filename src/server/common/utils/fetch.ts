@@ -15,101 +15,39 @@ export enum Data {
     userplaylist = "userplaylist",
     stream = "stream",
     likedartists = "likedartists",
-    artist = "artist"
-}
-
-let received_datas: any[] = []
-
-const api = window.electronAPI;
-
-api.onDataReceived((data: any) => {
-    if (!data.ok) {
-        received_datas.push({
-            from: data.from,
-            message: data.message
-        })
-    }
-    else {
-        received_datas.push({
-            from: data.from,
-            data: data.data
-        })
-    }
-})
-
-function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    artist = "artist",
+    auth = "auth",
+    new_tracks = "new_tracks"
 }
 
 export function fetch_data(what: Data, data?: any): Promise<any> {
     return new Promise(async (resolve, reject) => {
 
-        received_datas = received_datas.filter((item: any) => { return item.from !== what });
-        console.log(what)
-        if (!api) {
-            return;
-        }
-        // call to ElectronAPI
-        switch (what) {
-            case Data.login:
-                api.login(data);
-                break;
-            case Data.logout:
-                api.logout(data);
-                break;
-            case Data.download:
-                api.download(data);
-                break;
-            case Data.download_status:
-                api.download_status();
-                break;
-            case Data.user:
-                api.user();
-                break;
-            case Data.localfile:
-                api.localfile(data);
-                break;
-            case Data.local:
-                api.local();
-                break;
-            case Data.search:
-                api.search(data);
-                break;
-            case Data.track:
-                api.track(data);
-                break;
-            case Data.playlist:
-                api.playlist(data);
-                break;
-            case Data.likedsongs:
-                api.likedsongs(data);
-                break;
-            case Data.userplaylist:
-                api.user_playlists();
-                break;
-            case Data.stream:
-                api.stream(data);
-                break;
-            case Data.likedartists:
-                api.likedartists();
-                break;
-            case Data.artist:
-                api.artist(data);
-                break;
-        }
+        console.log(what, ' ', data);
 
-        while (received_datas.findIndex((item: any) => { return item.from === what }) === -1) {
-            await sleep(1000);
-        };
+        const url = `http://localhost:3000/${what}`
+        try {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json', },
+                body: JSON.stringify(data)
+            })
 
-        const temp = received_datas.length - [...received_datas].reverse().findIndex((item: any) => { return item.from === what });
-        const received_data: any = received_datas.at(temp - 1);
-        received_datas = received_datas.filter((item: any) => { return item.from !== what });
-        if (received_data.message) {
-            resolve(received_data.message)
+            const response = await res.json();
+            if (res.ok) {
+                console.log(response.data);
+                resolve(response.data)
+            }
+            else {
+                console.error(
+                    response.message
+                )
+                reject(response.message)
+            }
         }
-        else {
-            resolve(received_data.data)
+        catch (e) {
+            console.error(e);
+            reject(e);
         }
     })
 }

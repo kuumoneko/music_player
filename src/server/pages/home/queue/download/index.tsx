@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircle, faShare } from "@fortawesome/free-solid-svg-icons";
+import { faCircle, faMinus, faShare } from "@fortawesome/free-solid-svg-icons";
 import formatDuration from "../../../../common/utils/format.ts";
 import { faSpotify, faYoutube } from "@fortawesome/free-brands-svg-icons";
 import Download from "./download.tsx";
@@ -39,7 +39,7 @@ export default function Download_Queue() {
 
             for (const item of playlists) {
                 const data = await fetch_data(Data.playlist, { where: item.source, id: item.id })
-
+                console.log(data)
 
                 const tracks_in_playlist = tracks.filter((track: any) => {
                     return (data.tracks as any[]).find((trackk: any) => {
@@ -77,6 +77,10 @@ export default function Download_Queue() {
 
     return (
         <>
+            <div onClick={() => { localStorage.setItem("download queue", "[]") }}>
+                <FontAwesomeIcon icon={faMinus} />
+                Clear queue
+            </div>
             <div className="download flex flex-col items-center justify-normal w-[100%] h-[100%] ">
                 <div className="title w-[90%] h-[10%]">
                     <span className="text-4xl">

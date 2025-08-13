@@ -54,6 +54,7 @@ export interface youtube_api_keys {
     reach_quota: boolean,
     isAuth: boolean,
     date_reached: string,
+    time_reached: string
 }
 
 export interface Downloader_options {
@@ -71,7 +72,9 @@ export interface Downloader_options {
     spotify_api_key?: string,
     spotify_client?: string,
     port?: number,
-    ytb_access_token?: string
+    ytb_access_token?: string,
+    endpoints?: youtube_endpoints
+
 }
 
 export interface Download_queue {
@@ -90,7 +93,9 @@ export interface Music_options {
     google_client_id?: string,
     google_client_secret?: string,
     redirect_uris?: string[],
-    port?: number
+    port?: number,
+    endpoints?: youtube_endpoints,
+    database: string
 }
 
 export enum Audio_format {
@@ -151,7 +156,8 @@ export interface Playlist {
     duration?: number | string, // in miliseconds = sum of duration of tracks
     thumbnail?: string,
     tracks?: Track[],
-    error?: string
+    error?: string,
+    pagetoken?: string
 }
 
 interface PlaylistItem {
@@ -183,4 +189,29 @@ export interface User {
 export const enum Server_mode {
     server = "server",
     test = "test"
+}
+
+export interface youtube_endpoint {
+    url: string;
+    params: {
+        [paramName: string]: string;
+    };
+}
+
+export interface youtube_endpoints {
+    [key: string]: youtube_endpoint
+}
+
+export enum EndPoints {
+    User = "user",
+    UserPlaylist = "userplaylist",
+    LikedSongs = "likedsongs",
+    PlaylistData = "playlist_data",
+    PlaylistItem = "playlist_item",
+    Duration = "duration",
+    ContentRating = "contentRating",
+    Videos = "videos",
+    Search = "search",
+    UserArtist = "userartist",
+    Artist = "artist"
 }

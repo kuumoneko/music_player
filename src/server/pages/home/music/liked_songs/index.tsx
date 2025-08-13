@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Show, Showw } from "../music";
 import { Data, fetch_data } from "../../../../common/utils/fetch.ts";
+import Top from "../../../../common/components/Show_music/components/top.tsx";
+import List from "../../../../common/components/Show_music/components/list.tsx";
 
 export default function LikedSongs({ url }: { url: string }) {
-    const source = url.split("/").slice(3)[1];
+    let source = url.split("/").slice(3)[1];
 
     const access_token = {
         youtube: JSON.parse(localStorage.getItem("user") as string).youtube.access_token,
@@ -26,34 +27,34 @@ export default function LikedSongs({ url }: { url: string }) {
             </div>
         )
     }
-
     else {
         const check = JSON.parse(localStorage.getItem("liked_songs") as string);
-        const [liked_songs, setliked_songs] = useState(check ? check[source] : []);
-        useEffect(() => {
-            async function run() {
-                const data = await fetch_data(Data.likedsongs, { where: source });
+        const liked_songs = check ? check[source] : [];
 
-                setliked_songs(data.tracks);
-                localStorage.setItem("liked_songs", JSON.stringify(
-                    (source === "youtube" ? {
-                        youtube: data.tracks,
-                        spotify: check?.spotify || []
-                    } : {
-                        youtube: check?.youtube || [],
-                        spotify: data.tracks
-                    })
-                ))
-            }
-            run();
-        }, [])
-
-        return (
+        const [dom, setdom] = useState(
             <>
-                <Showw name={"liked songs"} thumbnail={""} duration={0} releaseDate="" playlist={liked_songs} source={source} id="liked songs" mode="liked songs" />
-                <Show list={liked_songs} source={source} id="liked songs" mode="liked songs" />
+                <Top name={"liked songs"} thumbnail={""} duration={0} releaseDate="" playlist={liked_songs} source={source} id="liked songs" mode="liked songs" />
+                <List list={liked_songs} source={source} id="liked songs" mode="liked songs" />
             </>
+        );
 
-        )
+        const refresh = async (liked_songs_source: string) => {
+            const data: any = await fetch_data(Data.likedsongs, { where: liked_songs_source })
+            const list = data.tracks
+            const temp = (
+                <>
+                    <Top name={"liked songs"} thumbnail={""} duration={0} releaseDate="" playlist={list} source={source} id="liked songs" mode="liked songs" />
+                    <List list={list} source={source} id="liked songs" mode="liked songs" />
+                </>
+            )
+            setdom(temp)
+        }
+
+        useEffect(() => {
+            let source = url.split("/").slice(3)[1];
+            refresh(source);
+        }, [url])
+
+        return dom
     }
 }

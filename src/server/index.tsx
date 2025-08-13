@@ -8,6 +8,7 @@ import MainContent from './pages/index.tsx';
 import Nav from './common/components/Navigator/index.tsx';
 import { running } from '../prerun.tsx';
 import { Data, fetch_data } from './common/utils/fetch.ts';
+import { sleep_types } from './common/components/Player/common/types/index.ts';
 
 
 export default function Server() {
@@ -24,6 +25,7 @@ export default function Server() {
         goto(`/settings/spotify/${general_url.split(`localhost:${port}/`)[1].split("?")[1].split("=")[1].split("&")[0]}`, seturl)
         window.location.href = "/"
     }
+
 
     useEffect(() => {
         async function run() {
@@ -62,8 +64,7 @@ export default function Server() {
                     spotify: {
                         user: {
                             name: "",
-                            email: "",
-                            id: "",
+                            email: ""
                         },
                     }
                 }));
@@ -73,15 +74,18 @@ export default function Server() {
                     youtube: JSON.parse(localStorage.getItem("user") as string).youtube,
                     spotify: {
                         user: {
-                            name: data.spotify.display_name,
-                            email: data.spotify.email,
-                            id: data.spotify.id,
+                            name: data.spotify.name,
+                            email: data.spotify.email
                         },
                     }
                 }));
             }
         }
+        window.open("/")
         run();
+
+        localStorage.setItem("kill time", sleep_types.no)
+
     }, [])
 
 
