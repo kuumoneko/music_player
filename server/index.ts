@@ -455,10 +455,8 @@ server.post("/download", async (req, res) => {
                     const temp: Playlist = (dataa as Playlist)
 
                     for (const item of (temp.tracks as Track[])) {
-                        // console.log(item)
                         const spotify_video: Track = await downloader.music.spotify.fetch_track(item.track?.id || "");
                         const matching_video: Track | null = await downloader.music.findMatchingVideo(spotify_video);
-                        // console.log(matching_video)
 
                         if (matching_video !== null) {
                             tracks_to_download.push({
@@ -490,7 +488,6 @@ server.post("/download", async (req, res) => {
                 else if (source === "spotify") {
                     const temp: Track | null = await downloader.music.findMatchingVideo(dataa as Track);
                     const spotify_video: Track = await downloader.music.spotify.fetch_track((dataa as Track).track?.id || "");
-                    // console.log(spotify_video.track?.name)
 
                     if (temp !== null) {
                         tracks_to_download.push({

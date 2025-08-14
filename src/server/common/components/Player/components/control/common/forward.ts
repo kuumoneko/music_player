@@ -1,6 +1,12 @@
+import { MutableRefObject } from "react";
 import { add_items } from "../../../../../utils/add_items.ts";
+import { getUrl } from "../index.tsx";
 
-export default function forward() {
+export default async function forward(
+    audioRef: MutableRefObject<HTMLAudioElement>,
+    setplayed: (a: boolean) => void,
+    setisloading: (a: boolean) => void,
+    setduraion: (a: number) => void) {
     let playedsongs: any[] = JSON.parse(localStorage.getItem("playedsongs") || "[]");
     const playing = JSON.parse(localStorage.getItem("playing") as string);
     let playQueue = JSON.parse(localStorage.getItem("play queue") as string);
@@ -41,11 +47,13 @@ export default function forward() {
         const [source, mode, id] = nextfrom.from.split(":");
         const track = tracks[0];
         if (mode == "track") {
+            await getUrl(playing.source, playing.id, true, audioRef, setplayed, setisloading, setduraion);
+
             localStorage.setItem("playing", JSON.stringify({
                 artists: typeof track.artists === "string" ? track.artists : track.artists.map((artist: any) => artist.name).join(", "),
-                duration: track.track.duration,
-                id: track.track.id,
-                name: track.track.name,
+                duration: track.duration,
+                id: track.id,
+                name: track.name,
                 source: source,
                 thumbnail: track.thumbnail,
             }));

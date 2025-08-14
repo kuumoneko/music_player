@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { fetch_data, Data } from "../../../../utils/fetch.ts";
 import { sleep_types } from "../../common/types/index.ts";
 import { faShuffle, faStepBackward, faPause, faPlay, faStepForward, faRepeat } from "@fortawesome/free-solid-svg-icons";
@@ -22,6 +22,71 @@ const handleCloseTab = () => {
         }
     }
 };
+
+export const getUrl = async (
+    source: string,
+    id: string,
+    autoplayed: boolean = true,
+    audioRef: MutableRefObject<HTMLAudioElement>,
+    setplayed: (a: boolean) => void,
+    setisloading: (a: boolean) => void,
+    setduraion: (a: number) => void
+) => {
+
+    if (id == "") { return }
+
+    try {
+        setisloading(true)
+
+        const data = await fetch_data(Data.stream, { where: source, mode: "track", id: id });
+        if (source === "local") {
+            const audio_format = localStorage.getItem("preferredAudioFormat");
+            const array = new Int8Array(data.url);
+            const buffer = array.buffer;
+            const blob = new Blob([buffer], { type: `audio/${audio_format}` });
+            if (blob.size > 0) {
+                data.url = URL.createObjectURL(blob)
+            }
+        }
+        setplayed(false)
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current.load();
+
+        audioRef.current = new Audio(data.url);
+        audioRef.current.load();
+        audioRef.current.addEventListener('loadedmetadata', () => {
+            setduraion(audioRef.current.duration)
+        });
+
+        localStorage.setItem("play_url", JSON.stringify({
+            id: id,
+            source: source,
+            url: data.url,
+        }));
+        setTimeout(async () => {
+            if (autoplayed) {
+                setplayed(true)
+            }
+            setisloading(false)
+        }, 500)
+    } catch (error) {
+        console.error(error);
+        localStorage.setItem("playing", JSON.stringify({
+            name: "",
+            artists: "",
+            thumbnail: "",
+            source: "",
+            id: "",
+            duration: "",
+        }))
+        localStorage.setItem("play_url", JSON.stringify({
+            id: "",
+            source: "",
+            url: null,
+        }));
+    }
+}
 
 export default function ControlUI() {
     const [played, setplayed] = useState(false);
@@ -62,62 +127,69 @@ export default function ControlUI() {
 
     const [duration, setduraion] = useState(0);
 
-    const getUrl = async (source: string, id: string, autoplayed: boolean = true) => {
+    // const getUrl = async (
+    //     source: string,
+    //     id: string,
+    //     autoplayed: boolean = true,
+    //     AudioRef: MutableRefObject<HTMLAudioElement>,
+    //     setplayed: (a: boolean) => void,
+    //     setisloading: (a: boolean) => void
+    // ) => {
 
-        if (id == "") { return }
+    //     if (id == "") { return }
 
-        try {
-            setisloading(true)
+    //     try {
+    //         setisloading(true)
 
-            const data = await fetch_data(Data.stream, { where: source, mode: "track", id: id });
-            if (source === "local") {
-                const audio_format = localStorage.getItem("preferredAudioFormat");
-                const array = new Int8Array(data.url);
-                const buffer = array.buffer;
-                const blob = new Blob([buffer], { type: `audio/${audio_format}` });
-                if (blob.size > 0) {
-                    data.url = URL.createObjectURL(blob)
-                }
-            }
-            setplayed(false)
-            audioRef.current.pause();
-            audioRef.current.src = '';
-            audioRef.current.load();
+    //         const data = await fetch_data(Data.stream, { where: source, mode: "track", id: id });
+    //         if (source === "local") {
+    //             const audio_format = localStorage.getItem("preferredAudioFormat");
+    //             const array = new Int8Array(data.url);
+    //             const buffer = array.buffer;
+    //             const blob = new Blob([buffer], { type: `audio/${audio_format}` });
+    //             if (blob.size > 0) {
+    //                 data.url = URL.createObjectURL(blob)
+    //             }
+    //         }
+    //         setplayed(false)
+    //         audioRef.current.pause();
+    //         audioRef.current.src = '';
+    //         audioRef.current.load();
 
-            audioRef.current = new Audio(data.url);
-            audioRef.current.load();
-            audioRef.current.addEventListener('loadedmetadata', () => {
-                setduraion(audioRef.current.duration)
-            });
+    //         audioRef.current = new Audio(data.url);
+    //         audioRef.current.load();
+    //         audioRef.current.addEventListener('loadedmetadata', () => {
+    //             setduraion(audioRef.current.duration)
+    //         });
 
-            localStorage.setItem("play_url", JSON.stringify({
-                id: id,
-                source: source,
-                url: data.url,
-            }));
-            setTimeout(async () => {
-                if (autoplayed) {
-                    setplayed(true)
-                }
-                setisloading(false)
-            }, 500)
-        } catch (error) {
-            console.error(error);
-            localStorage.setItem("playing", JSON.stringify({
-                name: "",
-                artists: "",
-                thumbnail: "",
-                source: "",
-                id: "",
-                duration: "",
-            }))
-            localStorage.setItem("play_url", JSON.stringify({
-                id: "",
-                source: "",
-                url: null,
-            }));
-        }
-    }
+    //         localStorage.setItem("play_url", JSON.stringify({
+    //             id: id,
+    //             source: source,
+    //             url: data.url,
+    //         }));
+    //         setTimeout(async () => {
+    //             if (autoplayed) {
+    //                 setplayed(true)
+    //             }
+    //             setisloading(false)
+    //         }, 500)
+    //     } catch (error) {
+    //         console.error(error);
+    //         localStorage.setItem("playing", JSON.stringify({
+    //             name: "",
+    //             artists: "",
+    //             thumbnail: "",
+    //             source: "",
+    //             id: "",
+    //             duration: "",
+    //         }))
+    //         localStorage.setItem("play_url", JSON.stringify({
+    //             id: "",
+    //             source: "",
+    //             url: null,
+    //         }));
+    //     }
+    // }
 
     useEffect(() => {
         async function run() {
@@ -125,7 +197,7 @@ export default function ControlUI() {
             if (!id) {
                 return;
             }
-            await getUrl(source, id, false);
+            await getUrl(source, id, false, audioRef, setplayed, setisloading, setduraion);
         }
         run();
     }, [])
@@ -146,7 +218,7 @@ export default function ControlUI() {
                         source: playing.source,
                         url: null
                     }));
-                    await getUrl(playing.source, playing.id);
+                    await getUrl(playing.source, playing.id, true, audioRef, setplayed, setisloading, setduraion);
                 }
             }
             check();
@@ -196,26 +268,30 @@ export default function ControlUI() {
 
     useEffect(() => {
         const run = window.setInterval(() => {
-            if (!audioRef.current) return;
+            async function run() {
+                if (!audioRef.current) return;
 
-            const repeat = localStorage.getItem("repeat")
+                const repeat = localStorage.getItem("repeat")
 
-            if ((repeat === "one" && audioRef.current.ended)) {
-                const temp = localStorage.getItem("kill time");
-                check_eot(temp as sleep_types)
+                if ((repeat === "one" && audioRef.current.ended)) {
+                    const temp = localStorage.getItem("kill time");
+                    check_eot(temp as sleep_types)
 
-                audioRef.current.currentTime = 0;
-                audioRef.current.play().catch(e => console.error("Error playing audio:", e));
-                setplayed(true)
-                setTime(0)
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+                    setplayed(true)
+                    setTime(0)
+                }
+                else if (audioRef.current.ended) {
+                    const temp = localStorage.getItem("kill time");
+                    check_eot(temp as sleep_types)
+
+                    audioRef.current.currentTime = 0;
+                    return await forward(audioRef, setplayed, setisloading, setduraion);
+                }
             }
-            else if (audioRef.current.ended) {
-                const temp = localStorage.getItem("kill time");
-                check_eot(temp as sleep_types)
+            run()
 
-                audioRef.current.currentTime = 0;
-                return forward();
-            }
         }, 100);
         return () => window.clearInterval(run);
     }, [])
@@ -241,9 +317,9 @@ export default function ControlUI() {
                 }}>
                     <FontAwesomeIcon icon={played ? faPause : faPlay} />
                 </button>
-                <button className='mx-[2px] p-[2px] cursor-default select-none' onClick={() => {
+                <button className='mx-[2px] p-[2px] cursor-default select-none' onClick={async () => {
                     localStorage.setItem("play queue", "[]")
-                    forward()
+                    await forward(audioRef, setplayed, setisloading, setduraion);
                 }}>
                     <FontAwesomeIcon icon={faStepForward} />
                 </button>

@@ -639,9 +639,6 @@ export default class Youtube {
             const tracks: Track[] = [];
 
             for (const id of ids) {
-                if (id === "UC7MGCyKDw8iQX7Vs0-BH9uA") {
-                    console.log("")
-                }
                 const artist_url = base_artist__url + `&id=${id}`;
                 const this_artist = artists[id];
 
@@ -756,7 +753,7 @@ export default class Youtube {
                     const nnew_tracks = await this.fetch_track(playlist_ids);
                     const data_tracks = [... new Set([...this_playlist?.tracks || [], ...nnew_tracks])];
                     tracks.push(...nnew_tracks);
-                    playlists[id] = {
+                    playlists[playlistId] = {
                         etag: etag,
                         thumbnail: thumbnail,
                         name: name as string,

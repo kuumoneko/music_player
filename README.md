@@ -4,29 +4,11 @@
 
 ## UPDATE NOTE
 
-> fix infinity loop in get api key
+> fix in get_new_tracks
 >
-> add reached_date to refresh on day
+> slice tracks of artist to reduce lagging because of out of memory
 >
-> add Artist page
->
-> add followed Artist option in side bar
->
-> refactor downloader class code shorter
->
-> Optimize fetch data from youtube with etag to reduce quota
->
-> Retry when Spotify reach quota limit
->
-> Refactor main page
->
-> Change Search youtube to third party to reduce quota
->
-> Change back to Nodejs express backend to reduce app size
->
-> Add pin artist and playlist into homepage
->
-> Add new tracks from pin artist into homepage
+> refactor code in front end
 
 ## Usage will be added later, Im fixing something
 

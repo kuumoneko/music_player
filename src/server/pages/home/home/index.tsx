@@ -6,41 +6,37 @@ import { Data, fetch_data } from "../../../common/utils/fetch";
 import { Track } from "../../../../types";
 import Play from "../../../common/components/Show_music/common/play";
 
-// i will add suggestion for spotify and youtube here
 export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
     const [playlist, setplaylist] = useState("[]");
     const [artist, setartist] = useState("[]");
-
     useEffect(() => {
         const run = setInterval(() => {
             const pinned: any[] = JSON.parse(localStorage.getItem("pin") || "[]");
-            const playlist = pinned.filter((item: any) => {
+            const playlistt = pinned.filter((item: any) => {
                 return item.mode === "playlist"
             })
-            const artist = pinned.filter((item: any) => {
+            const artistt = pinned.filter((item: any) => {
                 return item.mode === "artist"
             })
 
-            setplaylist(JSON.stringify(playlist));
-            setartist(JSON.stringify(artist));
-            // setpin(pinned)
+            setplaylist(JSON.stringify(playlistt));
+            setartist(JSON.stringify(artistt));
         }, 500);
         return () => clearInterval(run)
     }, [])
 
-    const [newtracks, setnewtracks] = useState("[]")
+    const [newtracks, setnewtracks] = useState(localStorage.getItem("new_tracks") || "[]");
     useEffect(() => {
+        if (artist === "[]") { return; }
         async function run() {
-            const pinned: any[] = JSON.parse(localStorage.getItem("pin") || "[]");
-            const artist = pinned.filter((item: any) => {
-                return item.mode === "artist"
-            }).map((item: any) => { return { source: item.source, id: item.id } })
-            const data = await fetch_data(Data.new_tracks, { items: artist });
+            const temp = JSON.parse(artist).map((item: any) => { return { source: item.source, id: item.id } })
+            const data = await fetch_data(Data.new_tracks, { items: temp });
             console.log(data);
             setnewtracks(JSON.stringify(data));
+            localStorage.setItem("new_tracks", JSON.stringify(data));
         }
         run();
-    }, [])
+    }, [artist])
 
     return (
         <div className="home w-[100%]">
@@ -48,7 +44,7 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                 Home
             </span>
             <div className="flex flex-col w-[100%] ml-[15px] h-[10%]">
-                <div>
+                <div className="flex h-[10%]">
                     <span>
                         <FontAwesomeIcon icon={faThumbTack} />
                     </span>
@@ -56,7 +52,7 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                         Your pin:
                     </span>
                 </div>
-                <div className="flex flex-row w-[95%] mt-[20px] max-h-[75%] overflow-x-scroll [&::-webkit-scrollbar]:hidden">
+                <div className="flex flex-row w-[95%] mt-[20px] h-[30%] overflow-x-scroll [&::-webkit-scrollbar]:hidden">
                     {
                         (JSON.parse(artist) as any[]).map((item: any) => {
                             const temp = (item.mode === "playlist") ? 100 : 50
@@ -79,12 +75,12 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                         })
                     }
                 </div>
-                <div className="flex flex-row w-[95%] mt-[20px]">
+                <div className="flex flex-row w-[95%] mt-[20px] h-[35%]">
                     {
                         (JSON.parse(playlist) as any[]).map((item: any) => {
-                            const temp = (item.mode === "playlist") ? 100 : 50
+                            const temp = (item.mode === "playlist") ? 60 : 50
                             return (
-                                <div key={item.name} className="flex flex-row items-center bg-slate-800 p-[10px] rounded-3xl mr-[20px]"
+                                <div key={item.name} className="flex flex-row items-center bg-slate-800 p-[5px] rounded-3xl mr-[20px]"
                                     onClick={() => {
                                         goto(`/playlist/${item.source}/${item.id}`, seturl)
                                     }}
@@ -103,12 +99,12 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                     }
                 </div>
             </div>
-            <div className="new tracks grid grid-cols-3 gap-4 ml-[15px] mt-[15px] max-h-[18%] w-[100%] overflow-y-scroll [&::-webkit-scrollbar]:hidden">
+            <div className="new tracks grid grid-cols-3 gap-4 ml-[15px] max-h-[24%] mt-[15px] w-[100%] overflow-y-scroll [&::-webkit-scrollbar]:hidden">
                 {
-                    (JSON.parse(newtracks) as Track[]).map((item: Track, index: number) => {
+                    (JSON.parse(newtracks) as []).map((item: Track, index: number) => {
                         return (
                             <div key={item.track?.name || `new tracks ${index + 1}`} className="flex flex-row h-[100px] w-[500px] bg-slate-800 hover:bg-slate-500 p-[5px] items-center rounded-2xl"
-                                onClick={() => {
+                                onDoubleClick={() => {
                                     Play(item, item.type.split(":")[0], "track", item.track.id, [])
                                 }}
                             >
