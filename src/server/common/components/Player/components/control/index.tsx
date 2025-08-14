@@ -127,70 +127,6 @@ export default function ControlUI() {
 
     const [duration, setduraion] = useState(0);
 
-    // const getUrl = async (
-    //     source: string,
-    //     id: string,
-    //     autoplayed: boolean = true,
-    //     AudioRef: MutableRefObject<HTMLAudioElement>,
-    //     setplayed: (a: boolean) => void,
-    //     setisloading: (a: boolean) => void
-    // ) => {
-
-    //     if (id == "") { return }
-
-    //     try {
-    //         setisloading(true)
-
-    //         const data = await fetch_data(Data.stream, { where: source, mode: "track", id: id });
-    //         if (source === "local") {
-    //             const audio_format = localStorage.getItem("preferredAudioFormat");
-    //             const array = new Int8Array(data.url);
-    //             const buffer = array.buffer;
-    //             const blob = new Blob([buffer], { type: `audio/${audio_format}` });
-    //             if (blob.size > 0) {
-    //                 data.url = URL.createObjectURL(blob)
-    //             }
-    //         }
-    //         setplayed(false)
-    //         audioRef.current.pause();
-    //         audioRef.current.src = '';
-    //         audioRef.current.load();
-
-    //         audioRef.current = new Audio(data.url);
-    //         audioRef.current.load();
-    //         audioRef.current.addEventListener('loadedmetadata', () => {
-    //             setduraion(audioRef.current.duration)
-    //         });
-
-    //         localStorage.setItem("play_url", JSON.stringify({
-    //             id: id,
-    //             source: source,
-    //             url: data.url,
-    //         }));
-    //         setTimeout(async () => {
-    //             if (autoplayed) {
-    //                 setplayed(true)
-    //             }
-    //             setisloading(false)
-    //         }, 500)
-    //     } catch (error) {
-    //         console.error(error);
-    //         localStorage.setItem("playing", JSON.stringify({
-    //             name: "",
-    //             artists: "",
-    //             thumbnail: "",
-    //             source: "",
-    //             id: "",
-    //             duration: "",
-    //         }))
-    //         localStorage.setItem("play_url", JSON.stringify({
-    //             id: "",
-    //             source: "",
-    //             url: null,
-    //         }));
-    //     }
-    // }
-
     useEffect(() => {
         async function run() {
             const { id, source } = JSON.parse(localStorage.getItem("playing") as string || "{}")
@@ -294,6 +230,18 @@ export default function ControlUI() {
 
         }, 100);
         return () => window.clearInterval(run);
+    }, [])
+
+    useEffect(() => {
+        const run = setInterval(() => {
+            if (audioRef.current) {
+                const state = !audioRef.current.paused
+                if (state !== played) {
+                    setplayed(state)
+                }
+            }
+        }, 500);
+        return () => clearInterval(run)
     }, [])
 
 

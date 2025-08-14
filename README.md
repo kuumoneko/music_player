@@ -4,11 +4,7 @@
 
 ## UPDATE NOTE
 
-> fix in get_new_tracks
->
-> slice tracks of artist to reduce lagging because of out of memory
->
-> refactor code in front end
+> change play/pause when play/pause by function of OS
 
 ## Usage will be added later, Im fixing something
 
