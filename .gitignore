@@ -8,7 +8,6 @@
 .eslintrc
 .hintrc
 build.ts
-build_electron.ts
 /server/data/**/*.json
 /server/data/**/*.txt
 !/server/data/example/**/*.json
