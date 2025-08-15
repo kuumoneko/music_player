@@ -4,7 +4,7 @@
 
 ## UPDATE NOTE
 
-> change dir folder to build app
+> add sort by release_Date to display new tracks
 
 ## Usage will be added later, it's still in development
 

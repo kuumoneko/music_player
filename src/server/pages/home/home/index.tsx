@@ -32,8 +32,9 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
             const temp = JSON.parse(artist).map((item: any) => { return { source: item.source, id: item.id } })
             const data = await fetch_data(Data.new_tracks, { items: temp });
             console.log(data);
-            setnewtracks(JSON.stringify(data));
-            localStorage.setItem("new_tracks", JSON.stringify(data));
+            const sorted_by_date_data = data.sort((a: Track, b: Track) => (new Date(b.track?.releaseDate as string).getTime()) - (new Date(a.track?.releaseDate as string).getTime()));
+            setnewtracks(JSON.stringify(sorted_by_date_data));
+            localStorage.setItem("new_tracks", JSON.stringify(sorted_by_date_data));
         }
         run();
     }, [artist])
@@ -57,7 +58,7 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                         (JSON.parse(artist) as any[]).map((item: any) => {
                             const temp = (item.mode === "playlist") ? 100 : 50
                             return (
-                                <div key={item.name} className="flex flex-row items-center bg-slate-800 p-[10px] rounded-3xl mr-[20px]"
+                                <div key={item.name} className="flex flex-row items-center bg-slate-800 p-[10px] rounded-3xl mr-[20px] hover:bg-slate-600"
                                     onClick={() => {
                                         goto(`/artist/${item.source}/${item.id}`, seturl)
                                     }}
@@ -80,7 +81,7 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                         (JSON.parse(playlist) as any[]).map((item: any) => {
                             const temp = (item.mode === "playlist") ? 60 : 50
                             return (
-                                <div key={item.name} className="flex flex-row items-center bg-slate-800 p-[5px] rounded-3xl mr-[20px]"
+                                <div key={item.name} className="flex flex-row items-center bg-slate-800 p-[5px] rounded-3xl mr-[20px] hover:bg-slate-600"
                                     onClick={() => {
                                         goto(`/playlist/${item.source}/${item.id}`, seturl)
                                     }}
