@@ -6,6 +6,10 @@
 
 > add sort by release_Date to display new tracks
 
+## KNOWN ISSUES
+
+> some video similar with spotify track is load to slow so api dont found it
+
 ## Usage will be added later, it's still in development
 
 ## Learn More
