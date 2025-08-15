@@ -4,7 +4,7 @@
 
 ## UPDATE NOTE
 
-> add temp to get new track in youtube
+> fix get user name in spotify setting
 
 ## Usage will be added later, it's still in development
 

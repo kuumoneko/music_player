@@ -32,7 +32,7 @@ export default function Spotify_Account({
                 youtube: JSON.parse(localStorage.getItem("user") as string).youtube,
                 spotify: {
                     user: {
-                        name: data.user.display_name,
+                        name: data.user.name,
                         email: data.user.email,
                         id: data.user.id,
                     }
