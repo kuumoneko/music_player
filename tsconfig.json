@@ -12,13 +12,11 @@
     "skipLibCheck": true
   },
   "include": [
-    "./build_electron.ts"
+    "./server/**/*.ts"
   ],
   "exclude": [
-    "./src/electron/node_modules",
-    "node_modules",
+    "/node_modules",
     "**/*.json",
     "**/*.txt",
-    "./src/electron",
   ]
 }
