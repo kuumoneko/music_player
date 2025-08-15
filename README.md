@@ -4,7 +4,7 @@
 
 ## UPDATE NOTE
 
-> change play/pause when play/pause by function of OS
+> Refactor get auth code
 
 ## Usage will be added later, Im fixing something
 

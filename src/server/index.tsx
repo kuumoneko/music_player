@@ -15,17 +15,14 @@ export default function Server() {
     const port = Number(localStorage.getItem("port") as string)
     const [url, seturl] = useState(localStorage.getItem("url") || `http://localhost:${port}/`);
 
-    const general_url = window.location.href;
+    const general_url = new URL(window.location.href);
+    const code = general_url.searchParams.get("code"),
+        scope = general_url.searchParams.get("scope");
 
-    if (general_url.includes("youtube.readonly") && general_url.includes("code=")) {
-        goto(`/settings/youtube/${general_url.split("&code=")[1].split("&scope=")[0]}`, seturl)
-        window.location.href = "/"
+    if (code !== null) {
+        goto(`/settings/${(scope !== null) ? "youtube" : "spotify"}/${code}`, seturl);
+        window.location.href = "/";
     }
-    else if (general_url.includes("?code")) {
-        goto(`/settings/spotify/${general_url.split(`localhost:${port}/`)[1].split("?")[1].split("=")[1].split("&")[0]}`, seturl)
-        window.location.href = "/"
-    }
-
 
     useEffect(() => {
         async function run() {
