@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import youtubesearchapi, { SearchItem, SearchResult } from "youtube-search-api";
+import { SearchItem, SearchResult, GetListByKeyword } from "youtube-search-api";
 import { Artist, EndPoints, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist, youtube_api_keys, youtube_endpoint, youtube_endpoints } from "../../../types/index.js";
 
 export default class Youtube {
@@ -512,7 +512,7 @@ export default class Youtube {
     async search(search: string = ''): Promise<Search> {
 
         try {
-            let data: SearchResult = await youtubesearchapi.GetListByKeyword(search, false, 30, [{ type: 'video' }])
+            let data: SearchResult = await GetListByKeyword(search, false, 30, [{ type: 'video' }]);
 
 
             const ids: string[] = data.items.map((item: SearchItem) => { return item.id });

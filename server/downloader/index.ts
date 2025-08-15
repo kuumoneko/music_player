@@ -3,7 +3,7 @@ import { existsSync, readdirSync, unlinkSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import Music from "./music/index.js";
 import ytdl from "@distube/ytdl-core";
-import ffmpeg from 'fluent-ffmpeg';
+import ffmpeg from "fluent-ffmpeg";
 import fs from 'node:fs';
 import path from 'node:path';
 

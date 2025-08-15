@@ -9,7 +9,7 @@
 
 ## UPDATE NOTE
 
-> Add Usage
+> Fix deno to build app lighter
 
 ## Usage
 

@@ -9,9 +9,8 @@ import { Audio_format, Download_item, Mode, Playlist, Track, Artist, User_Artist
 import Downloader from "./downloader/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.js";
 import express, { Response } from "express";
-import cors from "cors";
 
-const mode: Mode = Mode.react;
+const mode: Mode = Mode.deploy;
 
 const generateRandomString = (length: number) => {
     const possible =
@@ -45,14 +44,14 @@ const port = (mode as Mode === Mode.deploy) ? 3000 : 3001;
 // default by 3000
 const server_port = 3000
 const server = express();
-const corsOptions = {
-    origin: system.web?.redirect_uris
-        ? system.web.redirect_uris
-        : [`http://localhost:${server_port}`],
-    methods: "POST",
-    credentials: true,
-};
-server.use(cors(corsOptions));
+
+server.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', `http://localhost:${port}`); // Allow all origins
+    res.header('Access-Control-Allow-Methods', 'POST'); // Allowed methods
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Allowed headers
+    res.header('Access-Control-Allow-Credentials', 'true');
+    next();
+});
 server.use(express.json());
 server.listen(server_port, () => {
     console.log(`Server is running successfully on port ${server_port}`);
