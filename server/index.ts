@@ -21,37 +21,49 @@ const generateRandomString = (length: number) => {
 };
 const executablePath = process.execPath;
 
-let __dirname = (mode as Mode === Mode.deploy) ? path.dirname(executablePath) : "E:\\music_player\\server",
-    executableDir = __dirname;
+let __dirname: string = ""
+switch (mode as Mode) {
+    case Mode.app:
+        __dirname = "E:\\music_player";;
+        break;
+    case Mode.deploy:
+        __dirname = path.dirname(executablePath);
+        break;
+    default:
+        __dirname = "E:\\music_player\\server";
+}
+
+let executableDir = (mode as Mode === Mode.app) ? path.join(__dirname, "server") : __dirname;
 
 console.log(__dirname);
 console.log("this folder: " + executableDir);
 
 const system = getDataFromDatabase(executableDir, "data", "system");
-const port = mode as Mode === Mode.deploy ? 3001 : 3000;
+// port for the front end
+const port = (mode as Mode === Mode.deploy) ? 3000 : 3001;
 
+// default by 3000
+const server_port = 3000
 const server = express();
 const corsOptions = {
     origin: system.web?.redirect_uris
         ? system.web.redirect_uris
-        : [`http://localhost:${port}`],
+        : [`http://localhost:${server_port}`],
     methods: "POST",
     credentials: true,
 };
 server.use(cors(corsOptions));
 server.use(express.json());
-server.listen(port, () => {
-    console.log(`Server is running successfully on port ${port}`);
-    console.log(`CORS is configured for origin: http://localhost:${port}`);
+server.listen(server_port, () => {
+    console.log(`Server is running successfully on port ${server_port}`);
+    console.log(`CORS is configured for origin: http://localhost:${server_port}`);
 });
 
-if (mode as Mode === Mode.deploy) {
-    server.get("*", (req, res) => {
-        const buildPath = path.join(executableDir, 'build');
-        server.use(express.static(buildPath));
-        server.get('*', (req, res) => {
-            res.sendFile(path.join(buildPath, 'index.html'));
-        });
+if (mode as Mode === Mode.deploy || mode as Mode === Mode.app) {
+    const folderPath = (mode as Mode === Mode.deploy) ? path.join(__dirname, "build") : path.join(__dirname, "app", 'build')
+    server.use(express.static(folderPath));
+    server.get('/', (req, res) => {
+        res.sendFile(path.join(folderPath, 'index.html'));
     });
 }
 
@@ -120,7 +132,7 @@ let temp: youtube_api_keys[] = [];
             redirect_uris: system.web.redirect_uris,
             spotify_api_key: system.Spotify_Api_key,
             spotify_client: system.Spotify_client,
-            port: 3001,
+            port: port,
             endpoints: endpoints
         }
     )
@@ -298,7 +310,7 @@ const give_data = (event: Response, data: any = {}) => {
 server.post("/login", async (req, res) => {
     try {
         const { where } = req.body;
-        const redirectUri = `http://localhost:3001`;
+        const redirectUri = `http://localhost:${port}`;
         let authUrl: string;
 
         if (where === "youtube") {
@@ -334,7 +346,9 @@ server.post("/auth", async (req, res) => {
     try {
         const user = getDataFromDatabase(executableDir, "data", "user");
         if (where === "youtube") {
+            console.log(code)
             const google_token = await downloader.music.youtube.get_token(code) as any;
+            console.log(google_token)
             const googleUser = await downloader.music.youtube.get_me(google_token.access_token);
 
             writeDataToDatabase(executableDir, "data", "user", {

@@ -4,7 +4,7 @@
 
 ## UPDATE NOTE
 
-> fix get user name in spotify setting
+> change dir folder to build app
 
 ## Usage will be added later, it's still in development
 
