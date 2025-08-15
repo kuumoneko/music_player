@@ -3,7 +3,6 @@ import { existsSync, readdirSync, unlinkSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import Music from "./music/index.js";
 import ytdl from "@distube/ytdl-core";
-import axios from "axios";
 import ffmpeg from 'fluent-ffmpeg';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -164,8 +163,9 @@ export default class Downloader {
 
                 if (metadata.thumbnail) {
                     console.log(`Downloading thumbnail from: ${metadata.thumbnail}`);
-                    const response = await axios.get(metadata.thumbnail, { responseType: 'arraybuffer' });
-                    const thumbnailBuffer = Buffer.from(response.data);
+                    const response = await fetch(metadata.thumbnail);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const thumbnailBuffer = Buffer.from(arrayBuffer);
 
                     // Determine image format (e.g., .jpg, .png) from content type or guess
                     const contentType = response.headers['content-type'] || 'image/jpeg'; // Default to jpeg

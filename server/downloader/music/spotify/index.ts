@@ -1,5 +1,4 @@
 /* eslint-disable no-loop-func */
-import axios from "axios";
 import { Album, Artist, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist } from "../../../types/index.js";
 import { Buffer } from "node:buffer"
 import { readFileSync, writeFileSync } from "node:fs";
@@ -94,26 +93,26 @@ export default class Spotify {
             try {
                 const clientId = this.spotify_client_id; // Replace with your client ID
                 const clientSecret = this.spotify_api_key; // Replace with your client secret
-                const response = await axios.post('https://accounts.spotify.com/api/token',
-                    new URLSearchParams({
+
+                const response = await fetch('https://accounts.spotify.com/api/token', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${Buffer.from(clientId + ':' + clientSecret).toString('base64')}`,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
                         grant_type: 'authorization_code',
                         code: token,
                         redirect_uri: `http://localhost:${this.port}`,
                     }),
-                    {
-                        headers: {
-                            'Authorization': `Basic ${(Buffer.from(clientId + ':' + clientSecret).toString('base64'))}`,
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                    }
-                );
-                const { access_token, refresh_token } = response.data;
+                });
+                const { access_token, refresh_token, expires_in } = await response.json();
                 const spotifyUser = await this.get_me(access_token);
                 resolve({
                     user: spotifyUser,
                     refresh_token: refresh_token,
                     access_token: access_token,
-                    expires: new Date().getTime() + (response.data.expires_in * 1000)
+                    expires: new Date().getTime() + (expires_in * 1000)
                 });
             } catch (e) {
                 throw new Error(e);

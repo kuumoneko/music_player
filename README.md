@@ -4,9 +4,9 @@
 
 ## UPDATE NOTE
 
-> Refactor get auth code
+> Remove axios -> change to fetch
 
-## Usage will be added later, Im fixing something
+## Usage will be added later, it's still in development
 
 ## Learn More
 
