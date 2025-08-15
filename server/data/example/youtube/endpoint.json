@@ -1,0 +1,84 @@
+{
+    "user": {
+        "url": "https://youtube.googleapis.com/youtube/v3/channels",
+        "params": {
+            "mine": "true",
+            "part": "snippet",
+            "fields": "etag,items(snippet(title,thumbnails.default.url))"
+        }
+    },
+    "userplaylist": {
+        "url": "https://youtube.googleapis.com/youtube/v3/playlists",
+        "params": {
+            "part": "snippet",
+            "mine": "true",
+            "fields": "etag,nextPageToken,items(id,snippet(title,channelTitle,thumbnails.default.url))"
+        }
+    },
+    "likedsongs": {
+        "url": "https://youtube.googleapis.com/youtube/v3/videos",
+        "params": {
+            "part": "snippet,contentDetails",
+            "myRating": "like",
+            "fields": "etag,nextPageToken,items(etag,id,snippet(thumbnails.default.url,channelId,channelTitle,title,publishedAt),contentDetails.duration)"
+        }
+    },
+    "playlist_data": {
+        "url": "https://youtube.googleapis.com/youtube/v3/playlists",
+        "params": {
+            "part": "snippet",
+            "fields": "items.snippet.title"
+        }
+    },
+    "playlist_item": {
+        "url": "https://youtube.googleapis.com/youtube/v3/playlistItems",
+        "params": {
+            "part": "snippet",
+            "fields": "etag,prevPageToken,nextPageToken,items(snippet(publishedAt,channelId,title,description,thumbnails.default.url,channelTitle,resourceId.videoId))"
+        }
+    },
+    "duration": {
+        "url": "https://youtube.googleapis.com/youtube/v3/videos",
+        "params": {
+            "part": "contentDetails",
+            "fields": "nextPageToken,items(contentDetails.duration,id)"
+        }
+    },
+    "contentRating": {
+        "url": "https://youtube.googleapis.com/youtube/v3/videos",
+        "params": {
+            "part": "contentDetails",
+            "fields": "nextPageToken,items(contentDetails.contentRating,id)"
+        }
+    },
+    "videos": {
+        "url": "https://youtube.googleapis.com/youtube/v3/videos",
+        "params": {
+            "part": "snippet,contentDetails",
+            "fields": "etag,nextPageToken,items(id,snippet(thumbnails.default.url,channelId,channelTitle,title,publishedAt),contentDetails.duration)"
+        }
+    },
+    "search": {
+        "url": "https://youtube.googleapis.com/youtube/v3/search",
+        "params": {
+            "part": "snippet",
+            "type": "video",
+            "fields": "items(id.videoId)"
+        }
+    },
+    "userartist": {
+        "url": "https://youtube.googleapis.com/youtube/v3/subscriptions",
+        "params": {
+            "part": "snippet,contentDetails",
+            "mine": "true",
+            "fields": "etag,nextPageToken,items(snippet(title,thumbnails,resourceId(channelId)))"
+        }
+    },
+    "artist": {
+        "url": "https://youtube.googleapis.com/youtube/v3/channels",
+        "params": {
+            "part": "snippet,contentDetails,statistics",
+            "fields": "etag,nextPageToken,items(id,snippet(title,thumbnails.default.url),contentDetails.relatedPlaylists.uploads,statistics.videoCount)"
+        }
+    }
+}
