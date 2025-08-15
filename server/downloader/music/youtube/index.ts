@@ -329,6 +329,7 @@ export default class Youtube {
             let thumbnail: string = "";
             let this_playlist = playlist[id];
             let etag = (this_playlist?.etag && this_playlist?.etag?.length > 0) ? this_playlist?.etag : undefined;
+            const temp = (this_playlist?.etag && this_playlist?.etag?.length > 0) ? this_playlist?.etag : undefined
 
             let done = false;
             while (!done && pagetoken !== null && pagetoken !== undefined) {
@@ -361,7 +362,7 @@ export default class Youtube {
                 })) {
                     if (this_playlist?.tracks?.length > 0 && this_playlist?.tracks?.findIndex((track: any) => {
                         return track.track.id === item.snippet.resourceId.videoId
-                    })) {
+                    }) && temp !== undefined) {
                         done = true;
                         break;
                     }
@@ -378,7 +379,7 @@ export default class Youtube {
                 thumbnail: thumbnail,
                 name: name as string,
                 id: id,
-                tracks: Array.from(new Set([...this_playlist?.tracks || [], ...res]))
+                tracks: (temp === undefined) ? res : Array.from(new Set([...this_playlist?.tracks || [], ...res]))
             }
             this.writedata("playlist", playlist)
 
@@ -714,7 +715,7 @@ export default class Youtube {
                         expires: new Date().getTime() + 24 * 60 * 60 * 1000 // add one day into now
                     }
                     artists[id].tracks = this_playlist.tracks
-                    tracks.push(...updated_items)
+                    tracks.push(...updated_items.slice(0, 6))
                 }
                 else if (video !== null) {
                     const etag = video.etag
@@ -752,7 +753,7 @@ export default class Youtube {
 
                     const nnew_tracks = await this.fetch_track(playlist_ids);
                     const data_tracks = [... new Set([...this_playlist?.tracks || [], ...nnew_tracks])];
-                    tracks.push(...nnew_tracks);
+                    tracks.push(...nnew_tracks.slice(0, 6));
                     playlists[playlistId] = {
                         etag: etag,
                         thumbnail: thumbnail,

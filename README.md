@@ -4,7 +4,7 @@
 
 ## UPDATE NOTE
 
-> Remove axios -> change to fetch
+> add temp to get new track in youtube
 
 ## Usage will be added later, it's still in development
 
