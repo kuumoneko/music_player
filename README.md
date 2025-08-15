@@ -1,6 +1,6 @@
 # Music downloader web app
 
-> A Music web app built on React.js and Electron
+> A Music web app built on React.js and Nodejs
 
 ## UPDATE NOTE
 
