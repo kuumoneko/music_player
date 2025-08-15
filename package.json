@@ -52,14 +52,8 @@
     "build_app": "node --no-warnings=ExperimentalWarning --loader ts-node/esm build.ts",
     "build_backend": "deno compile --allow-sys --no-check --unstable-sloppy-imports --allow-env --allow-read --allow-net --allow-write --allow-run --output \"./app/server.exe\" ./server/index.ts"
   },
-  "main": "src/index.js",
+  "main": "src/index.ts",
   "homepage": "./src/",
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -67,9 +61,7 @@
       "not op_mini all"
     ],
     "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
+      "last 1 edge version"
     ]
   }
 }
