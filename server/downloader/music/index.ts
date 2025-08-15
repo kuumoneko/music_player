@@ -101,14 +101,18 @@ export default class Music {
         }
     }
 
-    async findMatchingVideo(trackToMatch: Track): Promise<Track | null> {
+    async findMatchingVideo(
+        trackToMatch: Track,
+        // must be youtube id
+        ids_dont_have: string[] = []
+    ): Promise<Track | null> {
         console.log(trackToMatch)
         const trackId = trackToMatch.track?.id || "";
         const trackName = trackToMatch.track?.name || "";
         const artistName = (trackToMatch.artists as any)[0].name || "";
         const trackDuration: number = trackToMatch.track?.duration as number; // in ms
         let database: any;
-        if (trackToMatch.type.includes("spot")) {
+        if (ids_dont_have.length === 0 && trackToMatch.type.includes("spot")) {
             database = this.spotify.getdata("track");
             const track = database[trackId];
             console.log(track)
@@ -131,6 +135,8 @@ export default class Music {
 
             const ids: string[] = searchResults.map((track: Track) => {
                 return track.track?.id || ""
+            }).filter((item: string) => {
+                return !ids_dont_have.includes(item) && item !== ""
             })
 
             const contentRating = await this.youtube.fetch_contentRating(ids);

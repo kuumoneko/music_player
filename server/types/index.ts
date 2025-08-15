@@ -8,12 +8,13 @@ export interface Download_queue {
 }
 
 export interface Download_item {
-    id: string,
+    id: string[],
     title: string,
     metadata: {
         artist: string,
         year: string,
-        thumbnail: string
+        thumbnail: string,
+        source: string
     }
 }
 

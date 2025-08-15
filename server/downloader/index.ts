@@ -219,11 +219,10 @@ export default class Downloader {
                     })
                     .save(outputPath);
             } catch (error) {
-                console.error('An error occurred:', error);
                 if (tempThumbnailPath && fs.existsSync(tempThumbnailPath)) {
                     await fs.promises.unlink(tempThumbnailPath).catch(cleanUpErr => console.error('Error during emergency cleanup:', cleanUpErr));
                 }
-                resolve("not ok")
+                reject("not ok")
             }
         })
     }
@@ -241,24 +240,27 @@ export default class Downloader {
             const { title, id, metadata } = downloader
             const temp = `${this.folder}\\${title}.${this.audio_format}`
             console.log(`${temp} is ${!existsSync(temp) === true ? "not" : ""} existed`)
-
+            const downloaded_id = id[id.length - 1]
             try {
                 if (!existsSync(`${this.folder}\\${title}.${this.audio_format}`)) {
-                    await this.donwloading(title, id, metadata)
+                    await this.donwloading(title, downloaded_id, metadata)
                 }
             }
             catch (e) {
                 console.error(e)
-                const track: Track[] = await this.music.youtube.fetch_track([id]);
-                const data = await this.music.findMatchingVideo(track[0]);
+                const source = metadata.source;
+
+                const track: Track[] = await this.music.youtube.fetch_track([id[0]]);
+                const data = await this.music.findMatchingVideo(track[0], id);
                 if (data) {
                     this.download_queue.push({
                         title: this.format_title(data.track?.name as string) || "",
-                        id: data.track?.id || '',
+                        id: [...id, data.track?.id || ''],
                         metadata: {
                             artist: (data.artists as any)[0].name || "",
                             year: data.track?.releaseDate || "",
-                            thumbnail: data.thumbnail || ""
+                            thumbnail: data.thumbnail || "",
+                            source: source
                         }
                     })
                 }

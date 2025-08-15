@@ -453,11 +453,12 @@ server.post("/download", async (req, res) => {
                     for (const item of temp.tracks as Track[]) {
                         download_items.push({
                             title: downloader.format_title(item.track?.name as string) || "",
-                            id: item.track?.id || "",
+                            id: [item.track?.id || ""],
                             metadata: {
                                 artist: (item.artists as any)[0].name || "",
                                 year: item.track?.releaseDate || "",
-                                thumbnail: item.thumbnail || ""
+                                thumbnail: item.thumbnail || "",
+                                source: "youtube"
                             }
                         })
                     }
@@ -475,11 +476,12 @@ server.post("/download", async (req, res) => {
                         if (matching_video !== null) {
                             tracks_to_download.push({
                                 title: downloader.format_title(spotify_video.track?.name as string) || "",
-                                id: matching_video.track?.id || "",
+                                id: [spotify_video.track.id || "", matching_video.track?.id || ""],
                                 metadata: {
                                     artist: (spotify_video.artists as any)[0].name,
                                     year: spotify_video.track?.releaseDate || "",
-                                    thumbnail: spotify_video.thumbnail || ""
+                                    thumbnail: spotify_video.thumbnail || "",
+                                    source: "spotify"
                                 }
                             })
                         }
@@ -491,11 +493,12 @@ server.post("/download", async (req, res) => {
                     const temp: Track = (dataa as Track)
                     tracks_to_download.push({
                         title: downloader.format_title(temp.track?.name as string) || "",
-                        id: temp.track?.id || "",
+                        id: [temp.track?.id || ""],
                         metadata: {
                             artist: (temp.artists as any)[0].name || "",
                             year: temp.track?.releaseDate || "",
-                            thumbnail: temp.thumbnail || ""
+                            thumbnail: temp.thumbnail || "",
+                            source: "youtube"
                         }
                     })
                 }
@@ -506,11 +509,12 @@ server.post("/download", async (req, res) => {
                     if (temp !== null) {
                         tracks_to_download.push({
                             title: downloader.format_title(spotify_video.track?.name as string) || "",
-                            id: temp.track?.id || "",
+                            id: [spotify_video.track.id || "", temp.track?.id || ""],
                             metadata: {
                                 artist: (spotify_video.artists as any)[0].name || "",
                                 year: spotify_video.track?.releaseDate || "",
-                                thumbnail: spotify_video.thumbnail || ""
+                                thumbnail: spotify_video.thumbnail || "",
+                                source: "spotify"
                             }
                         })
                     }
