@@ -59,7 +59,6 @@ export default function Download_Queue() {
             for (const item of tracks) {
                 const data = await fetch_data(Data.track, { where: item.source, id: item.id })
 
-                // const data = await get(`/${item.mode}/${item.source}/${item.id}`);
                 temp[`${item.source}:${item.mode}:${item.id}`] = data
             }
 
@@ -93,7 +92,6 @@ export default function Download_Queue() {
                         Object.keys(JSON.parse(list)).map((key: string) => {
                             const data = JSON.parse(list)
                             const item = data[key];
-                            // console.log(item)
                             const [source, mode] = item.type.split(":");
                             const id = item.id
 
@@ -238,7 +236,6 @@ export default function Download_Queue() {
                                     }
                                 </div>
                             )
-                            // console.log(item)
                         })
                     }
 
@@ -389,7 +386,6 @@ const Test_B = ({ list }: { list: string }) => {
                             }
                         </div>
                     )
-                    // console.log(item)
                 })
             }
         </>
@@ -406,13 +402,6 @@ const Test_A = ({ list }: { list: string }) => {
                     return (
                         <div key={`download ${index}`} className={`vid ${index + 1} flex h-[200px] w-[100%] flex-row items-center justify-between mb-[20px] bg-slate-700 hover:bg-slate-600`}>
                             <div className="flex flex-row items-center">
-                                {/* <span className="w-[50px] flex flex-row items-center justify-center dot text-slate-700 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-500 transition-all">
-                                            <FontAwesomeIcon icon={faCircle}
-                                                onClick={() => {
-                                                    console.log("delete " + item.track.name)
-                                                }}
-                                            />
-                                        </span> */}
                                 <span className="thumbnail cursor-default select-none ml-[10px]" >
                                     <img src={item.thumbnail} alt="" height={100} width={100} />
                                 </span>

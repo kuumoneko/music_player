@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { SearchItem, SearchResult, GetListByKeyword } from "youtube-search-api";
+
 import { Artist, EndPoints, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist, youtube_api_keys, youtube_endpoint, youtube_endpoints } from "../../../types/index.js";
 
 export default class Youtube {
@@ -286,7 +286,7 @@ export default class Youtube {
                         track: {
                             name: item.snippet.title,
                             id: item.id,
-                            duration: this.iso8601DurationToMilliseconds(item.contentDetails.duration), // in miliseconds
+                            duration: iso8601DurationToMilliseconds(item.contentDetails.duration), // in miliseconds
                             releaseDate: item.snippet.publishedAt.split("T")[0],
                         }
                     }
@@ -397,22 +397,6 @@ export default class Youtube {
         }
     }
 
-    iso8601DurationToMilliseconds(durationString: string): number {
-        const pattern = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/;
-        const match = durationString.match(pattern);
-
-        if (!match) {
-            return NaN; // Invalid format
-        }
-
-        const hours = parseInt(match[1]) || 0;
-        const minutes = parseInt(match[2]) || 0;
-        const seconds = parseInt(match[3]) || 0;
-
-        const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
-        return totalSeconds * 1000;
-    }
-
     async fetch_contentRating(ids: string[]): Promise<any> {
         const durations: any = {};
         let st = 0, ed = 49;
@@ -482,7 +466,7 @@ export default class Youtube {
                             track: {
                                 name: item.snippet.title,
                                 id: item.id,
-                                duration: this.iso8601DurationToMilliseconds(item.contentDetails.duration), // in miliseconds
+                                duration: iso8601DurationToMilliseconds(item.contentDetails.duration), // in miliseconds
                                 releaseDate: item.snippet.publishedAt.split("T")[0],
                             }
                         })
@@ -510,17 +494,53 @@ export default class Youtube {
     }
 
     async search(search: string = ''): Promise<Search> {
-
         try {
-            let data: SearchResult = await GetListByKeyword(search, false, 30, [{ type: 'video' }]);
+            const limit: number = 50
+            const endpoint = `https://www.youtube.com/results?search_query=${search}&sp=EgIQAQ%3D%3D`;
 
+            const create_page = await fetch(encodeURI(endpoint));
+            const pageData = await create_page.text();
+            const ytInitData = pageData.split("var ytInitialData =");
 
-            const ids: string[] = data.items.map((item: SearchItem) => { return item.id });
-            const tracks = await this.fetch_track(ids);
+            let page: any = null;
+            if (ytInitData && ytInitData.length > 1) {
+                const script_data = ytInitData[1]
+                    .split("</script>")[0]
+                    .slice(0, -1);
+                page = JSON.parse(script_data);
+            }
 
+            if (page === null) {
+                throw new Error("Unreachable code")
+            }
+
+            const sectionListRenderer = page.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer;
+
+            const items: any[] = [];
+            sectionListRenderer.contents.forEach((content: any) => {
+                if (content.itemSectionRenderer) {
+                    content.itemSectionRenderer.contents.forEach((item: any) => {
+                        if (item.videoRenderer) {
+                            const videoRender = item.videoRenderer;
+
+                            items.push({
+                                thumbnail: videoRender.thumbnail.thumbnails[0].url,
+                                artists: videoRender.ownerText.runs.map((item: any) => { return { name: item.text, id: item.navigationEndpoint.browseEndpoint.browseId } }),
+                                track: {
+                                    name: videoRender.title.runs[0].text,
+                                    id: videoRender.videoId || "",
+                                    duration: timeToMilliseconds(videoRender.lengthText.simpleText as string), // in miliseconds
+                                    releaseDate: videoRender.publishedTimeText.simpleText,
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+            const itemsResult = limit !== 0 ? items.slice(0, limit) : items;
             return {
                 type: "youtube:search",
-                tracks: tracks
+                tracks: itemsResult
             }
         }
         catch (e) {
@@ -785,4 +805,37 @@ export default class Youtube {
             throw new Error(e);
         }
     }
+}
+
+function timeToMilliseconds(timeStr: string): number {
+    const parts = timeStr.split(':').map(Number);
+
+    let hours = 0, minutes = 0, seconds = 0;
+
+    if (parts.length === 3) {
+        [hours, minutes, seconds] = parts;
+    } else if (parts.length === 2) {
+        [minutes, seconds] = parts;
+    } else {
+        throw new Error("Invalid time format. Use hh:mm:ss or mm:ss");
+    }
+
+    return ((hours * 60 + minutes) * 60 + seconds) * 1000;
+};
+
+
+function iso8601DurationToMilliseconds(durationString: string): number {
+    const pattern = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/;
+    const match = durationString.match(pattern);
+
+    if (!match) {
+        return NaN; // Invalid format
+    }
+
+    const hours = parseInt(match[1]) || 0;
+    const minutes = parseInt(match[2]) || 0;
+    const seconds = parseInt(match[3]) || 0;
+
+    const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+    return totalSeconds * 1000;
 }

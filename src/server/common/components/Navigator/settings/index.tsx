@@ -25,12 +25,10 @@ export default function SettingsModal(
     return (
         // Overlay for the modal background
         <div className="fixed inset-0 bg-gray-900 bg-opacity-75 flex justify-center items-center z-50 p-4" >
-            {/* Modal content area */}
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 w-full max-w-md space-y-6 transform transition-all duration-300 scale-100 opacity-100">
 
                 <Close_Settings onClose={() => {
                     goto("/", seturl)
-                    // seturl("/")
                 }} />
 
                 <Audio_Settings preferredAudioFormat={preferredAudioFormat} onAudioFormatChange={onAudioFormatChange} />

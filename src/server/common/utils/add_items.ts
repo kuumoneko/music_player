@@ -2,17 +2,6 @@ import { Track } from "../../../types/index.ts";
 import { Data, fetch_data } from "./fetch.ts";
 
 export const add_items = async (source: string, mode: string, id: string, after_tracks: any[]) => {
-    // console.log("add items")
-
-    // let url = `/${mode}/${source}/${id}`;
-
-    // if (source === "local") {
-    //     url = `/local/`;
-    // }
-    // else if (mode === "liked songs") {
-    //     url = `/liked songs/${source}`;
-    // }
-
     let data: any;
 
     if (mode === "playlist") {
@@ -20,15 +9,12 @@ export const add_items = async (source: string, mode: string, id: string, after_
     }
     else if (mode === "track") {
         data = await fetch_data(Data.track, { where: source, id: id })
-
     }
     else if (mode === "local") {
         data = await fetch_data(Data.local)
-
     }
     else if (mode === "liked songs") {
         data = await fetch_data(Data.likedsongs, { where: source })
-
     }
 
     const tracks = data.tracks as Track[];
@@ -53,7 +39,6 @@ export const add_items = async (source: string, mode: string, id: string, after_
         })
         ));
     }
-
 
     localStorage.setItem("nextfrom", JSON.stringify({
         from: `${source}:${mode}:${id}`,

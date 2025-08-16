@@ -1,5 +1,3 @@
-import "../../../electron.d.ts"
-
 export enum Data {
     login = "login",
     logout = "logout",

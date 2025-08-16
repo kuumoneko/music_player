@@ -16,130 +16,13 @@ body {
   box-sizing: border-box;
 }
 
-#id {
-  height: 100%;
-  width: 100%;
-}
 
 .dark {
   background-color: #000000;
   color: #ffffff;
 }
 
-.header-icons {
-  top: 20px;
-  right: 20px;
-  display: flex;
-  gap: 15px;
-  align-items: center;
-}
-
 .header-icons .material-icons {
   font-size: 28px;
   cursor: pointer;
-}
-
-.logo-container {
-  margin-bottom: 30px;
-  text-align: center;
-}
-
-.logo-icon {
-  width: 80px;
-  height: 80px;
-  background-color: #1db954;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 15px auto;
-  position: relative;
-}
-
-.logo-icon::before {
-  content: "";
-  width: 40px;
-  height: 40px;
-  background-color: #ffffff;
-  border-radius: 50%;
-  display: block;
-}
-
-.logo-icon::after {
-  content: "";
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  background-color: #1db954;
-  border-radius: 50%;
-}
-
-.logo-text {
-  font-size: 4em;
-  font-weight: bold;
-  color: #ffffff;
-  text-shadow: 0 0 10px rgba(29, 185, 84, 0.5);
-}
-
-.slogan {
-  font-size: 1.1em;
-  color: #cccccc;
-  margin-bottom: 40px;
-  text-align: center;
-}
-
-.search-container {
-  display: flex;
-  width: 100%;
-  max-width: 600px;
-}
-
-.search-input {
-  flex-grow: 1;
-  padding: 12px 20px;
-  border-radius: 25px 0 0 25px;
-  background-color: #333333;
-  color: #ffffff;
-  font-size: 1em;
-  outline: none;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.search-input::placeholder {
-  color: #aaaaaa;
-}
-
-.search-button {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 0 25px 25px 0;
-  background-color: #1db954; /* Spotify Green */
-  color: #ffffff;
-  font-size: 1.2em;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s ease;
-}
-
-.search-button:hover {
-  background-color: #1ed760;
-}
-
-.info-box {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background-color: #007bff; /* Blue */
-  padding: 15px 25px;
-  border-radius: 10px;
-  max-width: 600px;
-  width: 100%;
-  font-size: 1em;
-  color: #ffffff;
-}
-
-.info-box .material-icons {
-  font-size: 24px;
 }

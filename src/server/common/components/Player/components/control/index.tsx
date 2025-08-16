@@ -40,13 +40,8 @@ export const getUrl = async (
 
         const data = await fetch_data(Data.stream, { where: source, mode: "track", id: id });
         if (source === "local") {
-            const audio_format = localStorage.getItem("preferredAudioFormat");
-            const array = new Int8Array(data.url);
-            const buffer = array.buffer;
-            const blob = new Blob([buffer], { type: `audio/${audio_format}` });
-            if (blob.size > 0) {
-                data.url = URL.createObjectURL(blob)
-            }
+            const audio_format = id.split(".")[id.split(".").length - 1];
+            data.url = `data:audio/${audio_format};base64,${data.url}`;
         }
         setplayed(false)
         audioRef.current.pause();
@@ -61,8 +56,7 @@ export const getUrl = async (
 
         localStorage.setItem("play_url", JSON.stringify({
             id: id,
-            source: source,
-            url: data.url,
+            source: source
         }));
         setTimeout(async () => {
             if (autoplayed) {
@@ -82,8 +76,7 @@ export const getUrl = async (
         }))
         localStorage.setItem("play_url", JSON.stringify({
             id: "",
-            source: "",
-            url: null,
+            source: ""
         }));
     }
 }
@@ -151,8 +144,7 @@ export default function ControlUI() {
                     now_playing.url = null;
                     localStorage.setItem("play_url", JSON.stringify({
                         id: playing.id,
-                        source: playing.source,
-                        url: null
+                        source: playing.source
                     }));
                     await getUrl(playing.source, playing.id, true, audioRef, setplayed, setisloading, setduraion);
                 }

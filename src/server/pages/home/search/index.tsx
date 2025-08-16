@@ -10,7 +10,6 @@ export default function Search({
     seturl: (a: string) => void
 }) {
     const [typing, settyping] = useState("");
-    // Youtube , Spotify , ""
     const [source, setsource] = useState("");
 
     const search = () => {

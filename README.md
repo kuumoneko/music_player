@@ -5,11 +5,13 @@
 ## ABOUT
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
-> Version: 2.0.0
+> Version: 2.1.0
 
 ## UPDATE NOTE
 
-> Fix deno to build app lighter
+> The first version delete something to reduce file size
+>
+> Remove 2 packge in backend server
 
 ## Usage
 

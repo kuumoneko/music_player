@@ -3,9 +3,7 @@ import { Data, fetch_data } from "../../../common/utils/fetch.ts";
 import List from "../../../common/components/Show_music/components/list.tsx";
 
 export default function Show_search({ urll }: { urll: String }) {
-    // get url
     const url = urll.split("/").slice(3);
-    // console.log(url);
 
     const [search, setsearch] = useState(JSON.parse(localStorage.getItem("search") as string).result.tracks || []);
 
@@ -17,7 +15,6 @@ export default function Show_search({ urll }: { urll: String }) {
                 return;
             }
             const data = await fetch_data(Data.search, { where: url[1], query: url[2] })
-            // const data = await get(`/search/${url[1]}/${url[2]}`);
             localStorage.setItem("search", JSON.stringify({
                 query: url[1],
                 source: url[2],

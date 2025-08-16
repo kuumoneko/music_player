@@ -6,7 +6,6 @@ import Show_search from "./search/show_search.tsx";
 
 
 export default function Home({ url, seturl }: { url: string, seturl: (a: string) => void }) {
-    // get url
     const urll = url.split("/").slice(3);
 
     return (

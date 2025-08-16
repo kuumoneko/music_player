@@ -16,7 +16,7 @@ export default function Themes(
 ) {
 
     return (
-        <div className="header-icons flex">
+        <div className="header-icons flex top-[20px] right-[20px] gap-[15px] items-center cursor-pointer">
             <span className="user-mode h-1/2">
                 <div className="flex justify-center items-center space-x-4">
                     <label className="relative inline-block w-[60px] h-8">
@@ -38,11 +38,9 @@ export default function Themes(
                 </div>
             </span>
             <span
-                className="material-icons caret-slate-50 cursor-pointer"
+                className="material-icons caret-slate-50"
                 onClick={() => {
-                    goto("/settings", seturl)
-                    // seturl("/settings")
-                    // window.location.href = "/settings";
+                    goto("/settings", seturl);
                 }}
             >
                 <FontAwesomeIcon icon={faGear} />

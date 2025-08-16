@@ -1,16 +1,13 @@
 import path from "node:path";
-import {
-    readFileSync,
-    statSync,
-    promises
-} from "node:fs";
-import * as mm from "music-metadata";
+import { readFileSync, statSync, promises } from "node:fs";
+
+import express, { Response } from "express";
+
 import { Audio_format, Download_item, Mode, Playlist, Track, Artist, User_Artist, youtube_api_keys, Status } from "./types/index.js";
 import Downloader from "./downloader/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.js";
-import express, { Response } from "express";
 
-const mode: Mode = Mode.deploy;
+const mode: Mode = Mode.react;
 
 const generateRandomString = (length: number) => {
     const possible =
@@ -46,9 +43,9 @@ const server_port = 3000
 const server = express();
 
 server.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', `http://localhost:${port}`); // Allow all origins
-    res.header('Access-Control-Allow-Methods', 'POST'); // Allowed methods
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization'); // Allowed headers
+    res.header('Access-Control-Allow-Origin', `http://localhost:${port}`);
+    res.header('Access-Control-Allow-Methods', 'POST');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
     res.header('Access-Control-Allow-Credentials', 'true');
     next();
 });
@@ -634,38 +631,23 @@ server.post("/local", async (req, res) => {
         for (const dirent of audiofiles) {
             const filePath = path.join(folderPath, dirent.name);
             try {
-                const metadata = await mm.parseFile(filePath);
-                const picture = metadata.common.picture?.[0];
-
-                const dataa: number[] = picture?.data
-                    .toString()
-                    .split(",")
-                    .map((item: any) => Number(item)) as number[];
-
-                const buffer = Buffer.from(dataa);
-                const base64 = buffer.toString("base64");
-
-                const thumbnail = picture
-                    ? `data:${picture.format};base64,${base64}`
-                    : null;
+                const metadata = await downloader.music.local.parseFile(filePath);
+                const thumbnail = metadata.thumbnail;
 
                 files.push({
                     type: "local:track",
                     track: {
                         name:
-                            metadata.common.title ||
+                            metadata.title ||
                             path.basename(dirent.name, path.extname(dirent.name)),
                         filename: dirent.name,
                         id: `${folderPath}\\${dirent.name}`,
                         path: filePath,
-                        duration: (metadata.format.duration || 0) * 1000,
+                        duration: (metadata.duration || 0) * 1000,
                         releaseDate: "",
                     },
-                    artists:
-                        metadata.common.artists?.map((item: any) => ({
-                            name: item,
-                        })) || [],
-                    thumbnail: thumbnail,
+                    artists: [{ name: metadata.artist }],
+                    thumbnail: thumbnail
                 });
             } catch (error) {
                 console.error(`Could not parse metadata for ${filePath}:`, error);
@@ -923,9 +905,10 @@ server.post("/stream", async (req, res) => {
         }
 
         if (where === "local") {
-            const base64Audio = readFileSync(id);
+            const audioBuffer = readFileSync(id);
+            const base64String = audioBuffer.toString('base64');
             return give_data(res, {
-                url: base64Audio,
+                url: base64String,
             });
         }
 

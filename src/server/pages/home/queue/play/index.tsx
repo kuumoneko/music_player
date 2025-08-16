@@ -163,10 +163,6 @@ export default function Play_Queue() {
                                                         from: nextfrom.from,
                                                         tracks: nextfrom.tracks.slice(trackk + 1, -1)
                                                     });
-                                                    // localStorage.setItem("nextfrom", JSON.stringify({
-                                                    //     from: nextfrom.from,
-                                                    //     tracks: nextfrom.tracks.slice(trackk + 1, -1)
-                                                    // }));
                                                 }}
                                             >
 

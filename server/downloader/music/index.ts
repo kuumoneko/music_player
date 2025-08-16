@@ -2,10 +2,12 @@ import Spotify from "./spotify/index.js";
 import { Music_options, Track } from "../../types/index.js";
 import Youtube from "./youtube/index.js";
 import path from "node:path";
+import { Local } from "./local/index.js";
 
 export default class Music {
     public youtube: Youtube;
     public spotify: Spotify;
+    public local: Local
 
     constructor(options: Music_options) {
         this.youtube = new Youtube({
@@ -23,6 +25,7 @@ export default class Music {
             port: options.port || 3000,
             database: path.join(options.database, "data", "spotify")
         })
+        this.local = new Local()
     }
 
     convert_link(link: string) {

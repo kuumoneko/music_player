@@ -1,7 +1,6 @@
-// react server
-import React, { useEffect, useState } from 'react';
+import  { useEffect, useState } from 'react';
 import "./index.css"
-// function
+
 import { goto } from "./common/utils/url.ts"
 
 import MainContent from './pages/index.tsx';

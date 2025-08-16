@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-// import "./index.css"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faArrowRight, faArrowsRotate, faDownload, faHome, faList } from "@fortawesome/free-solid-svg-icons";
 import SettingsModal from "./settings/index.tsx";
@@ -43,11 +42,7 @@ export default function Nav({ url, seturl }: {
     const [backward, setbackward] = useState(localStorage.getItem("backward") || "[]");
     const [forward, setforward] = useState(localStorage.getItem("forward") || "[]");
 
-    // const now = localStorage.getItem("url")?.split("/")[0]
-
     const [ishome, setishome] = useState(localStorage.getItem("url")?.split("/")[3] === "");
-
-
 
     useEffect(() => {
         const run = setInterval(() => {
@@ -100,12 +95,12 @@ export default function Nav({ url, seturl }: {
                 <SettingsModal
                     url={url}
                     seturl={seturl}
-                    isOpen={url.split("/").slice(3)[0] === "settings"} // Pass visibility state
+                    isOpen={url.split("/").slice(3)[0] === "settings"}
                     preferredAudioFormat={preferredAudioFormat}
                     onAudioFormatChange={(event: any) => {
                         const newFormat = event.target.value;
                         setPreferredAudioFormat(newFormat);
-                        localStorage.setItem('preferredAudioFormat', newFormat); // Save to localStorage
+                        localStorage.setItem('preferredAudioFormat', newFormat);
                     }}
                 />
 

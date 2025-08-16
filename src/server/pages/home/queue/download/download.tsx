@@ -19,7 +19,6 @@ export default function Download({ list }: { list: any[] }) {
                 async function get_download_status() {
                     if (!status) return;
                     const data = await fetch_data(Data.download_status);
-                    // const data = await get("/download_status");
                     if (data.status == "done") {
                         setstatus(Status.done);
                         setdownload(false);
@@ -38,7 +37,6 @@ export default function Download({ list }: { list: any[] }) {
 
     useEffect(() => {
         async function run() {
-            // console.log(list)
             try {
                 const links = list.map((item: any) => {
                     return {

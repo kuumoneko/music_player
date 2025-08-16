@@ -1,11 +1,13 @@
-import { Downloader_options, Audio_format, Status, Download_item, Track } from "../types/index.js";
 import { existsSync, readdirSync, unlinkSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import Music from "./music/index.js";
-import ytdl from "@distube/ytdl-core";
-import ffmpeg from "fluent-ffmpeg";
 import fs from 'node:fs';
 import path from 'node:path';
+
+import ytdl from "@distube/ytdl-core";
+import ffmpeg from "fluent-ffmpeg";
+
+import { Downloader_options, Audio_format, Status, Download_item, Track } from "../types/index.js";
+import Music from "./music/index.js";
 
 export default class Downloader {
     public folder: string = ""

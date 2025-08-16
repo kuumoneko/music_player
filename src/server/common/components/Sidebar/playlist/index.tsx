@@ -91,7 +91,6 @@ export default function Playlist({
                         <div key={`spotify ${index}`} className='my-[2px] hover:bg-slate-600'>
                             <div className={`vid ${index + 1} flex h-[80px] w-[100%] flex-col justify-center`} onClick={() => {
                                 goto(`/playlist/spotify/${item.playlistId}`, seturl)
-                                // window.location.href = `/playlist/spotify/${item.playlistId}`
                             }}>
 
                                 <div className="flex flex-row items-center">
