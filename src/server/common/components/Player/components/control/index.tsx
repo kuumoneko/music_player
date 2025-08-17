@@ -38,10 +38,32 @@ export const getUrl = async (
     try {
         setisloading(true)
 
+        function base64ToBlob(base64: string, mimeType: string) {
+            const byteCharacters = atob(base64);
+            const byteArrays: any = [];
+
+            for (let i = 0; i < byteCharacters.length; i += 1024) {
+                const slice = byteCharacters.slice(i, i + 1024);
+                const byteNumbers = new Array(slice.length);
+                for (let j = 0; j < slice.length; j++) {
+                    byteNumbers[j] = slice.charCodeAt(j);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+
+            return new Blob(byteArrays, { type: mimeType });
+        }
+
         const data = await fetch_data(Data.stream, { where: source, mode: "track", id: id });
         if (source === "local") {
             const audio_format = id.split(".")[id.split(".").length - 1];
-            data.url = `data:audio/${audio_format};base64,${data.url}`;
+            console.log(data.url.includes("base64"))
+
+            const blob = base64ToBlob(data.url, `audio/${audio_format}`);
+            const blobUrl = URL.createObjectURL(blob);
+
+            data.url = blobUrl; //`data:audio/${audio_format};base64,${data.url}`;
         }
         setplayed(false)
         audioRef.current.pause();

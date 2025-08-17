@@ -269,6 +269,9 @@ export default class Downloader {
             }
         }
         this.set_status(Status.done);
+        setTimeout(() => {
+            this.set_status(Status.idle);
+        }, 5000);
     }
 
     async getAudioURLAlternative(id: string): Promise<string> {

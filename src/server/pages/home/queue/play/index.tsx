@@ -40,7 +40,7 @@ export default function Play_Queue() {
                             {
                                 queue.map((item: any, index: number) => {
                                     return (
-                                        <div key={index} className={`queue ${index + 1} flex h-[100px] w-[100%] flex-row items-center justify-between mb-[20px] bg-slate-700 hover:bg-slate-600`}
+                                        <div key={item.name} className={`queue ${index + 1} flex h-[100px] w-[100%] flex-row items-center justify-between mb-[20px] bg-slate-700 hover:bg-slate-600`}
                                             onDoubleClick={(e) => {
                                                 localStorage.setItem("playing", JSON.stringify({
                                                     name: item.name,
@@ -141,7 +141,7 @@ export default function Play_Queue() {
                                 nextfrom?.tracks?.map((item: any, index: number) => {
                                     return (
                                         <div>
-                                            <div className={`nextfrom ${index + 1} flex h-[100px] w-[100%] flex-row items-center justify-between mb-[20px] bg-slate-700 hover:bg-slate-600`}
+                                            <div key={item.name} className={`nextfrom ${index + 1} flex h-[100px] w-[100%] flex-row items-center justify-between mb-[20px] bg-slate-700 hover:bg-slate-600`}
                                                 onDoubleClick={(e) => {
                                                     localStorage.setItem("playing", JSON.stringify({
                                                         name: item.name,
