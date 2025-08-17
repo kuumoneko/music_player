@@ -40,11 +40,11 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
     }, [artist])
 
     return (
-        <div className="home w-[100%]">
+        <div className="home w-[100%] h-[95%]">
             <span className="w-[100%] flex flex-row items-center justify-center">
                 Home
             </span>
-            <div className="flex flex-col w-[100%] ml-[15px] h-[10%]">
+            <div className="flex flex-col w-[100%] ml-[15px] h-[20%]">
                 <div className="flex h-[10%]">
                     <span>
                         <FontAwesomeIcon icon={faThumbTack} />
@@ -100,7 +100,7 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                     }
                 </div>
             </div>
-            <div className="new tracks grid grid-cols-3 gap-4 ml-[15px] max-h-[24%] mt-[15px] w-[100%] overflow-y-scroll [&::-webkit-scrollbar]:hidden">
+            <div className="new tracks grid grid-cols-3 gap-4 ml-[15px] max-h-[70%] mt-[15px] w-[100%] overflow-y-scroll [&::-webkit-scrollbar]:hidden">
                 {
                     (JSON.parse(newtracks) as []).map((item: Track, index: number) => {
                         return (
