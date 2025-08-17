@@ -7,7 +7,7 @@ import { Audio_format, Download_item, Mode, Playlist, Track, Artist, User_Artist
 import Downloader from "./downloader/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.js";
 
-const mode: Mode = Mode.react;
+const mode: Mode = Mode.deploy;
 
 const generateRandomString = (length: number) => {
     const possible =
@@ -609,6 +609,7 @@ server.post("/local", async (req, res) => {
 
     try {
         const { local } = getDataFromDatabase(executableDir, "data", "user");
+        const local_files = getDataFromDatabase(path.join(executableDir, "data"), "localfile", "local");
 
         if (!local || !local.folder) {
             return give_error(res, "Local music folder not set.");
@@ -631,24 +632,32 @@ server.post("/local", async (req, res) => {
         for (const dirent of audiofiles) {
             const filePath = path.join(folderPath, dirent.name);
             try {
-                const metadata = await downloader.music.local.parseFile(filePath);
-                const thumbnail = metadata.thumbnail;
+                const get_data = local_files.find((item: any) => {
+                    return item.track.path === filePath
+                })
+                if (get_data !== null && get_data !== undefined) {
+                    files.push(get_data)
+                }
+                else {
+                    const metadata = await downloader.music.local.parseFile(filePath);
+                    const thumbnail = metadata.thumbnail;
 
-                files.push({
-                    type: "local:track",
-                    track: {
-                        name:
-                            metadata.title ||
-                            path.basename(dirent.name, path.extname(dirent.name)),
-                        filename: dirent.name,
-                        id: `${folderPath}\\${dirent.name}`,
-                        path: filePath,
-                        duration: (metadata.duration || 0) * 1000,
-                        releaseDate: "",
-                    },
-                    artists: [{ name: metadata.artist }],
-                    thumbnail: thumbnail
-                });
+                    files.push({
+                        type: "local:track",
+                        track: {
+                            name:
+                                metadata.title ||
+                                path.basename(dirent.name, path.extname(dirent.name)),
+                            filename: dirent.name,
+                            id: `${folderPath}\\${dirent.name}`,
+                            path: filePath,
+                            duration: (metadata.duration || 0) * 1000,
+                            releaseDate: "",
+                        },
+                        artists: [{ name: metadata.artist }],
+                        thumbnail: thumbnail
+                    });
+                }
             } catch (error) {
                 console.error(`Could not parse metadata for ${filePath}:`, error);
                 files.push({
@@ -666,7 +675,7 @@ server.post("/local", async (req, res) => {
             }
         }
 
-        writeDataToDatabase(path.join(executableDir, "data"), "localfile", "local.json", files)
+        writeDataToDatabase(path.join(executableDir, "data"), "localfile", "local", files)
 
         return give_data(res, {
             type: "local:folder",
