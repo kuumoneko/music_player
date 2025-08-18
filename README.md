@@ -5,13 +5,16 @@
 ## ABOUT
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
+>
 > Version: 2.1.0
 
 ## UPDATE NOTE
 
-> The first version delete something to reduce file size
+> Fix lagging when list of item is too large
 >
-> Remove 2 packge in backend server
+> Refactor code
+>
+> Add thumbnail of local file
 
 ## Usage
 
