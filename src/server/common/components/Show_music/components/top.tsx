@@ -1,4 +1,4 @@
-import { faPlay, faShare, faDownload, faThumbTack } from "@fortawesome/free-solid-svg-icons";
+import { faPlay, faShare, faDownload, faThumbTack, faFileAudio } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Track } from "../../../../../types";
 import formatDuration from "../../../utils/format";
@@ -32,7 +32,11 @@ export default function Top({ name, thumbnail, duration, releaseDate, artists, s
 
                                     ) : (
                                         <>
-
+                                            {
+                                                source === "local" && (
+                                                    <FontAwesomeIcon icon={faFileAudio} className="text-[50px]"/>
+                                                )
+                                            }
                                         </>
                                     )
                                 }
@@ -72,16 +76,16 @@ export default function Top({ name, thumbnail, duration, releaseDate, artists, s
                                             const random = Math.floor(Math.random() * (max - min + 1)) + min;
                                             const track: Track = playlist ? playlist[random] : [];
                                             localStorage.setItem("playing", JSON.stringify({
-                                                name: track.track.name,
+                                                name: track.track?.name,
                                                 artists: track.artists?.map((artist: any) => artist.name).join(", "),
                                                 thumbnail: track.thumbnail,
                                                 source: source,
-                                                id: track.track.id,
+                                                id: track.track?.id,
                                                 playlist: name
                                             }))
                                             localStorage.setItem("time", "0")
 
-                                            const other_tracks: any[] = playlist?.filter((item: any) => item.track.id !== track.track.id) || [];
+                                            const other_tracks: any[] = playlist?.filter((item: any) => item.track.id !== track.track?.id) || [];
 
                                             if (other_tracks.length > 0) {
                                                 const shuffle = localStorage.getItem("shuffle") as string;
