@@ -6,12 +6,12 @@ export default function Queue(item: Track, source: string) {
         return Array.from(new Set(list));
     };
     queue.push({
-        name: item.track.name,
-        artists: item.artists.map((artist: any) => artist.name).join(", "),
+        name: item.track?.name,
+        artists: item.artists?.map((artist: any) => artist.name).join(", "),
         thumbnail: item.thumbnail,
         source: source,
-        id: item.track.id,
-        duration: item.track.duration,
+        id: item.track?.id,
+        duration: item.track?.duration,
         time: 0,
     })
     const temp = removeDuplicates(queue);

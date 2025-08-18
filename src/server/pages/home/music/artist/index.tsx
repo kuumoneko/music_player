@@ -9,7 +9,7 @@ export default function Artist({ url }: { url: string }) {
 
     const refresh = async (source: string, id: string) => {
         const artist: any = await fetch_data(Data.artist, { where: source, id: id });
-        const tracks = artist.tracks.slice(0, 200) || [];
+        const tracks = artist.tracks || [];
         const temp = (
             <>
                 <Top name={artist.name} thumbnail={artist.thumbnail} duration={0} source={source} id={id} mode={"artist"} playlist={tracks} />

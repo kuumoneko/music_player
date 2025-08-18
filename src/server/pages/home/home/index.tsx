@@ -106,7 +106,7 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                         return (
                             <div key={item.track?.name || `new tracks ${index + 1}`} className="flex flex-row h-[100px] w-[500px] bg-slate-800 hover:bg-slate-500 p-[5px] items-center rounded-2xl"
                                 onDoubleClick={() => {
-                                    Play(item, item.type.split(":")[0], "track", item.track.id, [])
+                                    Play(item, item.type.split(":")[0], "track", item.track?.id || "", [])
                                 }}
                             >
                                 <span className="h-[100%] w-[100px] flex items-center justify-center">
@@ -115,12 +115,12 @@ export default function Homepage({ seturl }: { seturl: (a: string) => void }) {
                                 <div className="flex flex-col ml-[10px] items-start w-[400px]">
                                     <span className="text-sm w-[100%]">
                                         {
-                                            item.track.name
+                                            item.track?.name
                                         }
                                     </span>
                                     <span>
                                         {
-                                            item.artists.map((item: any) => { return item.name }).join(", ")
+                                            item.artists?.map((item: any) => { return item.name }).join(", ")
                                         }
                                     </span>
                                 </div>

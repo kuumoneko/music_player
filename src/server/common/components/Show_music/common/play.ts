@@ -3,11 +3,11 @@ import { Track } from "../../../../../types";
 export default function Play(item: Track, source: string, mode: string, id: string, list: any) {
     localStorage.setItem("play queue", "[]")
     localStorage.setItem("playing", JSON.stringify({
-        name: item.track.name,
-        artists: item.artists.map((artist: any) => artist.name).join(", "),
+        name: item.track?.name,
+        artists: item.artists?.map((artist: any) => artist.name).join(", "),
         thumbnail: item.thumbnail,
         source: source,
-        id: item.track.id,
+        id: item.track?.id,
     }))
     localStorage.setItem("time", "0");
     localStorage.setItem("repeat", (localStorage.getItem("repeat") === "disable") ? "disable" : "enable");
@@ -34,18 +34,18 @@ export default function Play(item: Track, source: string, mode: string, id: stri
             from: `${source}:${mode}:${id}`,
             tracks: [
                 {
-                    name: item.track.name,
-                    artists: item.artists.map((artist: any) => artist.name).join(", "),
+                    name: item.track?.name,
+                    artists: item.artists?.map((artist: any) => artist.name).join(", "),
                     thumbnail: item.thumbnail,
                     source: source,
-                    id: item.track.id,
-                    duration: item.track.duration
+                    id: item.track?.id,
+                    duration: item.track?.duration
                 }
             ]
         }))
     }
     else if (mode === "playlist" || mode === "liked songs" || mode === "local") {
-        const other_tracks: any[] = list?.filter((track: any) => item.track.id !== track.track.id) || [];
+        const other_tracks: any[] = list?.filter((track: any) => item.track?.id !== track.track.id) || [];
 
         if (other_tracks.length > 0) {
             // check the shuffle mode
@@ -60,12 +60,12 @@ export default function Play(item: Track, source: string, mode: string, id: stri
                 from: `${source}:${mode}:${id}`,
                 tracks: other_tracks.slice(0, 20).map((track: Track) => {
                     return {
-                        name: track.track.name,
-                        artists: track.artists.map((artist: any) => artist.name).join(", "),
+                        name: track.track?.name,
+                        artists: track.artists?.map((artist: any) => artist.name).join(", "),
                         thumbnail: track.thumbnail,
                         source: source,
-                        id: track.track.id,
-                        duration: item.track.duration
+                        id: track.track?.id,
+                        duration: item.track?.duration
 
                     }
                 })
@@ -77,12 +77,12 @@ export default function Play(item: Track, source: string, mode: string, id: stri
             from: `${source}:track:${id}`,
             tracks: [
                 {
-                    name: item.track.name,
-                    artists: item.artists.map((artist: any) => artist.name).join(", "),
+                    name: item.track?.name,
+                    artists: item.artists?.map((artist: any) => artist.name).join(", "),
                     thumbnail: item.thumbnail,
                     source: source,
-                    id: item.track.id,
-                    duration: item.track.duration
+                    id: item.track?.id,
+                    duration: item.track?.duration
                 }
             ]
         }))
