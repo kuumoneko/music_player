@@ -681,6 +681,7 @@ server.post("/local", async (req, res) => {
             type: "local:folder",
             name: path.basename(folderPath),
             path: folderPath,
+            duration: files.reduce((a: number, b: Track) => a + (b.track.duration as number), 0),
             tracks: files,
         });
     } catch (error) {
@@ -691,7 +692,6 @@ server.post("/local", async (req, res) => {
         );
     }
 })
-
 
 // - - - - - DATA - - - -
 
