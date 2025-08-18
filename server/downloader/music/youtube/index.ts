@@ -31,18 +31,10 @@ export default class Youtube {
     }
 
     chose_api_key(isAuth: boolean) {
-        if (isAuth) {
-            const temp = this.youtube_api_key.filter((item: youtube_api_keys) => {
-                return item.isAuth === true && item.reach_quota === false
-            })
-            return this.getRandomItem(temp).api_key
-        }
-        else {
-            const temp = this.youtube_api_key.filter((item: youtube_api_keys) => {
-                return item.isAuth === false && item.reach_quota === false
-            })
-            return this.getRandomItem(temp).api_key
-        }
+        const temp = this.youtube_api_key.filter((item: youtube_api_keys) => {
+            return item.isAuth === isAuth && item.reach_quota === false
+        })
+        return this.getRandomItem(temp).api_key
     }
 
     async fetch_data(
@@ -68,7 +60,7 @@ export default class Youtube {
             if (isAuth) {
                 header['Authorization'] = `Bearer ${access_token}`
             }
-            if (etag !== undefined) {
+            if (etag && etag.length > 0) {
                 header["If-None-Match"] = etag
             }
             const response = await fetch(`${url}&key=${key}`, {
@@ -109,12 +101,7 @@ export default class Youtube {
     }
 
     create_end_point(endpoint: youtube_endpoint) {
-        let url = endpoint.url + "?";
-        const keys = Object.keys(endpoint.params);
-        for (const key of keys) {
-            url += key + "=" + encodeURIComponent(endpoint.params[key]) + "&"
-        }
-        url = url.slice(0, -1);
+        let url = endpoint.url + "?" + new URLSearchParams(endpoint.params).toString();
         return url;
     }
 
@@ -342,7 +329,10 @@ export default class Youtube {
                         name: this_playlist.name,
                         id: this_playlist.id,
                         duration: this_playlist.tracks.reduce((a: number, b: Track) => a + (b.track?.duration as number), 0),
-                        tracks: this_playlist.tracks
+                        tracks: Array.from(new Set(this_playlist.tracks.sort((a: Track, b: Track) => {
+                            return new Date(b.track.releaseDate).getTime() - new Date(a.track.releaseDate).getTime()
+                        }).map((item: any) => { return JSON.stringify(item) })
+                        )).map((item: any) => { return JSON.parse(item) })
                     }
                 }
                 else if (video === null) {
@@ -389,7 +379,10 @@ export default class Youtube {
                 name: name as string,
                 duration: res.reduce((a: number, b: Track) => a + (b.track?.duration as number), 0),
                 id: id,
-                tracks: res
+                tracks: Array.from(new Set(res.sort((a: Track, b: Track) => {
+                    return new Date(b.track.releaseDate).getTime() - new Date(a.track.releaseDate).getTime()
+                }).map((item: any) => { return JSON.stringify(item) })
+                )).map((item: any) => { return JSON.parse(item) })
             }
         }
         catch (e) {
@@ -822,7 +815,6 @@ function timeToMilliseconds(timeStr: string): number {
 
     return ((hours * 60 + minutes) * 60 + seconds) * 1000;
 };
-
 
 function iso8601DurationToMilliseconds(durationString: string): number {
     const pattern = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/;
