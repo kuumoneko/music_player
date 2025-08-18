@@ -12,9 +12,7 @@ const root_element = document.getElementById("root");
 
 const root = createRoot(root_element as HTMLElement);
 
-
 const mode: Server_mode = Server_mode.server;
-
 
 try {
     localStorage.setItem("port", "3001")
