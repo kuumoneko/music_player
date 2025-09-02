@@ -2,23 +2,29 @@
 
 > A Music web app built on React.js and Nodejs
 
+## UPDATE NOTE
+
+> Rework database
+>
+> Improve performance
+>
+> Remove some key of localstorage and move it to database
+> 
+> About this version:
+>
+> I come back to to playback url to reduce storage space.
+>
+> Remove WAV options
+
 ## ABOUT
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
 >
-> Version: 2.1.0
+> Version: 2.2.0
 >
 > Please give error on issue tab, i will check per week
 
-## UPDATE NOTE
-
-> Fix lagging when list of item is too large
->
-> Refactor code
->
-> Add thumbnail of local file
-
-## Usage
+## Dev
 
 ### Credential
 
