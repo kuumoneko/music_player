@@ -17,11 +17,7 @@
         "token_uri": "string",
         "auth_provider_x509_cert_url": "string",
         "client_secret": "your client_secret",
-        "redirect_uris": [
-            "your redirect_uris"
-        ],
-        "javascript_origins": [
-            "your javascript_origins"
-        ]
+        "redirect_uris": ["your redirect_uris"],
+        "javascript_origins": ["your javascript_origins"]
     }
 }

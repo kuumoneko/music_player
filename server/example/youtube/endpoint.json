@@ -20,7 +20,7 @@
         "params": {
             "part": "snippet,contentDetails",
             "myRating": "like",
-            "fields": "etag,nextPageToken,items(etag,id,snippet(thumbnails.default.url,channelId,channelTitle,title,publishedAt),contentDetails.duration)"
+            "fields": "etag,nextPageToken,items(id,snippet(thumbnails.default.url)),pageInfo.totalResults"
         }
     },
     "playlist_data": {
@@ -34,7 +34,7 @@
         "url": "https://youtube.googleapis.com/youtube/v3/playlistItems",
         "params": {
             "part": "snippet",
-            "fields": "etag,prevPageToken,nextPageToken,items(snippet(publishedAt,channelId,title,description,thumbnails.default.url,channelTitle,resourceId.videoId))"
+            "fields": "etag,nextPageToken,items(snippet(description,resourceId.videoId,thumbnails.default.url)),pageInfo.totalResults"
         }
     },
     "duration": {

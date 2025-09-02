@@ -15,8 +15,5 @@
         "expires": 0,
         "refresh_token": "refresh token",
         "user": "user"
-    },
-    "local": {
-        "folder": "local folder location"
     }
 }
