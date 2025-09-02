@@ -1,6 +1,6 @@
 /* eslint-disable no-loop-func */
 import { Buffer } from "node:buffer"
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { Album, Artist, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist } from "../../../types/index.js";
@@ -169,6 +169,7 @@ export default class Spotify {
                 const video = await this.fetch_data(url, access_token);
                 tracks.push(...video.items.map((item: any) => {
                     return {
+                        type: "spotify:userplaylist",
                         playlistName: item.name,
                         playlistId: item.id,
                         authorName: item.owner.display_name,
@@ -189,7 +190,7 @@ export default class Spotify {
 
     async fetch_liked_tracks(access_token: string = ''): Promise<Playlist> {
         let url = ` https://api.spotify.com/v1/me/tracks`
-        const tracks: any[] = [];
+        const tracks: Track[] = [];
         try {
             let duration: number = 0;
             while (url !== null && url !== undefined) {
@@ -218,6 +219,21 @@ export default class Spotify {
                     }))
                 url = video.next;
             }
+            for (const item of tracks) {
+                const { thumbnail, track, artists } = item;
+                const { id, name, duration, releaseDate } = track ?? {};
+                if (!existsSync(path.join(this.database, `${id}.json`)) && id) {
+                    this.writedata(id as string, {
+                        name: name,
+                        duration: duration,
+                        releaseDate: releaseDate,
+                        thumbnail: thumbnail,
+                        artists: artists,
+                        matched: null,
+                        music_url: null
+                    })
+                }
+            }
             return {
                 type: "spotify:playlists",
                 thumbnail: "",
@@ -228,7 +244,6 @@ export default class Spotify {
             }
         }
         catch (e) {
-            console.error(e);
             throw new Error(e);
         }
     }
@@ -305,6 +320,23 @@ export default class Spotify {
                 url = video?.tracks?.next || undefined;
             }
 
+            for (const item of tracks) {
+                const { thumbnail, track, artists } = item;
+                const { id, name, duration, releaseDate } = track ?? {};
+
+                if (!existsSync(path.join(this.database, `${id}.json`)) && id) {
+                    this.writedata(id as string, {
+                        name: name,
+                        duration: duration,
+                        releaseDate: releaseDate,
+                        thumbnail: thumbnail,
+                        artists: artists,
+                        matched: null,
+                        music_url: null
+                    })
+                }
+            }
+
             return {
                 type: "spotify:playlist",
                 name: name,
@@ -322,35 +354,23 @@ export default class Spotify {
     async fetch_track(id: string = ''): Promise<Track> {
         const url = `https://api.spotify.com/v1/tracks/${id}`;
         try {
-            const data = this.getdata("track");
-            if (data[id]) {
-                const video = data[id]
+            let data = this.getdata(id) || undefined;
+            if (data) {
+                const video = data
                 return {
                     type: "spotify:track",
                     thumbnail: video.thumbnail,
                     artists: video.artists,
-                    track: video.track
+                    track: {
+                        name: data.name,
+                        id: id,
+                        duration: data.duration,
+                        releaseDate: data.releaseDate
+                    }
                 }
             }
             const video = await this.fetch_data(url);
-            data[id] = {
-                thumbnail: video.album.images[video.album.images.length - 1]?.url || null,
-                artists: video.artists.map((artist: any) => {
-                    return {
-                        name: artist.name,
-                        id: artist.id
-                    }
-                }),
-                track: {
-                    name: video.name,
-                    id: video.id,
-                    duration: video.duration_ms, // in miliseconds
-                    releaseDate: video.album.release_date,
-                },
-                matched: null
-            }
-            this.writedata("track", data);
-            return {
+            data = {
                 type: "spotify:track",
                 thumbnail: video.album.images[video.album.images.length - 1]?.url || null,
                 artists: video.artists.map((artist: any) => {
@@ -365,7 +385,17 @@ export default class Spotify {
                     duration: video.duration_ms, // in miliseconds
                     releaseDate: video.album.release_date,
                 }
-            };
+            }
+            this.writedata(id, {
+                name: data.track.name,
+                duration: data.track.duration,
+                releaseDate: data.track.releaseDate,
+                thumbnail: data.thumbnail,
+                artists: data.artists,
+                matched: data.matched ?? null,
+                music_url: data.music_url ?? null
+            });
+            return data
         }
         catch (e) {
             throw new Error(e);

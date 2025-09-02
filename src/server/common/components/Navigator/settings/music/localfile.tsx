@@ -2,9 +2,20 @@ import { faFileArchive } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
 import { Data, fetch_data } from "../../../../utils/fetch.ts";
+import fetch_profile, {
+    LocalStorageKeys,
+} from "../../../../utils/localStorage.ts";
 
 export default function LocalFile() {
-    const [location, setlocation] = useState(localStorage.getItem("local") || "");
+    const [location, setlocation] = useState("");
+
+    useEffect(() => {
+        async function run() {
+            const res = await fetch_profile("get", LocalStorageKeys.local);
+            setlocation(res);
+        }
+        run();
+    }, []);
 
     const handleFolderSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.value || "";
@@ -14,22 +25,31 @@ export default function LocalFile() {
     };
 
     useEffect(() => {
-        if (location === undefined || location === "undefined" || location === null || location.length === 0) {
+        if (
+            location === undefined ||
+            location === "undefined" ||
+            location === null ||
+            location.length === 0
+        ) {
             return;
         }
         async function run() {
-            const data = await fetch_data(Data.localfile, { location: location });
-            localStorage.setItem("local", data.folder)
+            const data = await fetch_data(Data.localfile, {
+                location: location,
+            });
+            setlocation(data.folder);
         }
         run();
-    }, [location])
+    }, [location]);
 
     return (
         <div>
             <span className="flex flex-row justify-between items-center">
                 <span>
                     <FontAwesomeIcon icon={faFileArchive} />
-                    <span className="text-lg font-semibold text-gray-800 dark:text-gray-200 ml-2">Local File:</span>
+                    <span className="text-lg font-semibold text-gray-800 dark:text-gray-200 ml-2">
+                        Local File:
+                    </span>
                 </span>
                 <span>
                     <input
@@ -41,6 +61,6 @@ export default function LocalFile() {
                     />
                 </span>
             </span>
-        </div >
-    )
+        </div>
+    );
 }

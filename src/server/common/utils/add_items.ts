@@ -1,5 +1,6 @@
 import { Track } from "../../../types/index.ts";
 import { Data, fetch_data } from "./fetch.ts";
+import fetch_profile, { LocalStorageKeys } from "./localStorage.ts";
 
 export const add_items = async (source: string, mode: string, id: string, after_tracks: any[]) => {
     let data: any;
@@ -40,9 +41,8 @@ export const add_items = async (source: string, mode: string, id: string, after_
         ));
     }
 
-    localStorage.setItem("nextfrom", JSON.stringify({
+    await fetch_profile("write", LocalStorageKeys.nextfrom, {
         from: `${source}:${mode}:${id}`,
         tracks: after_tracks,
-    }))
-
+    })
 }

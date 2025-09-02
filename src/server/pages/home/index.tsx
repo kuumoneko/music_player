@@ -6,7 +6,7 @@ import Show_search from "./search/show_search.tsx";
 
 
 export default function Home({ url, seturl }: { url: string, seturl: (a: string) => void }) {
-    const urll = url.split("/").slice(3);
+    const urll = url.split("/").slice(1);
 
     return (
         <div className="home text-gray-400 dark:text-neutral-200 no-underline bg-slate-200 dark:bg-slate-700 flex flex-col items-center rounded-xl w-[80%] h-[100%]">
@@ -23,7 +23,7 @@ export default function Home({ url, seturl }: { url: string, seturl: (a: string)
             }
             {
                 (["liked_songs", "playlist", "album", "track", "local", "artist"].includes(urll[0])) && (
-                    <Music urll={url} />
+                    <Music urll={url} seturl={seturl} />
                 )
             }
             {

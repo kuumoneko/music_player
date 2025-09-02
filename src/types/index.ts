@@ -38,7 +38,9 @@ export interface Artist {
     name: string,
     thumbnail?: string,
     id?: string,
-    error?: string
+    error?: string,
+    pagetoken?: string,
+    playlistId?: string
 }
 
 export interface User_Artist {

@@ -1,8 +1,9 @@
+import fetch_profile, { LocalStorageKeys } from "../../../../../utils/localStorage";
 
-export default function backward() {
+export default async function backward() {
     let playedsongs: any[] = JSON.parse(localStorage.getItem("playedsongs") || "[]");
     const playing = JSON.parse(localStorage.getItem("playing") as string);
-    const queue = JSON.parse(localStorage.getItem("play queue") as string);
+    const queue = await fetch_profile("get", LocalStorageKeys.play);
     const backward = playedsongs.pop();
 
     localStorage.setItem("playing", JSON.stringify({
@@ -16,7 +17,7 @@ export default function backward() {
 
     localStorage.setItem("playedsongs", JSON.stringify(playedsongs))
 
-    localStorage.setItem("play queue", JSON.stringify([
+    await fetch_profile("write", LocalStorageKeys.play, [
         {
             artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
             duration: playing.duration,
@@ -26,5 +27,5 @@ export default function backward() {
             thumbnail: playing.thumbnail,
         },
         ...queue
-    ]));
+    ])
 }

@@ -3,7 +3,7 @@ import Play_Queue from "./play/index.tsx";
 
 
 export default function Queue({ urll }: { urll: string }) {
-    const url = urll.split("/").slice(3);
+    const url = urll.split("/").slice(1);
 
     return (
         <>

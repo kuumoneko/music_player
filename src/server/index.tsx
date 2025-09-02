@@ -1,95 +1,25 @@
-import  { useEffect, useState } from 'react';
-import "./index.css"
+import { useEffect, useState } from "react";
+import "./index.css";
 
-import { goto } from "./common/utils/url.ts"
+import { goto } from "./common/utils/url.ts";
 
-import MainContent from './pages/index.tsx';
-import Nav from './common/components/Navigator/index.tsx';
-import { running } from '../prerun.tsx';
-import { Data, fetch_data } from './common/utils/fetch.ts';
-import { sleep_types } from './common/components/Player/common/types/index.ts';
-
+import MainContent from "./pages/index.tsx";
+import Nav from "./common/components/Navigator/index.tsx";
 
 export default function Server() {
-    const port = Number(localStorage.getItem("port") as string)
-    const [url, seturl] = useState(localStorage.getItem("url") || `http://localhost:${port}/`);
+    const [url, seturl] = useState(localStorage.getItem("url") || `/`);
 
     const general_url = new URL(window.location.href);
     const code = general_url.searchParams.get("code"),
         scope = general_url.searchParams.get("scope");
 
     if (code !== null) {
-        goto(`/settings/${(scope !== null) ? "youtube" : "spotify"}/${code}`, seturl);
+        goto(
+            `/settings/${scope !== null ? "youtube" : "spotify"}/${code}`,
+            seturl
+        );
         window.location.href = "/";
     }
-
-    useEffect(() => {
-        async function run() {
-
-            const data = await fetch_data(Data.user);
-
-
-            if (!data.youtube) {
-                await fetch_data(Data.logout, { where: "youtube" });
-                localStorage.setItem("user", JSON.stringify({
-                    spotify: JSON.parse(localStorage.getItem("user") as string).spotify,
-                    youtube: {
-                        user: {
-                            name: "",
-                            thumbnail: ""
-                        }
-                    },
-                }));
-            } else {
-                localStorage.setItem("user", JSON.stringify({
-                    spotify: JSON.parse(localStorage.getItem("user") as string).spotify,
-                    youtube: {
-                        user: {
-                            name: data.youtube.name,
-                            thumbnail: data.youtube.thumbnail
-                        }
-                    },
-                }));
-            }
-
-            if (!data.spotify) {
-                await fetch_data(Data.logout, { where: "spotify" });
-
-                localStorage.setItem("user", JSON.stringify({
-                    youtube: JSON.parse(localStorage.getItem("user") as string).youtube,
-                    spotify: {
-                        user: {
-                            name: "",
-                            email: ""
-                        },
-                    }
-                }));
-            }
-            else {
-                localStorage.setItem("user", JSON.stringify({
-                    youtube: JSON.parse(localStorage.getItem("user") as string).youtube,
-                    spotify: {
-                        user: {
-                            name: data.spotify.name,
-                            email: data.spotify.email
-                        },
-                    }
-                }));
-            }
-        }
-        window.open("/")
-        run();
-
-        localStorage.setItem("kill time", sleep_types.no)
-
-    }, [])
-
-
-    useEffect(() => {
-        const run = window.setInterval(() => {
-            running()
-        }, 1000);
-    }, [])
 
     return (
         <>

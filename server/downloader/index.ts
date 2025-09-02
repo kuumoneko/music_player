@@ -14,14 +14,16 @@ export default class Downloader {
     public audio_format: string = Audio_format.mp3;
     public download_queue: Download_item[] = [];
     public curr_folder: string | undefined = "";
-    public stastus: Status = Status.idle;
+    public stastus: { data: string, track: string } = { data: Status.idle, track: "" };
     public port: number = 3000;
     public music: Music;
+    // public ytdlp: YtDlp;
 
     constructor(options: Downloader_options) {
         // folder
         this.folder = options.download_folder || "";
         this.curr_folder = options.curr_folder || "";
+        // this.ytdlp = new YtDlp();
 
         // options
         this.audio_format = options.audio_format || Audio_format.m4a;
@@ -40,15 +42,17 @@ export default class Downloader {
         })
 
         // status
-        this.stastus = Status.idle;
+        this.stastus = { data: Status.idle, track: "" };
     }
 
-    get_status(): { status: Status } {
+    get_status(): { status: { data: string, track: string } } {
         return { status: this.stastus, };
     }
 
-    set_status(status: Status) {
-        this.stastus = status;
+    set_status(data: string, track: string) {
+        this.stastus = {
+            data, track
+        };
     }
 
     set_download_foler(str: string) {
@@ -94,18 +98,27 @@ export default class Downloader {
     }
 
     async checking(): Promise<void> {
-        // get all filename in a folder
-        const files = readdirSync(this.folder);
+        const files = readdirSync(this.folder, {
+            withFileTypes: true
+        });
         for (const file of files) {
-            const checked = this.download_queue.find(item => item.title === file.split(`.${this.audio_format}`)[0])
-            if (!checked) {
-                // delete that file in download folder
+            if (!file.isFile()) {
+                return;
+            }
+            const ext = path.extname(file.name)
+            const filename = path.basename(file.name, ext);
+
+            const checked = this.download_queue.filter((item) => item.title.includes(filename));
+            if (checked.length === 0) {
                 try {
-                    unlinkSync(`${this.folder}\\${file}`); // Delete the file
-                    console.log(`Deleted: ${file}`);
+                    unlinkSync(`${this.folder}\\${file}`);
+                    console.log(`Deleted: ${filename}`);
                 } catch (error) {
-                    console.error(`Error deleting ${file}:`, error);
+                    console.error(`Error deleting ${filename}:`, error);
                 }
+            }
+            else {
+                console.log(`No Deleted: ${filename}`);
             }
         }
     }
@@ -118,54 +131,51 @@ export default class Downloader {
         return new Promise(async (resolve, reject) => {
             const __dirname = this.folder,
                 outputFileName = `${title}.${this.audio_format}`,
-                outputPath = path.resolve(__dirname, outputFileName);
+                outputPath = path.resolve(__dirname, outputFileName), { artist, year, thumbnail } = metadata;
 
             let tempThumbnailPath: string | null = null;
-            const url = `https://www.youtube.com/watch?v=${id}&rco=1`
 
             try {
-                console.log(`Fetching info for URL: ${url}`);
-                const info = await ytdl.getInfo(url);
+                this.set_status(`Preparing for`, title)
+                console.log(`Fetching info for videos ${title}`);
+                const data = this.music.youtube.getdata("tracks", id);
 
-                const videoTitle = this.format_title(info.videoDetails.title); // Sanitize for filename
-
-                console.log(`Downloading audio stream for: "${info.videoDetails.title}"`);
-
-                // Find the best audio-only format
-                const audioFormat = ytdl.chooseFormat(info.formats, { quality: 'highestaudio' });
-
-                if (!audioFormat) {
-                    throw new Error('No suitable audio format found.');
+                const music_url: string = data.music_url;
+                let download_url: string = ""
+                if (music_url) {
+                    const is_invalid_link = await fetch(music_url);
+                    if (is_invalid_link.ok) {
+                        download_url = music_url;
+                    }
+                    else {
+                        download_url = await this.getAudioURLAlternative(id)
+                        data.music_url = download_url;
+                        this.music.youtube.writedata("tracks", id, data);
+                    }
                 }
-
-                console.log(`Selected audio format: ${audioFormat.mimeType}, quality: ${audioFormat.qualityLabel || audioFormat.audioBitrate}`);
-
-                const audioStream = ytdl(url, { format: audioFormat });
-
-                // Create an FFmpeg command
-                const command = ffmpeg(audioStream);
-
-                // Set output format
-                if (this.audio_format === Audio_format.mp3) {
-                    command.audioCodec('libmp3lame').audioBitrate(192); // Example bitrate
-                } else if (this.audio_format === Audio_format.m4a) {
-                    command.audioCodec('aac').audioBitrate(192); // Example bitrate
+                else {
+                    download_url = await this.getAudioURLAlternative(id)
+                    data.music_url = download_url;
+                    this.music.youtube.writedata("tracks", id, data);
                 }
+                const command = ffmpeg(download_url);
 
                 // Embed metadata
-                if (title) {
-                    command.outputOptions('-metadata', `title=${title}`);
-                }
-                if (metadata.artist) {
-                    command.outputOptions('-metadata', `artist=${metadata.artist}`);
-                }
-                if (metadata.year) {
-                    command.outputOptions('-metadata', `year=${metadata.year}`);
-                }
+                if (title) command.outputOptions('-metadata', `title=${title}`);
+                if (artist) command.outputOptions('-metadata', `artist=${artist}`);
+                if (year) command.outputOptions('-metadata', `year=${year}`);
 
-                if (metadata.thumbnail) {
-                    console.log(`Downloading thumbnail from: ${metadata.thumbnail}`);
-                    const response = await fetch(metadata.thumbnail);
+                // Set output codec for format
+                command
+                    .audioCodec((this.audio_format === Audio_format.mp3 ? "libmp3lame" : "aac"))
+                    .audioBitrate(192)
+                    .outputOptions([
+                        '-map', '0:a'
+                    ]);
+
+                if (thumbnail) {
+                    console.log(`Downloading thumbnail from: ${thumbnail}`);
+                    const response = await fetch(thumbnail);
                     const arrayBuffer = await response.arrayBuffer();
                     const thumbnailBuffer = Buffer.from(arrayBuffer);
 
@@ -174,78 +184,109 @@ export default class Downloader {
                     let ext = '.jpg';
                     if (contentType.includes('png')) {
                         ext = '.png';
-                    } else if (contentType.includes('gif')) {
-                        ext = '.gif';
+                    } else if (contentType.includes('jpeg')) {
+                        ext = '.jpeg';
                     }
 
-                    tempThumbnailPath = path.resolve(__dirname, `temp_thumbnail_${Date.now()}${ext}`);
+                    tempThumbnailPath = path.resolve(__dirname, `temp_thumbnail_123${ext}`);
                     await fs.promises.writeFile(tempThumbnailPath, thumbnailBuffer);
                     console.log(`Thumbnail downloaded to: ${tempThumbnailPath}`);
-                }
 
-                command.audioCodec((this.audio_format === Audio_format.mp3 ? "libmp3lame" : "aac")).audioBitrate(192);
-                if (tempThumbnailPath) {
-                    command.addInput(tempThumbnailPath);
-                    command.outputOptions([
-                        '-map', '0:a',
-                        '-map', '1:v',
-                        '-c:v', 'copy',
-                        '-disposition:v:0', 'attached_pic'
-                    ]);
-                } else {
-                    command.outputOptions([
-                        '-map', '0:a'
-                    ]);
+                    // add thumbnail to 
+                    command.addInput(tempThumbnailPath)
+                        .addOutputOptions([
+                            '-map', '1:v',
+                            '-c:v', 'copy',
+                            '-disposition:v:0', 'attached_pic'
+                        ]);
                 }
 
                 command
                     .on('start', (commandLine) => {
                         console.log('FFmpeg command started:', commandLine);
+                        this.set_status(`Download `, title)
+
                     })
                     .on('progress', (progress) => {
-                        // this.renderProgressBar(`${title}`, progress.percent as number)
-                        console.log(`Processing: ${progress.timemark}`);
+                        console.log(`Processing: ${progress.percent} %`);
+                        this.set_status(`Download ${title}`, `${progress.percent?.toFixed(2)} % `)
                     })
                     .on('end', async () => {
-                        console.log(`\nDownload and metadata embedding finished for "${videoTitle}". Saved to: ${outputPath}`);
+                        console.log(`\nDownload and metadata embedding finished for "${title}". Saved to: ${outputPath}`);
+                        this.set_status(`Finished downloading `, title)
                         if (tempThumbnailPath && fs.existsSync(tempThumbnailPath)) {
                             await fs.promises.unlink(tempThumbnailPath).catch(cleanUpErr => console.error('Error during emergency cleanup:', cleanUpErr));
                         }
-                        resolve("ok")
+                        resolve("ok");
                     })
-                    .on('error', (err, stdout, stderr) => {
-                        console.error(`FFmpeg error: ${err.message}`);
-                        console.error('FFmpeg stdout:', stdout);
-                        console.error('FFmpeg stderr:', stderr);
-                        resolve("not oke")
+                    .on('error', async (err) => {
+                        throw new Error(err.message, { cause: err.cause });
                     })
                     .save(outputPath);
             } catch (error) {
+                console.log(error)
                 if (tempThumbnailPath && fs.existsSync(tempThumbnailPath)) {
                     await fs.promises.unlink(tempThumbnailPath).catch(cleanUpErr => console.error('Error during emergency cleanup:', cleanUpErr));
                 }
-                reject("not ok")
+                reject("not oke");
             }
         })
     }
 
-    async download() {
-        while (this.stastus === Status.env) {
-            await this.sleep(200);
-        }
+    converting(...args: string[]): Promise<any> {
+        return new Promise(async (resolve) => {
+            const [name, input, output] = args;
+            const inputFile = `${this.folder}/${name}.${input}`;
+            const outputFile = `${this.folder}/${name}.${output}`;
 
+            ffmpeg(inputFile)
+                .toFormat(output)
+                .on('end', () => {
+                    resolve("ok")
+                })
+                .on('error', (err: any) => {
+                    throw new Error(err);
+                })
+                .save(outputFile);
+        })
+    }
+
+    async download() {
         await mkdir(`${this.folder}`, { recursive: true })
-        this.set_status(Status.downloading)
 
         while (this.download_queue.length > 0) {
-            const downloader = this.download_queue.shift() as Download_item;
-            const { title, id, metadata } = downloader
-            const temp = `${this.folder}\\${title}.${this.audio_format}`
-            console.log(`${temp} is ${!existsSync(temp) === true ? "not" : ""} existed`)
+            const downloader = this.download_queue.shift() as Download_item,
+                { title, id, metadata } = downloader,
+                formats = [Audio_format.m4a, Audio_format.mp3],
+                file_name = `${this.folder}\\${title}`;
+
+            let isExisted = false,
+                is_converted = false,
+                curr_format: Audio_format = Audio_format.m4a;
+
+            for (const format of formats) {
+                const fileName = file_name + "." + format;
+                if (existsSync(fileName)) {
+                    isExisted = true;
+                    if (format !== this.audio_format) {
+                        is_converted = true;
+                        curr_format = format
+                    }
+                    break;
+                }
+            }
+
+            console.log(`${file_name} is ${!isExisted === true ? "not" : ""} existed`)
             const downloaded_id = id[id.length - 1]
             try {
-                if (!existsSync(`${this.folder}\\${title}.${this.audio_format}`)) {
-                    await this.donwloading(title, downloaded_id, metadata)
+                const formated_title = this.format_title(title)
+                if (!isExisted) {
+                    console.log(`download new file ${formated_title}`)
+                    await this.donwloading(formated_title, downloaded_id, metadata)
+                }
+                else if (is_converted) {
+                    console.log(`Convert ${formated_title} from ${curr_format} to ${this.audio_format}`)
+                    await this.converting(formated_title, curr_format, this.audio_format)
                 }
             }
             catch (e) {
@@ -268,27 +309,51 @@ export default class Downloader {
                 }
             }
         }
-        this.set_status(Status.done);
-        setTimeout(() => {
-            this.set_status(Status.idle);
-        }, 5000);
+        this.set_status(Status.done, "");
+        await this.sleep(5000).then(() => {
+            this.set_status(Status.idle, "");
+        })
     }
 
-    async getAudioURLAlternative(id: string): Promise<string> {
-        try {
+    getAudioURLAlternative(id: string): Promise<string> {
+        return new Promise(async (resolve, reject) => {
             const videoUrl = `https://www.youtube.com/watch?v=${id}`;
-            const info = await ytdl.getInfo(videoUrl);
-            const audioFormat = ytdl.chooseFormat(info.formats, {
-                filter: 'audioonly',
-                quality: 'highestaudio',
-            });
-            if (audioFormat && audioFormat.url) {
-                return audioFormat.url;
-            } else {
-                throw new Error('Could not find a valid audio URL.')
+
+            try {
+                const info = await ytdl.getInfo(videoUrl);
+                const audioFormat = ytdl.chooseFormat(info.formats, {
+                    filter: 'audioonly',
+                    quality: 'highestaudio',
+                });
+                const audio_url = audioFormat.url;
+                resolve(audio_url)
+                // const response = await fetch(audio_url);
+                // if (!response.ok) {
+                //     throw new Error(`Failed to fetch audio: ${response.statusText}`)
+                // }
+                // const stream = response.body as any;
+                // const chunks: any[] = [];
+
+                // for await (const chunk of stream) {
+                //     chunks.push(chunk);
+                // }
+
+                // const buffer = Buffer.concat(chunks);
+                // const base64Audio = buffer.toString('base64');
+                // resolve(base64Audio)
+            } catch (error) {
+                throw new Error(error)
+
+                // try {
+                //     const stream = await this.ytdlp.getFileAsync(
+                //         videoUrl
+                //     );
+                //     const temp = await stream.arrayBuffer();
+                //     const res = Buffer.from(temp).toString('base64')
+                //     resolve(res)
+                // } catch (e) {
+                // }
             }
-        } catch (error: any) {
-            throw new Error(error)
-        }
+        })
     }
 }

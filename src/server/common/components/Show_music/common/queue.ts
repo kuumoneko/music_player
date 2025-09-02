@@ -1,7 +1,8 @@
 import { Track } from "../../../../../types";
+import fetch_profile, { LocalStorageKeys } from "../../../utils/localStorage";
 
-export default function Queue(item: Track, source: string) {
-    const queue = JSON.parse(localStorage.getItem("play queue") as string) || [];
+export default async function Queue(item: Track, source: string) {
+    const queue = await fetch_profile("get", LocalStorageKeys.play);
     const removeDuplicates = (list: any[]) => {
         return Array.from(new Set(list));
     };
@@ -15,5 +16,5 @@ export default function Queue(item: Track, source: string) {
         time: 0,
     })
     const temp = removeDuplicates(queue);
-    localStorage.setItem("play queue", JSON.stringify(temp));
+    await fetch_profile("write", LocalStorageKeys.play, temp);
 }

@@ -7,7 +7,7 @@ import { Audio_format, Download_item, Mode, Playlist, Track, Artist, User_Artist
 import Downloader from "./downloader/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.js";
 
-const mode: Mode = Mode.deploy;
+const mode: Mode = Mode.react;
 
 const generateRandomString = (length: number) => {
     const possible =
@@ -26,7 +26,7 @@ switch (mode as Mode) {
         __dirname = path.dirname(executablePath);
         break;
     default:
-        __dirname = "E:\\music_player\\server";
+        __dirname = "E:\\music_player\\test_server";
 }
 
 let executableDir = (mode as Mode === Mode.app) ? path.join(__dirname, "server") : __dirname;
@@ -43,7 +43,7 @@ const server_port = 3000
 const server = express();
 
 server.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', `http://localhost:${port}`);
+    res.header('Access-Control-Allow-Origin', `*`);
     res.header('Access-Control-Allow-Methods', 'POST');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     res.header('Access-Control-Allow-Credentials', 'true');
@@ -52,7 +52,7 @@ server.use((req, res, next) => {
 server.use(express.json());
 server.listen(server_port, () => {
     console.log(`Server is running successfully on port ${server_port}`);
-    console.log(`CORS is configured for origin: http://localhost:${server_port}`);
+    console.log(`CORS is configured for origin: *`);
 });
 
 if (mode as Mode === Mode.deploy || mode as Mode === Mode.app) {
@@ -112,15 +112,11 @@ let temp: youtube_api_keys[] = [];
 })().then(() => {
     // - - - - - - Downloader class - - - - - -.
 
-    const endpoints = getDataFromDatabase(path.join(executableDir, "data"), "youtube", "endpoint");
+    const endpoints = getDataFromDatabase(executableDir, "data", "youtube", "endpoint");
     downloader = new Downloader(
         {
-            ytdlp: path.join(executableDir, "support", "yt-dlp.exe"),
-            spotdlp: path.join(executableDir, "support", "spot-dlp.exe"),
-            ffmpeg: path.join(executableDir, "support", "ffmpeg", "ffmpeg.exe"),
             download_folder: path.join(executableDir, "download"),
             curr_folder: path.join(executableDir),
-            spot_errors: path.join(executableDir, "data", "spot.txt"),
             audio_format: Audio_format.mp3,
             youtube_api_key: temp.length > 0 ? temp : system.Youtube_api_key,
             google_client_id: system.web.client_id,
@@ -226,7 +222,6 @@ setInterval(() => {
                 {
                     download_folder: downloader.folder,
                     curr_folder: downloader.curr_folder,
-                    spot_errors: path.join(executableDir, "BE", "spot.txt"),
                     audio_format: downloader.audio_format as Audio_format,
                     youtube_api_key: system.Youtube_Api_key,
                     google_client_id: system.web.client_id,
@@ -333,6 +328,7 @@ server.post("/login", async (req, res) => {
         return give_data(res, { url: authUrl });
     }
     catch (e) {
+        console.error(e);
         return give_error(res, e);
     }
 });
@@ -342,9 +338,7 @@ server.post("/auth", async (req, res) => {
     try {
         const user = getDataFromDatabase(executableDir, "data", "user");
         if (where === "youtube") {
-            console.log(code)
             const google_token = await downloader.music.youtube.get_token(code) as any;
-            console.log(google_token)
             const googleUser = await downloader.music.youtube.get_me(google_token.access_token);
 
             writeDataToDatabase(executableDir, "data", "user", {
@@ -416,6 +410,7 @@ server.post("/logout", async (req, res) => {
         }
         return give_data(res);
     } catch (e) {
+        console.error(e)
         return give_error(e,
             `Internal server error while logging out with ${where}`
         );
@@ -428,7 +423,7 @@ server.post("/download", async (req, res) => {
     await wait_for_downloader();
     try {
         console.log("- - - - - - - - - - PREPARING DATA TO DOWNLOAD - - - - - - - - - -")
-        downloader.set_status(Status.prepare);
+        downloader.set_status(Status.prepare, '');
 
         if (!links || (links.length as number) === 0) {
             return give_error(res, "No links provided.");
@@ -447,6 +442,8 @@ server.post("/download", async (req, res) => {
                     const temp: Playlist = (dataa as Playlist)
                     const download_items: Download_item[] = [];
                     for (const item of temp.tracks as Track[]) {
+                        // console.log(source, ' ', item.track?.name)
+
                         download_items.push({
                             title: downloader.format_title(item.track?.name as string) || "",
                             id: [item.track?.id || ""],
@@ -466,13 +463,16 @@ server.post("/download", async (req, res) => {
                     const temp: Playlist = (dataa as Playlist)
 
                     for (const item of (temp.tracks as Track[])) {
+                        // console.log(source, ' ', item.track?.name)
+
                         const spotify_video: Track = await downloader.music.spotify.fetch_track(item.track?.id || "");
                         const matching_video: Track | null = await downloader.music.findMatchingVideo(spotify_video);
 
                         if (matching_video !== null) {
+                            // console.log(matching_video)
                             tracks_to_download.push({
                                 title: downloader.format_title(spotify_video.track?.name as string) || "",
-                                id: [spotify_video.track.id || "", matching_video.track?.id || ""],
+                                id: [spotify_video.track?.id || "", matching_video.track?.id || ""],
                                 metadata: {
                                     artist: (spotify_video.artists as any)[0].name,
                                     year: spotify_video.track?.releaseDate || "",
@@ -505,7 +505,7 @@ server.post("/download", async (req, res) => {
                     if (temp !== null) {
                         tracks_to_download.push({
                             title: downloader.format_title(spotify_video.track?.name as string) || "",
-                            id: [spotify_video.track.id || "", temp.track?.id || ""],
+                            id: [spotify_video.track?.id || "", temp.track?.id || ""],
                             metadata: {
                                 artist: (spotify_video.artists as any)[0].name || "",
                                 year: spotify_video.track?.releaseDate || "",
@@ -531,11 +531,13 @@ server.post("/download", async (req, res) => {
         ) {
             downloader.set_download_foler(local.folder);
         }
+        downloader.set_status("Checking and removing unused files", '');
         await downloader.checking();
+
         downloader.download();
         return give_data(res);
     } catch (e) {
-        console.error(e)
+        console.error("Error in /download endpoint:" + e)
         return give_error(
             e,
             "Error in /download endpoint:" + e
@@ -576,14 +578,11 @@ server.post("/localfile", async (req, res) => {
         try {
             const stats = statSync(location);
             if (stats.isDirectory()) {
-                const data = getDataFromDatabase(executableDir, "data", "user");
+                const data = getDataFromDatabase(executableDir, "data", "profile");
 
-                writeDataToDatabase(executableDir, "data", "user", {
-                    spotify: data.spotify,
-                    youtube: data.youtube,
-                    local: {
-                        folder: location,
-                    },
+                writeDataToDatabase(executableDir, "data", "profile", {
+                    ...data,
+                    local: location
                 });
                 downloader.set_download_foler(location);
                 return give_data(res, { folder: location });
@@ -608,14 +607,14 @@ server.post("/local", async (req, res) => {
     await wait_for_downloader();
 
     try {
-        const { local } = getDataFromDatabase(executableDir, "data", "user");
-        const local_files = getDataFromDatabase(path.join(executableDir, "data"), "localfile", "local");
+        const { local } = getDataFromDatabase(executableDir, "data", "profile");
+        const local_files = getDataFromDatabase(executableDir, "data", "local", "local");
 
-        if (!local || !local.folder) {
+        if (!local) {
             return give_error(res, "Local music folder not set.");
         }
 
-        const folderPath = local.folder;
+        const folderPath = local;
         const dirents = await promises.readdir(folderPath, {
             withFileTypes: true,
         });
@@ -675,13 +674,13 @@ server.post("/local", async (req, res) => {
             }
         }
 
-        writeDataToDatabase(path.join(executableDir, "data"), "localfile", "local", files)
+        writeDataToDatabase(executableDir, "data", "local", "local", files)
 
         return give_data(res, {
             type: "local:folder",
             name: path.basename(folderPath),
             path: folderPath,
-            duration: files.reduce((a: number, b: Track) => a + (b.track.duration as number), 0),
+            duration: files.reduce((a: number, b: Track) => a + (b.track?.duration as number || 0), 0),
             tracks: files,
         });
     } catch (error) {
@@ -703,11 +702,10 @@ server.post("/search", async (req, res) => {
         const result = await downloader.music.search(query, where);
         return give_data(res, result);
     } catch (e) {
-        console.error(e);
+        console.error("Error in /search endpoint:", e);
         return give_error(
             res,
-            "Internal server error while searching"
-        );
+            "Error in /search endpoint:" + e);
     }
 });
 
@@ -725,9 +723,9 @@ server.post("/track", async (req, res) => {
             return give_data(res, track);
         }
     } catch (e) {
-        console.error(e);
+        console.error("Error in /track endpoint:", e);
         return give_error(res,
-            "Internal server error while getting track"
+            "Error in /track endpoint:" + e
         );
     }
 });
@@ -768,6 +766,7 @@ server.post("/playlist", async (req, res) => {
                 id,
                 youtube.access_token
             );
+
             return give_data(res, playlist);
         } else {
             if (!spotify.access_token) {
@@ -783,9 +782,9 @@ server.post("/playlist", async (req, res) => {
             return give_data(res, playlist);
         }
     } catch (e) {
-        console.error(e);
+        console.error("Error in /playlist endpoint:", e);
         return give_error(res,
-            "Internal server error while getting playlist items"
+            "Error in /playlist endpoint:" + e
         );
     }
 });
@@ -837,10 +836,9 @@ server.post("/likedsongs", async (req, res) => {
             return give_data(res, liked_songs);
         }
     } catch (e) {
-        console.error(e);
+        console.error("Error in /likedsongs endpoint:", e);
         return give_error(res,
-            "Internal server error while getting liked songs"
-        );
+            "Error in /likedsongs endpoint:" + e);
     }
 });
 
@@ -882,6 +880,7 @@ server.post("/userplaylist", async (req, res) => {
                 )) as any
             ).playlists;
         }
+        // console.log(spotify_playlists, ' ', youtube_playlists)
         return give_data(res, {
             youtube:
                 youtube_playlists.length > 0
@@ -893,24 +892,19 @@ server.post("/userplaylist", async (req, res) => {
                     : ["Spotify Account is not connected"],
         });
     } catch (e) {
-        console.error(e);
+        console.error("Error in /userplaylist endpoint:", e);
         return give_error(res,
-            "Internal server error while getting user playlist"
-        );
+            "Error in /userplaylist endpoint:" + e);
     }
 });
 
 server.post("/stream", async (req, res) => {
     await wait_for_downloader();
 
-    const { where, mode, id } = req.body;
+    const { where, id } = req.body;
     try {
         if (!id) {
             return give_error(res, "Music ID is required");
-        }
-
-        if (!mode) {
-            return give_error(res, "Music Mode is required");
         }
 
         if (where === "local") {
@@ -921,35 +915,38 @@ server.post("/stream", async (req, res) => {
             });
         }
 
-        let musicId = "";
-        const data = getDataFromDatabase(executableDir, "data", "track");
-
-        if (data[where] !== undefined && data[where] !== null) {
-            if (data[where][id] !== undefined && data[where][id] !== null) {
-                if (data[where][id].music_url !== null) {
-                    const ress = await fetch(data[where][id].music_url, {
-                        method: "HEAD",
-                    });
-
-                    if (ress.status !== 403) {
-                        return give_data(res, {
-                            url: data[where][id].music_url,
-                        });
-                    }
-                }
+        const dataa_args: string[] = [executableDir, "data", where as string];
+        if (where === "youtube") {
+            dataa_args.push("tracks")
+        }
+        dataa_args.push(id)
+        let data = getDataFromDatabase(...dataa_args);
+        let music_url: string = (typeof data.music_url === 'string') ? data.music_url : ""
+        if (music_url === null || music_url === undefined) {
+            music_url = ""
+        }
+        // check if the playback url is expired?
+        if (music_url.includes("http")) {
+            const test_link_response = await fetch(music_url as string);
+            if (!test_link_response.ok) {
+                music_url = ""
             }
         }
 
+        // send to server if the data is available
+        if (music_url !== "") {
+            return give_data(res, {
+                url: music_url,
+            });
+        }
+
+        let musicId = "";
         if (where === "youtube") {
             musicId = id;
         } else {
-            const track = await downloader.music.spotify.fetch_track(
-                id
-            );
+            const track = await downloader.music.spotify.fetch_track(id);
 
-            const findYtbTrack = await downloader.music.findMatchingVideo(
-                track
-            );
+            const findYtbTrack = await downloader.music.findMatchingVideo(track);
             if (!findYtbTrack) {
                 return give_error(res, "Music not found");
             }
@@ -959,18 +956,18 @@ server.post("/stream", async (req, res) => {
 
         const bestAudio = await downloader.getAudioURLAlternative(musicId);
 
-        data[where][id] = {
-            ...data[where][id],
+        data = {
+            ...data,
             music_url: bestAudio,
         };
 
-        writeDataToDatabase(executableDir, "data", "track", data);
+        writeDataToDatabase(...dataa_args, data);
 
         return give_data(res, { url: bestAudio });
     } catch (e) {
-        console.error("Error fetching audio stream:", e);
+        console.error("Error in /stream endpoint:", e);
         return give_error(res,
-            "Internal server error while getting stream url: " + e
+            "Error in /stream endpoint:" + e
         );
     }
 }
@@ -1005,7 +1002,7 @@ server.post("/likedartists", async (req, res) => {
         }
 
         if (youtube.access_token !== null && youtube.access_token !== undefined) {
-            youtube_artists = await downloader.music.youtube.fetch_following_artists(youtube.access_token)
+            youtube_artists = await downloader.music.youtube.fetch_following_artists(youtube.access_token) as User_Artist
         }
         return give_data(res, {
             youtube:
@@ -1018,9 +1015,9 @@ server.post("/likedartists", async (req, res) => {
                     : ["Spotify Account is not connected"],
         });
     } catch (e) {
-        console.error(e);
+        console.error("Error in /likedartists endpoint:", e);
         return give_error(res,
-            "Internal server error while getting user liked artists"
+            "Error in /likedartists endpoint:" + e
         );
     }
 })
@@ -1041,8 +1038,8 @@ server.post("/artist", async (req, res) => {
         give_data(res, data)
     }
     catch (e) {
-        console.log(e)
-        give_error(res, e);
+        console.error("Error in /artist endpoint:", e)
+        give_error(res, "Error in /artist endpoint:" + e);
     }
 })
 
@@ -1054,7 +1051,7 @@ server.post("/new_tracks", async (req, res) => {
 
         let data: any[] = [];
         if (youtube.length > 0) {
-            const data_from_youtube = await downloader.music.youtube.get_new_tracks(
+            const data_from_youtube: any = await downloader.music.youtube.test_new_tracks(
                 youtube.map((item: any) => { return item.id })
             );
             data.push(...data_from_youtube);
@@ -1068,7 +1065,31 @@ server.post("/new_tracks", async (req, res) => {
         give_data(res, data);
     }
     catch (e) {
-        console.error(e);
-        give_error(res, e);
+        console.error("Error in /new_tracks endpoint:", e);
+        give_error(res, "Error in /new_tracks endpoint:" + e);
+    }
+})
+
+server.post("/profile", (req, res) => {
+    try {
+        const { mode, key, data } = req.body;
+        if (mode === "get") {
+            const dataa = getDataFromDatabase(executableDir, "data", "profile");
+            const result = dataa[key];
+            return give_data(res, result);
+        }
+        else {
+            const dataa = getDataFromDatabase(executableDir, "data", "profile");
+
+            writeDataToDatabase(executableDir, "data", "profile", {
+                ...dataa,
+                [key]: JSON.parse(data),
+            });
+            return give_data(res, "ok");
+        }
+    }
+    catch (e) {
+        console.error(e)
+        return give_error(res, e)
     }
 })

@@ -1,16 +1,21 @@
 import { MutableRefObject } from "react";
 import { add_items } from "../../../../../utils/add_items.ts";
-import { getUrl } from "../index.tsx";
+import fetch_profile, { LocalStorageKeys } from "../../../../../utils/localStorage.ts";
+// import { getUrl } from "../index.tsx";
 
 export default async function forward(
-    audioRef: MutableRefObject<HTMLAudioElement>,
-    setplayed: (a: boolean) => void,
-    setisloading: (a: boolean) => void,
-    setduraion: (a: number) => void) {
+    getUrl: (source: string,
+        id: string,
+        autoplayed: boolean) => Promise<void>,
+    // audioRef: MutableRefObject<HTMLAudioElement>,
+    // setplayed: (a: boolean) => void,
+    // setisloading: (a: boolean) => void,
+    // setduraion: (a: number) => void
+) {
     let playedsongs: any[] = JSON.parse(localStorage.getItem("playedsongs") || "[]");
     const playing = JSON.parse(localStorage.getItem("playing") as string);
-    let playQueue = JSON.parse(localStorage.getItem("play queue") as string);
-    const nextfrom = JSON.parse(localStorage.getItem("nextfrom") as string);
+    let playQueue = await fetch_profile("get", LocalStorageKeys.play);
+    const nextfrom = await fetch_profile("get", LocalStorageKeys.nextfrom)
 
     playedsongs.push({
         artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
@@ -40,14 +45,14 @@ export default async function forward(
             thumbnail: nextTrack.thumbnail,
         }));
         playQueue = playQueue.slice(1);  // Remove the played track from the queue
-        localStorage.setItem("play queue", JSON.stringify(playQueue));
+        await fetch_profile("write", LocalStorageKeys.play, playQueue)
     }
     else if (nextfrom.from !== "") {
         const tracks = nextfrom.tracks;
         const [source, mode, id] = nextfrom.from.split(":");
         const track = tracks[0];
         if (mode == "track") {
-            await getUrl(playing.source, playing.id, true, audioRef, setplayed, setisloading, setduraion);
+            await getUrl(playing.source, playing.id, true);
 
             localStorage.setItem("playing", JSON.stringify({
                 artists: typeof track.artists === "string" ? track.artists : track.artists.map((artist: any) => artist.name).join(", "),

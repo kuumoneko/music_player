@@ -50,7 +50,7 @@ export class Local {
                     resolve({
                         title: title as string,
                         artist: artist as string,
-                        duration: duration,
+                        duration: duration as number,
                         thumbnail: thumbnail
                     })
                 })

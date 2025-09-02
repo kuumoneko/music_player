@@ -9,14 +9,14 @@ export default function SettingsModal(
     {
         url,
         isOpen,
-        preferredAudioFormat,
-        onAudioFormatChange,
+        // preferredAudioFormat,
+        // onAudioFormatChange,
         seturl
     }: {
         url: string;
         isOpen: boolean;
-        preferredAudioFormat: string;
-        onAudioFormatChange: any;
+        // preferredAudioFormat: string;
+        // onAudioFormatChange: any;
         seturl: (a: string) => void
     }
 ) {
@@ -31,7 +31,7 @@ export default function SettingsModal(
                     goto("/", seturl)
                 }} />
 
-                <Audio_Settings preferredAudioFormat={preferredAudioFormat} onAudioFormatChange={onAudioFormatChange} />
+                <Audio_Settings />
 
                 <Youtube_Account url={url} seturl={seturl} />
 

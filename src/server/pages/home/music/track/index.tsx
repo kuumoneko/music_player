@@ -28,7 +28,7 @@ export default function Track({ url }: { url: string }) {
     }
 
     useEffect(() => {
-        const [source, id] = url.split("/").slice(4);
+        const [source, id] = url.split("/").slice(2);
         refresh(source, id)
     }, [url])
     return dom

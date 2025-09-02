@@ -1,8 +1,13 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-export function getDataFromDatabase(executableDir: string, folder: string, file: string): any {
-    const filePath = path.join(executableDir, folder, `${file}.json`);
+/**
+     * Get data from database
+     * args[-1] is filename
+*/
+export function getDataFromDatabase(...args: string[]): any {
+    const filename = args[args.length - 1];
+    const filePath = path.join(...args.slice(0, -1), `${filename}.json`);
     try {
         if (!existsSync(filePath)) {
             throw new Error(`Database file not found at: ${filePath}`);
@@ -10,13 +15,20 @@ export function getDataFromDatabase(executableDir: string, folder: string, file:
         const dataFromFile = readFileSync(filePath, { encoding: "utf-8" });
         return JSON.parse(dataFromFile);
     } catch (error) {
-        console.error(`Failed to read or parse database file: ${filePath}`, error);
         return null
     }
 }
 
-export function writeDataToDatabase(executableDir: string, folder: string, file: string, data: any): void {
-    const filePath = path.join(executableDir, folder, `${file}.json`);
+/**
+     * Write data to database
+     * args[-1] is data
+     * args[-2] is filename
+*/
+export function writeDataToDatabase(...args: any[]): void {
+    const filename = args[args.length - 2];
+    const data = args[args.length - 1];
+
+    const filePath = path.join(...args.slice(0, -2), `${filename}.json`);
     try {
         writeFileSync(filePath, JSON.stringify(data, null, 4), { encoding: "utf-8" });
     } catch (error) {

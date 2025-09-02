@@ -1,8 +1,8 @@
 // @ts-nocheck
 import Server from './server/index.tsx';
 import Test from './test/server.tsx';
-import { running } from './prerun.tsx';
-running();
+// import { running } from './prerun.tsx';
+// running();
 
 import React, { useEffect, useState } from 'react';
 import { Server_mode } from "./types/index.ts"
@@ -15,7 +15,6 @@ const root = createRoot(root_element as HTMLElement);
 const mode: Server_mode = Server_mode.server;
 
 try {
-    localStorage.setItem("port", "3001")
     root.render(
         <>
             {

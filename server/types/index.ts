@@ -59,12 +59,8 @@ export interface youtube_api_keys {
 }
 
 export interface Downloader_options {
-    ytdlp?: string,
-    spotdlp?: string,
-    ffmpeg?: string,
     download_folder?: string,
     curr_folder?: string,
-    spot_errors?: string,
     audio_format?: Audio_format,
     youtube_api_key?: youtube_api_keys[],
     google_client_id?: string,
@@ -116,7 +112,9 @@ export interface Artist {
     name: string,
     thumbnail?: string,
     id?: string,
-    error?: string
+    error?: string,
+    pagetoken?: string,
+    playlistId?: string
 }
 
 export interface User_Artist {

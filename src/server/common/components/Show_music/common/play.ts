@@ -1,7 +1,8 @@
 import { Track } from "../../../../../types";
+import fetch_profile, { LocalStorageKeys } from "../../../utils/localStorage";
 
-export default function Play(item: Track, source: string, mode: string, id: string, list: any) {
-    localStorage.setItem("play queue", "[]")
+export default async function Play(item: Track, source: string, mode: string, id: string, list: any) {
+    await fetch_profile("write", LocalStorageKeys.play, [])
     localStorage.setItem("playing", JSON.stringify({
         name: item.track?.name,
         artists: item.artists?.map((artist: any) => artist.name).join(", "),
@@ -25,12 +26,10 @@ export default function Play(item: Track, source: string, mode: string, id: stri
 
     const uniqueObjectList = Array.from(new Map(playedsongs.map((item: any) => [item.id, item])).values());
 
-
     localStorage.setItem("playedsongs", JSON.stringify(uniqueObjectList));
 
-
     if (mode === "track") {
-        localStorage.setItem("nextfrom", JSON.stringify({
+        await fetch_profile("write", LocalStorageKeys.nextfrom, {
             from: `${source}:${mode}:${id}`,
             tracks: [
                 {
@@ -42,7 +41,7 @@ export default function Play(item: Track, source: string, mode: string, id: stri
                     duration: item.track?.duration
                 }
             ]
-        }))
+        })
     }
     else if (mode === "playlist" || mode === "liked songs" || mode === "local") {
         const other_tracks: any[] = list?.filter((track: any) => item.track?.id !== track.track.id) || [];
@@ -56,7 +55,7 @@ export default function Play(item: Track, source: string, mode: string, id: stri
                     [other_tracks[i], other_tracks[j]] = [other_tracks[j], other_tracks[i]];
                 }
             }
-            localStorage.setItem("nextfrom", JSON.stringify({
+            await fetch_profile("write", LocalStorageKeys.nextfrom, {
                 from: `${source}:${mode}:${id}`,
                 tracks: other_tracks.slice(0, 20).map((track: Track) => {
                     return {
@@ -69,11 +68,11 @@ export default function Play(item: Track, source: string, mode: string, id: stri
 
                     }
                 })
-            }))
+            })
         }
     }
     else if (mode === "search") {
-        localStorage.setItem("nextfrom", JSON.stringify({
+        await fetch_profile("write", LocalStorageKeys.nextfrom, {
             from: `${source}:track:${id}`,
             tracks: [
                 {
@@ -85,7 +84,6 @@ export default function Play(item: Track, source: string, mode: string, id: stri
                     duration: item.track?.duration
                 }
             ]
-        }))
+        })
     }
-
 }

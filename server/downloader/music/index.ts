@@ -71,8 +71,16 @@ export default class Music {
         }
     }
 
-    async search(link: string | { source: string, mode: string, id: string }, where?: string): Promise<any> {
+    /**
+     * 
+     * @param link 
+     * @param where must be had if link is string
+     */
+    async search(link: string | { source: string, mode: string, id: string }, where: string = ""): Promise<any> {
 
+        if (typeof link === "string" && where === "") {
+            throw new Error("params where must be had if link is a string")
+        }
         let { source, mode, id } = (typeof link === 'string') ? this.convert_link(link) : link;
         if (source === "youtube") {
             if (mode === "playlist") {
@@ -82,7 +90,6 @@ export default class Music {
                 return await this.youtube.fetch_track([id]);
             }
         }
-        // if link from spotify
         else if (source === "spotify") {
             if (mode === "playlist") {
                 return await this.spotify.fetch_playlist(id);
@@ -104,24 +111,23 @@ export default class Music {
         }
     }
 
-    async findMatchingVideo(
-        trackToMatch: Track,
-        // must be youtube id
-        ids_dont_have: string[] = []
-    ): Promise<Track | null> {
-        console.log(trackToMatch)
+    /**
+     * @param trackToMatch 
+     * @param ids_dont_have 
+     * must be youtube ids
+     */
+    async findMatchingVideo(trackToMatch: Track, ids_dont_have: string[] = []): Promise<Track | null> {
         const trackId = trackToMatch.track?.id || "";
         const trackName = trackToMatch.track?.name || "";
         const artistName = (trackToMatch.artists as any)[0].name || "";
         const trackDuration: number = trackToMatch.track?.duration as number; // in ms
         let database: any;
+
         if (ids_dont_have.length === 0 && trackToMatch.type.includes("spot")) {
-            database = this.spotify.getdata("track");
-            const track = database[trackId];
-            console.log(track)
-            if (track && track.matched !== null) {
-                const data = await this.youtube.fetch_track([track.matched]);
-                console.log("lmao", data[0])
+            database = this.spotify.getdata(trackId);
+            console.log(database.matched)
+            if (database && database.matched) {
+                const data = await this.youtube.fetch_track([database.matched]);
                 return data[0];
             }
         }
@@ -130,7 +136,6 @@ export default class Music {
             throw new Error("Track name or artist is missing.");
         }
 
-        // A good search query using the track name and artist.
         const searchQuery = `${trackName} ${artistName}`;
 
         try {
@@ -166,13 +171,19 @@ export default class Music {
             let bestMatch: Track | null = null;
             let bestScore = -1;
 
+            // 10 seconds
             const DURATION_TOLERANCE_MS = 60 * 1000;
 
             for (const ytVideo of result_track) {
                 const durationDifference = Math.abs(ytVideo.track.duration as number - trackDuration);
 
-                // Heuristic: ignore videos with a huge duration difference
+                // ignore the video which has difference duration out 20 seconds
                 if (durationDifference > DURATION_TOLERANCE_MS) {
+                    continue;
+                }
+
+                // ignore the Age restricted video
+                if (ytVideo.track.contentRating?.ytRating === "ytAgeRestricted") {
                     continue;
                 }
 
@@ -190,10 +201,6 @@ export default class Music {
                 else if (videoTitle.includes("official video") || videoTitle.includes("official music video")) score += 3;
                 else if (videoTitle.includes("lyrics")) score += 2;
 
-                if (ytVideo.track.contentRating?.ytRating === "ytAgeRestricted") {
-                    score -= 100
-                }
-
                 // Add score based on duration proximity
                 if (durationDifference < DURATION_TOLERANCE_MS) {
                     score += (5 * (1 - (durationDifference / DURATION_TOLERANCE_MS)));
@@ -206,19 +213,30 @@ export default class Music {
             }
 
             if (trackToMatch.type.includes("spot")) {
-                database[trackId] =
-                {
-                    "thumbnail": trackToMatch.thumbnail,
-                    "artists": trackToMatch.artists,
-                    "track": trackToMatch.track,
-                    "music_url": database[trackId] || null,
-                    "matched": bestMatch?.track?.id
+                if (trackName == "Dear") {
+                    console.log("lmao ", {
+                        thumbnail: trackToMatch.thumbnail,
+                        artists: trackToMatch.artists,
+                        music_url: database || null,
+                        matched: bestMatch?.track?.id,
+                        name: trackToMatch.track?.name,
+                        duration: trackToMatch.track?.duration,
+                        releaseDate: trackToMatch.track?.releaseDate
+                    })
                 }
-                this.spotify.writedata("track", database);
+                database = {
+                    thumbnail: trackToMatch.thumbnail,
+                    artists: trackToMatch.artists,
+                    music_url: database || null,
+                    matched: bestMatch?.track?.id,
+                    name: trackToMatch.track?.name,
+                    duration: trackToMatch.track?.duration,
+                    releaseDate: trackToMatch.track?.releaseDate
+                }
+                this.spotify.writedata(trackId, database);
             }
 
-
-            return bestMatch;
+            return bestMatch ?? null;
         }
         catch (e) {
             throw new Error(e);
