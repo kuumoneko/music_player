@@ -46,5 +46,13 @@ export default function Artistt({ url }: { url: string }) {
         refresh(source, id);
     }, [url]);
 
+    useEffect(() => {
+        const run = setInterval(() => {
+            const [source, id] = url.split("/").slice(2);
+            refresh(source, id);
+        }, 2000);
+        return () => clearInterval(run);
+    }, []);
+
     return dom;
 }

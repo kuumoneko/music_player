@@ -12,7 +12,6 @@ export default function Playlist({ url }: { url: string }) {
             where: source,
             id: id,
         });
-        console.log(dataa);
         setdom(
             <>
                 <Top
@@ -38,5 +37,13 @@ export default function Playlist({ url }: { url: string }) {
         const [source, id] = url.split("/").slice(2);
         refresh(source, id);
     }, [url]);
+
+    useEffect(() => {
+        const run = setInterval(() => {
+            const [source, id] = url.split("/").slice(2);
+            refresh(source, id);
+        }, 2000);
+        return () => clearInterval(run);
+    }, []);
     return dom;
 }

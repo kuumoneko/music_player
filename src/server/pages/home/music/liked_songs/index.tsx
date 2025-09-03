@@ -4,9 +4,6 @@ import Top from "../../../../common/components/Show_music/components/top.tsx";
 import List from "../../../../common/components/Show_music/components/list.tsx";
 import Loading from "../../../../common/components/Loading/index.tsx";
 import { goto } from "../../../../common/utils/url.ts";
-import fetch_profile, {
-    LocalStorageKeys,
-} from "../../../../common/utils/localStorage.ts";
 
 export default function LikedSongs({
     url,
