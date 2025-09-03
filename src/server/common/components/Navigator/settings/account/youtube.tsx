@@ -16,7 +16,6 @@ export default function Youtube_Account({
     useEffect(() => {
         async function run() {
             const res = await fetch_data(Data.user);
-            console.log(res.youtube);
             setyoutube({
                 name: res.youtube.name,
                 thumbnail: res.youtube.thumbnail,
