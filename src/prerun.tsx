@@ -1,7 +1,10 @@
 export const running = () => {
     const check_storage = (id: string) => {
-        return localStorage.getItem(id) === null || localStorage.getItem(id) === undefined;
-    }
+        return (
+            localStorage.getItem(id) === null ||
+            localStorage.getItem(id) === undefined
+        );
+    };
 
     if (document.referrer.includes("localhost:") === false) {
         localStorage.setItem("backward", "[]");
@@ -27,14 +30,17 @@ export const running = () => {
     // }
 
     if (check_storage("playing")) {
-        localStorage.setItem("playing", JSON.stringify({
-            name: "",
-            artists: "",
-            thumbnail: "",
-            source: "",
-            id: "",
-            duration: "",
-        }))
+        localStorage.setItem(
+            "playing",
+            JSON.stringify({
+                name: "",
+                artists: "",
+                thumbnail: "",
+                source: "",
+                id: "",
+                duration: "",
+            })
+        );
     }
 
     // const get_playlists = JSON.parse(localStorage.getItem("playlists") as string)
@@ -54,11 +60,14 @@ export const running = () => {
     // }
 
     if (check_storage("play_url")) {
-        localStorage.setItem("play_url", JSON.stringify({
-            id: "",
-            url: "",
-            source: ""
-        }))
+        localStorage.setItem(
+            "play_url",
+            JSON.stringify({
+                id: "",
+                url: "",
+                source: "",
+            })
+        );
     }
 
     // if (check_storage("play queue")) {
@@ -74,11 +83,11 @@ export const running = () => {
     // }
 
     if (check_storage("backward")) {
-        localStorage.setItem("backward", JSON.stringify([]))
+        localStorage.setItem("backward", JSON.stringify([]));
     }
 
     if (check_storage("forward")) {
-        localStorage.setItem("forward", JSON.stringify([]))
+        localStorage.setItem("forward", JSON.stringify([]));
     }
 
     // if (check_storage("nextfrom")) {
@@ -88,20 +97,23 @@ export const running = () => {
     //     }))
     // }
 
-    if (check_storage("url") || localStorage.getItem("url")?.includes("localhost")) {
-        localStorage.setItem("url", "/")
+    if (
+        check_storage("url") ||
+        localStorage.getItem("url")?.includes("localhost")
+    ) {
+        localStorage.setItem("url", "/");
     }
 
     if (check_storage("repeat")) {
-        localStorage.setItem("repeat", "disable")
+        localStorage.setItem("repeat", "disable");
     }
 
     if (check_storage("shuffle")) {
-        localStorage.setItem("shuffle", "disable")
+        localStorage.setItem("shuffle", "disable");
     }
 
     if (check_storage("kill time")) {
-        localStorage.setItem("kill time", "nosleep")
+        localStorage.setItem("kill time", "nosleep");
     }
 
     // if (check_storage("liked_songs")) {
@@ -118,26 +130,29 @@ export const running = () => {
     //     localStorage.setItem("preferredAudioFormat", "mp3")
     // }
     if (check_storage("search")) {
-        localStorage.setItem("search", JSON.stringify({
-            query: "",
-            source: "youtube",
-            result: {
-                type: "",
-                tracks: []
-            }
-        }))
+        localStorage.setItem(
+            "search",
+            JSON.stringify({
+                query: "",
+                source: "youtube",
+                result: {
+                    type: "",
+                    tracks: [],
+                },
+            })
+        );
     }
     if (check_storage("theme")) {
-        localStorage.setItem("theme", "dark")
+        localStorage.setItem("theme", "dark");
     }
     if (check_storage("time")) {
-        localStorage.setItem("time", "0")
+        localStorage.setItem("time", "0");
     }
     if (check_storage("volume")) {
-        localStorage.setItem("volume", "50")
+        localStorage.setItem("volume", "50");
     }
 
     // if (check_storage("pin")) {
     //     localStorage.setItem("pin", "[]")
     // }
-}
+};
