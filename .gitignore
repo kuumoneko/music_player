@@ -3,12 +3,9 @@
 /node_modules
 /app
 /build
-/dist
 /public
 .eslintrc
 .hintrc
 build.ts
 /server/data/**/*.json
-/server/data/**/*.txt
-!/server/data/example/**/*.json
-!/server/data/example/**/*.txt
+/build_app
