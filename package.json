@@ -1,6 +1,6 @@
 {
     "name": "music_player",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "author": "Kuumoneko",
     "description": "Music player and download, support youtube and spotify",
     "private": true,
