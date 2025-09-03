@@ -20,13 +20,13 @@ const executablePath = process.execPath;
 let __dirname: string = ""
 switch (mode as Mode) {
     case Mode.app:
-        __dirname = "E:\\music_player";;
+        __dirname = "E:\\music_player";
         break;
     case Mode.deploy:
         __dirname = path.dirname(executablePath);
         break;
     default:
-        __dirname = "E:\\music_player\\test_server";
+        __dirname = "E:\\music_player\\server";
 }
 
 let executableDir = (mode as Mode === Mode.app) ? path.join(__dirname, "server") : __dirname;
