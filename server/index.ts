@@ -80,7 +80,7 @@ let temp: youtube_api_keys[] = [];
             })
             continue;
         }
-        const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails&id=${video_test_id}&key=${key.api_key}`;
+        const url = `https://www.googleapis.com/youtube/v3/videos?id=${video_test_id}&key=${key.api_key}&fields=items.id`;
         const res = await fetch(url, {
             headers: {
                 'Content-Type': 'application/json',
