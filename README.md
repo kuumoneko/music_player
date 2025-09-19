@@ -4,23 +4,19 @@
 
 ## UPDATE NOTE
 
-> Rework database
+> Remove footer
 >
-> Improve performance
+> Fix some bug on search and stream audio
 >
-> Remove some key of localstorage and move it to database
-> 
-> About this version:
+> Add metadata to window
 >
-> I come back to to playback url to reduce storage space.
->
-> Remove WAV options
+> Use function on keyboard or mouse to next, back, play, pause
 
 ## ABOUT
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
 >
-> Version: 2.2.0
+> Version: 3.0.0
 >
 > Please give error on issue tab, i will check per week
 
