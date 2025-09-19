@@ -11,24 +11,6 @@ export const running = () => {
         localStorage.setItem("forward", "[]");
     }
 
-    // if (check_storage("user")) {
-    //     localStorage.setItem("user", JSON.stringify({
-    //         youtube: {
-    //             user: {
-    //                 name: "",
-    //                 thumbnail: ""
-    //             }
-    //         },
-    //         spotify: {
-    //             user: {
-    //                 name: "",
-    //                 email: "",
-    //                 id: "",
-    //             },
-    //         }
-    //     }))
-    // }
-
     if (check_storage("playing")) {
         localStorage.setItem(
             "playing",
@@ -43,22 +25,6 @@ export const running = () => {
         );
     }
 
-    // const get_playlists = JSON.parse(localStorage.getItem("playlists") as string)
-    // if (check_storage("playlists") || get_playlists.youtube === undefined || get_playlists.spotify === undefined || get_playlists.youtube.length === 0 || get_playlists.spotify.length === 0) {
-    //     localStorage.setItem("playlists", JSON.stringify({
-    //         youtube: [],
-    //         spotify: []
-    //     }))
-    // }
-
-    // const get_artists = JSON.parse(localStorage.getItem("artists") as string)
-    // if (check_storage("artists") || get_artists.youtube === undefined || get_artists.spotify === undefined || get_artists.youtube.length === 0 || get_artists.spotify.length === 0) {
-    //     localStorage.setItem("artists", JSON.stringify({
-    //         youtube: [],
-    //         spotify: []
-    //     }))
-    // }
-
     if (check_storage("play_url")) {
         localStorage.setItem(
             "play_url",
@@ -70,18 +36,6 @@ export const running = () => {
         );
     }
 
-    // if (check_storage("play queue")) {
-    //     localStorage.setItem("play queue", JSON.stringify([]))
-    // }
-
-    // if (check_storage("download queue")) {
-    //     localStorage.setItem("download queue", JSON.stringify([]))
-    // }
-
-    // if (check_storage("playedsongs")) {
-    //     localStorage.setItem("playedsongs", JSON.stringify([]))
-    // }
-
     if (check_storage("backward")) {
         localStorage.setItem("backward", JSON.stringify([]));
     }
@@ -89,13 +43,6 @@ export const running = () => {
     if (check_storage("forward")) {
         localStorage.setItem("forward", JSON.stringify([]));
     }
-
-    // if (check_storage("nextfrom")) {
-    //     localStorage.setItem("nextfrom", JSON.stringify({
-    //         from: "",
-    //         tracks: []
-    //     }))
-    // }
 
     if (
         check_storage("url") ||
@@ -116,19 +63,6 @@ export const running = () => {
         localStorage.setItem("kill time", "nosleep");
     }
 
-    // if (check_storage("liked_songs")) {
-    //     localStorage.setItem("liked_songs", JSON.stringify({
-    //         youtube: [],
-    //         spotify: []
-    //     }))
-    // }
-
-    // if (check_storage("local")) {
-    //     localStorage.setItem("local", "")
-    // }
-    // if (check_storage("preferredAudioFormat")) {
-    //     localStorage.setItem("preferredAudioFormat", "mp3")
-    // }
     if (check_storage("search")) {
         localStorage.setItem(
             "search",

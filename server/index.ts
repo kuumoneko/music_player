@@ -712,7 +712,6 @@ server.post("/search", async (req, res) => {
 server.post("/track", async (req, res) => {
     await wait_for_downloader();
     const { where, id } = req.body;
-
     try {
         if (where === "youtube") {
             const track = await downloader.music.youtube.fetch_track([id]);
@@ -880,7 +879,6 @@ server.post("/userplaylist", async (req, res) => {
                 )) as any
             ).playlists;
         }
-        // console.log(spotify_playlists, ' ', youtube_playlists)
         return give_data(res, {
             youtube:
                 youtube_playlists.length > 0
@@ -921,7 +919,7 @@ server.post("/stream", async (req, res) => {
         }
         dataa_args.push(id)
         let data = getDataFromDatabase(...dataa_args);
-        let music_url: string = (typeof data.music_url === 'string') ? data.music_url : ""
+        let music_url: string = (typeof data?.music_url === 'string') ? data?.music_url : ""
         if (music_url === null || music_url === undefined) {
             music_url = ""
         }

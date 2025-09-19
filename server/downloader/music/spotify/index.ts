@@ -20,7 +20,13 @@ export default class Spotify {
     }
 
     getdata(filename: string) {
-        return JSON.parse(readFileSync(path.join(this.database, `${filename}.json`), { encoding: "utf-8" }));
+        try {
+            const temp = JSON.parse(readFileSync(path.join(this.database, `${filename}.json`), { encoding: "utf-8" }));
+            return temp;
+        }
+        catch {
+            return undefined
+        }
     }
 
     writedata(filename: string, data: any) {
@@ -354,7 +360,7 @@ export default class Spotify {
     async fetch_track(id: string = ''): Promise<Track> {
         const url = `https://api.spotify.com/v1/tracks/${id}`;
         try {
-            let data = this.getdata(id) || undefined;
+            let data = this.getdata(id) ?? undefined;
             if (data) {
                 const video = data
                 return {

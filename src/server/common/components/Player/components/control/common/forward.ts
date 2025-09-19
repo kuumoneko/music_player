@@ -1,16 +1,10 @@
-import { MutableRefObject } from "react";
 import { add_items } from "../../../../../utils/add_items.ts";
 import fetch_profile, { LocalStorageKeys } from "../../../../../utils/localStorage.ts";
-// import { getUrl } from "../index.tsx";
 
 export default async function forward(
     getUrl: (source: string,
         id: string,
         autoplayed: boolean) => Promise<void>,
-    // audioRef: MutableRefObject<HTMLAudioElement>,
-    // setplayed: (a: boolean) => void,
-    // setisloading: (a: boolean) => void,
-    // setduraion: (a: number) => void
 ) {
     let playedsongs: any[] = JSON.parse(localStorage.getItem("playedsongs") || "[]");
     const playing = JSON.parse(localStorage.getItem("playing") as string);
@@ -28,10 +22,7 @@ export default async function forward(
 
     const uniqueObjectList = Array.from(new Map(playedsongs.map((item: any) => [item.id, item])).values());
 
-
     localStorage.setItem("playedsongs", JSON.stringify(uniqueObjectList));
-
-
 
     if (playQueue && playQueue.length > 0) {
         const nextTrack = playQueue[0];  // Play the first track
@@ -68,7 +59,6 @@ export default async function forward(
             tracks.shift();
 
             add_items(source, mode, id, tracks)
-
 
             localStorage.setItem("playing", JSON.stringify({
                 artists: typeof track.artists === "string" ? track.artists : track.artists.map((artist: any) => artist.name).join(", "),

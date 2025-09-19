@@ -101,6 +101,19 @@ export default function ControlUI() {
                 }
             });
 
+            const temp = JSON.parse(localStorage.getItem("playing") ?? "{}");
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: temp.name,
+                artist: temp.artists,
+                artwork: [
+                    {
+                        src: temp.thumbnail,
+                        sizes: "512x512",
+                        type: "image/png",
+                    },
+                ],
+            });
+
             localStorage.setItem(
                 "play_url",
                 JSON.stringify({
@@ -290,15 +303,25 @@ export default function ControlUI() {
     }, []);
 
     useEffect(() => {
-        const run = setInterval(() => {
-            if (audioRef.current) {
-                const state = !audioRef.current.paused;
-                if (state !== played) {
-                    setplayed(state);
-                }
-            }
-        }, 100);
-        return () => clearInterval(run);
+        navigator.mediaSession.setActionHandler("play", () => {
+            setplayed(true);
+        });
+        navigator.mediaSession.setActionHandler("pause", () => {
+            setplayed(false);
+        });
+        navigator.mediaSession.setActionHandler("nexttrack", () => {
+            forward(getUrl);
+        });
+        navigator.mediaSession.setActionHandler("previoustrack", () => {
+            backward();
+        });
+
+        return () => {
+            navigator.mediaSession.setActionHandler("play", () => {});
+            navigator.mediaSession.setActionHandler("pause", () => {});
+            navigator.mediaSession.setActionHandler("nexttrack", () => {});
+            navigator.mediaSession.setActionHandler("previoustrack", () => {});
+        };
     }, []);
 
     return (
