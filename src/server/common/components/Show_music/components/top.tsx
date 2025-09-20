@@ -58,7 +58,7 @@ export default function Top({
     return (
         <>
             {name !== null && duration !== null ? (
-                <div className="flex flex-col mt-[50px] w-[90%] mb-[15px]">
+                <div className="flex flex-col mt-[20px] w-[90%] mb-[15px]">
                     <div className="flex flex-row items-center select-none cursor-default">
                         <span>
                             {thumbnail ? (

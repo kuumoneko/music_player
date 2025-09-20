@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, MutableRefObject } from "react";
 import { fetch_data, Data } from "../../../../utils/fetch.ts";
 import { sleep_types } from "../../common/types/index.ts";
 import {
@@ -31,7 +31,11 @@ const handleCloseTab = () => {
     }
 };
 
-export default function ControlUI() {
+export default function ControlUI({
+    audioRef,
+}: {
+    audioRef: MutableRefObject<HTMLAudioElement>;
+}) {
     const [played, setplayed] = useState(false);
     const [shuffle, setshuffle] = useState(
         localStorage.getItem("shuffle") || "disable"
@@ -153,20 +157,23 @@ export default function ControlUI() {
         const run = setInterval(() => {
             const data = JSON.parse(localStorage.getItem("play_url") as string);
             setisloading(data.url === null ? true : false);
-
-            const volume: number = Number(localStorage.getItem("volume")) || 50;
-            if (audioRef.current) {
-                audioRef.current.volume = volume / 100;
+            setTime((audioRef.current?.currentTime as number) ?? 0);
+            setduraion((audioRef.current?.duration as number) ?? 0);
+            const volume = localStorage.getItem("volume");
+            if (volume && audioRef.current) {
+                audioRef.current.volume = Number(volume) / 100;
             }
-            setTime((audioRef.current?.currentTime as number) || 0);
-            setduraion((audioRef.current?.duration as number) || 0);
+            const repeat = localStorage.getItem("repeat") ?? "disable";
+            if (repeat && audioRef.current) {
+                setrepeat(repeat);
+            }
         }, 100);
         return () => clearInterval(run);
     }, []);
 
-    const audioRef = useRef<HTMLAudioElement>(new Audio());
+    // const audioRef = useRef<HTMLAudioElement>(new Audio());
     const [Time, setTime] = useState(() =>
-        Number(localStorage.getItem("time") || 0)
+        Number(localStorage.getItem("time") ?? 0)
     );
     const TimeSliderRef = useRef<HTMLInputElement>(null);
 

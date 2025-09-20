@@ -4,19 +4,23 @@
 
 ## UPDATE NOTE
 
-> Remove footer
+> Fix UI on smaller display
 >
-> Fix some bug on search and stream audio
+> Fix bug on get new_tracks
 >
-> Add metadata to window
+> Get liked songs and display it faster
 >
-> Use function on keyboard or mouse to next, back, play, pause
+> Fix search
+>
+> Fix change repeat mode on click to new track
+>
+> Fix volume change
 
 ## ABOUT
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
 >
-> Version: 3.0.0
+> Version: 3.5.0
 >
 > Please give error on issue tab, i will check per week
 

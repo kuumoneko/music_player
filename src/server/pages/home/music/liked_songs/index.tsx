@@ -17,7 +17,7 @@ export default function LikedSongs({
     const [dom, setdom] = useState(<Loading mode="Loading"></Loading>);
 
     useEffect(() => {
-        async function run() {
+        const run = setInterval(async () => {
             const res = await fetch_data(Data.user);
 
             if (!res[source].name) {
@@ -45,8 +45,11 @@ export default function LikedSongs({
             } else {
                 await refresh(source);
             }
-        }
-        run();
+        }, 1000);
+
+        return () => {
+            clearInterval(run);
+        };
     }, []);
 
     const refresh = async (liked_songs_source: string) => {

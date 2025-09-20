@@ -61,7 +61,11 @@ export default function Playlist({ seturl }: { seturl: (a: string) => void }) {
                                         ? "youtube"
                                         : "spotify"
                                 } ${index}`}
-                                className="my-[2px] hover:bg-slate-500 rounded-lg"
+                                className={`${
+                                    item.type.includes("youtube")
+                                        ? "youtube"
+                                        : "spotify"
+                                } ${index} my-[2px] hover:bg-slate-500 rounded-lg`}
                             >
                                 <div
                                     className={`vid ${

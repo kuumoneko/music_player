@@ -80,9 +80,7 @@ export default function Play_Queue() {
 
                                         const trackk = queue.findIndex(
                                             (itemm: any) => {
-                                                return (
-                                                    itemm.track.id === item.id
-                                                );
+                                                return itemm.id === item.id;
                                             }
                                         );
 

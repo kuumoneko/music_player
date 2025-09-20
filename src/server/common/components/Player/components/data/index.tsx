@@ -39,7 +39,7 @@ export default function DataUI({
             <span>
                 {
                     thumbnail ? (
-                        <img src={thumbnail as string} alt="" height={75} width={75} className="rounded-lg" />
+                        <img src={thumbnail as string} alt="" height={50} width={50} className="rounded-lg" />
 
                     ) : (
                         <>

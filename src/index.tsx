@@ -3,6 +3,7 @@ import Server from "./server/index.tsx";
 import Test from "./test/server.tsx";
 import { running } from "./prerun.tsx";
 running();
+localStorage.setItem("url", "/");
 
 import React, { useEffect, useState } from "react";
 import { Server_mode } from "./types/index.ts";

@@ -20,13 +20,13 @@ const executablePath = process.execPath;
 let __dirname: string = ""
 switch (mode as Mode) {
     case Mode.app:
-        __dirname = "E:\\music_player";
+        __dirname = "D:\\coding\\music player";
         break;
     case Mode.deploy:
         __dirname = path.dirname(executablePath);
         break;
     default:
-        __dirname = "E:\\music_player\\server";
+        __dirname = "D:\\coding\\music player\\server";
 }
 
 let executableDir = (mode as Mode === Mode.app) ? path.join(__dirname, "server") : __dirname;
@@ -1042,6 +1042,8 @@ server.post("/artist", async (req, res) => {
 })
 
 server.post("/new_tracks", async (req, res) => {
+    await wait_for_downloader();
+
     try {
         const { items }: { items: any[] } = req.body;
         const youtube = items.filter((item: any) => { return item.source === "youtube" }),

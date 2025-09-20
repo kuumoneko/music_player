@@ -30,8 +30,10 @@ export default function List({
 
     const max_items = 18; // 6 rows * 3 cols
 
-    const [head, sethead] = useState(0);
-    const [tail, settail] = useState(Math.min(max_items - 1, list.length - 1));
+    const [sight, set_sight] = useState({
+        head: 0,
+        tail: Math.min(max_items - 1, list.length - 1),
+    });
     const [show_list, setlist] = useState<any[]>([]);
 
     useEffect(() => {
@@ -39,7 +41,7 @@ export default function List({
             if (
                 mode.includes("artist") &&
                 mode.split(":")[1] !== undefined &&
-                tail > list.length
+                sight.tail > list.length
             ) {
                 const data = await fetch_data(Data.playlist, {
                     where: source,
@@ -50,25 +52,11 @@ export default function List({
                     new Set(list.map((item: any) => JSON.stringify(item)))
                 ).map((item: any) => JSON.parse(item));
             }
-            if (head < 0) {
-                sethead(0);
-                settail(Math.min(max_items - 1, list.length - 1));
-                return;
-            }
-            if (tail > list.length) {
-                settail(list.length);
-                sethead(list.length - Math.min(max_items - 1, list.length - 1));
-                return;
-            }
-            if (tail - head + 1 > max_items) {
-                settail(head + Math.min(max_items - 1, list.length - 1));
-                return;
-            }
-            const temp: any[] = list.slice(head, tail + 1) as any[];
+            const temp: any[] = list.slice(sight.head, sight.tail + 1) as any[];
             setlist(temp);
         }
         run();
-    }, [tail, head, list]);
+    }, [sight, list]);
 
     // remove  #hashtag from the title
     const remove_hashtag = (title: string): string => {
@@ -83,13 +71,21 @@ export default function List({
             className="listitem flex flex-col max-h-[75%] w-[100%] overflow-y-scroll [&::-webkit-scrollbar]:hidden"
             onWheel={(e) => {
                 const direction = e.deltaY > 0 ? "down" : "up";
-
+                const temp = sight;
                 if (direction === "down") {
-                    settail(tail + 1);
-                    sethead(head + 1);
+                    if (temp.tail + 1 < list.length) {
+                        set_sight({
+                            head: temp.head + 1,
+                            tail: temp.tail + 1,
+                        });
+                    }
                 } else {
-                    settail(tail - 1);
-                    sethead(head - 1);
+                    if (temp.head > 0) {
+                        set_sight({
+                            head: temp.head - 1,
+                            tail: temp.tail - 1,
+                        });
+                    }
                 }
             }}
         >

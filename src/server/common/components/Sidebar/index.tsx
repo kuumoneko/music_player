@@ -71,7 +71,9 @@ export default function Sidebar({ seturl }: { seturl: (a: string) => void }) {
                 </ul>
             </div>
 
-            <div className="playlists mt-5 cursor-default select-none h-[100%]">
+            <div
+                className={`playlists mt-5 cursor-default select-none h-[90%]`}
+            >
                 <div className="chose_sidebar flex flex-row justify-around">
                     {options.map(({ key, label }) => (
                         <div

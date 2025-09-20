@@ -263,73 +263,139 @@ export default class Youtube {
     }
 
     async fetch_liked_tracks(access_token: string): Promise<any> {
-        if (this.running.filter((item: any) => { item.name === `liked_tracks` }).length === 0) {
-            this.running.push({
-                name: "liked_tracks"
-            })
-        } else {
-            return null;
-        }
-        let pagetoken: string = '';
-        const url = `${this.create_end_point(this.endpoints[EndPoints.LikedSongs])}&maxResults=${this.maxResults}`;
-        let user = this.getdata("user", "likedsongs");
+        return new Promise(async (resolve, reject) => {
+            let user = this.getdata("user", "likedsongs");
 
-        try {
             let etag = (user.etag && user.etag?.length > 0) ? user.etag : undefined
 
             const ids: string[] = user.lists ?? [];
 
+            if (ids.length > 0) {
+                resolve({
+                    type: "youtube:playlists",
+                    thumbnail: "",
+                    name: "liked songs",
+                    duration: 0,
+                    id: "",
+                    tracks: await this.fetch_track(ids)
+                })
+            }
 
-            while (pagetoken !== null && pagetoken !== undefined) {
-                const endpoint = url + `&pageToken=${pagetoken}`;
-                const video = await this.fetch_data(endpoint, true, access_token, etag);
+            if (!etag || etag.length === 0) {
+                if (this.running.filter((item: any) => { item.name === `liked_tracks` }).length === 0) {
+                    this.running.push({
+                        name: "liked_tracks"
+                    })
+                } else {
+                    return null;
+                }
+                let pagetoken: string = '';
+                const url = `${this.create_end_point(this.endpoints[EndPoints.LikedSongs])}&maxResults=${this.maxResults}`;
 
-                if (video === null) {
-                    this.running = this.running.filter((item: { name: string }) => { return item.name !== "liked_tracks" })
-                    const tracks = await this.fetch_track(user.lists);
-                    return {
-                        type: "youtube:playlists",
-                        thumbnail: "",
-                        name: "liked songs",
-                        duration: 0,
-                        id: "",
-                        tracks: tracks
+                while (pagetoken !== null && pagetoken !== undefined) {
+                    const endpoint = url + `&pageToken=${pagetoken}`;
+                    const video = await this.fetch_data(endpoint, true, access_token, etag);
+
+                    if (video === null) {
+                        this.running = this.running.filter((item: { name: string }) => { return item.name !== "liked_tracks" })
+                        const tracks = await this.fetch_track(user.lists);
+                        return {
+                            type: "youtube:playlists",
+                            thumbnail: "",
+                            name: "liked songs",
+                            duration: 0,
+                            id: "",
+                            tracks: tracks
+                        }
                     }
+                    if (pagetoken === "") {
+                        etag = video.etag;
+                    }
+                    const temp = video.items.map((item: any) => {
+                        return item.id
+                    })
+                    ids.push(...temp);
+                    user = {
+                        etag: etag,
+                        lists: ids
+                    }
+                    this.writedata("user", "likedsongs", user);
+
+                    // if (ids.length >= video.pageInfo.totalResults) {
+                    //     break;
+                    // }
+                    pagetoken = video.nextPageToken;
                 }
-                if (pagetoken === "") {
-                    etag = video.etag;
-                }
-                ids.push(...video.items.map((item: any) => {
-                    return item.id
-                }))
-                // if (ids.length >= video.pageInfo.totalResults) {
-                //     break;
-                // }
-                pagetoken = video.nextPageToken;
+                this.running = this.running.filter((item: { name: string }) => { return item.name !== "liked_tracks" })
             }
-            const tracks = await this.fetch_track(ids);
+        })
+        // if (this.running.filter((item: any) => { item.name === `liked_tracks` }).length === 0) {
+        //     this.running.push({
+        //         name: "liked_tracks"
+        //     })
+        // } else {
+        //     return null;
+        // }
+        // let pagetoken: string = '';
+        // const url = `${this.create_end_point(this.endpoints[EndPoints.LikedSongs])}&maxResults=${this.maxResults}`;
+        // let user = this.getdata("user", "likedsongs");
 
-            user = {
-                etag: etag,
-                lists: ids
-            }
-            this.writedata("user", "likedsongs", user);
-            this.running = this.running.filter((item: { name: string }) => { return item.name !== "liked_tracks" })
+        // try {
+        //     let etag = (user.etag && user.etag?.length > 0) ? user.etag : undefined
 
-            return {
-                type: "youtube:playlists",
-                thumbnail: "",
-                name: "liked songs",
-                duration: 0,
-                id: "",
-                tracks: tracks
-            }
-        }
-        catch (e) {
-            this.running = this.running.filter((item: { name: string }) => { return item.name !== "liked_tracks" })
+        //     const ids: string[] = user.lists ?? [];
 
-            throw new Error(e);
-        }
+
+        //     while (pagetoken !== null && pagetoken !== undefined) {
+        //         const endpoint = url + `&pageToken=${pagetoken}`;
+        //         const video = await this.fetch_data(endpoint, true, access_token, etag);
+
+        //         if (video === null) {
+        //             this.running = this.running.filter((item: { name: string }) => { return item.name !== "liked_tracks" })
+        //             const tracks = await this.fetch_track(user.lists);
+        //             return {
+        //                 type: "youtube:playlists",
+        //                 thumbnail: "",
+        //                 name: "liked songs",
+        //                 duration: 0,
+        //                 id: "",
+        //                 tracks: tracks
+        //             }
+        //         }
+        //         if (pagetoken === "") {
+        //             etag = video.etag;
+        //         }
+        //         ids.push(...video.items.map((item: any) => {
+        //             return item.id
+        //         }))
+        //         // if (ids.length >= video.pageInfo.totalResults) {
+        //         //     break;
+        //         // }
+        //         pagetoken = video.nextPageToken;
+        //     }
+        //     const tracks = await this.fetch_track(ids);
+
+        //     user = {
+        //         etag: etag,
+        //         lists: ids
+        //     }
+        //     this.writedata("user", "likedsongs", user);
+        //     this.running = this.running.filter((item: { name: string }) => { return item.name !== "liked_tracks" })
+
+        //     return {
+        //         type: "youtube:playlists",
+        //         thumbnail: "",
+        //         name: "liked songs",
+        //         duration: 0,
+        //         id: "",
+        //         tracks: tracks
+        //     }
+        // }
+        // catch (e) {
+        //     this.running = this.running.filter((item: { name: string }) => { return item.name !== "liked_tracks" })
+
+        //     throw new Error(e);
+        // }
     }
 
     async fetch_playlist_name(id: string, access_token: string = ''): Promise<string | null> {
@@ -516,7 +582,7 @@ export default class Youtube {
                             track: {
                                 name: item.snippet.title,
                                 id: item.id,
-                                duration: iso8601DurationToMilliseconds(item.contentDetails.duration), // in miliseconds
+                                duration: item.snippet.liveBroadcastContent === "none" ? iso8601DurationToMilliseconds(item.contentDetails.duration) : 0, // in miliseconds
                                 releaseDate: item.snippet.publishedAt.split("T")[0],
                             }
                         })
@@ -954,7 +1020,7 @@ export default class Youtube {
                 }
                 else {
                     this_playlist.ids = ids;
-                    this_playlist.etag = ids;
+                    this_playlist.etag = videos.etag;
                     this_playlist.length = TotalResult;
                     this.writedata("playlist", id, this_playlist);
                 }
@@ -966,10 +1032,17 @@ export default class Youtube {
         try {
             const new_tracks: string[] = []
             for (const id of ids) {
-                const playlistId = await artist(id);
+                try {
+                    const playlistId = await artist(id);
+                    const ids = await playlist(playlistId);
+                    new_tracks.push(...ids);
 
-                const ids = await playlist(playlistId);
-                new_tracks.push(...ids);
+                }
+                catch (e) {
+                    console.log(id);
+                    console.log(e);
+                }
+
             }
 
             const tracks = await this.fetch_track(new_tracks);
