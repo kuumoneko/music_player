@@ -55,7 +55,7 @@
         "url": "https://youtube.googleapis.com/youtube/v3/videos",
         "params": {
             "part": "snippet,contentDetails",
-            "fields": "etag,nextPageToken,items(id,snippet(thumbnails.default.url,channelId,channelTitle,title,publishedAt),contentDetails.duration)"
+            "fields": "etag,nextPageToken,items(id,snippet(thumbnails.default.url,channelId,channelTitle,title,publishedAt,liveBroadcastContent),contentDetails.duration)"
         }
     },
     "search": {
