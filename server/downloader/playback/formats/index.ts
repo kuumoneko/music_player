@@ -6,7 +6,6 @@ export default function DownloadURL(format: any, decipherScript: any, nTransform
         // url is not has the host so i add a Example host to get params
         const temp = new URL(`http://localhost:3000/anything?${url}`);
         const s = temp.searchParams.get("s");
-        const sp = temp.searchParams.get("sp");
         const urll = temp.searchParams.get("url") as unknown as string;
 
         if (!s || !decipherScript) return urll;
