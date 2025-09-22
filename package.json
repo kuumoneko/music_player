@@ -43,7 +43,7 @@
         "server": "nodemon --watch ./server --ext .ts --exec \"node --no-warnings=ExperimentalWarning --loader ts-node/esm server/index.ts\"",
         "build_frontend": "react-scripts build",
         "build_app": "node --no-warnings=ExperimentalWarning --loader ts-node/esm build.ts",
-        "build_backend": "deno compile --no-check --import-map=deno.json --allow-sys --unstable-sloppy-imports --allow-env --allow-read --allow-net --allow-write --allow-run --output \"./app/server.exe\" ./server/index.ts",
+        "build_backend": "deno compile --no-check --config deno.json --allow-sys --unstable-sloppy-imports --allow-env --allow-read --allow-net --allow-write --allow-run --output \"./app/server.exe\" ./server/index.ts",
         "test_new_feaures": "node --no-warnings=ExperimentalWarning --loader ts-node/esm test/music.ts"
     },
     "main": "src/index.ts",

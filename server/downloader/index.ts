@@ -3,11 +3,11 @@ import { mkdir } from "node:fs/promises";
 import fs from 'node:fs';
 import path from 'node:path';
 
-import ytdl from "@distube/ytdl-core";
 import ffmpeg from "fluent-ffmpeg";
 
 import { Downloader_options, Audio_format, Status, Download_item, Track } from "../types/index.js";
 import Music from "./music/index.js";
+import Get_playback_url from "./playback/index.js";
 
 export default class Downloader {
     public folder: string = ""
@@ -17,13 +17,11 @@ export default class Downloader {
     public stastus: { data: string, track: string } = { data: Status.idle, track: "" };
     public port: number = 3000;
     public music: Music;
-    // public ytdlp: YtDlp;
 
     constructor(options: Downloader_options) {
         // folder
         this.folder = options.download_folder || "";
         this.curr_folder = options.curr_folder || "";
-        // this.ytdlp = new YtDlp();
 
         // options
         this.audio_format = options.audio_format || Audio_format.m4a;
@@ -317,42 +315,11 @@ export default class Downloader {
 
     getAudioURLAlternative(id: string): Promise<string> {
         return new Promise(async (resolve, reject) => {
-            const videoUrl = `https://www.youtube.com/watch?v=${id}`;
-
             try {
-                const info = await ytdl.getInfo(videoUrl);
-                const audioFormat = ytdl.chooseFormat(info.formats, {
-                    filter: 'audioonly',
-                    quality: 'highestaudio',
-                });
-                const audio_url = audioFormat.url;
-                resolve(audio_url)
-                // const response = await fetch(audio_url);
-                // if (!response.ok) {
-                //     throw new Error(`Failed to fetch audio: ${response.statusText}`)
-                // }
-                // const stream = response.body as any;
-                // const chunks: any[] = [];
-
-                // for await (const chunk of stream) {
-                //     chunks.push(chunk);
-                // }
-
-                // const buffer = Buffer.concat(chunks);
-                // const base64Audio = buffer.toString('base64');
-                // resolve(base64Audio)
+                const url = await Get_playback_url(id);
+                resolve(url)
             } catch (error) {
                 throw new Error(error)
-
-                // try {
-                //     const stream = await this.ytdlp.getFileAsync(
-                //         videoUrl
-                //     );
-                //     const temp = await stream.arrayBuffer();
-                //     const res = Buffer.from(temp).toString('base64')
-                //     resolve(res)
-                // } catch (e) {
-                // }
             }
         })
     }

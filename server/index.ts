@@ -52,6 +52,7 @@ server.use((req, res, next) => {
 server.use(express.json());
 server.listen(server_port, () => {
     console.log(`Server is running successfully on port ${server_port}`);
+    console.log(`Run http://localhost:${server_port}`);
     console.log(`CORS is configured for origin: *`);
 });
 
@@ -1051,7 +1052,7 @@ server.post("/new_tracks", async (req, res) => {
 
         let data: any[] = [];
         if (youtube.length > 0) {
-            const data_from_youtube: any = await downloader.music.youtube.test_new_tracks(
+            const data_from_youtube: any = await downloader.music.youtube.get_new_tracks(
                 youtube.map((item: any) => { return item.id })
             );
             data.push(...data_from_youtube);
