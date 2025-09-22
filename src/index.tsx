@@ -1,6 +1,5 @@
 // @ts-nocheck
-import Server from "./server/index.tsx";
-import Test from "./test/server.tsx";
+import Server from "./server.tsx";
 import { running } from "./prerun.tsx";
 running();
 localStorage.setItem("url", "/");
@@ -13,10 +12,8 @@ const root_element = document.getElementById("root");
 
 const root = createRoot(root_element as HTMLElement);
 
-const mode: Server_mode = Server_mode.server;
-
 try {
-    root.render(<>{mode === Server_mode.server ? <Server /> : <Test />}</>);
+    root.render(<Server />);
 } catch (e) {
     console.log(e);
     root.render(<div>{e}</div>);
