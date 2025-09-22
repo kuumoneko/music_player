@@ -6,6 +6,9 @@ import express, { Response } from "express";
 import { Audio_format, Download_item, Mode, Playlist, Track, Artist, User_Artist, youtube_api_keys, Status } from "./types/index.js";
 import Downloader from "./downloader/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.js";
+import get_vistorId from "./dist/createTV.js";
+import check_user from "./dist/check_user.js";
+import check_api from "./dist/check_api.js";
 
 const mode: Mode = Mode.react;
 
@@ -41,6 +44,7 @@ const port = (mode as Mode === Mode.deploy) ? 3000 : 3001;
 // default by 3000
 const server_port = 3000
 const server = express();
+let visitorId: string = ""
 
 server.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', `*`);
@@ -50,11 +54,6 @@ server.use((req, res, next) => {
     next();
 });
 server.use(express.json());
-server.listen(server_port, () => {
-    console.log(`Server is running successfully on port ${server_port}`);
-    console.log(`Run http://localhost:${server_port}`);
-    console.log(`CORS is configured for origin: *`);
-});
 
 if (mode as Mode === Mode.deploy || mode as Mode === Mode.app) {
     const folderPath = (mode as Mode === Mode.deploy) ? path.join(__dirname, "build") : path.join(__dirname, "app", 'build')
@@ -70,7 +69,8 @@ let temp: youtube_api_keys[] = [];
 (async () => {
     const keys: youtube_api_keys[] = system.Youtube_Api_key;
     const video_test_id: string = system.test_id;
-    for (const key of keys) {
+
+    const func = async (key: { api_key: string, isAuth: boolean, reach_quota: boolean, date_reached: string, time_reached: string }) => {
         if (key.reach_quota) {
             temp.push({
                 api_key: key.api_key,
@@ -79,7 +79,7 @@ let temp: youtube_api_keys[] = [];
                 date_reached: new Date().toISOString().split('T')[0],
                 time_reached: new Date().toISOString().split("T")[1].split(".")[0]
             })
-            continue;
+            return;
         }
         const url = `https://www.googleapis.com/youtube/v3/videos?id=${video_test_id}&key=${key.api_key}&fields=items.id`;
         const res = await fetch(url, {
@@ -110,10 +110,16 @@ let temp: youtube_api_keys[] = [];
             })
         }
     }
-})().then(() => {
-    // - - - - - - Downloader class - - - - - -.
+    const funcs: any[] = [];
+    for (const key of keys) {
+        funcs.push(func(key));
+    }
 
+    await Promise.all(funcs)
+})().then(async () => {
+    // - - - - - - Downloader class - - - - - -.
     const endpoints = getDataFromDatabase(executableDir, "data", "youtube", "endpoint");
+    visitorId = await get_vistorId();
     downloader = new Downloader(
         {
             download_folder: path.join(executableDir, "download"),
@@ -126,9 +132,42 @@ let temp: youtube_api_keys[] = [];
             spotify_api_key: system.Spotify_Api_key,
             spotify_client: system.Spotify_client,
             port: port,
-            endpoints: endpoints
+            endpoints: endpoints,
+            visitorId: visitorId,
         }
     )
+
+    const isEnd = await check_user(downloader, executableDir);
+    if (isEnd) {
+        downloader = new Downloader(
+            {
+                download_folder: downloader.folder,
+                curr_folder: downloader.curr_folder,
+                audio_format: downloader.audio_format as Audio_format,
+                youtube_api_key: system.Youtube_Api_key,
+                google_client_id: system.web.client_id,
+                google_client_secret: system.web.client_secret,
+                redirect_uris: system.web.redirect_uris,
+                spotify_api_key: system.Spotify_Api_key,
+                spotify_client: system.Spotify_client,
+                port: port,
+                visitorId: visitorId
+            }
+        );
+    }
+
+    const api_keys = downloader.music.youtube.youtube_api_key as youtube_api_keys[];
+    let tempp = system;
+    tempp.Youtube_Api_key = api_keys;
+    if (api_keys.length > 0) {
+        writeDataToDatabase(executableDir, "data", "system", tempp);
+    }
+
+    server.listen(server_port, () => {
+        console.log(`Server is running successfully on port ${server_port}`);
+        console.log(`Run http://localhost:${server_port}`);
+        console.log(`CORS is configured for origin: *`);
+    });
 });
 
 function sleep(ms: number) {
@@ -150,75 +189,8 @@ setInterval(() => {
         if (downloader === null || downloader === undefined) {
             return;
         }
-
-        const data = getDataFromDatabase(executableDir, "data", "user");
-
-        let res: any = {
-            youtube: data.youtube,
-            spotify: data.spotify,
-            local: data.local,
-        };
-
-        let lmao = false;
-
-        if (
-            data.youtube.expires &&
-            data.youtube.expires <= new Date().getTime()
-        ) {
-            lmao = true;
-            try {
-                const Youtube: any = await downloader.music.youtube.refreshYoutubeToken(data.youtube.refresh_token);
-                const user = await downloader.music.youtube.get_me(Youtube.access_token);
-                res.youtube = {
-                    access_token: Youtube.access_token,
-                    expires: Youtube.expires,
-                    refresh_token_expires: Youtube.refresh_token_expires_in,
-                    refresh_token: res.youtube.refresh_token,
-                    user: user,
-                };
-            }
-            catch (e) {
-                console.error(e);
-                res.youtube = {
-                    refresh_token: null,
-                    access_token: null,
-                    expires: null,
-                    user: null
-                };
-            }
-        }
-
-        if (
-            data.spotify.expires &&
-            data.spotify.expires <= new Date().getTime()
-        ) {
-            lmao = true;
-            try {
-                const spotifyUser: any = await downloader.music.spotify.refreshSpotifyToken(data.spotify.refresh_token);
-                const user = await downloader.music.spotify.get_me(
-                    spotifyUser.access_token
-                );
-                res.spotify = {
-                    access_token: spotifyUser.access_token,
-                    expires: spotifyUser.expires,
-                    refresh_token: spotifyUser.refresh_token
-                        ? spotifyUser.refresh_token
-                        : data.spotify.refresh_token,
-                    user: user,
-                };
-            }
-            catch (e) {
-                res.spotify = {
-                    access_token: null,
-                    expires: null,
-                    refresh_token: null,
-                    user: null,
-                };
-            }
-        }
-
-        if (lmao) {
-            writeDataToDatabase(executableDir, "data", "user", res);
+        const isEnd = await check_user(downloader, executableDir);
+        if (isEnd) {
             downloader = new Downloader(
                 {
                     download_folder: downloader.folder,
@@ -231,6 +203,7 @@ setInterval(() => {
                     spotify_api_key: system.Spotify_Api_key,
                     spotify_client: system.Spotify_client,
                     port: port,
+                    visitorId: visitorId
                 }
             );
         }
@@ -246,39 +219,11 @@ setInterval(() => {
 }, 1000);
 
 // - - - - - check if reach time to refresh quota - - - - -
-setInterval(() => {
-    if (downloader === null || downloader === undefined) { return }
-    const now = new Date();
-    const [now_year, now_month, now_date] = now.toISOString().split("T")[0].split("-").map((item: string) => { return Number(item) });
-    const [now_hour, now_minute, now_second] = now.toISOString().split("T")[1].split(".")[0].split(":").map((item: string) => { return Number(item) });
-    const keys = downloader.music.youtube.youtube_api_key;
-
-    for (let key of keys) {
-        if (!key.reach_quota) {
-            continue;
-        }
-
-        const [year, month, date] = key.date_reached.split("-").map((item: string) => { return Number(item) })
-        const [hour, minute, second] = key.time_reached.split(":").map((item: string) => { return Number(item) });
-
-        if (
-            new Date(year, month, date, hour, minute, second) > new Date(year, month, date, 7, 0, 0) &&
-            new Date(now_year, now_month, now_date, now_hour, now_minute, now_second).getTime() > (new Date(year, month, date, 7, 0, 0).getTime() + 24 * 60 * 60 * 1000)
-        ) {
-            key.date_reached = "";
-            key.time_reached = "";
-            key.reach_quota = false;
-        }
-        else if (
-            new Date(year, month, date, hour, minute, second) < new Date(year, month, date, 7, 0, 0) &&
-            new Date(now_year, now_month, now_date, now_hour, now_minute, now_second) > new Date(year, month, date, 7, 0, 0)
-        ) {
-            key.date_reached = "";
-            key.time_reached = "";
-            key.reach_quota = false;
-        }
+setInterval(async () => {
+    const keys = await check_api(downloader);
+    if (keys.length > 0) {
+        downloader.music.youtube.youtube_api_key = keys;
     }
-    downloader.music.youtube.youtube_api_key = keys;
 }, 15 * 60 * 1000); // 15 minutes
 
 // - - - - - - DATA - - - - - - -
