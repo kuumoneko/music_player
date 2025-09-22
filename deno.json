@@ -1,7 +1,6 @@
 {
     "imports": {
         "express": "npm:express@5.1.0",
-        "@distube/ytdl-core": "npm:@distube/ytdl-core@4.16.12",
         "fluent-ffmpeg": "npm:fluent-ffmpeg@2.1.3"
     },
     "nodeModulesDir": "none"
