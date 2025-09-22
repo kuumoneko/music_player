@@ -8,6 +8,7 @@ import ffmpeg from "fluent-ffmpeg";
 import { Downloader_options, Audio_format, Status, Download_item, Track } from "../types/index.js";
 import Music from "./music/index.js";
 import Get_playback_url from "./playback/index.js";
+import get_vistorId from "../dist/createTV.js";
 
 export default class Downloader {
     public folder: string = ""
@@ -17,6 +18,7 @@ export default class Downloader {
     public stastus: { data: string, track: string } = { data: Status.idle, track: "" };
     public port: number = 3000;
     public music: Music;
+    private visitorId: string = ""
 
     constructor(options: Downloader_options) {
         // folder
@@ -25,6 +27,7 @@ export default class Downloader {
 
         // options
         this.audio_format = options.audio_format || Audio_format.m4a;
+        this.visitorId = options.visitorId ?? "";
 
         // client API
         this.music = new Music({
@@ -41,6 +44,7 @@ export default class Downloader {
 
         // status
         this.stastus = { data: Status.idle, track: "" };
+
     }
 
     get_status(): { status: { data: string, track: string } } {
@@ -316,7 +320,10 @@ export default class Downloader {
     getAudioURLAlternative(id: string): Promise<string> {
         return new Promise(async (resolve, reject) => {
             try {
-                const url = await Get_playback_url(id);
+                if (this.visitorId.length === 0) {
+                    this.visitorId = await get_vistorId();;
+                }
+                const url = await Get_playback_url(id, this.visitorId);
                 resolve(url)
             } catch (error) {
                 throw new Error(error)

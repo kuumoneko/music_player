@@ -30,24 +30,24 @@ Ch:function(x,S){var Z=x[0];x[0]=x[S%x[t[0]]];x[S%x[t[0]]]=Z}};var t='length;;S;
 DisTubeDecipherFunc(sig);`
 
 
-export default async function Get_playback_url(id: string) {
+export default async function Get_playback_url(id: string, visitorId: string) {
     let url = "";
 
     while (url.length === 0) {
         try {
-            const { formats } = await Basic_Info(id);
-            const clientPromises: any[] = [];
+            const format = await Basic_Info(id, visitorId);
+            // const clientPromises: any[] = [];
             const [decipherScript, nTransformScript] = [
                 new vm.Script(DecipherScript), new vm.Script(NTransformFunc)
             ]
-            for (const format of formats) {
-                clientPromises.push(DownloadURL(format, decipherScript, nTransformScript));
-            }
+            // for (const format of format) {
+            const res = DownloadURL(format, decipherScript, nTransformScript)
+            // }
 
-            url = clientPromises[0].url;
+            url = res.url;
         }
-        catch {
-
+        catch (e) {
+            console.log(e)
         }
     }
 
