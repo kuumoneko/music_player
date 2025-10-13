@@ -1,7 +1,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { Artist, EndPoints, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist, youtube_api_keys, youtube_endpoint, youtube_endpoints } from "../../../types/index.js";
+import { Artist, EndPoints, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist, youtube_api_keys, youtube_endpoint, youtube_endpoints } from "../../types/index.js";
+import iso8601DurationToMilliseconds from "./utils/formatTime.js";
 
 export default class Youtube {
     private maxResults = 50;
@@ -12,7 +13,6 @@ export default class Youtube {
     private endpoints: youtube_endpoints = undefined as any;
     private database: string;
     private running: any[] = [];
-
 
     constructor(options: Music_options) {
         // client API
@@ -161,7 +161,7 @@ export default class Youtube {
                 body: new URLSearchParams({
                     client_id: this.google_client as string,
                     client_secret: this.google_client_secret as string,
-                    redirect_uri: `http://localhost:${this.port}`,
+                    redirect_uri: `http://localhost:${this.port}/login`,
                     grant_type: 'authorization_code',
                     code: token,
                 })
@@ -831,24 +831,4 @@ export default class Youtube {
             throw new Error(e);
         }
     }
-}
-
-function iso8601DurationToMilliseconds(durationString: string): number {
-    const pattern = /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/
-    const match = durationString.match(pattern);
-
-    if (!match) {
-        throw new Error("Invalid duration string format")
-    }
-
-    const [, days = 0, hours = 0, minutes = 0, seconds = 0] = match.map((value: any) => {
-        return (value) ? value : 0;
-    });
-
-    const ms =
-        (days * 24 * 60 * 60 * 1000) +
-        (hours * 60 * 60 * 1000) +
-        (minutes * 60 * 1000) +
-        (seconds * 1000);
-    return ms;
 }

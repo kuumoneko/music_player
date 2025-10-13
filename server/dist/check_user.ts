@@ -1,4 +1,4 @@
-import Downloader from "../downloader/index.js";
+import Downloader from "../download/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./databse.js";
 
 export default async function check_user(downloader: Downloader, executableDir: string) {
@@ -22,8 +22,8 @@ export default async function check_user(downloader: Downloader, executableDir: 
     ) {
         isEnd = true;
         try {
-            const Youtube: any = await downloader.music.youtube.refreshYoutubeToken(data.youtube.refresh_token);
-            const user = await downloader.music.youtube.get_me(Youtube.access_token);
+            const Youtube: any = await downloader.youtube.refreshYoutubeToken(data.youtube.refresh_token);
+            const user = await downloader.youtube.get_me(Youtube.access_token);
             res.youtube = {
                 access_token: Youtube.access_token,
                 expires: Youtube.expires,
@@ -49,8 +49,8 @@ export default async function check_user(downloader: Downloader, executableDir: 
     ) {
         isEnd = true;
         try {
-            const spotifyUser: any = await downloader.music.spotify.refreshSpotifyToken(data.spotify.refresh_token);
-            const user = await downloader.music.spotify.get_me(
+            const spotifyUser: any = await downloader.spotify.refreshSpotifyToken(data.spotify.refresh_token);
+            const user = await downloader.spotify.get_me(
                 spotifyUser.access_token
             );
             res.spotify = {

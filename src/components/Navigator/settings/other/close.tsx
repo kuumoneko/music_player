@@ -1,4 +1,3 @@
-// Close settings
 export default function Close_Settings({ onClose }: {
     onClose: () => void;
 }) {

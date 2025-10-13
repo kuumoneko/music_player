@@ -1,11 +1,11 @@
-import Downloader from "../downloader/index.js";
+import Downloader from "../download/index.js";
 
 export default async function check_api(downloader: Downloader) {
     if (downloader === null || downloader === undefined) { return }
     const now = new Date();
     const [now_year, now_month, now_date] = now.toISOString().split("T")[0].split("-").map((item: string) => { return Number(item) });
     const [now_hour, now_minute, now_second] = now.toISOString().split("T")[1].split(".")[0].split(":").map((item: string) => { return Number(item) });
-    const keys = downloader.music.youtube.youtube_api_key;
+    const keys = downloader.youtube.youtube_api_key;
 
     for (let key of keys) {
         if (!key.reach_quota) {

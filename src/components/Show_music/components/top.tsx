@@ -39,7 +39,6 @@ export default function Top({
     useEffect(() => {
         async function run() {
             const pin = await fetch_profile("get", LocalStorageKeys.pin);
-            // console.log(pin);
             if (
                 pin.findIndex(
                     (item: any) =>

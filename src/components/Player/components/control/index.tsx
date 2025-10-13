@@ -59,7 +59,7 @@ export default function ControlUI({
         try {
             setisloading(true);
 
-            const data = await fetch_data(Data.stream, {
+            const data: { url: string } = await fetch_data(Data.stream, {
                 where: source,
                 id: id,
             });
@@ -87,6 +87,7 @@ export default function ControlUI({
 
                 data.url = blobUrl;
             }
+
             setplayed(false);
             audioRef.current.pause();
             audioRef.current.src = "";
@@ -171,7 +172,6 @@ export default function ControlUI({
         return () => clearInterval(run);
     }, []);
 
-    // const audioRef = useRef<HTMLAudioElement>(new Audio());
     const [Time, setTime] = useState(() =>
         Number(localStorage.getItem("time") ?? 0)
     );

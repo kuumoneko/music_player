@@ -5,7 +5,7 @@ export class Local {
     constructor() { }
 
     get_Thumbnail(path: string): Promise<string> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const imageStream = new PassThrough();
             let chunks: any[] = [];
 

@@ -4,11 +4,11 @@ import { readFileSync, statSync, promises } from "node:fs";
 import express, { Response } from "express";
 
 import { Audio_format, Download_item, Mode, Playlist, Track, Artist, User_Artist, youtube_api_keys, Status } from "./types/index.js";
-import Downloader from "./downloader/index.js";
+import Downloader from "./download/index.js";
 import { getDataFromDatabase, writeDataToDatabase } from "./dist/databse.js";
-import get_vistorId from "./dist/createTV.js";
 import check_user from "./dist/check_user.js";
 import check_api from "./dist/check_api.js";
+import Innertube, { ClientType, Platform, Types } from "youtubei.js";
 
 const mode: Mode = Mode.react;
 
@@ -44,9 +44,8 @@ const port = (mode as Mode === Mode.deploy) ? 3000 : 3001;
 // default by 3000
 const server_port = 3000
 const server = express();
-let visitorId: string = ""
 
-server.use((req, res, next) => {
+server.use((_req, res, next) => {
     res.header('Access-Control-Allow-Origin', `*`);
     res.header('Access-Control-Allow-Methods', 'POST');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
@@ -58,11 +57,26 @@ server.use(express.json());
 if (mode as Mode === Mode.deploy || mode as Mode === Mode.app) {
     const folderPath = (mode as Mode === Mode.deploy) ? path.join(__dirname, "build") : path.join(__dirname, "app", 'build')
     server.use(express.static(folderPath));
-    server.get('/', (req, res) => {
+    server.get('/', (_req, res) => {
         res.sendFile(path.join(folderPath, 'index.html'));
     });
 }
 
+Platform.shim.eval = async (data: Types.BuildScriptResult, env: Record<string, Types.VMPrimative>) => {
+    const properties = [];
+
+    if (env.n) {
+        properties.push(`n: exportedVars.nFunction("${env.n}")`)
+    }
+
+    if (env.sig) {
+        properties.push(`sig: exportedVars.sigFunction("${env.sig}")`)
+    }
+
+    const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
+
+    return new Function(code)();
+}
 // - - - - - Check if api_key is reached quota - - - - - -
 let downloader: Downloader = null as any
 let temp: youtube_api_keys[] = [];
@@ -119,7 +133,7 @@ let temp: youtube_api_keys[] = [];
 })().then(async () => {
     // - - - - - - Downloader class - - - - - -.
     const endpoints = getDataFromDatabase(executableDir, "data", "youtube", "endpoint");
-    visitorId = await get_vistorId();
+
     downloader = new Downloader(
         {
             download_folder: path.join(executableDir, "download"),
@@ -133,16 +147,19 @@ let temp: youtube_api_keys[] = [];
             spotify_client: system.Spotify_client,
             port: port,
             endpoints: endpoints,
-            visitorId: visitorId,
         }
     )
+    downloader.youtube_player = await Innertube.create({
+        client_type: ClientType.TV
+    });
 
     const isEnd = await check_user(downloader, executableDir);
     if (isEnd) {
+        const temp = downloader.youtube_player
         downloader = new Downloader(
             {
-                download_folder: downloader.folder,
-                curr_folder: downloader.curr_folder,
+                download_folder: downloader.download_folder,
+                curr_folder: downloader.app_folder,
                 audio_format: downloader.audio_format as Audio_format,
                 youtube_api_key: system.Youtube_Api_key,
                 google_client_id: system.web.client_id,
@@ -151,12 +168,12 @@ let temp: youtube_api_keys[] = [];
                 spotify_api_key: system.Spotify_Api_key,
                 spotify_client: system.Spotify_client,
                 port: port,
-                visitorId: visitorId
             }
         );
+        downloader.youtube_player = temp
     }
 
-    const api_keys = downloader.music.youtube.youtube_api_key as youtube_api_keys[];
+    const api_keys = downloader.youtube.youtube_api_key as youtube_api_keys[];
     let tempp = system;
     tempp.Youtube_Api_key = api_keys;
     if (api_keys.length > 0) {
@@ -191,10 +208,11 @@ setInterval(() => {
         }
         const isEnd = await check_user(downloader, executableDir);
         if (isEnd) {
+            const temp = downloader.youtube_player
             downloader = new Downloader(
                 {
-                    download_folder: downloader.folder,
-                    curr_folder: downloader.curr_folder,
+                    download_folder: downloader.download_folder,
+                    curr_folder: downloader.app_folder,
                     audio_format: downloader.audio_format as Audio_format,
                     youtube_api_key: system.Youtube_Api_key,
                     google_client_id: system.web.client_id,
@@ -203,12 +221,12 @@ setInterval(() => {
                     spotify_api_key: system.Spotify_Api_key,
                     spotify_client: system.Spotify_client,
                     port: port,
-                    visitorId: visitorId
                 }
             );
+            downloader.youtube_player = temp;
         }
 
-        const api_keys = downloader.music.youtube.youtube_api_key as youtube_api_keys[];
+        const api_keys = downloader.youtube.youtube_api_key as youtube_api_keys[];
         let temp = system;
         temp.Youtube_Api_key = api_keys;
         if (api_keys.length > 0) {
@@ -222,7 +240,7 @@ setInterval(() => {
 setInterval(async () => {
     const keys = await check_api(downloader);
     if (keys.length > 0) {
-        downloader.music.youtube.youtube_api_key = keys;
+        downloader.youtube.youtube_api_key = keys;
     }
 }, 15 * 60 * 1000); // 15 minutes
 
@@ -243,11 +261,13 @@ const give_data = (event: Response, data: any = {}) => {
     }
 };
 
+
 // - - - - - - AUTH - - - - -
 server.post("/login", async (req, res) => {
     try {
         const { where } = req.body;
-        const redirectUri = `http://localhost:${port}`;
+
+        const redirectUri = `http://localhost:${port}/login`;
         let authUrl: string;
 
         if (where === "youtube") {
@@ -281,11 +301,14 @@ server.post("/login", async (req, res) => {
 
 server.post("/auth", async (req, res) => {
     const { where, code } = req.body;
+    console.log(where, ' ', code)
     try {
         const user = getDataFromDatabase(executableDir, "data", "user");
         if (where === "youtube") {
-            const google_token = await downloader.music.youtube.get_token(code) as any;
-            const googleUser = await downloader.music.youtube.get_me(google_token.access_token);
+            const google_token = await downloader.youtube.get_token(code) as any;
+            console.log(google_token)
+            const googleUser = await downloader.youtube.get_me(google_token.access_token);
+            console.log(googleUser)
 
             writeDataToDatabase(executableDir, "data", "user", {
                 youtube: {
@@ -303,7 +326,7 @@ server.post("/auth", async (req, res) => {
             })
         }
         else {
-            const spotifyUser = await downloader.music.spotify.verifySpotifyToken(code) as any;
+            const spotifyUser = await downloader.spotify.verifySpotifyToken(code) as any;
 
             writeDataToDatabase(executableDir, "data", "user", {
                 spotify: {
@@ -381,14 +404,13 @@ server.post("/download", async (req, res) => {
 
         for (const link of links) {
             const { source, mode } = link;
-            const dataa: Track | Playlist = await downloader.music.search(link)
+            const dataa: Track | Playlist = await downloader.search(link)
 
             if (mode === "playlist") {
                 if (source === "youtube") {
                     const temp: Playlist = (dataa as Playlist)
                     const download_items: Download_item[] = [];
                     for (const item of temp.tracks as Track[]) {
-                        // console.log(source, ' ', item.track?.name)
 
                         download_items.push({
                             title: downloader.format_title(item.track?.name as string) || "",
@@ -409,13 +431,11 @@ server.post("/download", async (req, res) => {
                     const temp: Playlist = (dataa as Playlist)
 
                     for (const item of (temp.tracks as Track[])) {
-                        // console.log(source, ' ', item.track?.name)
 
-                        const spotify_video: Track = await downloader.music.spotify.fetch_track(item.track?.id || "");
-                        const matching_video: Track | null = await downloader.music.findMatchingVideo(spotify_video);
+                        const spotify_video: Track = await downloader.spotify.fetch_track(item.track?.id || "");
+                        const matching_video: Track | null = await downloader.findMatchingVideo(spotify_video);
 
                         if (matching_video !== null) {
-                            // console.log(matching_video)
                             tracks_to_download.push({
                                 title: downloader.format_title(spotify_video.track?.name as string) || "",
                                 id: [spotify_video.track?.id || "", matching_video.track?.id || ""],
@@ -445,8 +465,8 @@ server.post("/download", async (req, res) => {
                     })
                 }
                 else if (source === "spotify") {
-                    const temp: Track | null = await downloader.music.findMatchingVideo(dataa as Track);
-                    const spotify_video: Track = await downloader.music.spotify.fetch_track((dataa as Track).track?.id || "");
+                    const temp: Track | null = await downloader.findMatchingVideo(dataa as Track);
+                    const spotify_video: Track = await downloader.spotify.fetch_track((dataa as Track).track?.id || "");
 
                     if (temp !== null) {
                         tracks_to_download.push({
@@ -467,7 +487,7 @@ server.post("/download", async (req, res) => {
             }
         }
         console.log("- - - - - - - - - - READY TO DOWNLOAD - - - - - - - - - -")
-        downloader.download_queue = tracks_to_download;
+        downloader.set_queue(tracks_to_download);
 
         const { local } = getDataFromDatabase(executableDir, "data", "user");
         if (
@@ -501,7 +521,6 @@ server.post("/download_status", async (req, res) => {
 })
 
 // - - - - - USER - - - - -
-
 server.post("/user", (req, res) => {
     const data = getDataFromDatabase(executableDir, "data", "user");
     return give_data(res, {
@@ -584,7 +603,7 @@ server.post("/local", async (req, res) => {
                     files.push(get_data)
                 }
                 else {
-                    const metadata = await downloader.music.local.parseFile(filePath);
+                    const metadata = await downloader.local.parseFile(filePath);
                     const thumbnail = metadata.thumbnail;
 
                     files.push({
@@ -645,7 +664,7 @@ server.post("/search", async (req, res) => {
 
     const { where, query } = req.body;
     try {
-        const result = await downloader.music.search(query, where);
+        const result = await downloader.search(query, where);
         return give_data(res, result);
     } catch (e) {
         console.error("Error in /search endpoint:", e);
@@ -660,11 +679,11 @@ server.post("/track", async (req, res) => {
     const { where, id } = req.body;
     try {
         if (where === "youtube") {
-            const track = await downloader.music.youtube.fetch_track([id]);
+            const track = await downloader.youtube.fetch_track([id]);
             return give_data(res, track);
         }
         else {
-            const track = await downloader.music.spotify.fetch_track(id);
+            const track = await downloader.spotify.fetch_track(id);
             return give_data(res, track);
         }
     } catch (e) {
@@ -707,7 +726,7 @@ server.post("/playlist", async (req, res) => {
                 duration: 0,
                 tracks: [],
             };
-            playlist = await downloader.music.youtube.fetch_playlist(
+            playlist = await downloader.youtube.fetch_playlist(
                 id,
                 youtube.access_token
             );
@@ -720,7 +739,7 @@ server.post("/playlist", async (req, res) => {
                 );
             }
             const playlist =
-                await downloader.music.spotify.fetch_playlist(
+                await downloader.spotify.fetch_playlist(
                     id,
                     spotify.access_token
                 );
@@ -763,7 +782,7 @@ server.post("/likedsongs", async (req, res) => {
                 );
             }
 
-            const liked_songs = await downloader.music.youtube.fetch_liked_tracks(
+            const liked_songs = await downloader.youtube.fetch_liked_tracks(
                 youtube.access_token
             );
             return give_data(res, liked_songs);
@@ -775,7 +794,7 @@ server.post("/likedsongs", async (req, res) => {
             }
 
             const liked_songs =
-                await downloader.music.spotify.fetch_liked_tracks(
+                await downloader.spotify.fetch_liked_tracks(
                     spotify.access_token
                 );
             return give_data(res, liked_songs);
@@ -812,7 +831,7 @@ server.post("/userplaylist", async (req, res) => {
 
         if (spotify.access_token !== null && spotify.access_token !== undefined) {
             spotify_playlists = (
-                (await downloader.music.spotify.fetch_user_playlists(
+                (await downloader.spotify.fetch_user_playlists(
                     spotify.access_token
                 )) as any
             ).playlists;
@@ -820,7 +839,7 @@ server.post("/userplaylist", async (req, res) => {
 
         if (youtube.access_token !== null && youtube.access_token !== undefined) {
             youtube_playlists = (
-                (await downloader.music.youtube.fetch_user_playlists(
+                (await downloader.youtube.fetch_user_playlists(
                     youtube.access_token
                 )) as any
             ).playlists;
@@ -888,9 +907,9 @@ server.post("/stream", async (req, res) => {
         if (where === "youtube") {
             musicId = id;
         } else {
-            const track = await downloader.music.spotify.fetch_track(id);
+            const track = await downloader.spotify.fetch_track(id);
 
-            const findYtbTrack = await downloader.music.findMatchingVideo(track);
+            const findYtbTrack = await downloader.findMatchingVideo(track);
             if (!findYtbTrack) {
                 return give_error(res, "Music not found");
             }
@@ -942,11 +961,11 @@ server.post("/likedartists", async (req, res) => {
             youtube_artists: User_Artist = {};
 
         if (spotify.access_token !== null && spotify.access_token !== undefined) {
-            spotify_artists = await downloader.music.spotify.fetch_following_artists(spotify.access_token);
+            spotify_artists = await downloader.spotify.fetch_following_artists(spotify.access_token);
         }
 
         if (youtube.access_token !== null && youtube.access_token !== undefined) {
-            youtube_artists = await downloader.music.youtube.fetch_following_artists(youtube.access_token) as User_Artist
+            youtube_artists = await downloader.youtube.fetch_following_artists(youtube.access_token) as User_Artist
         }
         return give_data(res, {
             youtube:
@@ -974,10 +993,10 @@ server.post("/artist", async (req, res) => {
 
         let data: any = null;
         if (where === "youtube") {
-            data = await downloader.music.youtube.fetch_artist(id, pageToken);
+            data = await downloader.youtube.fetch_artist(id, pageToken);
         }
         else {
-            data = await downloader.music.spotify.fetch_artist(id);
+            data = await downloader.spotify.fetch_artist(id);
         }
         give_data(res, data)
     }
@@ -997,13 +1016,13 @@ server.post("/new_tracks", async (req, res) => {
 
         let data: any[] = [];
         if (youtube.length > 0) {
-            const data_from_youtube: any = await downloader.music.youtube.get_new_tracks(
+            const data_from_youtube: any = await downloader.youtube.get_new_tracks(
                 youtube.map((item: any) => { return item.id })
             );
             data.push(...data_from_youtube);
         }
         if (spotify.length > 0) {
-            const data_from_spotify = await downloader.music.spotify.get_new_tracks(
+            const data_from_spotify = await downloader.spotify.get_new_tracks(
                 spotify.map((item: any) => { return item.id })
             );
             data.push(...data_from_spotify);

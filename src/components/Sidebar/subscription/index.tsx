@@ -16,7 +16,6 @@ export default function Artist({ seturl }: { seturl: (a: string) => void }) {
             set_user_artists([...res.youtube, ...res.spotify]);
 
             const artists = await fetch_data(Data.likedartists);
-            console.log(artists);
             set_user_artists([...artists.youtube, ...artists.spotify]);
 
             if (JSON.stringify(res) !== JSON.stringify(artists)) {

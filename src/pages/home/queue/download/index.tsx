@@ -10,7 +10,7 @@ import fetch_profile, {
 } from "../../../../utils/localStorage.ts";
 
 export default function Download_Queue() {
-    const download_queue = [];
+    const download_queue: any[] = [];
     download_queue.sort((a: any, b: any) => {
         if (a.mode === "playlist" && b.mode === "track") {
             return -1;
@@ -27,12 +27,6 @@ export default function Download_Queue() {
     useEffect(() => {
         async function run() {
             const res = await fetch_profile("get", LocalStorageKeys.download);
-            console.log(res);
-            // const queue_list: any[] = JSON.parse(queue);
-
-            // if (queue_list.length == 0) {
-            //     return;
-            // }
 
             const playlists = res.filter(
                 (item: any) => item.mode === "playlist"
@@ -64,7 +58,9 @@ export default function Download_Queue() {
                     tracks = tracksminus;
                 }
 
-                temp[`${item.source}:${item.mode}:${item.id}`] = data;
+                temp[
+                    `${item.source}:${item.mode}:${item.id}` as keyof typeof temp
+                ] = data;
             }
             for (const item of tracks) {
                 const data = await fetch_data(Data.track, {
@@ -72,7 +68,9 @@ export default function Download_Queue() {
                     id: item.id,
                 });
 
-                temp[`${item.source}:${item.mode}:${item.id}`] = data;
+                temp[
+                    `${item.source}:${item.mode}:${item.id}` as keyof typeof temp
+                ] = data;
             }
 
             const hehe = [...playlists, ...tracks];
@@ -120,7 +118,7 @@ export default function Download_Queue() {
                                                     Object.entries(data)
                                                 );
                                                 temp_map.delete(key);
-                                                const temp_obj = {};
+                                                const temp_obj: any = {};
                                                 temp_map.forEach(
                                                     (value: any, key: any) => {
                                                         temp_obj[key] = value;
@@ -410,7 +408,7 @@ const Test_B = ({ list }: { list: string }) => {
                                             Object.entries(data)
                                         );
                                         temp_map.delete(key);
-                                        const temp_obj = {};
+                                        const temp_obj: any = {};
                                         temp_map.forEach(
                                             (value: any, key: any) => {
                                                 temp_obj[key] = value;

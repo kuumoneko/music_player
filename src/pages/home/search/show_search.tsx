@@ -3,7 +3,6 @@ import { Data, fetch_data } from "../../../utils/fetch.ts";
 import List from "../../../components/Show_music/components/list.tsx";
 
 export default function Show_search({ urll }: { urll: String }) {
-    // const url = urll.split("/").slice(2);
     const [url, seturl] = useState(urll.split("/").slice(2));
 
     const [search, setsearch] = useState(

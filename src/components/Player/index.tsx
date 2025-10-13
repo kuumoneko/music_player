@@ -1,4 +1,3 @@
-// src/components/Player.tsx
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { goto } from "../../utils/url.ts";

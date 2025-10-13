@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer"
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { Album, Artist, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist } from "../../../types/index.js";
+import { Album, Artist, Music_options, Playlist, Search, Track, User_Artist, UserPlaylist } from "../../types/index.js";
 
 export default class Spotify {
     private spotify_api_key: string | undefined;

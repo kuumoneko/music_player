@@ -71,7 +71,6 @@ export interface Downloader_options {
     port?: number,
     ytb_access_token?: string,
     endpoints?: youtube_endpoints,
-    visitorId: string
 }
 
 export interface Download_queue {

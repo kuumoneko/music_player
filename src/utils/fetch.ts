@@ -38,6 +38,7 @@ export async function fetch_data(what: Data, data?: any): Promise<any> {
         }
     }
     catch (e) {
+        console.log("error ne")
         console.error(e);
         return null;
     }

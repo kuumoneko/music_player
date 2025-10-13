@@ -5,7 +5,6 @@ import fetch_profile, {
     LocalStorageKeys,
 } from "../../../../utils/localStorage";
 
-// Audio format settings
 export default function Audio_Settings() {
     const [audio, setaudio] = useState("");
 

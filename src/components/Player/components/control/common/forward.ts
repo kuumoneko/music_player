@@ -2,7 +2,7 @@ import { add_items } from "../../../../../utils/add_items.ts";
 import fetch_profile, { LocalStorageKeys } from "../../../../../utils/localStorage.ts";
 
 export default async function forward(
-    getUrl: (source: string,
+    getUrl: (source: "youtube" | "spotify" | "local",
         id: string,
         autoplayed: boolean) => Promise<void>,
 ) {
