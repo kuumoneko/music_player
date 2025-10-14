@@ -303,14 +303,11 @@ server.post("/login", async (req, res) => {
 
 server.post("/auth", async (req, res) => {
     const { where, code } = req.body;
-    console.log(where, ' ', code)
     try {
         const user = getDataFromDatabase(executableDir, "data", "user");
         if (where === "youtube") {
             const google_token = await downloader.youtube.get_token(code) as any;
-            console.log(google_token)
             const googleUser = await downloader.youtube.get_me(google_token.access_token);
-            console.log(googleUser)
 
             writeDataToDatabase(executableDir, "data", "user", {
                 youtube: {
