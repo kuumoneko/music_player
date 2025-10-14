@@ -176,7 +176,7 @@ export default class Youtube {
     async refreshYoutubeToken(token: string) {
         try {
             const url = `https://oauth2.googleapis.com/token?refresh_token=${token}&client_id=${this.google_client}&client_secret=${this.google_client_secret}&grant_type=refresh_token`;
-
+            console.log(url)
             const payload = {
                 method: 'POST',
                 headers: {
@@ -184,7 +184,9 @@ export default class Youtube {
                 },
             }
             const body = await fetch(url, payload);
+
             const response: any = await body.json();
+            console.log(response)
             if (response.error) {
                 return {
                     access_token: null,

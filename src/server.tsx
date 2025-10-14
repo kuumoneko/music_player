@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import "./index.css";
-
-import { goto } from "./utils/url.ts";
 
 import MainContent from "./pages/index.tsx";
 import Nav from "./components/Navigator/index.tsx";

@@ -185,6 +185,51 @@ let temp: youtube_api_keys[] = [];
         console.log(`Run http://localhost:${server_port}`);
         console.log(`CORS is configured for origin: *`);
     });
+    // - - - - - - Check if access_token is expired - - - - - - -
+    setInterval(() => {
+        async function run() {
+            if (downloader === null || downloader === undefined) {
+                return;
+            }
+            const isEnd = await check_user(downloader, executableDir);
+            if (isEnd) {
+                const temp = downloader.youtube_player
+                downloader = new Downloader(
+                    {
+                        download_folder: downloader.download_folder,
+                        curr_folder: downloader.app_folder,
+                        audio_format: downloader.audio_format as Audio_format,
+                        youtube_api_key: system.Youtube_Api_key,
+                        google_client_id: system.web.client_id,
+                        google_client_secret: system.web.client_secret,
+                        redirect_uris: system.web.redirect_uris,
+                        spotify_api_key: system.Spotify_Api_key,
+                        spotify_client: system.Spotify_client,
+                        port: port,
+                    }
+                );
+                downloader.youtube_player = temp;
+            }
+
+            const api_keys = downloader.youtube.youtube_api_key as youtube_api_keys[];
+            let temp = system;
+            temp.Youtube_Api_key = api_keys;
+            if (api_keys.length > 0) {
+                writeDataToDatabase(executableDir, "data", "system", temp);
+            }
+        }
+        run();
+    }, 1000);
+
+
+    // - - - - - check if reach time to refresh quota - - - - -
+    setInterval(async () => {
+        const keys = await check_api(downloader);
+        if (keys.length > 0) {
+            downloader.youtube.youtube_api_key = keys;
+        }
+    }, 15 * 60 * 1000); // 15 minutes
+
 });
 
 function sleep(ms: number) {
@@ -200,49 +245,6 @@ const wait_for_downloader = () => {
     })
 }
 
-// - - - - - - Check if access_token is expired - - - - - - -
-setInterval(() => {
-    async function run() {
-        if (downloader === null || downloader === undefined) {
-            return;
-        }
-        const isEnd = await check_user(downloader, executableDir);
-        if (isEnd) {
-            const temp = downloader.youtube_player
-            downloader = new Downloader(
-                {
-                    download_folder: downloader.download_folder,
-                    curr_folder: downloader.app_folder,
-                    audio_format: downloader.audio_format as Audio_format,
-                    youtube_api_key: system.Youtube_Api_key,
-                    google_client_id: system.web.client_id,
-                    google_client_secret: system.web.client_secret,
-                    redirect_uris: system.web.redirect_uris,
-                    spotify_api_key: system.Spotify_Api_key,
-                    spotify_client: system.Spotify_client,
-                    port: port,
-                }
-            );
-            downloader.youtube_player = temp;
-        }
-
-        const api_keys = downloader.youtube.youtube_api_key as youtube_api_keys[];
-        let temp = system;
-        temp.Youtube_Api_key = api_keys;
-        if (api_keys.length > 0) {
-            writeDataToDatabase(executableDir, "data", "system", temp);
-        }
-    }
-    run();
-}, 1000);
-
-// - - - - - check if reach time to refresh quota - - - - -
-setInterval(async () => {
-    const keys = await check_api(downloader);
-    if (keys.length > 0) {
-        downloader.youtube.youtube_api_key = keys;
-    }
-}, 15 * 60 * 1000); // 15 minutes
 
 // - - - - - - DATA - - - - - - -
 
