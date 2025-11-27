@@ -2,10 +2,12 @@
 /.vscode
 /node_modules
 /app
-/build
+/dist
 /public
 .eslintrc
 .hintrc
 build.ts
 /server/data/**/*.json
 /build_app
+.env
+/server/bin

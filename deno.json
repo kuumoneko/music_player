@@ -2,7 +2,10 @@
     "imports": {
         "express": "npm:express@5.1.0",
         "fluent-ffmpeg": "npm:fluent-ffmpeg@2.1.3",
-        "youtubei.js": "npm:youtubei.js@16.0.0"
+        "youtubei.js": "npm:youtubei.js@16.0.1",
+        "dotenv": "npm:dotenv@17.2.3",
+        "cors": "npm:cors@2.8.5",
+        "open": "npm:open@11.0.0"
     },
     "nodeModulesDir": "none"
 }

@@ -1,95 +1,73 @@
-# Music player web app
+# React + TypeScript + Vite
 
-> A Music web app built on React.js and Nodejs
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## UPDATE NOTE
+Currently, two official plugins are available:
 
-> Fix UI on smaller display
->
-> Fix bug on get new_tracks
->
-> Get liked songs and display it faster
->
-> Fix search
->
-> Fix change repeat mode on click to new track
->
-> Fix volume change
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## ABOUT
+## React Compiler
 
-> This is a web that you can find, play and download songs from Youtube and Spotify
->
-> Version: 3.5.0
->
-> Please give error on issue tab, i will check per week
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Dev
+## Expanding the ESLint configuration
 
-### Credential
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
 
-#### Youtube
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
 
-- Go to [Google developer cloud console](https://console.cloud.google.com)
-- Create a project
-- Enable [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com)
-- In Credential tab, create a new API key for Youtube Data API V3 and paste API key to Youtube API key in system.json
-- In Credential tab, create a new OAuth client ID for login with youtube account then download client json and paste to system.json in key `web`
-- NOTE: If API is in the same project with OAuth client, set it `isAuth` is true
-- NOTE: You should to have at least 2 api keys, once for OAuth and the another for normal data
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
 
-```json
-{
-  "api_key": "Your API key",
-  "reach_quota": false,
-  "isAuth": true if API in the same project with OAuth Client ID,
-  "date_reached": "",
-  "time_reached": ""
-}
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-#### Spotify
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-- Go to [Spotify for Developers](https://developer.spotify.com/)
-- Login to Spotify, the create a project
-- Get ClientID and Client secret and paste to system.json
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-```json
-{
-  "Spotify_Api_key": "Your Client secret",
-  "Spotify_client": "Your client ID"
-}
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
-
-### Setup
-
-- set test_id for youtube test quota
-- run `npm install`
-
-### Test app
-
-- You can set your app mode in server/index.ts
-- If mode is react, you can run with `react-script start`
-
-```ts
-enum Mode {
-  react = "testreact",
-  app = "testapp",
-  deploy = "deploy",
-}
-const mode: Mode = Mode.react;
-```
-
-### Build app
-
-```shell
-node build_example.ts
-```
-
-## Learn More
-
-- About React [React](https://reactjs.org/).
-
-## Contributor
-
-- [kuumoneko](https://github.com/kuumoneko)

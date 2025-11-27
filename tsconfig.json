@@ -1,22 +1,29 @@
 {
-  "compilerOptions": {
-    "target": "es2022",
-    "module": "nodenext",
-    "outDir": "./app",
-    "rootDir": "./",
-    "strict": false,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "sourceMap": false,
-    "noEmit": true,
-    "skipLibCheck": true
-  },
-  "include": [
-    "./server/**/*.ts"
-  ],
-  "exclude": [
-    "/node_modules",
-    "**/*.json",
-    "**/*.txt",
-  ]
+    "compilerOptions": {
+        "paths": {
+            "@/*": ["./src/*"]
+        },
+        "baseUrl": ".",
+        "jsx": "react-jsx",
+        "target": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable"],
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "types": ["vite/client"],
+        "skipLibCheck": true,
+        "strict": false,
+        "noUnusedParameters": true,
+        "erasableSyntaxOnly": false,
+        "noUncheckedSideEffectImports": true,
+        "allowArbitraryExtensions": false,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "noEmit": true,
+        "allowImportingTsExtensions": true
+    },
+    "include": ["./"],
+    "ts-node": {
+        "esm": true
+    },
+    "exclude": ["./test"]
 }
