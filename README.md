@@ -1,73 +1,106 @@
-# React + TypeScript + Vite
+# Music player web app
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> A Music web app built on React.js and Nodejs
 
-Currently, two official plugins are available:
+## UPDATE NOTE
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+> Use Vite to create react app
+>
+> Update to taiwindcss 4
+>
+> Use ffmpeg binary to handle local audio file
 
-## React Compiler
+- Server
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+> remove download, add music
+>
+> update binary ffmpeg
+>
+> add controllers and route to hanlder api requests
+>
+> Update lib and utils
 
-## Expanding the ESLint configuration
+- Client
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+> Remove Sidebar
+>
+> Remove Youtube and Spotify login account
+>
+> Update UI
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## ABOUT
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+> This is a web that you can find, play and download songs from Youtube and Spotify
+>
+> Version: 3.6.0
+>
+> Please give error on issue tab, i will check per week
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Dev
+
+### Credential
+
+#### Youtube
+
+- Go to [Google developer cloud console](https://console.cloud.google.com)
+- Create a project
+- Enable [YouTube Data API v3](https://console.cloud.google.com/apis/library/youtube.googleapis.com)
+
+```json
+{
+  "ApiKey": "Your API key",
+  "isReached": false, // true
+}
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+#### Spotify
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- Go to [Spotify for Developers](https://developer.spotify.com/)
+- Login to Spotify, the create a project
+- Get ClientID and Client secret and paste to system.json
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```json
+{
+    "ApiKey": "Your Client secret",
+    "ClientId": "Your client ID",
+    "isReached":false, // true
+    "RetryAfter":0
+}
 ```
+
+### Setup
+
+- set test_id for youtube test quota
+- run `npm install`
+
+### Test app
+
+- You can set your app mode in .env
+- If mode is react, you can run with `npm run dev`
+
+```ts
+enum Mode {
+    react = "testreact",
+    app = "testapp",
+    deploy = "deploy",
+}
+const mode: Mode = Mode.react;
+```
+
+### Build app
+
+```shell
+node build_example.ts
+```
+
+## Learn More
+
+- About React [React](https://reactjs.org/).
+
+- About Taiwindcss [Tailwindcss](https://tailwindcss.com/).
+
+- About Vite [Vite](https://vite.dev/).
+
+## Contributor
+
+- [kuumoneko](https://github.com/kuumoneko)
