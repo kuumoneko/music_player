@@ -38,6 +38,22 @@ app.use(express.json());
 
 
 const executablePath = process.execPath;
+let isIdle = {
+    idle: false,
+    time: 0
+};
+
+setInterval(() => {
+    isIdle = {
+        idle: true,
+        time: isIdle.time + 1000,
+    };
+    if (isIdle.idle && isIdle.time > 10 * 60 * 1000) {
+        console.log("No request for 10 minutes, close app");
+        exit(0);
+    }
+}, 1000);
+
 
 let executableDir: string = ""
 switch (mode as Mode) {
@@ -70,6 +86,10 @@ if (mode as Mode === Mode.deploy || mode as Mode === Mode.app) {
 let player: Player = null as any;
 
 app.use("/", (req: any, _res: any, next: any) => {
+    isIdle = {
+        idle: false,
+        time: 0
+    };
     if (req.url.includes("download") && !req.url.includes("profile")) {
         req.download = profile.download;
     }
