@@ -1,23 +1,40 @@
-import Sidebar from "../components/Sidebar/index.tsx";
-import Home from "./home/index.tsx";
-import Player from "../components/Player/index.tsx";
+import Home from "./home.tsx";
+import Albums from "@/pages/music/albums.tsx";
+import Artists from "@/pages/music/artists.tsx";
+import Playlists from "@/pages/music/playlists.tsx";
+import Search from "@/pages/music/search.tsx";
+import Tracks from "@/pages/music/tracks.tsx";
+import DownloadQueue from "@/pages/queue/download/index.tsx";
+import PlayQueue from "@/pages/queue/play/index.tsx";
+import Local from "@/pages/music/local.tsx";
 
-export default function MainContent({
-    url,
-    seturl,
-}: {
-    url: string;
-    seturl: (a: string) => void;
-}) {
-    return (
-        <div className="main-content flex flex-col justify-between items-center h-[100%] w-screen mt-5 p-0">
-            <div className="top h-[80%] w-[100%] flex flex-row justify-evenly">
-                <Sidebar seturl={seturl} />
-                <Home url={url} seturl={seturl} />
-            </div>
-            <div className="bottom h-[20%] w-[100%] flex justify-center">
-                <Player seturl={seturl} />
-            </div>
-        </div>
-    );
+function Pages({ url }: { url: string }) {
+    if (url.includes("tracks")) {
+        return <Tracks />;
+    }
+    if (url.includes("playlists")) {
+        return <Playlists />;
+    }
+    if (url.includes("artists")) {
+        return <Artists />;
+    }
+    if (url.includes("albums")) {
+        return <Albums />;
+    }
+    if (url.includes("search")) {
+        return <Search url={url} />;
+    }
+    if (url.includes("download")) {
+        return <DownloadQueue />;
+    }
+    if (url.includes("play")) {
+        return <PlayQueue />;
+    }
+    if (url.includes("/local")) {
+        return <Local />;
+    }
+
+    return <Home />;
 }
+
+export default Pages;
