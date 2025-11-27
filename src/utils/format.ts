@@ -1,4 +1,4 @@
-export default function formatDuration(duration: number | string) {
+export function formatDuration(duration: number | string) {
     if (typeof duration === 'string') {
         duration = Number(duration)
     }
@@ -10,3 +10,10 @@ export default function formatDuration(duration: number | string) {
     const seconds = Math.floor(duration % 60);
     return `${hours > 0 ? hours + ' : ' : ''}${minutes < 10 ? '0' + minutes : minutes} : ${seconds < 10 ? '0' + seconds : seconds}`;
 }
+
+export const remove_hashtag = (title: string): string => {
+    const temp = title.split(" ").filter((item: string) => {
+        return !item.startsWith("#");
+    });
+    return temp.join(" ");
+};

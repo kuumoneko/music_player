@@ -1,45 +1,22 @@
-export enum Data {
-    login = "login",
-    logout = "logout",
-    download = "download",
-    download_status = "download_status",
-    user = "user",
-    localfile = "localfile",
-    local = "local",
-    search = "search",
-    track = "track",
-    playlist = "playlist",
-    likedsongs = "likedsongs",
-    userplaylist = "userplaylist",
-    stream = "stream",
-    likedartists = "likedartists",
-    artist = "artist",
-    auth = "auth",
-    new_tracks = "new_tracks",
-    profile = "profile"
-}
-
-export async function fetch_data(what: Data, data?: any): Promise<any> {
-
-    let url = `http://localhost:3000/${what}`
+export default async function fetch_data(url: string, mode: "GET" | "POST" = "GET", data?: any) {
     try {
-        const res = await fetch(url, {
-            method: "POST",
-            headers: { 'Content-Type': 'application/json', },
-            body: JSON.stringify(data)
+        const response = await fetch(`http://localhost:3000${url}`, {
+            method: mode,
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: typeof data === "object" ? JSON.stringify(data) : data
         })
-        const response = await res.json();
-        if (res.ok) {
-            return response.data;
+        if (response.status === 500 || response.status === 404) {
+            const result = await response.json();
+            throw new Error(result.mesage)
         }
-        else {
-            console.error(response.message)
-            return null
+        if (response.status === 204) {
+            return "ok"
         }
-    }
-    catch (e) {
-        console.log("error ne")
-        console.error(e);
-        return null;
+        const result = await response.json();
+        return result.data;
+    } catch (error) {
+        console.error(error)
     }
 }

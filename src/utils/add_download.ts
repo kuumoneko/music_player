@@ -1,7 +1,7 @@
-import fetch_profile, { LocalStorageKeys } from "./localStorage";
+import fetch from "./fetch.ts";
 
 export default async function add_to_download(source: string, mode: string, id: string, name: string) {
-    const res = await fetch_profile("get", LocalStorageKeys.download);
+    const res = await fetch("/profile/download", "GET");
     if (
         res.findIndex((itemm: any) => {
             return (
@@ -19,5 +19,7 @@ export default async function add_to_download(source: string, mode: string, id: 
         mode: mode,
         id: id,
     });
-    await fetch_profile("write", LocalStorageKeys.download, res)
+    await fetch("/profile/download", "POST", {
+        download: res
+    })
 }

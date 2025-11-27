@@ -1,37 +1,37 @@
+import localstorage from "./localStorage.ts";
+
 export enum Force {
-    false = "false",
-    forward = "forward",
-    backward = "backward"
+    False = "false",
+    Forward = "forward",
+    Backward = "backward"
 }
 
-export function goto(url: string, seturl: (a: string) => void, isForce: Force = Force.false) {
-    const now = localStorage.getItem("url") ?? "/";
-    const backw: string[] = JSON.parse(localStorage.getItem("backward") as string) || [];
-    const forw: string[] = JSON.parse(localStorage.getItem("forward") as string) || [];
+export function goto(url: string, isForce: Force = Force.False) {
+    const now = localstorage('get', 'url', '/')
+    const backw: string[] = localstorage('get', 'backward', []);
+    const forw: string[] = localstorage('get', 'forward', []);
 
     let next: string = `${url}`;
 
-    if (isForce === Force.backward) {
+    if (isForce === Force.Backward) {
         const temp = backw.pop() || "/";
         forw.unshift(now);
         next = `${temp}`;
-        localStorage.setItem("backward", JSON.stringify(backw || []));
-        localStorage.setItem("forward", JSON.stringify(forw));
+        localstorage('set', 'backwrad', backw ?? []);
+        localstorage('set', 'forward', forw ?? []);
     }
-    else if (isForce === Force.forward) {
+    else if (isForce === Force.Forward) {
         const temp = forw.shift() || "/";
         backw.push(now);
         next = `${temp}`;
-        localStorage.setItem("backward", JSON.stringify(backw));
-        localStorage.setItem("forward", JSON.stringify(forw || []));
+        localstorage('set', 'backwrad', backw ?? []);
+        localstorage('set', 'forward', forw ?? []);
     }
     else {
         backw.push(now);
-        localStorage.setItem("backward", JSON.stringify(backw));
-        localStorage.setItem("forward", "[]");
+        localstorage('set', 'backwrad', backw ?? []);
+        localstorage('set', 'forward', forw ?? []);
     }
-
-    seturl(next)
-    localStorage.setItem("url", next)
+    localstorage('set', 'url', next);
     return next
 }

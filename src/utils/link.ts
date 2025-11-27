@@ -16,17 +16,25 @@ export default function convert_link(link: string) {
                 temp = youtube_link.split("?list=")[1]
             }
         }
+        else if (youtube_link.includes("@")) {
+            temp = youtube_link.split("@")[1]
+            return {
+                source: "youtube",
+                mode: "artists",
+                id: temp
+            }
+        }
         return {
             source: "youtube",
-            mode: temp.length > 20 ? "playlist" : "track",
+            mode: temp.length > 20 ? "playlists" : "tracks",
             id: temp
         }
     }
     // if link from spotify
     else if (link.includes("spot")) {
         let spotify_link = link.split(link.includes("?si=") ? "?si=" : "&si=")[0];
-        const mode = spotify_link.includes("playlist") ? "playlist" : spotify_link.includes("track") ? "track" : "album"
-        spotify_link = spotify_link.split(`${mode}/`)[1]
+        const mode = spotify_link.includes("playlist") ? "playlists" : spotify_link.includes("track") ? "tracks" : "albums"
+        spotify_link = spotify_link.split(`${mode.slice(0, -1)}/`)[1]
         return {
             source: "spotify",
             mode: mode,
@@ -35,9 +43,9 @@ export default function convert_link(link: string) {
     }
     else {
         return {
-            source: "other",
-            mode: "",
-            id: "This is not a valid link"
+            source: undefined,
+            mode: undefined,
+            id: undefined
         };
     }
 }
