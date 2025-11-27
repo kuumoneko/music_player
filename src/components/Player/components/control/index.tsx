@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, MutableRefObject } from "react";
-import { fetch_data, Data } from "../../../../utils/fetch.ts";
-import { sleep_types } from "../../common/types/index.ts";
+import { useState, useEffect, useRef, RefObject } from "react";
+import fetch from "@/utils/fetch.ts";
 import {
     faShuffle,
     faStepBackward,
@@ -10,41 +9,35 @@ import {
     faRepeat,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import formatDuration from "../../../../utils/format.ts";
-import Slider from "../../common/Slider";
+import { formatDuration } from "@/utils/format.ts";
+import Slider from "../../common/Slider/index.tsx";
 import backward from "./common/backward.ts";
 import forward from "./common/forward.ts";
-import fetch_profile, {
-    LocalStorageKeys,
-} from "../../../../utils/localStorage.ts";
+import { sleep_types } from "@/types/index.ts";
+import localstorage from "@/utils/localStorage.ts";
 
 const handleCloseTab = () => {
     try {
-        const { ipcRenderer } = window.require("electron");
-        ipcRenderer.send("app-close");
+        window.location.href = "https://www.google.com";
     } catch {
-        try {
-            window.location.href = "https://www.google.com";
-        } catch {
-            return "no";
-        }
+        return "no";
     }
 };
 
 export default function ControlUI({
     audioRef,
 }: {
-    audioRef: MutableRefObject<HTMLAudioElement>;
+    audioRef: RefObject<HTMLAudioElement>;
 }) {
     const [played, setplayed] = useState(false);
     const [shuffle, setshuffle] = useState(
-        localStorage.getItem("shuffle") || "disable"
+        localstorage("get", "shuffle", "disable")
     );
     const [repeat, setrepeat] = useState(
-        localStorage.getItem("repeat") || "disable"
+        localstorage("get", "repeat", "disable")
     );
     const [isloading, setisloading] = useState(
-        JSON.parse(localStorage.getItem("play_url") as string).url || null
+        localstorage("get", "play_url", { url: null })?.url
     );
 
     const getUrl = async (
@@ -59,15 +52,12 @@ export default function ControlUI({
         try {
             setisloading(true);
 
-            const data: { url: string } = await fetch_data(Data.stream, {
-                where: source,
-                id: id,
-            });
-
+            const data = await fetch(`/play/${source}/${id}`, "GET");
+            let url = data;
             if (source === "local") {
                 const audio_format = id.split(".")[id.split(".").length - 1];
 
-                const byteCharacters = atob(data.url);
+                const byteCharacters = atob(url);
                 const byteArrays: any = [];
 
                 for (let i = 0; i < byteCharacters.length; i += 1024) {
@@ -85,15 +75,14 @@ export default function ControlUI({
 
                 const blobUrl = URL.createObjectURL(blob);
 
-                data.url = blobUrl;
+                url = blobUrl;
             }
-
             setplayed(false);
             audioRef.current.pause();
             audioRef.current.src = "";
             audioRef.current.load();
 
-            audioRef.current = new Audio(data.url);
+            audioRef.current = new Audio(url);
             audioRef.current.load();
             audioRef.current.addEventListener("loadedmetadata", () => {
                 setduraion(audioRef.current.duration);
@@ -106,7 +95,7 @@ export default function ControlUI({
                 }
             });
 
-            const temp = JSON.parse(localStorage.getItem("playing") ?? "{}");
+            const temp = localstorage("get", "playing", {});
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: temp.name,
                 artist: temp.artists,
@@ -118,14 +107,12 @@ export default function ControlUI({
                     },
                 ],
             });
+            document.title = `${temp.name} - ${temp.artists}`;
 
-            localStorage.setItem(
-                "play_url",
-                JSON.stringify({
-                    id: id,
-                    source: source,
-                })
-            );
+            localstorage("set", "play_url", {
+                id,
+                source,
+            });
             setTimeout(async () => {
                 if (autoplayed) {
                     setplayed(true);
@@ -133,54 +120,46 @@ export default function ControlUI({
                 setisloading(false);
             }, 500);
         } catch (error) {
-            localStorage.setItem(
-                "playing",
-                JSON.stringify({
-                    name: "",
-                    artists: "",
-                    thumbnail: "",
-                    source: "",
-                    id: "",
-                    duration: "",
-                })
-            );
-            localStorage.setItem(
-                "play_url",
-                JSON.stringify({
-                    id: "",
-                    source: "",
-                })
-            );
+            localstorage("set", "playing", {
+                name: "",
+                artists: "",
+                thumbnail: "",
+                source: "",
+                id: "",
+                duration: "",
+            });
+            localstorage("set", "play_url", {
+                id: "",
+                source: "",
+            });
         }
     };
 
     useEffect(() => {
         const run = setInterval(() => {
-            const data = JSON.parse(localStorage.getItem("play_url") as string);
-            setisloading(data.url === null ? true : false);
+            const data = localstorage("get", "play_url", { url: null })?.url;
+            setisloading(data?.url === null ? true : false);
             setTime((audioRef.current?.currentTime as number) ?? 0);
             setduraion((audioRef.current?.duration as number) ?? 0);
-            const volume = localStorage.getItem("volume");
+            const volume = localstorage("get", "volume", 50);
             if (volume && audioRef.current) {
                 audioRef.current.volume = Number(volume) / 100;
             }
-            const repeat = localStorage.getItem("repeat") ?? "disable";
-            if (repeat && audioRef.current) {
-                setrepeat(repeat);
+            const temp = localstorage("get", "repeat", "disable");
+            if (audioRef.current && repeat !== temp) {
+                setrepeat(temp);
             }
         }, 100);
         return () => clearInterval(run);
     }, []);
 
-    const [Time, setTime] = useState(() =>
-        Number(localStorage.getItem("time") ?? 0)
-    );
+    const [Time, setTime] = useState(() => localstorage("get", "time", 0));
     const TimeSliderRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!audioRef.current) return;
         if (played) {
-            audioRef.current.play().catch((e) => {
+            audioRef.current.play().catch(() => {
                 setplayed(false);
             });
         } else {
@@ -192,9 +171,8 @@ export default function ControlUI({
 
     useEffect(() => {
         async function run() {
-            const { id, source } = JSON.parse(
-                (localStorage.getItem("playing") as string) || "{}"
-            );
+            const { id, source } = localstorage("get", "playing", {});
+
             if (!id) {
                 return;
             }
@@ -206,12 +184,12 @@ export default function ControlUI({
     useEffect(() => {
         const run = setInterval(() => {
             async function check() {
-                const playing = JSON.parse(
-                    localStorage.getItem("playing") || "{}"
-                );
-                const now_playing = JSON.parse(
-                    localStorage.getItem("play_url") || "{}"
-                );
+                const playing = localstorage("get", "playing", {});
+                const now_playing = localstorage("get", "play_url", {
+                    url: null,
+                    id: null,
+                    source: null,
+                });
                 if (
                     now_playing.id !== playing.id ||
                     now_playing.source !== playing.source
@@ -219,13 +197,8 @@ export default function ControlUI({
                     now_playing.id = playing.id;
                     now_playing.source = playing.source;
                     now_playing.url = null;
-                    localStorage.setItem(
-                        "play_url",
-                        JSON.stringify({
-                            id: playing.id,
-                            source: playing.source,
-                        })
-                    );
+                    localstorage("set", "play_url", now_playing);
+
                     await getUrl(playing.source, playing.id, true);
                 }
             }
@@ -248,7 +221,7 @@ export default function ControlUI({
 
     const check_eot = (temp: sleep_types) => {
         if (temp === sleep_types.eot && audioRef.current?.ended) {
-            localStorage.setItem("kill time", sleep_types.no);
+            localstorage("set", "kill time", sleep_types.no);
             const temp = handleCloseTab();
             if (temp === "no") {
                 audioRef.current?.pause();
@@ -261,7 +234,7 @@ export default function ControlUI({
 
     useEffect(() => {
         const run = window.setInterval(() => {
-            const temp = localStorage.getItem("kill time");
+            const temp = localstorage("get", "kill time", sleep_types.no);
             check_eot(temp as sleep_types);
             if (temp === sleep_types.no) {
                 return;
@@ -286,18 +259,26 @@ export default function ControlUI({
             async function run() {
                 if (!audioRef.current) return;
 
-                const repeat = localStorage.getItem("repeat");
+                const repeat = localstorage("get", "repeat", "disable");
 
                 if (repeat === "one" && audioRef.current.ended) {
-                    const temp = localStorage.getItem("kill time");
+                    const temp = localstorage(
+                        "get",
+                        "kill time",
+                        sleep_types.no
+                    );
                     check_eot(temp as sleep_types);
 
                     audioRef.current.currentTime = 0;
-                    audioRef.current.play().catch((e) => setplayed(false));
+                    audioRef.current.play().catch(() => setplayed(false));
                     setplayed(true);
                     setTime(0);
                 } else if (audioRef.current.ended) {
-                    const temp = localStorage.getItem("kill time");
+                    const temp = localstorage(
+                        "get",
+                        "kill time",
+                        sleep_types.no
+                    );
                     check_eot(temp as sleep_types);
 
                     audioRef.current.currentTime = 0;
@@ -334,17 +315,17 @@ export default function ControlUI({
     return (
         <div className="flex flex-col items-center">
             <div
-                className={`controls flex flex-row gap-[10px] ${
+                className={`controls flex flex-row gap-2.5 ${
                     isloading ? "opacity-50 pointer-events-none" : ""
                 }`}
             >
                 <button
-                    className="mx-[2px] p-[2px] cursor-default select-none"
+                    className="mx-0.5 p-0.5 cursor-default select-none"
                     onClick={() => {
                         const new_shuffle =
                             shuffle === "disable" ? "enable" : "disable";
                         setshuffle(new_shuffle);
-                        localStorage.setItem("shuffle", new_shuffle);
+                        localstorage("set", "shuffle", new_shuffle);
                     }}
                 >
                     <FontAwesomeIcon
@@ -353,9 +334,8 @@ export default function ControlUI({
                     />
                 </button>
                 <button
-                    className={`mx-[2px] p-[2px] cursor-default select-none ${
-                        JSON.parse(localStorage.getItem("playedsongs") || "[]")
-                            .length === 0
+                    className={`mx-0.5 p-0.5 cursor-default select-none ${
+                        localstorage("get", "playedsongs", []).length === 0
                             ? "opacity-50 pointer-events-none"
                             : ""
                     }`}
@@ -366,7 +346,7 @@ export default function ControlUI({
                     <FontAwesomeIcon icon={faStepBackward} />
                 </button>
                 <button
-                    className="mx-[2px] p-[2px] cursor-default select-none"
+                    className="mx-0.5 p-0.5 cursor-default select-none"
                     onClick={() => {
                         setplayed(!played);
                     }}
@@ -374,16 +354,16 @@ export default function ControlUI({
                     <FontAwesomeIcon icon={played ? faPause : faPlay} />
                 </button>
                 <button
-                    className="mx-[2px] p-[2px] cursor-default select-none"
+                    className="mx-0.5 p-0.5 cursor-default select-none"
                     onClick={async () => {
-                        await fetch_profile("write", LocalStorageKeys.play, []);
+                        localstorage("set", "play", []);
                         await forward(getUrl);
                     }}
                 >
                     <FontAwesomeIcon icon={faStepForward} />
                 </button>
                 <button
-                    className="relative mx-[2px] p-[2px] cursor-default select-none"
+                    className="relative mx-0.5 p-0.5 cursor-default select-none"
                     onClick={() => {
                         const new_repeat =
                             repeat === "disable"
@@ -392,7 +372,7 @@ export default function ControlUI({
                                 ? "one"
                                 : "disable";
                         setrepeat(new_repeat);
-                        localStorage.setItem("repeat", new_repeat);
+                        localstorage("set", "repeat", new_repeat);
                     }}
                 >
                     <FontAwesomeIcon
