@@ -4,14 +4,14 @@ import {
     faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Track } from "../../../types";
-import formatDuration from "../../../utils/format";
-import Loading from "../../Loading";
-import download from "../common/download";
-import Play from "../common/play";
-import Queue from "../common/queue";
+import { Track } from "@/types/index.ts";
+import { formatDuration } from "@/utils/format.ts";
+import Loading from "@/components/Loading/index.tsx";
+import download from "@/components/Show/common/download.ts";
+import Play from "@/components/Show/common/play.ts";
+import Queue from "@/components/Show/common/queue.ts";
 import { useEffect, useState } from "react";
-import { Data, fetch_data } from "../../../utils/fetch";
+import fetch from "@/utils/fetch.ts";
 
 export default function List({
     list,
@@ -43,10 +43,7 @@ export default function List({
                 mode.split(":")[1] !== undefined &&
                 sight.tail > list.length
             ) {
-                const data = await fetch_data(Data.playlist, {
-                    where: source,
-                    id: mode.split(":")[2],
-                });
+                const data = await fetch(`/playlists/${source}/${id}`, "GET");
                 list.push(...data.tracks);
                 list = Array.from(
                     new Set(list.map((item: any) => JSON.stringify(item)))
@@ -68,7 +65,7 @@ export default function List({
 
     return (
         <div
-            className="listitem flex flex-col max-h-[75%] w-[100%] overflow-y-scroll [&::-webkit-scrollbar]:hidden"
+            className="listitem flex flex-col max-h-[75%] w-full overflow-y-scroll [&::-webkit-scrollbar]:hidden"
             onWheel={(e) => {
                 const direction = e.deltaY > 0 ? "down" : "up";
                 const temp = sight;
@@ -89,22 +86,21 @@ export default function List({
                 }
             }}
         >
-            <div className="item h-[100%] grid grid-cols-3">
+            <div className="item h-full grid grid-cols-3">
                 {show_list.map((item: Track, index: number) => {
                     return (
                         <div
                             key={
-                                item.track?.name ||
-                                `${source} ${mode} ${id} ${index}`
+                                item.name ?? `${source} ${mode} ${id} ${index}`
                             }
                             className={`vid_${
                                 index + 1
-                            } flex h-[95px] w-[100%] flex-row items-center justify-between mb-[20px] bg-slate-700 hover:bg-slate-600 rounded-lg`}
-                            onDoubleClick={() => {
+                            } flex h-[95px] w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
+                            onClick={() => {
                                 Play(item, source, mode, id, list);
                             }}
                         >
-                            <div className="flex flex-row items-center ml-[10px] w-[100%]">
+                            <div className="flex flex-row items-center ml-2.5 w-full">
                                 <span className="thumbnail cursor-default select-none w-[20%]">
                                     <img
                                         src={item.thumbnail}
@@ -114,49 +110,48 @@ export default function List({
                                         className="rounded-lg"
                                     />
                                 </span>
-                                <div className="flex flex-col ml-[10px] w-[80%]">
+                                <div className="flex flex-col ml-2.5 w-[80%]">
                                     <span className="title cursor-default select-none">
                                         {remove_hashtag(
-                                            (item.track?.name?.slice(
+                                            (item.name?.slice(
                                                 0,
                                                 50
-                                            ) as string) || "cant load"
+                                            ) as string) ?? "cant load"
                                         )}
                                     </span>
                                     <span className="artists cursor-default select-none">
-                                        {item.artists
+                                        {item.artist
                                             ?.map((artist: any) => artist.name)
                                             .join(", ")}
                                     </span>
                                     <div className="flex flex-row items-center justify-between">
                                         <div>
                                             <span className="releaseDate cursor-default select-none">
-                                                {item.track?.releaseDate ||
+                                                {item.releasedDate ??
                                                     "cant load"}
                                             </span>
                                             <span className="duration cursor-default select-none ml-[15px]">
                                                 {formatDuration(
-                                                    (item.track
-                                                        ?.duration as number) /
-                                                        1000
-                                                ) || "cant load"}
+                                                    ((item.duration as number) ??
+                                                        0) / 1000
+                                                ) ?? "cant load"}
                                             </span>
                                         </div>
-                                        <div className="action_button flex flex-row-reverse mr-[10px]">
+                                        <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
-                                                className="mr-[10px]"
+                                                className="mr-2.5"
                                                 onClick={() => {
                                                     if (source === "youtube") {
                                                         const url =
                                                             "https://www.youtube.com/watch?v=" +
-                                                            item.track?.id;
+                                                            item.id;
                                                         navigator.clipboard.writeText(
                                                             url
                                                         );
                                                     } else {
                                                         const url =
                                                             "https://open.spotify.com/track/" +
-                                                            item.track?.id;
+                                                            item.id;
                                                         navigator.clipboard.writeText(
                                                             url
                                                         );
@@ -168,7 +163,7 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className="mr-[10px]"
+                                                className="mr-2.5"
                                                 onClick={() => {
                                                     Queue(item, source);
                                                 }}
@@ -178,7 +173,7 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className={`mr-[10px] ${
+                                                className={`mr-2.5 ${
                                                     mode === "local"
                                                         ? "opacity-50 pointer-events-none"
                                                         : ""

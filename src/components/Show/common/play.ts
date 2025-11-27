@@ -1,20 +1,22 @@
-import { Track } from "../../../types";
-import fetch_profile, { LocalStorageKeys } from "../../../utils/localStorage";
+import { Track } from "@/types/index.ts";
+import localstorage from "@/utils/localStorage.ts";
 
 export default async function Play(item: Track, source: string, mode: string, id: string, list: any) {
-    await fetch_profile("write", LocalStorageKeys.play, [])
-    localStorage.setItem("playing", JSON.stringify({
-        name: item.track?.name,
-        artists: item.artists?.map((artist: any) => artist.name).join(", "),
+    localstorage("set", "play", []);
+    localstorage("set", 'playing', {
+        name: item.name,
+        artists: item.artist?.map((artist: any) => artist.name).join(", "),
         thumbnail: item.thumbnail,
         source: source,
-        id: item.track?.id,
-    }))
-    localStorage.setItem("time", "0");
-    localStorage.setItem("repeat", (localStorage.getItem("repeat") === "disable") ? "disable" : "enable");
+        id: item.id,
+    })
+    localstorage("set", "time", "0");
+    const temp = localstorage("get", "repeat", "disable");
+    localstorage("set", "repeat", (temp === "disable") ? "disable" : "enable");
 
-    let playedsongs = JSON.parse(localStorage.getItem("playedsongs") || "[]");
-    const playing = JSON.parse(localStorage.getItem("playing") as string);
+
+    let playedsongs = localstorage("get", 'playedsongs', [])
+    const playing = localstorage('get', 'playing', {})
     playedsongs.push({
         artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
         duration: playing.duration,
@@ -26,45 +28,46 @@ export default async function Play(item: Track, source: string, mode: string, id
 
     const uniqueObjectList = Array.from(new Map(playedsongs.map((item: any) => [item.id, item])).values());
 
-    localStorage.setItem("playedsongs", JSON.stringify(uniqueObjectList));
+    localstorage('set', 'playedsongs', uniqueObjectList)
 
     if (mode === "track") {
-        await fetch_profile("write", LocalStorageKeys.nextfrom, {
+        localstorage('set', 'nextfrom', {
             from: `${source}:${mode}:${id}`,
             tracks: [
                 {
-                    name: item.track?.name,
-                    artists: item.artists?.map((artist: any) => artist.name).join(", "),
+                    name: item.name,
+                    artists: item.artist?.map((artist: any) => artist.name).join(", "),
                     thumbnail: item.thumbnail,
                     source: source,
-                    id: item.track?.id,
-                    duration: item.track?.duration
+                    id: item.id,
+                    duration: item.duration
                 }
             ]
         })
+
     }
     else if (mode === "playlist" || mode === "liked songs" || mode === "local") {
-        const other_tracks: any[] = list?.filter((track: any) => item.track?.id !== track.track.id) || [];
+        const other_tracks: any[] = list?.filter((track: any) => item.id !== track.id) || [];
 
         if (other_tracks.length > 0) {
             // check the shuffle mode
-            const shuffle = localStorage.getItem("shuffle") as string;
+            const shuffle = localstorage("get", 'shuffle', 'disable')
             if (shuffle === "enable") {
                 for (let i = other_tracks.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [other_tracks[i], other_tracks[j]] = [other_tracks[j], other_tracks[i]];
                 }
             }
-            await fetch_profile("write", LocalStorageKeys.nextfrom, {
+            localstorage('set', "nextfrom", {
                 from: `${source}:${mode}:${id}`,
                 tracks: other_tracks.slice(0, 20).map((track: Track) => {
                     return {
-                        name: track.track?.name,
-                        artists: track.artists?.map((artist: any) => artist.name).join(", "),
+                        name: track.name,
+                        artists: track.artist.map((artist: any) => artist.name).join(", "),
                         thumbnail: track.thumbnail,
                         source: source,
-                        id: track.track?.id,
-                        duration: item.track?.duration
+                        id: track.id,
+                        duration: item.duration
 
                     }
                 })
@@ -72,16 +75,16 @@ export default async function Play(item: Track, source: string, mode: string, id
         }
     }
     else if (mode === "search") {
-        await fetch_profile("write", LocalStorageKeys.nextfrom, {
+        localstorage('set', "nextfrom", {
             from: `${source}:track:${id}`,
             tracks: [
                 {
-                    name: item.track?.name,
-                    artists: item.artists?.map((artist: any) => artist.name).join(", "),
+                    name: item.name,
+                    artists: item.artist.map((artist: any) => artist.name).join(", "),
                     thumbnail: item.thumbnail,
                     source: source,
-                    id: item.track?.id,
-                    duration: item.track?.duration
+                    id: item.id,
+                    duration: item.duration
                 }
             ]
         })

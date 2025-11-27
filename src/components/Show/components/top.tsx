@@ -7,12 +7,13 @@ import {
     faHeart,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Track } from "../../../types";
-import formatDuration from "../../../utils/format";
-import Loading from "../../Loading";
+import { Track } from "@/types/index.ts";
+import { formatDuration } from "@/utils/format.ts";
+import Loading from "@/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
-import fetch_profile, { LocalStorageKeys } from "../../../utils/localStorage";
-import add_to_download from "../../../utils/add_download";
+import add_to_download from "@/utils/add_download.ts";
+import fetch from "@/utils/fetch.ts";
+import localstorage from "@/utils/localStorage.ts";
 
 export default function Top({
     name,
@@ -38,13 +39,13 @@ export default function Top({
     const [isPin, setiSPin] = useState(false);
     useEffect(() => {
         async function run() {
-            const pin = await fetch_profile("get", LocalStorageKeys.pin);
+            const pin = await fetch("/profile/pin", "GET");
             if (
                 pin.findIndex(
                     (item: any) =>
                         item.id === id &&
                         item.source === source &&
-                        item.mode === mode
+                        item.type === mode
                 ) != -1
             ) {
                 setiSPin(true);
@@ -57,7 +58,7 @@ export default function Top({
     return (
         <>
             {name !== null && duration !== null ? (
-                <div className="flex flex-col mt-[20px] w-[90%] mb-[15px]">
+                <div className="flex flex-col w-[90%] mb-[15px] items-center justify-center">
                     <div className="flex flex-row items-center select-none cursor-default">
                         <span>
                             {thumbnail ? (
@@ -90,7 +91,7 @@ export default function Top({
                             )}
                         </span>
 
-                        <div className="flex flex-col ml-[20px]">
+                        <div className="flex flex-col ml-5">
                             <span className="text-2xl font-bold">{name}</span>
                             <span className="text-lg text-gray-500">
                                 {artists
@@ -102,8 +103,12 @@ export default function Top({
                                     {releaseDate}
                                 </span>
                                 <span className="duration cursor-default select-none ml-[15px]">
-                                    {formatDuration(
-                                        (duration / 1000) as number
+                                    {duration > 0 && (
+                                        <>
+                                            {formatDuration(
+                                                (duration / 1000) as number
+                                            )}
+                                        </>
                                     )}
                                 </span>
                             </div>
@@ -111,27 +116,24 @@ export default function Top({
                                 <span
                                     onClick={async () => {
                                         if (mode === "track") {
-                                            localStorage.setItem(
-                                                "playing",
-                                                JSON.stringify({
-                                                    name: name,
-                                                    artists: artists
-                                                        ?.map(
-                                                            (artist: any) =>
-                                                                artist.name
-                                                        )
-                                                        .join(", "),
-                                                    thumbnail: thumbnail,
-                                                    source: source,
-                                                    id: id,
-                                                })
-                                            );
-                                            localStorage.setItem("time", "0");
+                                            localstorage("set", "playing", {
+                                                name: name,
+                                                artists: artists
+                                                    ?.map(
+                                                        (artist: any) =>
+                                                            artist.name
+                                                    )
+                                                    .join(", "),
+                                                thumbnail: thumbnail,
+                                                source: source,
+                                                id: id,
+                                            });
+                                            localstorage("set", "time", "0");
                                         } else {
-                                            const check = JSON.parse(
-                                                localStorage.getItem(
-                                                    "playing"
-                                                ) as string
+                                            const check = localstorage(
+                                                "get",
+                                                "playing",
+                                                {}
                                             );
                                             if (check.playlist === name) {
                                                 return;
@@ -149,36 +151,33 @@ export default function Top({
                                             const track: Track = playlist
                                                 ? playlist[random]
                                                 : [];
-                                            localStorage.setItem(
-                                                "playing",
-                                                JSON.stringify({
-                                                    name: track.track?.name,
-                                                    artists: track.artists
-                                                        ?.map(
-                                                            (artist: any) =>
-                                                                artist.name
-                                                        )
-                                                        .join(", "),
-                                                    thumbnail: track.thumbnail,
-                                                    source: source,
-                                                    id: track.track?.id,
-                                                    playlist: name,
-                                                })
-                                            );
-                                            localStorage.setItem("time", "0");
+                                            localstorage("set", "playing", {
+                                                name: track.name,
+                                                artists: track.artist
+                                                    ?.map(
+                                                        (artist: any) =>
+                                                            artist.name
+                                                    )
+                                                    .join(", "),
+                                                thumbnail: track.thumbnail,
+                                                source: source,
+                                                id: track.id,
+                                                playlist: name,
+                                            });
+                                            localstorage("set", "time", "0");
 
                                             const other_tracks: any[] =
                                                 playlist?.filter(
                                                     (item: any) =>
-                                                        item.track.id !==
-                                                        track.track?.id
-                                                ) || [];
+                                                        item.id !== track.id
+                                                ) ?? [];
 
                                             if (other_tracks.length > 0) {
-                                                const shuffle =
-                                                    localStorage.getItem(
-                                                        "shuffle"
-                                                    ) as string;
+                                                const shuffle = localstorage(
+                                                    "get",
+                                                    "shuffle",
+                                                    "disable"
+                                                );
                                                 if (shuffle === "enable") {
                                                     for (
                                                         let i =
@@ -200,9 +199,9 @@ export default function Top({
                                                         ];
                                                     }
                                                 }
-                                                await fetch_profile(
-                                                    "write",
-                                                    LocalStorageKeys.nextfrom,
+                                                localstorage(
+                                                    "set",
+                                                    "nextfrom",
                                                     {
                                                         from: "local:local:local",
                                                         tracks: other_tracks.slice(
@@ -218,7 +217,7 @@ export default function Top({
                                     <FontAwesomeIcon icon={faPlay} />
                                 </span>
                                 <span
-                                    className="ml-[10px]"
+                                    className="ml-2.5"
                                     onClick={() => {
                                         if (mode == "track") {
                                             if (source === "youtube") {
@@ -252,13 +251,22 @@ export default function Top({
                                                     url
                                                 );
                                             }
+                                        } else if (mode === "album") {
+                                            if (source === "spotify") {
+                                                const url =
+                                                    "https://open.spotify.com/album/" +
+                                                    id;
+                                                navigator.clipboard.writeText(
+                                                    url
+                                                );
+                                            }
                                         }
                                     }}
                                 >
                                     <FontAwesomeIcon icon={faShare} />
                                 </span>
                                 <span
-                                    className={`ml-[10px] ${
+                                    className={`ml-2.5 ${
                                         source === "local"
                                             ? "opacity-50 pointer-events-none"
                                             : ""
@@ -270,16 +278,16 @@ export default function Top({
                                     <FontAwesomeIcon icon={faDownload} />
                                 </span>
                                 <span
-                                    className={`pin ml-[10px] ${
+                                    className={`pin ml-2.5 ${
                                         isPin
                                             ? "text-red-600"
                                             : "text-slate-600"
                                     }`}
                                     onClick={() => {
                                         async function run() {
-                                            let pin = await fetch_profile(
-                                                "get",
-                                                LocalStorageKeys.pin
+                                            let pin = await fetch(
+                                                "/profile/pin",
+                                                "GET"
                                             );
                                             if (isPin) {
                                                 pin = pin.filter(
@@ -300,10 +308,12 @@ export default function Top({
                                             const temp = Array.from(
                                                 new Set(pin)
                                             );
-                                            await fetch_profile(
-                                                "write",
-                                                LocalStorageKeys.pin,
-                                                temp
+                                            await fetch(
+                                                "/profile/pin",
+                                                "POST",
+                                                {
+                                                    pin: temp,
+                                                }
                                             );
                                         }
                                         run();
