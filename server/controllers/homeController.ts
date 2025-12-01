@@ -6,8 +6,8 @@ export const get = async (req: CustomRequest, res: Response) => {
         const player = req.player;
         const pin = req.profile?.pin ?? [];
 
-        const artist = pin.filter((item: any) => item.mode === "artist");
-        const playlist = pin.filter((item: any) => item.mode === "playlist" || item.mode === "album");
+        const artist = pin.filter((item: any) => item.mode.includes("artist"));
+        const playlist = pin.filter((item: any) => item.mode.includes("playlist") || item.mode.includes("album"));
 
         const ytb_new_tracks = await player.youtube.get_new_tracks(artist.filter((item: Artist) => item.source === "youtube").map((item: Artist) => item.id))
         const spt_new_tracks = await player.spotify.get_new_tracks(artist.filter((item: Artist) => item.source === "spotify").map((item: Artist) => item.id))
