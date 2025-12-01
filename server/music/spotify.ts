@@ -77,7 +77,7 @@ export default class Spotify {
         try {
             const max_retry = 10;
             let time = 0;
-            const token = await this.chose_api_key();
+            let token = await this.chose_api_key();
             let done = false;
             while (!done) {
                 if (time >= max_retry) {
@@ -114,8 +114,17 @@ export default class Spotify {
                         const temp = this.spotify_api_keys.filter((item: Spotify_Key) => {
                             return item.token === token
                         });
-                        await this.get_token(temp[0]);
-
+                        const temp_key = temp[0];
+                        temp_key.token = "";
+                        await this.get_token(temp_key);
+                        this.spotify_api_keys.splice(this.spotify_api_keys.findIndex((key: Spotify_Key) => {
+                            return key.token === token
+                        }), 1, temp_key)
+                        token = temp_key.token;
+                    }
+                    else if (data.error) {
+                        console.warn(url);
+                        console.error(data.error)
                     }
                     else {
                         done = true;
@@ -154,7 +163,6 @@ export default class Spotify {
         console.log(url)
         try {
             const data = await this.fetch_data(url);
-            // console.log(data.playlists.items)
             return {
                 source: "spotify",
                 query: search,
