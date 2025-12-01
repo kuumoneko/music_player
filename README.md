@@ -16,7 +16,7 @@
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
 >
-> Version: 3.7.0
+> Version: 3.8.0
 >
 > Please give error on issue tab, i will check per week
 
@@ -52,6 +52,7 @@
 
 ### Setup
 
+- Add public/favicon.ico
 - run `npm install`
 
 ### Test app
