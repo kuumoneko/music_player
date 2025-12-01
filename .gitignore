@@ -11,3 +11,4 @@ build.ts
 /build_app
 .env
 /server/bin
+tsconfig.tsbuildinfo
