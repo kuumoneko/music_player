@@ -4,39 +4,21 @@
 
 ## UPDATE NOTE
 
-> Use Vite to create react app
->
-> Update to taiwindcss 4
->
-> Use ffmpeg binary to handle local audio file
-
 - Server
 
-> remove download, add music
->
-> update binary ffmpeg
->
-> add controllers and route to hanlder api requests
->
-> Update lib and utils
+> Fix: Spotify token expires after 1 hour
 
 - Client
 
-> Remove Sidebar
->
-> Remove Youtube and Spotify login account
->
-> Update UI
+> Feature: Get data from server with dynamic time
 
 ## ABOUT
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
 >
-> Version: 3.6.0
+> Version: 3.7.0
 >
 > Please give error on issue tab, i will check per week
-
-## Dev
 
 ### Credential
 
@@ -70,7 +52,6 @@
 
 ### Setup
 
-- set test_id for youtube test quota
 - run `npm install`
 
 ### Test app
@@ -78,13 +59,8 @@
 - You can set your app mode in .env
 - If mode is react, you can run with `npm run dev`
 
-```ts
-enum Mode {
-    react = "testreact",
-    app = "testapp",
-    deploy = "deploy",
-}
-const mode: Mode = Mode.react;
+```env
+MODE=test
 ```
 
 ### Build app
