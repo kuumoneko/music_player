@@ -5,7 +5,6 @@ const all_paths = [
     { path: '/data/local/local.json', default: '{}' },
     { path: '/data/system.json', default: '{}' },
     { path: '/data/profile.json', default: '{}' },
-    // { path: '/data/new_tracks.json', default: '[]' },
     { path: '/data/spotify/tracks.json', default: '{}' },
     { path: '/data/spotify/playlists.json', default: '{}' },
     { path: '/data/youtube/playlists.json', default: '{}' },
