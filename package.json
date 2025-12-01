@@ -1,7 +1,7 @@
 {
     "name": "music-player",
     "private": true,
-    "version": "3.6.0",
+    "version": "3.7.0",
     "type": "module",
     "scripts": {
         "dev": "vite --host localhost --port 3001",
@@ -14,8 +14,6 @@
         "test": "node --no-warnings=ExperimentalWarning --loader ts-node/esm test/test.ts"
     },
     "dependencies": {
-        "@ffmpeg-installer/ffmpeg": "^1.1.0",
-        "@ffprobe-installer/ffprobe": "^2.1.2",
         "@tailwindcss/vite": "^4.1.17",
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
