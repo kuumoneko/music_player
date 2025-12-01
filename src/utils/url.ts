@@ -17,19 +17,19 @@ export function goto(url: string, isForce: Force = Force.False) {
         const temp = backw.pop() || "/";
         forw.unshift(now);
         next = `${temp}`;
-        localstorage('set', 'backwrad', backw ?? []);
+        localstorage('set', 'backward', backw ?? []);
         localstorage('set', 'forward', forw ?? []);
     }
     else if (isForce === Force.Forward) {
         const temp = forw.shift() || "/";
         backw.push(now);
         next = `${temp}`;
-        localstorage('set', 'backwrad', backw ?? []);
+        localstorage('set', 'backward', backw ?? []);
         localstorage('set', 'forward', forw ?? []);
     }
     else {
         backw.push(now);
-        localstorage('set', 'backwrad', backw ?? []);
+        localstorage('set', 'backward', backw ?? []);
         localstorage('set', 'forward', forw ?? []);
     }
     localstorage('set', 'url', next);
