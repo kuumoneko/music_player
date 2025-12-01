@@ -1,45 +1,32 @@
-import List from "@/components/Show/components/list.tsx";
-import Top from "@/components/Show/components/top.tsx";
-import fetch_data from "@/utils/fetch.ts";
+import Music from "@/components/Music/index.tsx";
 import localstorage from "@/utils/localStorage.ts";
 import { useEffect, useState } from "react";
 
 export default function Artists() {
     const [dom, setdom] = useState(<></>);
+    const [data, setdata] = useState({
+        source: "",
+        id: "",
+    });
+
     const run = async () => {
         const [source, id] = localstorage("get", "url", "/")
             .split("/")
             .slice(2);
-        const result = await fetch_data(
-            `/music/${source}/artists/${id}`,
-            "GET"
-        );
-        setdom(
-            <>
-                <Top
-                    name={result.name}
-                    thumbnail={result.thumbnail}
-                    duration={0}
-                    source={source}
-                    id={id}
-                    mode="artist"
-                    playlist={result.tracks ?? []}
-                />
-                <List
-                    list={result.tracks ?? []}
-                    source={source}
-                    id={id}
-                    mode="artist"
-                />
-            </>
-        );
+        if (source !== data.source || id !== data.id) {
+            setdata({
+                source,
+                id,
+            });
+            setdom(<Music source={source} type="artists" id={id} />);
+        }
     };
 
     useEffect(() => {
         run();
         const running = setInterval(() => {
             run();
-        }, 15000);
+        }, 1000);
         return () => clearInterval(running);
     }, []);
 
