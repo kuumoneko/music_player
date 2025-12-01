@@ -5,13 +5,22 @@ import localstorage from "./localStorage.ts";
 export const add_items = async (source: string, mode: string, id: string, after_tracks: any[]) => {
     let data: any;
 
-    if (mode === "playlist") {
+    if (mode.includes(
+        "playlist"
+    )) {
         data = await fetch(`/music/${source}/playlists/${id}`, "GET")
     }
-    else if (mode === "track") {
+    else if (mode.includes(
+        "track"
+    )) {
         data = await fetch(`/music/${source}/tracks/${id}`, "GET")
     }
-    else if (mode === "local") {
+    else if (mode.includes("artist")) {
+        data = await fetch(`/music/${source}/artists/${id}`, "GET");
+    }
+    else if (mode.includes(
+        "local"
+    )) {
         data = await fetch("/music/local/local/local", "GET");
     }
     const tracks = data.tracks as Track[];

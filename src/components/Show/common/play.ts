@@ -46,7 +46,7 @@ export default async function Play(item: Track, source: string, mode: string, id
         })
 
     }
-    else if (mode === "playlist" || mode === "liked songs" || mode === "local") {
+    else if (mode.includes("playlist") || mode.includes("local") || mode.includes("artist")) {
         const other_tracks: any[] = list?.filter((track: any) => item.id !== track.id) || [];
 
         if (other_tracks.length > 0) {
