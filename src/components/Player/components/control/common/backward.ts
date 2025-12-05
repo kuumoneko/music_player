@@ -7,7 +7,8 @@ export default async function backward() {
     const backward = playedsongs.pop();
 
     localstorage("set", "playing", {
-        artists: typeof backward.artists === "string" ? backward.artists : backward.artists.map((artist: any) => artist.name).join(", "),
+        artist: typeof backward.artists === "string" ? backward.artists : backward.artists ? backward.artists.map((artist: any) => artist.name).join(", ")
+            : typeof backward.artist === "string" ? backward.artist : backward.artist.map((artist: any) => artist.name).join(", "),
         duration: backward.duration,
         id: backward.id,
         name: backward.name,
@@ -17,7 +18,8 @@ export default async function backward() {
     localstorage("set", "playedsongs", playedsongs);
     localstorage("set", "play", [
         {
-            artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
+            artist: typeof playing.artists === "string" ? playing.artists : playing.artists ? playing.artists.map((artist: any) => artist.name).join(", ")
+                : typeof playing.artist === "string" ? playing.artist : playing.artist.map((artist: any) => artist.name).join(", "),
             duration: playing.duration,
             id: playing.id,
             name: playing.name,

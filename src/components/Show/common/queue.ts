@@ -9,7 +9,7 @@ export default async function Queue(item: Track, source: string) {
     };
     queue.push({
         name: item.name,
-        artists: item.artist.map((artist: any) => artist.name).join(", "),
+        artist: item.artist.map((artist: any) => artist.name).join(", "),
         thumbnail: item.thumbnail,
         source: source,
         id: item.id,

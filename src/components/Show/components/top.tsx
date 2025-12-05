@@ -118,7 +118,7 @@ export default function Top({
                                         if (mode === "track") {
                                             localstorage("set", "playing", {
                                                 name: name,
-                                                artists: artists
+                                                artist: artists
                                                     ?.map(
                                                         (artist: any) =>
                                                             artist.name
@@ -153,7 +153,7 @@ export default function Top({
                                                 : [];
                                             localstorage("set", "playing", {
                                                 name: track.name,
-                                                artists: track.artist
+                                                artist: track.artist
                                                     ?.map(
                                                         (artist: any) =>
                                                             artist.name

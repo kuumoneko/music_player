@@ -122,7 +122,7 @@ export default function ControlUI({
         } catch (error) {
             localstorage("set", "playing", {
                 name: "",
-                artists: "",
+                artist: "",
                 thumbnail: "",
                 source: "",
                 id: "",

@@ -10,7 +10,8 @@ export default async function forward(
     const nextfrom = localstorage("get", "nextfrom", {})
 
     playedsongs.push({
-        artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
+        artist: typeof playing.artists === "string" ? playing.artists : playing.artists ? playing.artists.map((artist: any) => artist.name).join(", ")
+            : typeof playing.artist === "string" ? playing.artist : playing.artist.map((artist: any) => artist.name).join(", "),
         duration: playing.duration,
         id: playing.id,
         name: playing.name,
@@ -25,7 +26,8 @@ export default async function forward(
     if (playQueue && playQueue.length > 0) {
         const nextTrack = playQueue[0];
         localstorage("set", "playing", {
-            artists: typeof nextTrack.artists === "string" ? nextTrack.artists : nextTrack.artists.map((artist: any) => artist.name).join(", "),
+            artist: typeof nextTrack.artists === "string" ? nextTrack.artists : nextTrack.artists ? nextTrack.artists.map((artist: any) => artist.name).join(", ")
+                : typeof nextTrack.artist === "string" ? nextTrack.artist : nextTrack.artist.map((artist: any) => artist.name).join(", "),
             duration: nextTrack.duration,
             id: nextTrack.id,
             name: nextTrack.name,
@@ -42,7 +44,8 @@ export default async function forward(
         if (mode == "track") {
             await getUrl(playing.source, playing.id);
             localstorage('set', 'playing', {
-                artists: typeof track.artists === "string" ? track.artists : track.artists.map((artist: any) => artist.name).join(", "),
+                artist: typeof track.artists === "string" ? track.artists : track.artists ? track.artists.map((artist: any) => artist.name).join(", ")
+                    : typeof track.artist === "string" ? track.artist : track.artist.map((artist: any) => artist.name).join(", "),
                 duration: track.duration,
                 id: track.id,
                 name: track.name,
@@ -56,7 +59,8 @@ export default async function forward(
 
             add_items(source, mode, id, tracks)
             localstorage('set', 'playing', {
-                artists: typeof track.artists === "string" ? track.artists : track.artists.map((artist: any) => artist.name).join(", "),
+                artist: typeof track.artists === "string" ? track.artists : track.artists ? track.artists.map((artist: any) => artist.name).join(", ")
+                    : typeof track.artist === "string" ? track.artist : track.artist.map((artist: any) => artist.name).join(", "),
                 duration: track.duration,
                 id: track.id,
                 name: track.name,

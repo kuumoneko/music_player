@@ -36,7 +36,7 @@ export const add_items = async (source: string, mode: string, id: string, after_
 
     if (after_tracks.length < 20) {
         after_tracks.push(...tracks.slice(0, 20 - after_tracks.length).map((item: Track) => ({
-            artists: item.artist?.map((artist: any) => artist.name).join(", "),
+            artist: item.artist?.map((artist: any) => artist.name).join(", "),
             duration: item.duration,
             id: item.id,
             name: item.name,

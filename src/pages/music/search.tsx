@@ -11,7 +11,7 @@ export default function Search({ url }: { url: string }) {
             type: "",
             tracks: [],
             playlists: [],
-            artists: [],
+            artist: [],
         },
     });
 
@@ -33,7 +33,7 @@ export default function Search({ url }: { url: string }) {
             {[
                 ...(searchh?.result?.tracks ?? []),
                 ...(searchh?.result?.playlists ?? []),
-                ...(searchh?.result?.artists ?? []),
+                ...(searchh?.result?.artist ?? []),
             ].length > 0 && (
                 <List
                     list={
@@ -41,7 +41,7 @@ export default function Search({ url }: { url: string }) {
                             ? searchh.result.tracks
                             : url.split("/").slice(2)[1] === "playlist"
                             ? searchh.result.playlists
-                            : searchh.result.artists ?? []
+                            : searchh.result.artist ?? []
                     }
                     source={url.split("/").slice(2)[0]}
                     type={url.split("/").slice(2)[1]}

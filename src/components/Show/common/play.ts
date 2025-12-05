@@ -5,7 +5,7 @@ export default async function Play(item: Track, source: string, mode: string, id
     localstorage("set", "play", []);
     localstorage("set", 'playing', {
         name: item.name,
-        artists: item.artist?.map((artist: any) => artist.name).join(", "),
+        artist: item.artist?.map((artist: any) => artist.name).join(", "),
         thumbnail: item.thumbnail,
         source: source,
         id: item.id,
@@ -16,9 +16,10 @@ export default async function Play(item: Track, source: string, mode: string, id
 
 
     let playedsongs = localstorage("get", 'playedsongs', [])
-    const playing = localstorage('get', 'playing', {})
+    const playing = localstorage('get', 'playing', { artist: "" })
     playedsongs.push({
-        artists: typeof playing.artists === "string" ? playing.artists : playing.artists.map((artist: any) => artist.name).join(", "),
+        artist: typeof playing.artists === "string" ? playing.artists : playing.artists ? playing.artists.map((artist: any) => artist.name).join(", ")
+            : typeof playing.artist === "string" ? playing.artist : playing.artist.map((artist: any) => artist.name).join(", "),
         duration: playing.duration,
         id: playing.id,
         name: playing.name,
@@ -36,7 +37,7 @@ export default async function Play(item: Track, source: string, mode: string, id
             tracks: [
                 {
                     name: item.name,
-                    artists: item.artist?.map((artist: any) => artist.name).join(", "),
+                    artist: item.artist?.map((artist: any) => artist.name).join(", "),
                     thumbnail: item.thumbnail,
                     source: source,
                     id: item.id,
@@ -63,7 +64,7 @@ export default async function Play(item: Track, source: string, mode: string, id
                 tracks: other_tracks.slice(0, 20).map((track: Track) => {
                     return {
                         name: track.name,
-                        artists: track.artist.map((artist: any) => artist.name).join(", "),
+                        artist: track.artist.map((artist: any) => artist.name).join(", "),
                         thumbnail: track.thumbnail,
                         source: source,
                         id: track.id,
@@ -80,7 +81,7 @@ export default async function Play(item: Track, source: string, mode: string, id
             tracks: [
                 {
                     name: item.name,
-                    artists: item.artist.map((artist: any) => artist.name).join(", "),
+                    artist: item.artist.map((artist: any) => artist.name).join(", "),
                     thumbnail: item.thumbnail,
                     source: source,
                     id: item.id,

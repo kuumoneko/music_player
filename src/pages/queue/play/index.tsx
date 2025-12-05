@@ -59,7 +59,7 @@ export default function Play_Queue() {
                                     onDoubleClick={async () => {
                                         localstorage("set", "playing", {
                                             name: item.name,
-                                            artists: item.artists,
+                                            artist: item.artists,
                                             thumbnail: item.thumbnail,
                                             source: item.source,
                                             id: item.id,
@@ -144,7 +144,7 @@ export default function Play_Queue() {
                                                 );
                                                 queue.push({
                                                     name: item.name,
-                                                    artists: item.artists,
+                                                    artist: item.artists,
                                                     thumbnail: item.thumbnail,
                                                     source: item.source,
                                                     id: item.id,
@@ -195,7 +195,7 @@ export default function Play_Queue() {
                                     onDoubleClick={() => {
                                         localstorage("set", "playing", {
                                             name: item.name,
-                                            artists: item.artists,
+                                            artist: item.artists,
                                             thumbnail: item.thumbnail,
                                             source: item.source,
                                             id: item.id,
@@ -292,7 +292,7 @@ export default function Play_Queue() {
                                                 );
                                                 queue.push({
                                                     name: item.name,
-                                                    artists: item.artists,
+                                                    artist: item.artists,
                                                     thumbnail: item.thumbnail,
                                                     source: item.source,
                                                     id: item.id,

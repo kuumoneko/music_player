@@ -28,7 +28,7 @@ export interface Album {
     thumbnail: string,
     duration: number,
     releaseDate: string,
-    artists: { id: string, name: string }[]
+    artist: { id: string, name: string }[]
 }
 
 export interface Track {
