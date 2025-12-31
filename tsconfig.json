@@ -1,29 +1,35 @@
 {
     "compilerOptions": {
+        "target": "ES2020",
+        "useDefineForClassFields": true,
+        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "module": "nodenext",
+        "skipLibCheck": true,
+
+        "moduleResolution": "nodenext",
+        "allowImportingTsExtensions": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+
+        "strict": false,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+
+        "composite": true,
+        "allowSyntheticDefaultImports": true,
+
         "paths": {
             "@/*": ["./src/*"]
         },
         "baseUrl": ".",
-        "jsx": "react-jsx",
-        "target": "ES2022",
-        "lib": ["ES2022", "DOM", "DOM.Iterable"],
-        "module": "nodenext",
-        "moduleResolution": "nodenext",
         "types": ["vite/client"],
-        "skipLibCheck": true,
-        "strict": false,
-        "noUnusedParameters": true,
         "erasableSyntaxOnly": false,
         "noUncheckedSideEffectImports": true,
         "allowArbitraryExtensions": false,
-        "allowSyntheticDefaultImports": true,
-        "esModuleInterop": true,
-        "noEmit": true,
-        "allowImportingTsExtensions": true
+        "esModuleInterop": true
     },
-    "include": ["./"],
-    "ts-node": {
-        "esm": true
-    },
-    "exclude": ["./test"]
+    "include": ["src", "electron", "vite.config.ts", "test"]
 }

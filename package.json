@@ -1,26 +1,23 @@
 {
     "name": "music-player",
     "private": true,
-    "version": "3.8.0",
-    "type": "module",
+    "version": "4.0.0",
+    "description": "music app by kuumoneko",
+    "author": {
+        "name": "kuumoneko",
+        "url": "https://github.com/kuumoneko"
+    },
     "scripts": {
-        "dev": "vite --host localhost --port 3001",
-        "build_frontend": "tsc -b && vite build",
-        "lint": "eslint .",
-        "preview": "vite preview",
-        "server": "nodemon --watch ./server --ext .ts --exec \"node --no-warnings=ExperimentalWarning --loader ts-node/esm server/index.ts\"",
-        "build_app": "node --no-warnings=ExperimentalWarning --loader ts-node/esm build.ts",
-        "build_backend": "deno compile --no-check --no-terminal --config deno.json --allow-sys --unstable-sloppy-imports --allow-env --allow-read --allow-net --allow-write --allow-run --output \"./app/server.exe\" ./server/index.ts",
-        "test": "node --no-warnings=ExperimentalWarning --loader ts-node/esm test/test.ts"
+        "dev": "vite",
+        "build": "vite build && electron-builder --win --x64",
+        "preview": "vite preview"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.1.17",
-        "cors": "^2.8.5",
+        "7zip-min": "^2.1.0",
         "dotenv": "^17.2.3",
-        "express": "^5.1.0",
         "fluent-ffmpeg": "^2.1.3",
         "nodemon": "^3.1.11",
-        "open": "^11.0.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "tailwindcss": "^4.1.17",
@@ -28,25 +25,20 @@
         "youtubei.js": "^16.0.1"
     },
     "devDependencies": {
-        "@eslint/js": "^9.39.1",
         "@fortawesome/free-brands-svg-icons": "^7.1.0",
         "@fortawesome/free-solid-svg-icons": "^7.1.0",
         "@fortawesome/react-fontawesome": "^3.1.0",
-        "@types/cors": "^2.8.19",
         "@types/dotenv": "^6.1.1",
-        "@types/express": "^5.0.5",
         "@types/fluent-ffmpeg": "^2.1.28",
         "@types/node": "^24.10.1",
         "@types/react": "^19.2.2",
         "@types/react-dom": "^19.2.2",
         "@vitejs/plugin-react": "^5.1.0",
-        "deno": "^2.5.6",
-        "eslint": "^9.39.1",
-        "eslint-plugin-react-hooks": "^7.0.1",
-        "eslint-plugin-react-refresh": "^0.4.24",
-        "globals": "^16.5.0",
+        "electron": "^39.2.4",
         "typescript": "~5.9.3",
-        "typescript-eslint": "^8.46.3",
-        "vite": "^7.2.2"
-    }
+        "vite": "^7.2.2",
+        "vite-plugin-electron": "^0.29.0",
+        "vite-plugin-electron-renderer": "^0.14.6"
+    },
+    "main": "dist-electron/main.js"
 }
