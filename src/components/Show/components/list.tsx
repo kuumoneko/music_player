@@ -11,7 +11,7 @@ import download from "@/components/Show/common/download.ts";
 import Play from "@/components/Show/common/play.ts";
 import Queue from "@/components/Show/common/queue.ts";
 import { useEffect, useState } from "react";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 
 export default function List({
     list,
@@ -24,6 +24,9 @@ export default function List({
     id: string;
     mode: string;
 }) {
+    if (!list) {
+        return <Loading mode={"Loading data"} />;
+    }
     if (list.length === 0) {
         return <Loading mode={"Loading data"} />;
     }
@@ -43,7 +46,11 @@ export default function List({
                 mode.split(":")[1] !== undefined &&
                 sight.tail > list.length
             ) {
-                const data = await fetch(`/playlists/${source}/${id}`, "GET");
+                const data = await fetchdata(`music`, "GET", {
+                    source,
+                    id,
+                    type: "playlists",
+                });
                 list.push(...data.tracks);
                 list = Array.from(
                     new Set(list.map((item: any) => JSON.stringify(item)))
@@ -95,7 +102,7 @@ export default function List({
                             }
                             className={`vid_${
                                 index + 1
-                            } flex h-[95px] w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
+                            } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
                             onClick={() => {
                                 Play(item, source, mode, id, list);
                             }}
@@ -130,7 +137,7 @@ export default function List({
                                                 {item.releasedDate ??
                                                     "cant load"}
                                             </span>
-                                            <span className="duration cursor-default select-none ml-[15px]">
+                                            <span className="duration cursor-default select-none ml-3.75">
                                                 {formatDuration(
                                                     ((item.duration as number) ??
                                                         0) / 1000

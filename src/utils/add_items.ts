@@ -1,5 +1,5 @@
 import { Track } from "../types/index.ts";
-import fetch from "@/utils/fetch.ts"
+import fetchdata from "@/utils/fetch.ts"
 import localstorage from "./localStorage.ts";
 
 export const add_items = async (source: string, mode: string, id: string, after_tracks: any[]) => {
@@ -8,20 +8,30 @@ export const add_items = async (source: string, mode: string, id: string, after_
     if (mode.includes(
         "playlist"
     )) {
-        data = await fetch(`/music/${source}/playlists/${id}`, "GET")
+        data = await fetchdata(`music`, "GET", {
+            source, type: "playlists", id
+        })
     }
     else if (mode.includes(
         "track"
     )) {
-        data = await fetch(`/music/${source}/tracks/${id}`, "GET")
+        data = await fetchdata(`music`, "GET", {
+            source, type: "tracks", id
+        })
     }
     else if (mode.includes("artist")) {
-        data = await fetch(`/music/${source}/artists/${id}`, "GET");
+        data = await fetchdata(`music`, "GET", {
+            source, type: "artists", id
+        });
     }
     else if (mode.includes(
         "local"
     )) {
-        data = await fetch("/music/local/local/local", "GET");
+        data = await fetchdata("music", "GET", {
+            mode: "local",
+            type: "local",
+            id: "local"
+        });
     }
     const tracks = data.tracks as Track[];
 

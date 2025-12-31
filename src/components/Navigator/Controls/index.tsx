@@ -30,7 +30,7 @@ export default function ControlPanel() {
     return (
         <div className="controlpanel flex flex-row gap-2.5">
             <span
-                className={`material-icons flex items-center gap-[5px] text-white cursor-default select-none ${
+                className={`material-icons flex items-center gap-1.25 text-white cursor-default select-none ${
                     backward.length === 0
                         ? "opacity-50 pointer-events-none"
                         : ""
@@ -43,7 +43,7 @@ export default function ControlPanel() {
                 <FontAwesomeIcon icon={faArrowLeft} />
             </span>
             <span
-                className={`material-icons flex items-center gap-[5px] text-white cursor-default select-none`}
+                className={`material-icons flex items-center gap-1.25 text-white cursor-default select-none`}
                 onClick={() => {
                     window.location.reload();
                 }}
@@ -51,7 +51,7 @@ export default function ControlPanel() {
                 <FontAwesomeIcon icon={faArrowsRotate} />
             </span>
             <span
-                className={`material-icons flex items-center gap-[5px] text-white cursor-default select-none ${
+                className={`material-icons flex items-center gap-1.25 text-white cursor-default select-none ${
                     forward.length === 0 ? "opacity-50 pointer-events-none" : ""
                 }`}
                 onClick={() => {
@@ -62,7 +62,7 @@ export default function ControlPanel() {
                 <FontAwesomeIcon icon={faArrowRight} />
             </span>
             <span
-                className={`material-icons flex items-center gap-[5px] text-white cursor-default select-none`}
+                className={`material-icons flex items-center gap-1.25 text-white cursor-default select-none`}
                 onClick={() => {
                     goto("/local");
                 }}
@@ -70,7 +70,7 @@ export default function ControlPanel() {
                 <FontAwesomeIcon icon={faDatabase} />
             </span>
             <span
-                className="material-icons flex items-center gap-[5px] text-white cursor-default select-none"
+                className="material-icons flex items-center gap-1.25 text-white cursor-default select-none"
                 onClick={() => {
                     goto("/queue/play");
                 }}
@@ -78,7 +78,7 @@ export default function ControlPanel() {
                 <FontAwesomeIcon icon={faList} />
             </span>
             <span
-                className="material-icons flex items-center gap-[5px] text-white cursor-default select-none"
+                className="material-icons flex items-center gap-1.25 text-white cursor-default select-none"
                 onClick={() => {
                     goto("/queue/download");
                 }}

@@ -1,21 +1,17 @@
-export default async function fetch_data(url: string, mode: "GET" | "POST" = "GET", data?: any) {
+
+export default async function fetch_data(url: string, mode: "GET" | "POST" = "GET", data?: any): Promise<any> {
     try {
-        const response = await fetch(`http://localhost:3000${url}`, {
-            method: mode,
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: typeof data === "object" ? JSON.stringify(data) : data
-        })
-        if (response.status === 500 || response.status === 404) {
-            const result = await response.json();
-            throw new Error(result.mesage)
+        try {
+            const result = await window.electronAPI.api(mode, {
+                url: url,
+                data: data
+            });
+            if (!result.ok) throw new Error(result.data);
+            return result.data;
+        } catch (error) {
+            console.error('Error communicating with Electron:', error);
         }
-        if (response.status === 204) {
-            return "ok"
-        }
-        const result = await response.json();
-        return result.data;
+
     } catch (error) {
         console.error(error)
     }

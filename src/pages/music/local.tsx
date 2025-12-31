@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 import Top from "@/components/Show/components/top.tsx";
 import List from "@/components/Show/components/list.tsx";
 import localstorage from "@/utils/localStorage.ts";
@@ -11,7 +11,11 @@ export default function Local() {
     const [duration, setduration] = useState(0);
     useEffect(() => {
         async function run() {
-            const data = await fetch("/music/local/local/local", "GET");
+            const data = await fetchdata("music", "GET", {
+                source: "local",
+                type: "local",
+                id: "local",
+            });
             setlocalfile(data.tracks);
             setduration(
                 data.tracks.reduce((a: number, b: Track) => a + b.duration, 0)

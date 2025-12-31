@@ -1,8 +1,4 @@
-import {
-    faDownload,
-    faListDots,
-    faShare,
-} from "@fortawesome/free-solid-svg-icons";
+import { faListDots, faShare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDuration } from "@/utils/format.ts";
 import Loading from "@/components/Loading/index.tsx";
@@ -85,7 +81,7 @@ export default function List({
                             }
                             className={`vid_${
                                 index + 1
-                            } flex h-[95px] w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
+                            } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
                             onClick={() => {
                                 if (type === "video") {
                                     Play(item, source, mode, id, list);
@@ -127,7 +123,7 @@ export default function List({
                                             <span className="releaseDate cursor-default select-none">
                                                 {item.releasedDate ?? ""}
                                             </span>
-                                            <span className="duration cursor-default select-none ml-[15px]">
+                                            <span className="duration cursor-default select-none ml-3.75">
                                                 {formatDuration(
                                                     (item.duration as number) /
                                                         1000

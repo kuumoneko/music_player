@@ -16,10 +16,10 @@ export default function Settings() {
         }
     }, [theme]);
     return (
-        <div className="header-icons flex top-5 right-5 gap-[15px] items-center cursor-pointer">
+        <div className="header-icons flex top-5 right-5 gap-3.75 items-center cursor-pointer">
             <span className="user-mode h-1/2">
                 <div className="flex justify-center items-center space-x-4">
-                    <label className="relative inline-block w-[60px] h-8">
+                    <label className="relative inline-block w-15 h-8">
                         <input
                             type="checkbox"
                             className="opacity-0 w-0 h-0 peer"

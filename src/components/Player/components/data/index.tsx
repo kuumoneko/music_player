@@ -30,7 +30,7 @@ export default function DataUI() {
     }, []);
 
     return (
-        <div className="flex flex-row items-center ml-[15px]">
+        <div className="flex flex-row items-center ml-3.75">
             <span>
                 {thumbnail ? (
                     <img
@@ -44,7 +44,7 @@ export default function DataUI() {
                     <></>
                 )}
             </span>
-            <div className="currently-playing ml-[5px] cursor-default select-none flex flex-col">
+            <div className="currently-playing ml-1.25 cursor-default select-none flex flex-col">
                 {id !== "" && (
                     <span
                         className="text-sm hover:underline hover:cursor-pointer"

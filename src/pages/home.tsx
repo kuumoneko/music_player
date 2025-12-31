@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { formatDuration, remove_hashtag } from "@/utils/format.ts";
 import { goto } from "@/utils/url.ts";
 import Play from "@/components/Show/common/play.ts";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 
 export default function HomePage() {
     const [artists, setartists] = useState([]);
@@ -11,7 +11,7 @@ export default function HomePage() {
     const [new_tracks, setnew_tracks] = useState([]);
     useEffect(() => {
         async function run() {
-            const temp = await fetch("/home", "GET");
+            const temp = await fetchdata("home", "GET");
             setartists(temp.artist);
             setplaylists(temp.playlist);
             const tempp = temp.new_tracks.sort((a: Track, b: Track) => {

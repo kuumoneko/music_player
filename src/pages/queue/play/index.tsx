@@ -55,7 +55,7 @@ export default function Play_Queue() {
                                     key={item.name}
                                     className={`queue ${
                                         index + 1
-                                    } flex h-[100px] w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
+                                    } flex h-25 w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
                                     onDoubleClick={async () => {
                                         localstorage("set", "playing", {
                                             name: item.name,
@@ -101,7 +101,7 @@ export default function Play_Queue() {
                                                 <span className="releaseDate cursor-default select-none">
                                                     {item.releaseDate}
                                                 </span>
-                                                <span className="duration cursor-default select-none ml-[15px]">
+                                                <span className="duration cursor-default select-none ml-3.75">
                                                     {formatDuration(
                                                         (item.duration as number) /
                                                             1000
@@ -191,7 +191,7 @@ export default function Play_Queue() {
                                     key={item.name}
                                     className={`nextfrom ${
                                         index + 1
-                                    } flex h-[100px] w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
+                                    } flex h-25 w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
                                     onDoubleClick={() => {
                                         localstorage("set", "playing", {
                                             name: item.name,
@@ -249,7 +249,7 @@ export default function Play_Queue() {
                                                 <span className="releaseDate cursor-default select-none">
                                                     {item.releaseDate}
                                                 </span>
-                                                <span className="duration cursor-default select-none ml-[15px]">
+                                                <span className="duration cursor-default select-none ml-3.75">
                                                     {formatDuration(
                                                         (item.duration as number) /
                                                             1000

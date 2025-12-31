@@ -1,14 +1,16 @@
 import { faFileArchive } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 
 export default function LocalFile() {
     const [location, setlocation] = useState("");
 
     useEffect(() => {
         async function run() {
-            const res = await fetch("/profile/folder", "GET");
+            const res = await fetchdata("profile", "GET", {
+                key: "folder",
+            });
             setlocation(res);
         }
         run();
@@ -31,8 +33,9 @@ export default function LocalFile() {
             return;
         }
         async function run() {
-            await fetch("/profile/folder", "POST", {
+            await fetchdata("profile", "POST", {
                 folder: location,
+                key: "folder",
             });
             setlocation(location);
         }

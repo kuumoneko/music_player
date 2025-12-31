@@ -46,7 +46,7 @@ export default function SleepUI() {
 
     return (
         <span className="flex flex-row">
-            <span className="w-[60px]  mr-[5px] flex flex-row-reverse">
+            <span className="w-15  mr-1.25 flex flex-row-reverse">
                 <Sleep_comp />
             </span>
             <span

@@ -12,7 +12,7 @@ import { formatDuration } from "@/utils/format.ts";
 import Loading from "@/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
 import add_to_download from "@/utils/add_download.ts";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 import localstorage from "@/utils/localStorage.ts";
 
 export default function Top({
@@ -39,7 +39,7 @@ export default function Top({
     const [isPin, setiSPin] = useState(false);
     useEffect(() => {
         async function run() {
-            const pin = await fetch("/profile/pin", "GET");
+            const pin = await fetchdata("profile", "GET", { key: "pin" });
             if (
                 pin.findIndex(
                     (item: any) =>
@@ -58,7 +58,7 @@ export default function Top({
     return (
         <>
             {name !== null && duration !== null ? (
-                <div className="flex flex-col w-[90%] mb-[15px] items-center justify-center">
+                <div className="flex flex-col w-[90%] mb-3.75 items-center justify-center">
                     <div className="flex flex-row items-center select-none cursor-default">
                         <span>
                             {thumbnail ? (
@@ -102,7 +102,7 @@ export default function Top({
                                 <span className="releaseDate cursor-default select-none">
                                     {releaseDate}
                                 </span>
-                                <span className="duration cursor-default select-none ml-[15px]">
+                                <span className="duration cursor-default select-none ml-3.75">
                                     {duration > 0 && (
                                         <>
                                             {formatDuration(
@@ -285,9 +285,10 @@ export default function Top({
                                     }`}
                                     onClick={() => {
                                         async function run() {
-                                            let pin = await fetch(
-                                                "/profile/pin",
-                                                "GET"
+                                            let pin = await fetchdata(
+                                                "profile",
+                                                "GET",
+                                                { key: "pin" }
                                             );
                                             if (isPin) {
                                                 pin = pin.filter(
@@ -308,13 +309,10 @@ export default function Top({
                                             const temp = Array.from(
                                                 new Set(pin)
                                             );
-                                            await fetch(
-                                                "/profile/pin",
-                                                "POST",
-                                                {
-                                                    pin: temp,
-                                                }
-                                            );
+                                            await fetchdata("profile", "POST", {
+                                                key: "pin",
+                                                pin: temp,
+                                            });
                                         }
                                         run();
                                     }}

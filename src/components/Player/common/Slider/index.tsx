@@ -13,7 +13,7 @@ export default function Slider({ name, width, reff, value, Change, max }: { name
                 width: `${width}px`,
             }}
             className={`${name} 
-                        w-[${width}px] h-[5px]
+                        w-[${width}px] h-1.25
                         cursor-pointer 
                         apperance-none
                         bg-transparent 

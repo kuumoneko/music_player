@@ -25,10 +25,10 @@ export default function Download_Queue() {
         async function run() {
             const res = await fetch_data("/profile/download", "GET");
 
-            const playlists = res.filter(
-                (item: any) => item.mode === "playlist"
+            const playlists = res.filter((item: any) =>
+                item.mode.includes("playlist")
             );
-            let tracks = res.filter((item: any) => item.mode === "track");
+            let tracks = res.filter((item: any) => item.mode.includes("track"));
 
             const temp: any = {};
 
@@ -93,7 +93,7 @@ export default function Download_Queue() {
                     <span className="text-4xl">Download queue</span>
                     <Download />
                 </div>
-                <div className="content w-full flex flex-col max-h-[75%] overflow-y-scroll [&::-webkit-scrollbar]:hidden mt-[50px]">
+                <div className="content w-full flex flex-col max-h-[75%] overflow-y-scroll [&::-webkit-scrollbar]:hidden mt-12.5">
                     {Object.keys(JSON.parse(list)).map((key: string) => {
                         const data = JSON.parse(list);
                         const item = data[key];
@@ -106,7 +106,7 @@ export default function Download_Queue() {
                                 className="download flex flex-col"
                             >
                                 <div className="flex flex-row bg-slate-800 mb-3">
-                                    <span className="w-[50px] flex flex-row items-center justify-center dot text-slate-700 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-500 transition-all">
+                                    <span className="w-12.5 flex flex-row items-center justify-center dot text-slate-300 hover:text-red-500 transition-all">
                                         <FontAwesomeIcon
                                             icon={faCircle}
                                             onClick={async () => {
@@ -159,7 +159,7 @@ export default function Download_Queue() {
                                             }}
                                         />
                                     </span>
-                                    <span className="thumbnail ml-[15px]">
+                                    <span className="thumbnail ml-3.75">
                                         <img
                                             src={item.thumbnail}
                                             height={100}
@@ -168,7 +168,7 @@ export default function Download_Queue() {
                                         />
                                     </span>
                                     <span className="flex flex-row items-center justify-center ml-2.5">
-                                        <span className="mr-[5px]">
+                                        <span className="mr-1.25">
                                             <FontAwesomeIcon
                                                 icon={
                                                     source === "youtube"
@@ -182,8 +182,8 @@ export default function Download_Queue() {
                                                 }`}
                                             />
                                         </span>
-                                        <span className="mr-[5px]">{mode}</span>
-                                        <span className="mr-[5px]">
+                                        <span className="mr-1.25">{mode}</span>
+                                        <span className="mr-1.25">
                                             {item.name}
                                         </span>
                                     </span>
@@ -191,7 +191,7 @@ export default function Download_Queue() {
                                 {mode === "track" ? (
                                     <div
                                         key={`download`}
-                                        className={`vid flex h-[100px] w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
+                                        className={`vid flex h-25 w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
                                     >
                                         <div className="flex flex-row items-center">
                                             <span className="thumbnail cursor-default select-none ml-2.5">
@@ -224,7 +224,7 @@ export default function Download_Queue() {
                                                         {item?.releasedDate ??
                                                             "cant load"}
                                                     </span>
-                                                    <span className="duration cursor-default select-none ml-[15px]">
+                                                    <span className="duration cursor-default select-none ml-3.75">
                                                         {formatDuration(
                                                             (item?.duration as number) /
                                                                 1000
@@ -271,7 +271,7 @@ export default function Download_Queue() {
                                                 return (
                                                     <div
                                                         key={`download ${index}`}
-                                                        className={`vid flex h-[100px] w-[90%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-3xl`}
+                                                        className={`vid flex h-25 w-[90%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-3xl`}
                                                     >
                                                         <div className="flex flex-row items-center">
                                                             <span className="thumbnail cursor-default select-none ml-2.5">
@@ -309,7 +309,7 @@ export default function Download_Queue() {
                                                                         {itemm?.releasedDate ??
                                                                             "cant load"}
                                                                     </span>
-                                                                    <span className="duration cursor-default select-none ml-[15px]">
+                                                                    <span className="duration cursor-default select-none ml-3.75">
                                                                         {formatDuration(
                                                                             (itemm?.duration as number) /
                                                                                 1000
@@ -365,324 +365,3 @@ export default function Download_Queue() {
         </>
     );
 }
-
-// const Test_B = ({ list }: { list: string }) => {
-//     const data = JSON.parse(list);
-
-//     return (
-//         <>
-//             {Object.keys(data).map((key: string) => {
-//                 const item = data[key];
-//                 const [source, mode] = item.type.split(":");
-
-//                 return (
-//                     <div
-//                         key={`big download ${key}`}
-//                         className="download flex flex-col"
-//                     >
-//                         <div className="flex flex-row bg-slate-800">
-//                             <span className="w-[50px] flex flex-row items-center justify-center dot text-slate-700 dark:text-slate-300 hover:text-red-500 dark:hover:text-red-500 transition-all">
-//                                 <FontAwesomeIcon
-//                                     icon={faCircle}
-//                                     onClick={() => {
-//                                         const temp_map = new Map(
-//                                             Object.entries(data)
-//                                         );
-//                                         temp_map.delete(key);
-//                                         const temp_obj = {};
-//                                         temp_map.forEach(
-//                                             (value: any, key: any) => {
-//                                                 temp_obj[key] = value;
-//                                             }
-//                                         );
-//                                     }}
-//                                 />
-//                             </span>
-//                             <span className="thumbnail ml-[15px]">
-//                                 <img
-//                                     src={item.thumbnail}
-//                                     height={100}
-//                                     width={100}
-//                                     className="rounded-3xl"
-//                                 />
-//                             </span>
-//                             <span className="flex flex-row items-center justify-center ml-2.5">
-//                                 <span className="mr-[5px]">
-//                                     <FontAwesomeIcon
-//                                         icon={
-//                                             source === "youtube"
-//                                                 ? faYoutube
-//                                                 : faSpotify
-//                                         }
-//                                         className={`size-10 ${
-//                                             source === "youtube"
-//                                                 ? "text-red-500"
-//                                                 : "text-green-500"
-//                                         }`}
-//                                     />
-//                                 </span>
-//                                 <span className="mr-[5px]">{mode}</span>
-//                                 <span className="mr-[5px]">
-//                                     {mode === "track"
-//                                         ? item.track.name
-//                                         : item.name}
-//                                 </span>
-//                             </span>
-//                         </div>
-//                         {mode === "track" ? (
-//                             <div
-//                                 key={`download`}
-//                                 className={`vid flex h-[100px] w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
-//                             >
-//                                 <div className="flex flex-row items-center">
-//                                     <span className="thumbnail cursor-default select-none ml-2.5">
-//                                         <img
-//                                             src={item.thumbnail}
-//                                             alt=""
-//                                             height={50}
-//                                             width={50}
-//                                         />
-//                                     </span>
-//                                     <div className="flex flex-col ml-2.5">
-//                                         <span className="title cursor-default select-none">
-//                                             {item.track?.name || "cant load"}
-//                                         </span>
-//                                         <span className="artists cursor-default select-none">
-//                                             {typeof item.artist === "string"
-//                                                 ? item.artists
-//                                                 : item.artists
-//                                                       .map(
-//                                                           (artist: any) =>
-//                                                               artist.name
-//                                                       )
-//                                                       .join(", ")}
-//                                         </span>
-//                                         <div className="flex flex-row items-center">
-//                                             <span className="releaseDate cursor-default select-none">
-//                                                 {item.track?.releaseDate ||
-//                                                     "cant load"}
-//                                             </span>
-//                                             <span className="duration cursor-default select-none ml-[15px]">
-//                                                 {formatDuration(
-//                                                     (item.track
-//                                                         ?.duration as number) /
-//                                                         1000
-//                                                 ) || "cant load"}
-//                                             </span>
-//                                         </div>
-//                                     </div>
-//                                 </div>
-
-//                                 <div className="action_button flex flex-row-reverse mr-2.5">
-//                                     <span
-//                                         className="mr-2.5"
-//                                         onClick={() => {
-//                                             if (
-//                                                 item.type.split(":")[0] ===
-//                                                 "youtube"
-//                                             ) {
-//                                                 const url =
-//                                                     "https://www.youtube.com/watch?v=" +
-//                                                     item.track.id;
-//                                                 navigator.clipboard.writeText(
-//                                                     url
-//                                                 );
-//                                             } else {
-//                                                 const url =
-//                                                     "https://open.spotify.com/track/" +
-//                                                     item.track.id;
-//                                                 navigator.clipboard.writeText(
-//                                                     url
-//                                                 );
-//                                             }
-//                                         }}
-//                                     >
-//                                         <FontAwesomeIcon icon={faShare} />
-//                                     </span>
-//                                 </div>
-//                             </div>
-//                         ) : (
-//                             <div>
-//                                 {item.tracks.map(
-//                                     (itemm: any, index: number) => {
-//                                         return (
-//                                             <div
-//                                                 key={`download ${index}`}
-//                                                 className={`vid flex h-[100px] w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
-//                                             >
-//                                                 <div className="flex flex-row items-center">
-//                                                     <span className="thumbnail cursor-default select-none ml-2.5">
-//                                                         <img
-//                                                             src={
-//                                                                 itemm.thumbnail
-//                                                             }
-//                                                             alt=""
-//                                                             height={50}
-//                                                             width={50}
-//                                                         />
-//                                                     </span>
-//                                                     <div className="flex flex-col ml-2.5">
-//                                                         <span className="title cursor-default select-none">
-//                                                             {itemm.track
-//                                                                 ?.name ||
-//                                                                 "cant load"}
-//                                                         </span>
-//                                                         <span className="artists cursor-default select-none">
-//                                                             {typeof itemm.artist ===
-//                                                             "string"
-//                                                                 ? itemm.artists
-//                                                                 : itemm.artists
-//                                                                       .map(
-//                                                                           (
-//                                                                               artist: any
-//                                                                           ) =>
-//                                                                               artist.name
-//                                                                       )
-//                                                                       .join(
-//                                                                           ", "
-//                                                                       )}
-//                                                         </span>
-//                                                         <div className="flex flex-row items-center">
-//                                                             <span className="releaseDate cursor-default select-none">
-//                                                                 {itemm.track
-//                                                                     ?.releaseDate ||
-//                                                                     "cant load"}
-//                                                             </span>
-//                                                             <span className="duration cursor-default select-none ml-[15px]">
-//                                                                 {formatDuration(
-//                                                                     (itemm.track
-//                                                                         ?.duration as number) /
-//                                                                         1000
-//                                                                 ) ||
-//                                                                     "cant load"}
-//                                                             </span>
-//                                                         </div>
-//                                                     </div>
-//                                                 </div>
-
-//                                                 <div className="action_button flex flex-row-reverse mr-2.5">
-//                                                     <span
-//                                                         className="mr-2.5"
-//                                                         onClick={() => {
-//                                                             if (
-//                                                                 itemm.type.split(
-//                                                                     ":"
-//                                                                 )[0] ===
-//                                                                 "youtube"
-//                                                             ) {
-//                                                                 const url =
-//                                                                     "https://www.youtube.com/watch?v=" +
-//                                                                     itemm.track
-//                                                                         .id;
-//                                                                 navigator.clipboard.writeText(
-//                                                                     url
-//                                                                 );
-//                                                             } else {
-//                                                                 const url =
-//                                                                     "https://open.spotify.com/track/" +
-//                                                                     itemm.track
-//                                                                         .id;
-//                                                                 navigator.clipboard.writeText(
-//                                                                     url
-//                                                                 );
-//                                                             }
-//                                                         }}
-//                                                     >
-//                                                         <FontAwesomeIcon
-//                                                             icon={faShare}
-//                                                         />
-//                                                     </span>
-//                                                 </div>
-//                                             </div>
-//                                         );
-//                                     }
-//                                 )}
-//                             </div>
-//                         )}
-//                     </div>
-//                 );
-//             })}
-//         </>
-//     );
-// };
-
-// const Test_A = ({ list }: { list: string }) => {
-//     return (
-//         <>
-//             {(JSON.parse(list as string) as any[]).map(
-//                 (item: any, index: number) => {
-//                     return (
-//                         <div
-//                             key={`download ${index}`}
-//                             className={`vid ${
-//                                 index + 1
-//                             } flex h-[200px] w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
-//                         >
-//                             <div className="flex flex-row items-center">
-//                                 <span className="thumbnail cursor-default select-none ml-2.5">
-//                                     <img
-//                                         src={item.thumbnail}
-//                                         alt=""
-//                                         height={100}
-//                                         width={100}
-//                                     />
-//                                 </span>
-//                                 <div className="flex flex-col ml-2.5">
-//                                     <span className="title cursor-default select-none">
-//                                         {item.track?.name || "cant load"}
-//                                     </span>
-//                                     <span className="artists cursor-default select-none">
-//                                         {typeof item.artist === "string"
-//                                             ? item.artists
-//                                             : item.artists
-//                                                   .map(
-//                                                       (artist: any) =>
-//                                                           artist.name
-//                                                   )
-//                                                   .join(", ")}
-//                                     </span>
-//                                     <div className="flex flex-row items-center">
-//                                         <span className="releaseDate cursor-default select-none">
-//                                             {item.track?.releaseDate ||
-//                                                 "cant load"}
-//                                         </span>
-//                                         <span className="duration cursor-default select-none ml-[15px]">
-//                                             {formatDuration(
-//                                                 (item.track
-//                                                     ?.duration as number) / 1000
-//                                             ) || "cant load"}
-//                                         </span>
-//                                     </div>
-//                                 </div>
-//                             </div>
-
-//                             <div className="action_button flex flex-row-reverse mr-2.5">
-//                                 <span
-//                                     className="mr-2.5"
-//                                     onClick={() => {
-//                                         if (
-//                                             item.type.split(":")[0] ===
-//                                             "youtube"
-//                                         ) {
-//                                             const url =
-//                                                 "https://www.youtube.com/watch?v=" +
-//                                                 item.track.id;
-//                                             navigator.clipboard.writeText(url);
-//                                         } else {
-//                                             const url =
-//                                                 "https://open.spotify.com/track/" +
-//                                                 item.track.id;
-//                                             navigator.clipboard.writeText(url);
-//                                         }
-//                                     }}
-//                                 >
-//                                     <FontAwesomeIcon icon={faShare} />
-//                                 </span>
-//                             </div>
-//                         </div>
-//                     );
-//                 }
-//             )}
-//         </>
-//     );
-// };

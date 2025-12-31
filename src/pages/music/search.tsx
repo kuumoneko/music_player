@@ -1,5 +1,5 @@
 import List from "@/components/Search/list.tsx";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 import { useEffect, useState } from "react";
 
 export default function Search({ url }: { url: string }) {
@@ -11,14 +11,19 @@ export default function Search({ url }: { url: string }) {
             type: "",
             tracks: [],
             playlists: [],
-            artist: [],
+            artists: [],
         },
     });
 
     useEffect(() => {
         async function run() {
             const [source, type, query] = url.split("/").slice(2);
-            const res = await fetch(`/search/${source}/${type}/${query}`, "GET")
+            const res = await fetchdata(`music`, "GET", {
+                query,
+                source,
+                type,
+                mode: "search",
+            });
             setsearch({
                 query,
                 source,
@@ -33,7 +38,7 @@ export default function Search({ url }: { url: string }) {
             {[
                 ...(searchh?.result?.tracks ?? []),
                 ...(searchh?.result?.playlists ?? []),
-                ...(searchh?.result?.artist ?? []),
+                ...(searchh?.result?.artists ?? []),
             ].length > 0 && (
                 <List
                     list={
@@ -41,7 +46,7 @@ export default function Search({ url }: { url: string }) {
                             ? searchh.result.tracks
                             : url.split("/").slice(2)[1] === "playlist"
                             ? searchh.result.playlists
-                            : searchh.result.artist ?? []
+                            : searchh.result.artists ?? []
                     }
                     source={url.split("/").slice(2)[0]}
                     type={url.split("/").slice(2)[1]}

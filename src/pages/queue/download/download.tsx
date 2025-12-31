@@ -1,8 +1,7 @@
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
-// import { Data, fetch_data } from "../../../../common/utils/fetch.ts";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 
 enum Status {
     idle = "idle",
@@ -20,8 +19,8 @@ export default function Download() {
             try {
                 async function get_download_status() {
                     if (!status) return;
-                    const { data, track } = await fetch(
-                        "/download/status",
+                    const { data, track } = await fetchdata(
+                        "downloadstatus",
                         "GET"
                     );
                     if (data == Status.done) {
@@ -46,7 +45,7 @@ export default function Download() {
 
     useEffect(() => {
         async function run() {
-            const data = await fetch("/download");
+            const data = await fetchdata("download", "GET");
             if (data.message == "OK") {
                 setstatus(Status.downloading);
             }
@@ -59,7 +58,7 @@ export default function Download() {
     return (
         <div className="information flex flex-row items-center gap-5">
             <span
-                className="bg-green-400 hover:bg-green-300 h-[45px] w-[150px] flex flex-row items-center justify-between rounded-full"
+                className="bg-green-400 hover:bg-green-300 h-11.25 w-37.5 flex flex-row items-center justify-between rounded-full"
                 onClick={() => {
                     if (status === Status.idle) {
                         setdownload(true);
@@ -74,7 +73,7 @@ export default function Download() {
                         className="text-slate-700 size-4"
                     />
                 </span>
-                <span className="mr-[15px] flex flex-col items-center justify-center mt-0.5 text-lg text-slate-600 transition-all">
+                <span className="mr-3.75 flex flex-col items-center justify-center mt-0.5 text-lg text-slate-600 transition-all">
                     Download
                 </span>
             </span>

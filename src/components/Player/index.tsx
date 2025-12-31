@@ -11,7 +11,7 @@ export default function Player() {
     const audioRef = useRef<HTMLAudioElement>(new Audio());
 
     return (
-        <div className="player h-[5%] w-[90%] bg-slate-700 text-white mt-5 rounded-xl flex justify-between items-center px-[5px] m-0 select-none">
+        <div className="player h-[5%] w-[90%] bg-slate-700 text-white mt-5 rounded-xl flex justify-between items-center px-1.25 m-0 select-none">
             <DataUI />
 
             <div className="flex flex-col items-center">

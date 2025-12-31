@@ -34,17 +34,17 @@ export default function SearchBar() {
 
     return (
         <div
-            className="flex h-[5%] pt-[5px] mb-2.5 w-full flex-row items-center justify-center"
+            className="flex h-[5%] pt-1.25 mb-2.5 w-full flex-row items-center justify-center"
             onKeyDown={(e) => {
                 if (e.key === "Enter") {
                     search();
                 }
             }}
         >
-            <div className="w-full max-w-[700px] flex">
+            <div className="w-full max-w-175 flex">
                 <input
                     type="text"
-                    className="grow px-5 py-3 rounded-l-full bg-slate-200 text-slate-700 text-base outline-none shadow-inner min-h-[30px]"
+                    className="grow px-5 py-3 rounded-l-full bg-slate-200 text-slate-700 text-base outline-none shadow-inner min-h-7.5"
                     placeholder="Search here"
                     value={typing}
                     onChange={(e) => {
@@ -80,7 +80,7 @@ export default function SearchBar() {
                 />
                 {source !== "" && (
                     <div
-                        className="px-5 py-2 bg-slate-200 ml-1 text-slate-700 text-lg cursor-pointer flex items-center justify-center min-h-[30px] w-[100px]"
+                        className="px-5 py-2 bg-slate-200 ml-1 text-slate-700 text-lg cursor-pointer flex items-center justify-center min-h-7.5 w-25"
                         onClick={() => {
                             setsource(
                                 source === "youtube" ? "spotify" : "youtube"
@@ -92,7 +92,7 @@ export default function SearchBar() {
                 )}
                 {type !== "" && (
                     <div
-                        className="px-5 py-2 bg-slate-200 ml-1 text-slate-700 text-lg cursor-pointer flex items-center justify-center min-h-[30px] w-[100px]"
+                        className="px-5 py-2 bg-slate-200 ml-1 text-slate-700 text-lg cursor-pointer flex items-center justify-center min-h-7.5 w-25"
                         onClick={() => {
                             settype(
                                 type === "artist"
@@ -107,7 +107,7 @@ export default function SearchBar() {
                     </div>
                 )}
                 <button
-                    className="px-5 py-2 rounded-r-full bg-green-500 text-white text-lg cursor-pointer flex items-center justify-center transition duration-200 ease-in-out hover:bg-green-600 min-h-[30px]"
+                    className="px-5 py-2 rounded-r-full bg-green-500 text-white text-lg cursor-pointer flex items-center justify-center transition duration-200 ease-in-out hover:bg-green-600 min-h-7.5"
                     onClick={() => {
                         search();
                     }}

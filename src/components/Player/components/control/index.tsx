@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, RefObject } from "react";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 import {
     faShuffle,
     faStepBackward,
@@ -52,7 +52,10 @@ export default function ControlUI({
         try {
             setisloading(true);
 
-            const data = await fetch(`/play/${source}/${id}`, "GET");
+            const data = await fetchdata(`play`, "GET", {
+                source,
+                id,
+            });
             let url = data;
             if (source === "local") {
                 const audio_format = id.split(".")[id.split(".").length - 1];
@@ -107,7 +110,6 @@ export default function ControlUI({
                     },
                 ],
             });
-            document.title = `${temp.name} - ${temp.artists}`;
 
             localstorage("set", "play_url", {
                 id,
@@ -393,7 +395,7 @@ export default function ControlUI({
                 </button>
             </div>
             <div className="player flex flex-row items-center ">
-                <span className="mr-[5px] cursor-default select-none text-xs">
+                <span className="mr-1.25 cursor-default select-none text-xs">
                     {duration !== 0
                         ? `${
                               audioRef.current?.currentTime

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import Top from "@/components/Show/components/top.tsx";
 import List from "@/components/Show/components/list.tsx";
-import fetch from "@/utils/fetch.ts";
+import fetchdata from "@/utils/fetch.ts";
 import { Track } from "@/types/index.ts";
 
 export default function Music({
@@ -16,7 +16,7 @@ export default function Music({
     const tracks = useRef<Track[]>([]);
     const data = useRef<any>({});
     const getdata = async () => {
-        const result = await fetch(`/music/${source}/${type}/${id}`, "GET");
+        const result = await fetchdata(`music`, "GET", { source, type, id });
         const { tracks: new_tracks, ...args } = result;
         tracks.current = new_tracks;
         data.current = args;
