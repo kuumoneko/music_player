@@ -1,24 +1,20 @@
-# Music player web app
+# Music player app
 
-> A Music web app built on React.js and Nodejs
+> A Music Electron app built on React.js and Nodejs
 
 ## UPDATE NOTE
 
-- Server
-
-> Fix: Spotify token expires after 1 hour
-
-- Client
-
-> Feature: Get data from server with dynamic time
+- Change from node app to electron app
 
 ## ABOUT
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
 >
-> Version: 3.8.0
+> Version: 4.0.0
 >
 > Please give error on issue tab, i will check per week
+>
+> Now just support Windows platform
 
 ### Credential
 
@@ -53,22 +49,15 @@
 ### Setup
 
 - Add public/favicon.ico
-- run `npm install`
+- Run `npm install`
 
 ### Test app
 
-- You can set your app mode in .env
-- If mode is react, you can run with `npm run dev`
-
-```env
-MODE=test
-```
+- Run `npm run dev`
 
 ### Build app
 
-```shell
-node build_example.ts
-```
+- Run `npm run build`
 
 ## Learn More
 
@@ -77,6 +66,8 @@ node build_example.ts
 - About Taiwindcss [Tailwindcss](https://tailwindcss.com/).
 
 - About Vite [Vite](https://vite.dev/).
+
+- About Electron [Electron](https://www.electronjs.org/).
 
 ## Contributor
 
