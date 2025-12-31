@@ -1,0 +1,16 @@
+{
+    "spotify_keys": [
+        {
+            "ApiKey": "Your Spotify Api Key",
+            "ClientId": "Your Spotify Client Id",
+            "isReached": false,
+            "RetryAfter": 0
+        }
+    ],
+    "youtube_keys": [
+        {
+            "ApiKey": "Your Youtube Api Key",
+            "isReached": false
+        }
+    ]
+}
