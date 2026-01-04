@@ -77,19 +77,31 @@ export default function List({
                 const direction = e.deltaY > 0 ? "down" : "up";
                 const temp = sight;
                 if (direction === "down") {
-                    if (temp.tail + 1 < list.length) {
-                        set_sight({
-                            head: temp.head + 1,
-                            tail: temp.tail + 1,
-                        });
+                    let head = temp.head + 3;
+                    let tail = temp.tail + 3;
+                    if (tail >= list.length) {
+                        tail = list.length - 1;
+                        head = tail - max_items + 1;
+                        if (head < 0) {
+                            head = 0;
+                        }
                     }
+
+                    set_sight({
+                        head,
+                        tail,
+                    });
                 } else {
-                    if (temp.head > 0) {
-                        set_sight({
-                            head: temp.head - 1,
-                            tail: temp.tail - 1,
-                        });
+                    let head = temp.head - 3;
+                    let tail = temp.tail - 3;
+                    if (head < 0) {
+                        head = 0;
+                        tail = max_items - 1;
+                        if (tail > list.length) {
+                            tail = list.length - 1;
+                        }
                     }
+                    set_sight({ head, tail });
                 }
             }}
         >
