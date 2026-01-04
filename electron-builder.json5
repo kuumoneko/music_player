@@ -5,6 +5,7 @@
     asar: false,
     productName: "MusicApp",
     compression: "store",
+    npmRebuild: false,
     directories: {
         output: "release/${version}",
     },
@@ -33,4 +34,11 @@
         target: ["AppImage"],
         artifactName: "${productName}-Linux-${version}.${ext}",
     },
+    publish: [
+        {
+            provider: "github",
+            owner: "kuumoneko",
+            repo: "music_player",
+        },
+    ],
 }
