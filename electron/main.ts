@@ -1,11 +1,17 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron'
-import path from 'node:path'
+import { autoUpdater } from 'electron-updater';
 import { config } from "dotenv";
+
+import path from 'node:path'
 import { resolve } from "node:path";
-import { getDataFromDatabase } from "./lib/database.ts";
 import { exit } from "node:process";
-import Player from "./music/index.ts";
 import { existsSync } from "node:fs";
+
+import DiscordRPC, { Client, SetActivity } from "@xhayper/discord-rpc"
+import { ActivityType } from "discord-api-types/v10";
+
+import Player from "./music/index.ts";
+import { getDataFromDatabase } from "./lib/database.ts";
 import check_env, { check_ffmpeg } from "./env.ts";
 import MusicController from './controllers/music.ts';
 import HomeController from './controllers/home.ts';
@@ -21,6 +27,7 @@ process.env.APP_ROOT = path.join(__dirname, '..');
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
+export const CLIENT_ID = process.env.CLIENT_ID;
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST;
 if (!existsSync(resolve(process.env.APP_ROOT, "data", "system.json"))) {
@@ -48,7 +55,28 @@ player = new Player({
 });
 player.local.getfolder(profile.folder)
 
-let win: BrowserWindow | null
+let win: BrowserWindow | null;
+let rpc: DiscordRPC.Client;
+let isMaximized = true;
+
+// DiscordRPC.register(CLIENT_ID);
+if (CLIENT_ID) {
+    rpc = new Client({ clientId: CLIENT_ID })
+    rpc.login().catch(console.error);
+}
+
+rpc.on("ready", async () => {
+    console.log("Discord RPC is ready");
+    console.log(rpc.user.username)
+    await rpc.user.setActivity({
+        details: "Idle...",
+        state: "Waiting for music...",
+        startTimestamp: new Date(),
+        largeImageText: "Kuumo app",
+        instance: false
+    })
+})
+
 
 async function createWindow() {
     await check_ffmpeg(process.env.APP_ROOT);
@@ -59,6 +87,7 @@ async function createWindow() {
         }
     })
     win.maximize();
+    // win.removeMenu();
 
     win.webContents.on('did-finish-load', () => {
         win?.webContents.send('main-process-message', (new Date).toLocaleString())
@@ -69,7 +98,24 @@ async function createWindow() {
     } else {
         win.loadFile(path.join(RENDERER_DIST, 'index.html'))
     }
+
+    if (app.isPackaged) {
+        autoUpdater.checkForUpdatesAndNotify();
+    }
 }
+
+autoUpdater.on("update-available", () => {
+    console.log("Update available");
+})
+
+autoUpdater.on("update-downloaded", () => {
+    console.log("Update downloaded");
+    autoUpdater.quitAndInstall();
+})
+
+autoUpdater.on("error", () => {
+    console.error("Something went wrong while updating")
+})
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
@@ -85,10 +131,31 @@ app.on('activate', () => {
     }
 })
 
+ipcMain.handle("close", () => {
+    win.hide();
+})
+
+ipcMain.handle("minimize", () => {
+    win.minimize();
+})
+
+ipcMain.handle("maximize", () => {
+    if (isMaximized) {
+        win.unmaximize();
+        isMaximized = false;
+    }
+    else {
+        win.maximize();
+        isMaximized = true;
+    }
+})
+
+
 ipcMain.handle("api", async (_event: any, arg: any) => {
     try {
         const { mode, data } = arg;
         const { url, data: received_data } = data;
+        console.log(data)
         if (mode === "GET") {
             let result: any = null;
             if (url === "music") {
@@ -114,6 +181,9 @@ ipcMain.handle("api", async (_event: any, arg: any) => {
                 profile = getDataFromDatabase(process.env.APP_ROOT, "data", "profile");
                 result = "ok"
             }
+            else if (url === "ismax") {
+                result = isMaximized;
+            }
             else {
                 throw new Error("Invalid url");
             }
@@ -132,6 +202,50 @@ ipcMain.handle("api", async (_event: any, arg: any) => {
     }
     catch (e: any) {
         console.error(e);
+        throw e;
+    }
+})
+
+ipcMain.handle("discord", async (_event: any, arg: any) => {
+    try {
+        const { url, data }: { url: string, data: any } = arg;
+
+        if (url === "setmusic") {
+            if (rpc) {
+                const activity: SetActivity = {
+                    type: ActivityType.Listening,
+                    details: data.name,
+                    state: data.artist,
+                    smallImageKey: data.thumbnail,
+                    smallImageText: data.name,
+                    instance: false,
+                }
+                if (data.isPlaying) {
+                    activity.startTimestamp = data.start;
+                    activity.endTimestamp = data.end;
+                }
+                await rpc.user.setActivity(activity)
+            }
+            return { ok: true }
+        }
+        else if (url === "clearmusic") {
+            if (rpc) {
+                await rpc.user.setActivity({
+                    details: "Idle...",
+                    state: "Waiting for music...",
+                    startTimestamp: new Date(),
+                    largeImageText: "Kuumo app",
+                    instance: false
+                })
+            }
+            return { ok: true }
+        }
+        else {
+            throw new Error("Invalid url")
+        }
+    }
+    catch (e) {
+        console.log(e);
         throw e;
     }
 })
