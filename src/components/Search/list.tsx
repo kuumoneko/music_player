@@ -1,4 +1,8 @@
-import { faListDots, faShare } from "@fortawesome/free-solid-svg-icons";
+import {
+    faDownload,
+    faListDots,
+    faShare,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDuration } from "@/utils/format.ts";
 import Loading from "@/components/Loading/index.tsx";
@@ -7,6 +11,7 @@ import { useEffect, useState } from "react";
 import { goto } from "@/utils/url.ts";
 import { Track } from "@/types/index.ts";
 import Queue from "@/components/Show/common/queue.ts";
+import download from "../Show/common/download";
 
 export default function List({
     list,
@@ -165,7 +170,7 @@ export default function List({
                                                     icon={faListDots}
                                                 />
                                             </span>
-                                            {/* <span
+                                            <span
                                                 className={`mr-2.5 ${
                                                     mode === "local"
                                                         ? "opacity-50 pointer-events-none"
@@ -178,7 +183,7 @@ export default function List({
                                                 <FontAwesomeIcon
                                                     icon={faDownload}
                                                 />
-                                            </span> */}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
