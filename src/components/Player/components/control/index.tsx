@@ -18,7 +18,7 @@ import localstorage from "@/utils/localStorage.ts";
 
 const handleCloseTab = () => {
     try {
-        window.location.href = "https://www.google.com";
+        window.electronAPI.close();
     } catch {
         return "no";
     }
@@ -134,6 +134,7 @@ export default function ControlUI({
                 id: "",
                 source: "",
             });
+            window.discord.clearmusic();
         }
     };
 
@@ -164,8 +165,22 @@ export default function ControlUI({
             audioRef.current.play().catch(() => {
                 setplayed(false);
             });
+            const now = new Date().getTime();
+            const start = now - (audioRef.current?.currentTime ?? Time) * 1000;
+            const end = start + (audioRef.current?.duration as number) * 1000;
+
+            window.discord.setmusic({
+                ...localstorage("get", "playing", {}),
+                start,
+                end,
+                isPlaying: true,
+            });
         } else {
             audioRef.current.pause();
+            window.discord.setmusic({
+                ...localstorage("get", "playing", {}),
+                isPlaying: false,
+            });
         }
     }, [played]);
 
