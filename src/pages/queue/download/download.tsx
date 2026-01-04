@@ -45,8 +45,8 @@ export default function Download() {
 
     useEffect(() => {
         async function run() {
-            const data = await fetchdata("download", "GET");
-            if (data.message == "OK") {
+            const res = await fetchdata("download", "GET");
+            if (res == "OK") {
                 setstatus(Status.downloading);
             }
         }

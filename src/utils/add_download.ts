@@ -1,7 +1,7 @@
 import fetchdata from "./fetch.ts";
 
 export default async function add_to_download(source: string, mode: string, id: string, name: string) {
-    const res = await fetchdata("/profile/download", "GET");
+    const res = await fetchdata("profile", "GET", { key: "download" });
     if (
         res.findIndex((itemm: any) => {
             return (
@@ -19,7 +19,8 @@ export default async function add_to_download(source: string, mode: string, id: 
         mode: mode,
         id: id,
     });
-    await fetchdata("/profile/download", "POST", {
-        download: res
+    await fetchdata("profile", "POST", {
+        download: res,
+        key: "download"
     })
 }
