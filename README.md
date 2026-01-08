@@ -2,15 +2,11 @@
 
 > A Music Electron app built on React.js and Nodejs
 
-## UPDATE NOTE
-
-- Change from node app to electron app
-
 ## ABOUT
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
 >
-> Version: 4.0.0
+> Version: 4.2.0
 >
 > Please give error on issue tab, i will check per week
 >
