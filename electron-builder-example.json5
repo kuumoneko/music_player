@@ -1,9 +1,9 @@
 // @see - https://www.electron.build/configuration/configuration
 {
     $schema: "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-    appId: "com.kuumo.app",
+    appId: "com.user_name.app",
     asar: false,
-    productName: "MusicApp",
+    productName: "App name",
     compression: "store",
     npmRebuild: false,
     directories: {
@@ -37,8 +37,8 @@
     publish: [
         {
             provider: "github",
-            owner: "kuumoneko",
-            repo: "music_player",
+            owner: "user_name",
+            repo: "repo_name",
         },
     ],
 }
