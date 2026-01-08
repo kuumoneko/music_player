@@ -1,6 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path"
-import seven from "7zip-min"
+import { getDataFromDatabase } from "./lib/database";
 
 const all_paths = [
     { path: '/data/local/local.json', default: '{}' },
@@ -27,40 +27,14 @@ export default function check_env(executableDir: string) {
     });
 }
 
-export async function check_ffmpeg(executableDir: string) {
-    if (!existsSync(resolve(executableDir, "bin", "ffmpeg.exe")) || !existsSync(resolve(executableDir, "bin", "ffprobe.exe"))) {
-        let fileName: string = "";
-        if (!existsSync(resolve(executableDir, "ffmpeg-git-essentials.7z"))) {
-            const download_url = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z";
-            console.log("Downloading FFMPEG...");
-            const response = await fetch(download_url);
-            const res = await fetch(response.url);
-            fileName = response.url.split("https://www.gyan.dev/ffmpeg/builds/packages/")[1].split(".7z")[0];
-
-            const arrayBuffer = await res.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            writeFileSync(resolve(executableDir, "ffmpeg-git-essentials.7z"), buffer);
-            console.log("downloaded FFMPEG.")
-        }
-        seven.config({
-            binaryPath: resolve(executableDir, "node_modules", "7zip-bin", "win", "x64", "7za.exe")
-        })
-        seven.unpack(resolve(executableDir, "ffmpeg-git-essentials.7z"), resolve(executableDir, "ffmpeg"), (err) => {
-            if (err) {
-                console.error("Error extracting files:", err);
-            } else {
-                console.log("Files extracted successfully.");
-                mkdirSync(resolve(executableDir, "bin"), { recursive: true });
-                const binDir = resolve(executableDir, "ffmpeg", fileName, "bin");
-                writeFileSync(resolve(executableDir, "bin", "ffmpeg.exe"), readFileSync(resolve(binDir, "ffmpeg.exe")));
-                writeFileSync(resolve(executableDir, "bin", "ffprobe.exe"), readFileSync(resolve(binDir, "ffprobe.exe")));
-
-                rmSync(resolve(executableDir, "ffmpeg"), { recursive: true });
-                rmSync(resolve(executableDir, "ffmpeg-git-essentials.7z"));
-            }
-        })
+export function check_system(executableDir: string) {
+    if (!existsSync(resolve(executableDir, "data", "system.json"))) {
+        return false;
     }
-    else {
-        console.log("ffmpeg and ffprobe found.")
-    }
+
+    const system = getDataFromDatabase(executableDir, "data", "system");
+    if (!system) return false;
+    if (!system.youtube_keys && !system.spotify_keys) return false;
+    if (system.youtube_keys.length === 0 && system.spotify_keys.length === 0) return false;
+    return true;
 }
