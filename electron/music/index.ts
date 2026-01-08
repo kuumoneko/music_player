@@ -1,12 +1,19 @@
 import Innertube, { ClientType } from "youtubei.js";
 import ffmpeg from "fluent-ffmpeg";
+import { app } from "electron";
 import Spotify from "./spotify.ts";
 import Youtube from "./youtube.ts";
 import { Download_item, Status, Track } from "../types/index.ts";
 import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, extname, resolve as pathResolve, resolve } from "node:path";
+import { basename, extname, resolve as pathResolve } from "node:path";
 import { Local } from "./local.ts";
 import areStringsSimilar from "../lib/comapre_string.ts";
+
+
+let ffmpegPath = require('@ffmpeg-installer/ffmpeg').path
+if (app.isPackaged) {
+    ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked')
+}
 
 export enum Audio_format {
     aac = "aac",
@@ -35,8 +42,7 @@ export default class Player {
         youtube_api_keys: { ApiKey: string, isReached: boolean }[],
         spotify_api_keys: { ApiKey: string, ClientId: string, isReached: boolean, RetryAfter: number }[],
         path: string,
-        download_folder: string,
-        bin: string
+        download_folder: string
     }) {
         this.spotify = new Spotify({
             spotify_api_keys: options.spotify_api_keys,
@@ -46,10 +52,10 @@ export default class Player {
             api_keys: options.youtube_api_keys,
             path: options.path + "\\data\\youtube"
         });
-        this.local = new Local(options.path + "\\data\\local", options.bin);
+        this.local = new Local(options.path + "\\data\\local");
         this.download_folder = options.download_folder ?? "";
         this.folder = options.path;
-        ffmpeg.setFfmpegPath(resolve(options.bin, "ffmpeg.exe"))
+        ffmpeg.setFfmpegPath(ffmpegPath)
     }
 
     format_title(title: string): string {

@@ -1,17 +1,25 @@
 import ffmpeg from "fluent-ffmpeg"
+import { app } from "electron"
 import { PassThrough } from "node:stream"
 import { readdirSync } from "node:fs";
-import { extname, join, basename, resolve } from "node:path";
+import { extname, join, basename } from "node:path";
 import { getDataFromDatabase, writeDataToDatabase } from "../lib/database.ts";
+
+let ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+let ffprobePath = require('@ffprobe-installer/ffprobe').path
+if (app.isPackaged) {
+    ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked');
+    ffprobePath = ffprobePath.replace('app.asar', 'app.asar.unpacked');
+}
 
 export class Local {
     public data: any[] = [];
     public folder: string = "";
 
-    constructor(path: string, bin: string) {
+    constructor(path: string) {
         this.folder = path;
-        ffmpeg.setFfmpegPath(resolve(bin, "ffmpeg.exe"));
-        ffmpeg.setFfprobePath(resolve(bin, "ffprobe.exe"));
+        ffmpeg.setFfmpegPath(ffmpegPath);
+        ffmpeg.setFfprobePath(ffprobePath);
     }
 
     get_Thumbnail(path: string): Promise<string> {
