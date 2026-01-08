@@ -1,3 +1,4 @@
+import { goto } from "./url";
 
 export default async function fetch_data(url: string, mode: "GET" | "POST" = "GET", data?: any): Promise<any> {
     try {
@@ -8,8 +9,14 @@ export default async function fetch_data(url: string, mode: "GET" | "POST" = "GE
             });
             if (!result.ok) throw new Error(result.data);
             return result.data;
-        } catch (error) {
-            console.error('Error communicating with Electron:', error);
+        } catch (error: any) {
+            console.log(error)
+            if (error.message.includes("System file")) {
+                goto("/settings");
+            }
+            else {
+                console.error('Error communicating with Electron:', error);
+            }
         }
 
     } catch (error) {
