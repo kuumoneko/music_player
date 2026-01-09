@@ -62,19 +62,18 @@ let isMaximized = true;
 if (CLIENT_ID) {
     rpc = new Client({ clientId: CLIENT_ID })
     rpc.login().catch(console.error);
-}
 
-rpc.on("ready", async () => {
-    console.log("Discord RPC is ready");
-    await rpc.user.setActivity({
-        details: "Idle...",
-        state: "Waiting for music...",
-        startTimestamp: new Date(),
-        largeImageText: "Kuumo app",
-        instance: false
+    rpc.on("ready", async () => {
+        console.log("Discord RPC is ready");
+        await rpc.user.setActivity({
+            details: "Idle...",
+            state: "Waiting for music...",
+            startTimestamp: new Date(),
+            largeImageText: "Kuumo app",
+            instance: false
+        })
     })
-})
-
+}
 
 async function createWindow() {
     win = new BrowserWindow({
