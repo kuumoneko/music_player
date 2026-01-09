@@ -1,7 +1,7 @@
 {
     "name": "music-player",
     "private": true,
-    "version": "4.2.0",
+    "version": "4.2.2",
     "description": "music app by kuumoneko",
     "author": {
         "name": "kuumoneko",
@@ -14,8 +14,6 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "@ffmpeg-installer/ffmpeg": "^1.1.0",
-        "@ffprobe-installer/ffprobe": "^2.1.2",
         "@tailwindcss/vite": "^4.1.17",
         "@xhayper/discord-rpc": "^1.3.0",
         "bufferutil": "^4.1.0",
