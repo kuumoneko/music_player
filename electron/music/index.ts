@@ -1,19 +1,12 @@
 import Innertube, { ClientType } from "youtubei.js";
 import ffmpeg from "fluent-ffmpeg";
-import { app } from "electron";
 import Spotify from "./spotify.ts";
 import Youtube from "./youtube.ts";
 import { Download_item, Status, Track } from "../types/index.ts";
 import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, extname, resolve as pathResolve } from "node:path";
+import { basename, extname, resolve as pathResolve, resolve } from "node:path";
 import { Local } from "./local.ts";
 import areStringsSimilar from "../lib/comapre_string.ts";
-
-
-let ffmpegPath = require('@ffmpeg-installer/ffmpeg').path
-if (app.isPackaged) {
-    ffmpegPath = ffmpegPath.replace('app.asar', 'app.asar.unpacked')
-}
 
 export enum Audio_format {
     aac = "aac",
@@ -55,7 +48,7 @@ export default class Player {
         this.local = new Local(options.path + "\\data\\local");
         this.download_folder = options.download_folder ?? "";
         this.folder = options.path;
-        ffmpeg.setFfmpegPath(ffmpegPath)
+        ffmpeg.setFfmpegPath(resolve(options.path, "bin", "ffmpeg.exe"))
     }
 
     format_title(title: string): string {

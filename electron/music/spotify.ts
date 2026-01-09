@@ -1,5 +1,4 @@
 import { Buffer } from "node:buffer"
-
 import { Album, Artist, Playlist, Search, spotify_api_keys, Track } from "../types/index.ts";
 import { getDataFromDatabase, writeDataToDatabase } from "../lib/database.ts";
 
