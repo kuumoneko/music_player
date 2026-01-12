@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Tray } from 'electron'
 import { autoUpdater } from 'electron-updater';
 import { config } from "dotenv";
 
@@ -56,8 +56,10 @@ if (system?.youtube_keys && system?.spotify_keys && system?.youtube_keys?.length
 
 
 let win: BrowserWindow | null;
+let tray: Tray | null;
 let rpc: DiscordRPC.Client;
 let isMaximized = true;
+let isClosed = false;
 
 if (CLIENT_ID) {
     rpc = new Client({ clientId: CLIENT_ID })
@@ -80,7 +82,11 @@ async function createWindow() {
         icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
-        }
+            backgroundThrottling: false,
+            // nodeIntegration: true,
+            // contextIsolation: false
+        },
+        frame: false,
     })
     win.maximize();
     win.removeMenu();
@@ -98,6 +104,41 @@ async function createWindow() {
     if (app.isPackaged) {
         autoUpdater.checkForUpdatesAndNotify();
     }
+}
+
+function createTray() {
+    const iconPath = path.join(process.env.VITE_PUBLIC, "trayicon.ico");
+    const icon = nativeImage.createFromPath(iconPath);
+    tray = new Tray(icon);
+    tray.setToolTip("Kuumo");
+    const contextMenu = Menu.buildFromTemplate([
+        {
+            label: 'Show App',
+            click: () => {
+                win?.show();
+                isClosed = false;
+            }
+        },
+        {
+            label: 'Quit',
+            click: () => {
+                win.close();
+                exit(0);
+            }
+        }
+    ]);
+
+    tray.setContextMenu(contextMenu);
+
+    tray.on('click', () => {
+        if (win?.isVisible()) {
+            win.hide();
+            isClosed = true;
+        } else {
+            win?.show();
+            isClosed = false;
+        }
+    });
 }
 
 autoUpdater.on("update-available", () => {
@@ -123,27 +164,23 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow()
+        createWindow();
     }
 })
 
 ipcMain.handle("close", () => {
-    win.hide();
+    if (!isClosed) {
+        win.hide();
+        isClosed = true;
+    }
+    else {
+        win.close();
+        exit(0);
+    }
 })
 
 ipcMain.handle("minimize", () => {
     win.minimize();
-})
-
-ipcMain.handle("maximize", () => {
-    if (isMaximized) {
-        win.unmaximize();
-        isMaximized = false;
-    }
-    else {
-        win.maximize();
-        isMaximized = true;
-    }
 })
 
 ipcMain.handle("api", async (_event: any, arg: any) => {
@@ -351,4 +388,7 @@ ipcMain.handle("discord", async (_event: any, arg: any) => {
     }
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+    createWindow();
+    createTray();
+})
