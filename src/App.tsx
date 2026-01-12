@@ -5,6 +5,7 @@ import Nav from "@/components/Navigator/index.tsx";
 import SearchBar from "@/components/Search/index.tsx";
 import Settings from "./pages/settings/index.tsx";
 import localstorage from "./utils/localStorage.ts";
+import Frame from "./components/Frame/index.tsx";
 
 function App() {
     const [url, seturl] = useState(localstorage("get", "url", "/"));
@@ -20,6 +21,7 @@ function App() {
 
     return (
         <div className="w-screen h-screen flex flex-col items-center justify-center bg-slate-900 cursor-default select-none">
+            <Frame />
             <Nav />
             <div className="w-full h-[85%]">
                 <div className="h-[5%] bg-slate-900"></div>
