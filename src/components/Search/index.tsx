@@ -1,6 +1,7 @@
 import { goto } from "@/utils/url.ts";
 import convert_link from "@/utils/link.ts";
 import { useEffect, useState } from "react";
+import localstorage from "@/utils/localStorage";
 
 export default function SearchBar() {
     const [isAuth, setAuth] = useState(false);
@@ -13,6 +14,15 @@ export default function SearchBar() {
         if (window.location.href.includes("auth")) {
             setAuth(true);
         }
+        const run = setInterval(() => {
+            const url = localstorage("get", "url", "/");
+            if (!url.includes("search/")) {
+                settyping("");
+            }
+        }, 100);
+        return () => {
+            clearInterval(run);
+        };
     }, []);
 
     const search = () => {
@@ -22,10 +32,7 @@ export default function SearchBar() {
         if (source === "") {
             return goto(`/${typing.split(":").join("/")}`);
         }
-        return goto(
-            `/search/${source.toLocaleLowerCase()}/${type}/${typing}`
-            
-        );
+        return goto(`/search/${source.toLocaleLowerCase()}/${type}/${typing}`);
     };
 
     if (isAuth) {
