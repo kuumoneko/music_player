@@ -33,6 +33,26 @@ export const user_data = app.getPath("userData");
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST;
 
+let win: BrowserWindow | null;
+let tray: Tray | null;
+let rpc: DiscordRPC.Client;
+let isMaximized = true;
+let isClosed = false;
+
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+    app.quit();
+} else {
+    app.on('second-instance', () => {
+        if (win) {
+            if (win.isMinimized()) win.restore();
+            if (!win.isVisible()) win.show();
+            win.focus();
+        }
+    });
+}
+
 check_env(user_data);
 
 if (!existsSync(resolve(process.env.APP_ROOT, "data", "system.json"))) {
@@ -55,11 +75,7 @@ if (system?.youtube_keys && system?.spotify_keys && system?.youtube_keys?.length
 }
 
 
-let win: BrowserWindow | null;
-let tray: Tray | null;
-let rpc: DiscordRPC.Client;
-let isMaximized = true;
-let isClosed = false;
+
 
 if (CLIENT_ID) {
     rpc = new Client({ clientId: CLIENT_ID })
@@ -83,8 +99,6 @@ async function createWindow() {
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             backgroundThrottling: false,
-            // nodeIntegration: true,
-            // contextIsolation: false
         },
         frame: false,
     })
