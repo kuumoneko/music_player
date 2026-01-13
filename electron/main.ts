@@ -130,6 +130,7 @@ function createTray() {
             label: 'Show App',
             click: () => {
                 win?.show();
+                win?.maximize();
                 isClosed = false;
             }
         },
@@ -150,6 +151,7 @@ function createTray() {
             isClosed = true;
         } else {
             win?.show();
+            win?.maximize();
             isClosed = false;
         }
     });
