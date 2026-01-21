@@ -15,8 +15,8 @@ export default function SearchBar() {
             setAuth(true);
         }
         const run = setInterval(() => {
-            const url = localstorage("get", "url", "/");
-            if (!url.includes("search/")) {
+            const url = localstorage("get", "search", "");
+            if (url === "") {
                 settyping("");
             }
         }, 100);
@@ -55,6 +55,7 @@ export default function SearchBar() {
                     placeholder="Search here"
                     value={typing}
                     onChange={(e) => {
+                        e.preventDefault();
                         settyping(e.target.value);
                         if (e.target.value === "") {
                             setsource("");
@@ -81,6 +82,11 @@ export default function SearchBar() {
                         } else {
                             setsource("");
                             settype("");
+                            localstorage(
+                                "set",
+                                "search",
+                                `${mode}:${sourcee}:${id}`,
+                            );
                             settyping(`${mode}:${sourcee}:${id}`);
                         }
                     }}
@@ -90,7 +96,7 @@ export default function SearchBar() {
                         className="px-5 py-2 bg-slate-200 ml-1 text-slate-700 text-lg cursor-pointer flex items-center justify-center min-h-7.5 w-25"
                         onClick={() => {
                             setsource(
-                                source === "youtube" ? "spotify" : "youtube"
+                                source === "youtube" ? "spotify" : "youtube",
                             );
                         }}
                     >
@@ -105,8 +111,8 @@ export default function SearchBar() {
                                 type === "artist"
                                     ? "playlist"
                                     : type === "playlist"
-                                    ? "video"
-                                    : "artist"
+                                      ? "video"
+                                      : "artist",
                             );
                         }}
                     >
