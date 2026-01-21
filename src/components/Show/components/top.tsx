@@ -45,7 +45,7 @@ export default function Top({
                     (item: any) =>
                         item.id === id &&
                         item.source === source &&
-                        item.type === mode
+                        item.mode === mode,
                 ) != -1
             ) {
                 setiSPin(true);
@@ -106,7 +106,7 @@ export default function Top({
                                     {duration > 0 && (
                                         <>
                                             {formatDuration(
-                                                (duration / 1000) as number
+                                                (duration / 1000) as number,
                                             )}
                                         </>
                                     )}
@@ -121,7 +121,7 @@ export default function Top({
                                                 artist: artists
                                                     ?.map(
                                                         (artist: any) =>
-                                                            artist.name
+                                                            artist.name,
                                                     )
                                                     .join(", "),
                                                 thumbnail: thumbnail,
@@ -133,7 +133,7 @@ export default function Top({
                                             const check = localstorage(
                                                 "get",
                                                 "playing",
-                                                {}
+                                                {},
                                             );
                                             if (check.playlist === name) {
                                                 return;
@@ -146,7 +146,7 @@ export default function Top({
                                             const random =
                                                 Math.floor(
                                                     Math.random() *
-                                                        (max - min + 1)
+                                                        (max - min + 1),
                                                 ) + min;
                                             const track: Track = playlist
                                                 ? playlist[random]
@@ -156,7 +156,7 @@ export default function Top({
                                                 artist: track.artist
                                                     ?.map(
                                                         (artist: any) =>
-                                                            artist.name
+                                                            artist.name,
                                                     )
                                                     .join(", "),
                                                 thumbnail: track.thumbnail,
@@ -169,14 +169,14 @@ export default function Top({
                                             const other_tracks: any[] =
                                                 playlist?.filter(
                                                     (item: any) =>
-                                                        item.id !== track.id
+                                                        item.id !== track.id,
                                                 ) ?? [];
 
                                             if (other_tracks.length > 0) {
                                                 const shuffle = localstorage(
                                                     "get",
                                                     "shuffle",
-                                                    "disable"
+                                                    "disable",
                                                 );
                                                 if (shuffle === "enable") {
                                                     for (
@@ -188,7 +188,7 @@ export default function Top({
                                                     ) {
                                                         const j = Math.floor(
                                                             Math.random() *
-                                                                (i + 1)
+                                                                (i + 1),
                                                         );
                                                         [
                                                             other_tracks[i],
@@ -206,9 +206,9 @@ export default function Top({
                                                         from: "local:local:local",
                                                         tracks: other_tracks.slice(
                                                             0,
-                                                            20
+                                                            20,
                                                         ),
-                                                    }
+                                                    },
                                                 );
                                             }
                                         }
@@ -225,14 +225,14 @@ export default function Top({
                                                     "https://www.youtube.com/watch?v=" +
                                                     id;
                                                 navigator.clipboard.writeText(
-                                                    url
+                                                    url,
                                                 );
                                             } else {
                                                 const url =
                                                     "https://open.spotify.com/track/" +
                                                     id;
                                                 navigator.clipboard.writeText(
-                                                    url
+                                                    url,
                                                 );
                                             }
                                         } else if (mode === "playlist") {
@@ -241,14 +241,14 @@ export default function Top({
                                                     "https://www.youtube.com/playlist?list=" +
                                                     id;
                                                 navigator.clipboard.writeText(
-                                                    url
+                                                    url,
                                                 );
                                             } else {
                                                 const url =
                                                     "https://open.spotify.com/playlist/" +
                                                     id;
                                                 navigator.clipboard.writeText(
-                                                    url
+                                                    url,
                                                 );
                                             }
                                         } else if (mode === "album") {
@@ -257,7 +257,7 @@ export default function Top({
                                                     "https://open.spotify.com/album/" +
                                                     id;
                                                 navigator.clipboard.writeText(
-                                                    url
+                                                    url,
                                                 );
                                             }
                                         }
@@ -288,13 +288,13 @@ export default function Top({
                                             let pin = await fetchdata(
                                                 "profile",
                                                 "GET",
-                                                { key: "pin" }
+                                                { key: "pin" },
                                             );
                                             if (isPin) {
                                                 pin = pin.filter(
                                                     (item: any) => {
                                                         return item.id !== id;
-                                                    }
+                                                    },
                                                 );
                                             } else {
                                                 pin.push({
@@ -307,7 +307,7 @@ export default function Top({
                                             }
                                             setiSPin(!isPin);
                                             const temp = Array.from(
-                                                new Set(pin)
+                                                new Set(pin),
                                             );
                                             await fetchdata("profile", "POST", {
                                                 key: "pin",
