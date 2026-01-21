@@ -6,7 +6,7 @@
 
 > This is a web that you can find, play and download songs from Youtube and Spotify
 >
-> Version: 4.2.5
+> Version: 4.3.0
 >
 > Please give error on issue tab, i will check per week
 >
