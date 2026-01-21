@@ -25,7 +25,7 @@ export default function Music({
     useEffect(() => {
         let run = setInterval(() => {
             getdata();
-            if (tracks.current.length > 0) {
+            if (tracks?.current?.length > 0) {
                 clearInterval(run);
                 run = setInterval(() => {
                     getdata();
