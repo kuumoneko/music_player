@@ -50,7 +50,11 @@ export default async function MusicController(player: Player, data: any) {
         }
         else if (source === "youtube") {
             if (type === "tracks") {
-                result = await player.youtube.fetch_track(typeof id === "string" ? [id] : id);
+                const temp = await player.youtube.fetch_track(typeof id === "string" ? [id] : id)
+                result = {
+                    tracks: temp,
+                    ...temp[0]
+                }
             }
             else if (type === "playlists") {
                 result = await player.youtube.fetch_playlist(id);

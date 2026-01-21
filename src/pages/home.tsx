@@ -8,12 +8,15 @@ import fetchdata from "@/utils/fetch.ts";
 export default function HomePage() {
     const [artists, setartists] = useState([]);
     const [playlists, setplaylists] = useState([]);
+    const [tracks, settracks] = useState([]);
     const [new_tracks, setnew_tracks] = useState([]);
+
     useEffect(() => {
         async function run() {
             const temp = await fetchdata("home", "GET");
             setartists(temp.artist);
             setplaylists(temp.playlist);
+            settracks(temp.tracks);
             const tempp = temp.new_tracks.sort((a: Track, b: Track) => {
                 const [yearA, monthA, dayA] = a.releasedDate
                     .split("-")
@@ -40,11 +43,10 @@ export default function HomePage() {
                         {artists.map((artist: Artist) => {
                             return (
                                 <div
-                                    key={artist.id}
                                     className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
                                     onClick={() => {
                                         goto(
-                                            `/artists/${artist.source}/${artist.id}`
+                                            `/artists/${artist.source}/${artist.id}`,
                                         );
                                     }}
                                 >
@@ -70,11 +72,10 @@ export default function HomePage() {
                         {playlists.map((playlist: Playlist) => {
                             return (
                                 <div
-                                    key={playlist.id}
                                     className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
                                     onClick={() => {
                                         goto(
-                                            `/playlists/${playlist.source}/${playlist.id}`
+                                            `/playlists/${playlist.source}/${playlist.id}`,
                                         );
                                     }}
                                 >
@@ -99,12 +100,44 @@ export default function HomePage() {
                     </div>
                 </div>
             )}
+            {tracks.length > 0 && (
+                <div className="flex flex-col items-center">
+                    <h1 className="text-2xl font-bold">Tracks</h1>
+                    {tracks.map((track: Track) => {
+                        return (
+                            <div
+                                className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
+                                onClick={() => {
+                                    Play(
+                                        track,
+                                        track.source,
+                                        "track",
+                                        track.id,
+                                        [track],
+                                    );
+                                }}
+                            >
+                                <img
+                                    className="mr-2 rounded-2xl"
+                                    src={track.thumbnail}
+                                    height={
+                                        track.source === "spotify" ? 60 : 50
+                                    }
+                                    width={track.source === "spotify" ? 60 : 80}
+                                />
+                                <div>
+                                    {remove_hashtag(track.name.slice(0, 25))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
             {new_tracks.length > 0 && (
-                <div className="grid grid-cols-3 gap-4 overflow-y-scroll [&::-webkit-scrollbar]:hidden">
+                <div className="mt-4 grid grid-cols-3 gap-4 overflow-y-scroll [&::-webkit-scrollbar]:hidden">
                     {new_tracks.map((track: Track) => {
                         return (
                             <div
-                                key={track.id}
                                 className="flex flex-row items-center rounded-2xl hover:cursor-pointer hover:bg-slate-600"
                                 onClick={() => {
                                     Play(
@@ -112,7 +145,7 @@ export default function HomePage() {
                                         track.source,
                                         "track",
                                         track.id,
-                                        [track]
+                                        [track],
                                     );
                                 }}
                             >
@@ -129,7 +162,7 @@ export default function HomePage() {
                                         </div>
                                         <div>
                                             {formatDuration(
-                                                track.duration / 1000
+                                                track.duration / 1000,
                                             )}
                                         </div>
                                     </div>
