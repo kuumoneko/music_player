@@ -11,6 +11,8 @@
 > Please give error on issue tab, i will check per week
 >
 > Now just support Windows platform
+>
+> Play from local file is not avaiable
 
 ### Credential
 
