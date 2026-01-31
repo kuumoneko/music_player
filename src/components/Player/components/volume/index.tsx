@@ -3,13 +3,8 @@ import Slider from "@/components/Player/common/Slider";
 import localstorage from "@/utils/localStorage.ts";
 
 export default function VolumeUI() {
-    const [volume, setvolume] = useState(
-        Number(localstorage("get", "volume", "50")),
-    );
+    const [volume, setvolume] = useState(localstorage("get", "volume", 50));
     const volumeSliderRef = useRef<HTMLInputElement>(null);
-    useEffect(() => {
-        setvolume(Number(localstorage("get", "volume", "50")));
-    }, []);
 
     useEffect(() => {
         if (volumeSliderRef.current) {
@@ -20,7 +15,7 @@ export default function VolumeUI() {
                 "--value-percent",
                 `${percent}%`,
             );
-            localstorage("set", "volume", String(percent));
+            localstorage("set", "volume", percent);
         }
     }, [volume]);
 
@@ -33,7 +28,7 @@ export default function VolumeUI() {
                 value={volume}
                 Change={(e) => {
                     const newVolume = Number(e.target.value);
-                    localstorage("set", "volume", String(newVolume));
+                    localstorage("set", "volume", newVolume);
                     setvolume(newVolume);
                 }}
                 max={100}

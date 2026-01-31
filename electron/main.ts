@@ -111,18 +111,13 @@ async function createWindow() {
         win?.webContents.send('main-process-message', (new Date).toLocaleString())
     })
 
-    if (VITE_DEV_SERVER_URL) {
-        win.loadURL(VITE_DEV_SERVER_URL)
-    } else {
-        const server = express();
-        server.use(express.static(path.join(RENDERER_DIST, 'index.html')))
-        const listener = server.listen(0, 'localhost', () => {
-            const port = listener.address().port;
-            console.log(`Server running on port ${port}`);
-
-            win.loadURL(`http://localhost:${port}`);
-        });
-    }
+    const server = express();
+    server.use(express.static(path.join(RENDERER_DIST)))
+    const listener = server.listen(3000, 'localhost', () => {
+        const port = listener.address().port;
+        console.log(`Server running on port ${port}`);
+        win.loadURL(`http://localhost:${port}`);
+    });
 
 
     if (app.isPackaged) {

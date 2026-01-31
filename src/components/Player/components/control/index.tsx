@@ -14,6 +14,7 @@ import Slider from "@/components/Player/common/Slider";
 import backward from "./common/backward.ts";
 import forward from "./common/forward.ts";
 import fetchdata from "@/utils/fetch.ts";
+import localstorage from "@/utils/localStorage.ts";
 
 enum YoutubePlaybackState {
     Unstarted = -1,
@@ -39,7 +40,7 @@ export default function ControlUI() {
     const [repeat, setrepeat] = useState("disable");
     const [isloading, setisloading] = useState(true);
 
-    const [currentTrack, setCurrentTrack] = useState({ id: "", source: "" });
+    const [currentTrack, setCurrentTrack] = useState({ source: "", id: "" });
     const [player, setPlayer] = useState<any>(null);
     const playerContainerRef = useRef<HTMLDivElement>(null);
 
@@ -51,9 +52,7 @@ export default function ControlUI() {
 
     // --- 1. One-time Setup: Load Songs & Youtube API ---
     useEffect(() => {
-        setplayedsongs(
-            JSON.parse(localStorage.getItem("playedsongs") as string) ?? [],
-        );
+        setplayedsongs(localstorage("get", "playedsongs", []));
 
         // Define the callback globally so the API script can find it
         (window as any).onYouTubeIframeAPIReady = () => {
@@ -126,9 +125,8 @@ export default function ControlUI() {
 
         if (state === YoutubePlaybackState.Ended) {
             const curr_player = event.target;
-            const currentRepeat = localStorage.getItem("repeat") ?? "disable";
-            const sleepMode =
-                localStorage.getItem("kill time") ?? sleep_types.no;
+            const currentRepeat = localstorage("get", "repeat", "disable");
+            const sleepMode = localstorage("get", "kill time", sleep_types.no);
 
             check_eot(sleepMode as sleep_types);
 
@@ -172,6 +170,11 @@ export default function ControlUI() {
                 // Usually loadVideoById starts playing automatically,
                 // but we sync with 'played' state
                 if (played) player.playVideo();
+                const volume = localstorage("get", "volume", 50);
+                alert(volume);
+                if (volume && player.getVolume() !== Number(volume)) {
+                    player.setVolume(Number(volume));
+                }
             } else if (!player) {
                 // If player isn't ready yet, it will load this ID when it inits
                 // (This is a rare edge case if API loads slowly)
@@ -188,7 +191,7 @@ export default function ControlUI() {
     // --- 5. Poll for Song Updates (Storage -> State) ---
     useEffect(() => {
         const checkStorage = () => {
-            const playing = JSON.parse(localStorage.getItem("playing") || "{}");
+            const playing = localstorage("get", "playing", {});
 
             // Only update if the ID actually changed to prevent loops
             if (
@@ -245,15 +248,16 @@ export default function ControlUI() {
                 }
 
                 // Sync Volume
-                const volume = localStorage.getItem("volume");
+                const volume = localstorage("get", "volume", 50);
                 if (volume && player.getVolume() !== Number(volume)) {
                     player.setVolume(Number(volume));
                 }
             }
 
             // Sync settings from local storage
-            setrepeat(localStorage.getItem("repeat") ?? "disable");
-            setshuffle(localStorage.getItem("shuffle") ?? "disable");
+            setrepeat(localstorage("get", "repeat", "disable"));
+            setshuffle(localstorage("get", "shuffle", "disable"));
+            setplayed(localstorage("get", "played", "false"));
         }, 500);
 
         return () => clearInterval(run);
@@ -292,7 +296,7 @@ export default function ControlUI() {
 
     const check_eot = (temp: sleep_types) => {
         if (temp === sleep_types.eot) {
-            localStorage.setItem("kill time", sleep_types.no);
+            localstorage("set", "kill time", sleep_types.no);
             const res = handleCloseTab();
             if (res === "no") {
                 setplayed(false);
@@ -329,7 +333,8 @@ export default function ControlUI() {
                         const new_shuffle =
                             shuffle === "disable" ? "enable" : "disable";
                         setshuffle(new_shuffle);
-                        localStorage.setItem("shuffle", new_shuffle);
+                        localstorage("set", "shuffle", new_shuffle);
+                        // localStorage.setItem("shuffle", new_shuffle);
                     }}
                 >
                     <FontAwesomeIcon
@@ -358,7 +363,7 @@ export default function ControlUI() {
                 <button
                     className="mx-0.5 p-0.5 cursor-default select-none"
                     onClick={async () => {
-                        localStorage.setItem("play", JSON.stringify([]));
+                        localstorage("set", "playedsongs", []);
                         await forward(setCurrentTrack);
                     }}
                 >
@@ -376,7 +381,7 @@ export default function ControlUI() {
                                   ? "one"
                                   : "disable";
                         setrepeat(new_repeat);
-                        localStorage.setItem("repeat", new_repeat);
+                        localstorage("set", "repeat", new_repeat);
                     }}
                 >
                     <FontAwesomeIcon
