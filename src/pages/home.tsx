@@ -103,34 +103,40 @@ export default function HomePage() {
             {tracks.length > 0 && (
                 <div className="flex flex-col items-center">
                     <h1 className="text-2xl font-bold">Tracks</h1>
-                    {tracks.map((track: Track) => {
-                        return (
-                            <div
-                                className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
-                                onClick={() => {
-                                    Play(
-                                        track,
-                                        track.source,
-                                        "track",
-                                        track.id,
-                                        [track],
-                                    );
-                                }}
-                            >
-                                <img
-                                    className="mr-2 rounded-2xl"
-                                    src={track.thumbnail}
-                                    height={
-                                        track.source === "spotify" ? 60 : 50
-                                    }
-                                    width={track.source === "spotify" ? 60 : 80}
-                                />
-                                <div>
-                                    {remove_hashtag(track.name.slice(0, 25))}
+                    <div className="flex flex-row">
+                        {tracks.map((track: Track) => {
+                            return (
+                                <div
+                                    className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
+                                    onClick={() => {
+                                        Play(
+                                            track,
+                                            track.source,
+                                            "track",
+                                            track.id,
+                                            [track],
+                                        );
+                                    }}
+                                >
+                                    <img
+                                        className="mr-2 rounded-2xl"
+                                        src={track.thumbnail}
+                                        height={
+                                            track.source === "spotify" ? 60 : 50
+                                        }
+                                        width={
+                                            track.source === "spotify" ? 60 : 80
+                                        }
+                                    />
+                                    <div>
+                                        {remove_hashtag(
+                                            track.name.slice(0, 25),
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             )}
             {new_tracks.length > 0 && (
