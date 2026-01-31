@@ -1,12 +1,12 @@
 import wait_for_downloader from "../lib/player";
 import { readFileSync } from "node:fs";
+import Player from "../music/index.ts";
 import { resolve } from "node:path";
 
-export default async function PlayController(player: any, data: any): Promise<string> {
+export default async function PlayController(player: Player, data: any): Promise<string> {
     await wait_for_downloader(player);
     const { source, id } = data;
     let result: any = "";
-
     if (source === "local") {
         const folder = player.download_folder;
         try {
@@ -40,12 +40,13 @@ export default async function PlayController(player: any, data: any): Promise<st
         else if (source === "youtube") {
             musicId = id;
         }
-        if (musicId) {
-            const url = await player.getAudioURLAlternative(musicId);
-            if (url) {
-                result = url;
-            }
-        }
+        result = musicId;
+        // if (musicId) {
+        // const url = await player.getAudioURLAlternative(musicId);
+        // if (url) {
+        // result = url;
+        // }
+        // }
     }
     else {
         throw new Error("Invalid source");
