@@ -333,10 +333,21 @@ export default class Player {
                 try {
                     const info = await this.youtube_player.getBasicInfo(id);
                     const format = info.chooseFormat({ type: 'audio', quality: 'best' });
+                    console.log(client_types[retryCount], format)
                     if (format) {
                         const temp = await format.decipher();
+
                         if (temp && temp.length > 0) {
-                            url = temp;
+                            const test = await fetch(temp);
+                            if (test.ok) {
+                                url = temp;
+                            }
+                            else {
+                                url = "";
+                                this.youtube_player = null as unknown as Innertube;
+                                console.error("Link unvalid")
+                                retryCount++;
+                            }
                         }
                     }
                     else {
@@ -359,6 +370,7 @@ export default class Player {
                     throw new Error("Max retry reached")
                 }
             }
+            console.log(url);
             resolve(url)
         })
     }
