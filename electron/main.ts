@@ -20,6 +20,7 @@ import DownloadController from './controllers/download.ts';
 import PlayController from './controllers/play.ts';
 import ImportControllers from './controllers/import.ts';
 import open from 'open';
+import express from "express"
 
 config();
 
@@ -113,8 +114,16 @@ async function createWindow() {
     if (VITE_DEV_SERVER_URL) {
         win.loadURL(VITE_DEV_SERVER_URL)
     } else {
-        win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+        const server = express();
+        server.use(express.static(path.join(RENDERER_DIST, 'index.html')))
+        const listener = server.listen(0, 'localhost', () => {
+            const port = listener.address().port;
+            console.log(`Server running on port ${port}`);
+
+            win.loadURL(`http://localhost:${port}`);
+        });
     }
+
 
     if (app.isPackaged) {
         autoUpdater.checkForUpdatesAndNotify();

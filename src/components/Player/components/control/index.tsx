@@ -15,36 +15,33 @@ import backward from "./common/backward.ts";
 import forward from "./common/forward.ts";
 import fetchdata from "@/utils/fetch.ts";
 
-enum YotubePlaybackState {
+enum YoutubePlaybackState {
     Unstarted = -1,
+    Ended = 0,
     Playing = 1,
     Paused = 2,
-    Ended = 0,
-    Cued = 5,
     Buffering = 3,
+    Cued = 5,
 }
 
 const handleCloseTab = () => {
     try {
-        window.location.href = "https://www.google.com";
+        window.electronAPI.close();
     } catch {
         return "no";
     }
 };
 
-// This component no longer needs the audioRef prop
 export default function ControlUI() {
+    // --- State ---
     const [played, setplayed] = useState(false);
     const [shuffle, setshuffle] = useState("disable");
     const [repeat, setrepeat] = useState("disable");
     const [isloading, setisloading] = useState(true);
 
-    // NEW: State for the YouTube player instance and a ref for its container div
-    const [player, setPlayer] = useState<any>(null); // This will hold the YT.Player instance
-    const playerContainerRef = useRef<HTMLDivElement>(null);
-
-    // This state mirrors the currently playing track to safely trigger useEffects
     const [currentTrack, setCurrentTrack] = useState({ id: "", source: "" });
+    const [player, setPlayer] = useState<any>(null);
+    const playerContainerRef = useRef<HTMLDivElement>(null);
 
     const [Time, setTime] = useState(0);
     const [duration, setduraion] = useState(0);
@@ -52,191 +49,222 @@ export default function ControlUI() {
 
     const TimeSliderRef = useRef<HTMLInputElement>(null);
 
+    // --- 1. One-time Setup: Load Songs & Youtube API ---
     useEffect(() => {
         setplayedsongs(
             JSON.parse(localStorage.getItem("playedsongs") as string) ?? [],
         );
+
+        // Define the callback globally so the API script can find it
+        (window as any).onYouTubeIframeAPIReady = () => {
+            initializePlayer();
+        };
+
+        // Inject the API script if it's not there
+        if (!window.YT) {
+            // [!] FIX: Dynamic origin handling.
+            // If on file://, we default to localhost or a specific domain to satisfy YT API.
+            const origin = window.location.origin.startsWith("http")
+                ? window.location.origin
+                : "http://localhost:3000";
+
+            const tag = document.createElement("script");
+            tag.src = `https://www.youtube.com/iframe_api?origin=${origin}`;
+            const firstScriptTag = document.getElementsByTagName("script")[0];
+            firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        } else {
+            // If API is already loaded, init immediately
+            initializePlayer();
+        }
     }, []);
 
-    // --- Core Player Logic ---
+    // --- 2. Initialize Player Instance (Run Once) ---
+    const initializePlayer = () => {
+        if (!playerContainerRef.current || (window as any).playerInstance)
+            return;
+
+        // Create player without a specific video initially
+        const newPlayer = new (window as any).YT.Player(
+            playerContainerRef.current,
+            {
+                height: "0",
+                width: "0",
+                playerVars: {
+                    controls: 0,
+                    autoplay: 0,
+                    enablejsapi: 1,
+                    // [!] FIX: Ensure origin is passed here too
+                    origin: window.location.origin,
+                },
+                events: {
+                    onReady: (event: any) => {
+                        setPlayer(event.target);
+                        // Store strict reference if needed
+                        (window as any).playerInstance = event.target;
+                    },
+                    onStateChange: onPlayerStateChange,
+                },
+            },
+        );
+        setPlayer(newPlayer);
+    };
+
+    // --- 3. Player Event Handlers ---
+    const onPlayerStateChange = (event: any) => {
+        const state = event.data;
+
+        if (state === YoutubePlaybackState.Playing) {
+            const newDuration = event.target.getDuration();
+            if (newDuration > 0) setduraion(newDuration);
+            setisloading(false);
+            setplayed(true);
+        }
+
+        if (state === YoutubePlaybackState.Paused) {
+            setplayed(false);
+        }
+
+        if (state === YoutubePlaybackState.Ended) {
+            const curr_player = event.target;
+            const currentRepeat = localStorage.getItem("repeat") ?? "disable";
+            const sleepMode =
+                localStorage.getItem("kill time") ?? sleep_types.no;
+
+            check_eot(sleepMode as sleep_types);
+
+            if (currentRepeat === "one" && curr_player) {
+                curr_player.seekTo(0);
+                curr_player.playVideo();
+                setplayed(true);
+            } else {
+                forward(setCurrentTrack);
+            }
+        }
+    };
+
+    // --- 4. Watch for Track Changes (Logic) ---
     useEffect(() => {
-        (async () => {
+        let isMounted = true; // To prevent race conditions on async fetch
+
+        const loadTrack = async () => {
             let { source, id } = currentTrack;
 
-            if (source === "" || id === "") {
-                return;
-            }
+            if (!source || !id) return;
 
-            if (source === "spotify" && id.length > 0) {
-                const temp = await fetchdata(`play`, "GET", {
-                    source,
-                    id,
-                });
-                source = "youtube";
-                id = temp;
-            } else if (!id || !source) {
-                return;
-            }
+            setisloading(true);
 
-            const onPlayerReady = (event: any) => {
-                setisloading(false);
-                setduraion(event.target.getDuration());
-                const volume = localStorage.getItem("volume");
-                if (volume) {
-                    event.target.setVolume(Number(volume));
-                }
-                if (played) {
-                    event.target.playVideo();
-                }
-            };
-
-            const onPlayerStateChange = (event: any) => {
-                if (event.data === YotubePlaybackState.Playing) {
-                    const newDuration = event.target.getDuration();
-                    if (newDuration > 0) {
-                        setduraion(newDuration);
-                    }
+            // [!] FIX: Resolve Spotify ID to YouTube ID
+            if (source === "spotify") {
+                try {
+                    const temp = await fetchdata(`play`, "GET", { source, id });
+                    if (!isMounted) return; // Stop if user skipped song while fetching
+                    id = temp;
+                } catch (e) {
+                    console.error("Failed to resolve spotify track", e);
                     setisloading(false);
-                    setplayed(true);
-                }
-                if (event.data === YotubePlaybackState.Paused) {
-                    setplayed(false);
-                }
-                if (event.data === 0) {
-                    const curr_player = event.target;
-                    const repeat = localStorage.getItem("repeat") ?? "disable";
-                    const temp =
-                        localStorage.getItem("kill time") ?? sleep_types.no;
-                    check_eot(temp as sleep_types);
-
-                    if (repeat === "one" && curr_player) {
-                        curr_player.seekTo(0);
-                        setPlayer(curr_player);
-                        setplayed(true);
-                    } else {
-                        forward(setCurrentTrack);
-                    }
-                }
-            };
-
-            const initializePlayer = () => {
-                if (!playerContainerRef.current) return;
-
-                const newPlayer = new (window as any).YT.Player(
-                    playerContainerRef.current,
-                    {
-                        height: "0",
-                        width: "0",
-                        videoId: id,
-                        playerVars: { controls: 0 },
-                        events: {
-                            onReady: onPlayerReady,
-                            onStateChange: onPlayerStateChange,
-                        },
-                    },
-                );
-                setPlayer(newPlayer);
-            };
-
-            if (!(window as any).YT || !(window as any).YT.Player) {
-                (window as any).onYouTubeIframeAPIReady = initializePlayer;
-                if (
-                    !document.querySelector(
-                        'script[src="https://www.youtube.com/iframe_api"]',
-                    )
-                ) {
-                    const tag = document.createElement("script");
-                    tag.src = "https://www.youtube.com/iframe_api";
-                    const firstScriptTag =
-                        document.getElementsByTagName("script")[0];
-                    (firstScriptTag.parentNode as any).insertBefore(
-                        tag,
-                        firstScriptTag,
-                    );
-                }
-            } else {
-                if (!player) {
-                    initializePlayer();
-                } else {
-                    if (typeof player.loadVideoById === "function") {
-                        player.loadVideoById(id);
-                    } else {
-                        initializePlayer();
-                    }
+                    return;
                 }
             }
-        })();
-    }, [currentTrack]);
 
+            // [!] FIX: Use loadVideoById instead of recreating player
+            if (player && typeof player.loadVideoById === "function") {
+                player.loadVideoById(id);
+                // Usually loadVideoById starts playing automatically,
+                // but we sync with 'played' state
+                if (played) player.playVideo();
+            } else if (!player) {
+                // If player isn't ready yet, it will load this ID when it inits
+                // (This is a rare edge case if API loads slowly)
+            }
+        };
+
+        loadTrack();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [currentTrack]); // Only run when internal track state changes
+
+    // --- 5. Poll for Song Updates (Storage -> State) ---
     useEffect(() => {
-        const check = () => {
+        const checkStorage = () => {
             const playing = JSON.parse(localStorage.getItem("playing") || "{}");
+
+            // Only update if the ID actually changed to prevent loops
             if (
                 playing.id &&
                 (playing.id !== currentTrack.id ||
                     playing.source !== currentTrack.source)
             ) {
-                setisloading(true);
-                setplayed(true);
                 setCurrentTrack({ id: playing.id, source: playing.source });
 
-                navigator.mediaSession.metadata = new MediaMetadata({
-                    title: playing.name,
-                    artist: playing.artists,
-                    artwork: [
-                        {
-                            src: playing.thumbnail,
-                            sizes: "512x512",
-                            type: "image/png",
-                        },
-                    ],
-                });
+                // Update Metadata
+                if ("mediaSession" in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: playing.name,
+                        artist: playing.artists,
+                        artwork: [
+                            {
+                                src: playing.thumbnail,
+                                sizes: "512x512",
+                                type: "image/png",
+                            },
+                        ],
+                    });
+                }
             }
         };
-        const run = setInterval(check, 500);
+
+        const run = setInterval(checkStorage, 500);
         return () => clearInterval(run);
     }, [currentTrack]);
 
-    // Effect 3: Controls Play/Pause state
+    // --- 6. Sync Play/Pause State ---
     useEffect(() => {
-        if (!player || isloading) return;
-        if (played) {
-            setisloading(false);
-            player.playVideo();
-        } else {
-            player.pauseVideo();
-        }
-    }, [played, player, isloading]);
+        if (!player || typeof player.playVideo !== "function") return;
 
-    // Effect 4: Time tracking and other periodic checks
+        if (played) {
+            // Only call play if not already playing (optional optimization)
+            if (player.getPlayerState() !== YoutubePlaybackState.Playing) {
+                player.playVideo();
+            }
+        } else {
+            if (player.getPlayerState() === YoutubePlaybackState.Playing) {
+                player.pauseVideo();
+            }
+        }
+    }, [played, player]);
+
+    // --- 7. Progress & Volume Polling ---
     useEffect(() => {
         const run = setInterval(() => {
-            if (
-                player &&
-                typeof player.getCurrentTime === "function" &&
-                player.getPlayerState() > 0
-            ) {
-                setTime(player.getCurrentTime());
-            }
-            const volume = localStorage.getItem("volume");
-            if (volume && player && typeof player.setVolume === "function") {
-                if (player.getVolume() !== Number(volume)) {
+            if (player && typeof player.getCurrentTime === "function") {
+                // Only update time if playing or buffering
+                if (player.getPlayerState() === YoutubePlaybackState.Playing) {
+                    setTime(player.getCurrentTime());
+                }
+
+                // Sync Volume
+                const volume = localStorage.getItem("volume");
+                if (volume && player.getVolume() !== Number(volume)) {
                     player.setVolume(Number(volume));
                 }
             }
+
+            // Sync settings from local storage
             setrepeat(localStorage.getItem("repeat") ?? "disable");
             setshuffle(localStorage.getItem("shuffle") ?? "disable");
-        }, 500); // Polling every 500ms is sufficient
+        }, 500);
+
         return () => clearInterval(run);
     }, [player]);
 
-    // Effect 5: Updates the slider progress bar
+    // --- 8. Slider Visual Update ---
     useEffect(() => {
         if (TimeSliderRef.current) {
             const min = Number(TimeSliderRef.current.min);
             const max = Number(TimeSliderRef.current.max);
-            const value = Time || 0;
-            const percent = max > 0 ? ((value - min) / (max - min)) * 100 : 0;
+            const percent = max > 0 ? ((Time - min) / (max - min)) * 100 : 0;
             TimeSliderRef.current.style.setProperty(
                 "--value-percent",
                 `${percent}%`,
@@ -244,23 +272,25 @@ export default function ControlUI() {
         }
     }, [Time]);
 
-    // --- Media Session and Sleep Timer (largely unchanged) ---
-
+    // --- 9. Media Session Handlers ---
     useEffect(() => {
-        navigator.mediaSession.setActionHandler("play", () => setplayed(true));
-        navigator.mediaSession.setActionHandler("pause", () =>
-            setplayed(false),
-        );
-        navigator.mediaSession.setActionHandler("nexttrack", () =>
-            forward(setCurrentTrack),
-        );
-        navigator.mediaSession.setActionHandler("previoustrack", () =>
-            backward(),
-        );
-    }, []); // Empty dependency array means this runs once
+        if ("mediaSession" in navigator) {
+            navigator.mediaSession.setActionHandler("play", () =>
+                setplayed(true),
+            );
+            navigator.mediaSession.setActionHandler("pause", () =>
+                setplayed(false),
+            );
+            navigator.mediaSession.setActionHandler("nexttrack", () =>
+                forward(setCurrentTrack),
+            );
+            navigator.mediaSession.setActionHandler("previoustrack", () =>
+                backward(),
+            );
+        }
+    }, []);
 
     const check_eot = (temp: sleep_types) => {
-        // Check End Of Track for sleep timer.
         if (temp === sleep_types.eot) {
             localStorage.setItem("kill time", sleep_types.no);
             const res = handleCloseTab();
@@ -272,9 +302,6 @@ export default function ControlUI() {
             }
         }
     };
-    // ... your other useEffects for sleep timer can remain as they are ...
-
-    // --- Event Handlers ---
 
     const handleTimeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTime = Number(e.target.value);
@@ -286,18 +313,16 @@ export default function ControlUI() {
 
     return (
         <div className="flex flex-col items-center">
-            {/* This div is the mount point for the hidden YouTube iframe */}
+            {/* Hidden Player Container */}
             <div
                 ref={playerContainerRef}
                 className="pointer-events-none absolute -top-full -left-full"
-            ></div>
+            />
 
             <div
-                className={`controls flex flex-row gap-2.5 ${
-                    isloading ? "opacity-50 pointer-events-none" : ""
-                }`}
+                className={`controls flex flex-row gap-2.5 ${isloading ? "opacity-50 pointer-events-none" : ""}`}
             >
-                {/* Shuffle Button */}
+                {/* Shuffle */}
                 <button
                     className="mx-0.5 p-0.5 cursor-default select-none"
                     onClick={() => {
@@ -312,25 +337,24 @@ export default function ControlUI() {
                         className={shuffle === "disable" ? "" : "text-red-500"}
                     />
                 </button>
-                {/* Backward Button */}
+
+                {/* Backward */}
                 <button
-                    className={`mx-0.5 p-0.5 cursor-default select-none ${
-                        playedsongs.length === 0
-                            ? "opacity-50 pointer-events-none"
-                            : ""
-                    }`}
+                    className={`mx-0.5 p-0.5 cursor-default select-none ${playedsongs.length === 0 ? "opacity-50 pointer-events-none" : ""}`}
                     onClick={() => backward()}
                 >
                     <FontAwesomeIcon icon={faStepBackward} />
                 </button>
-                {/* Play/Pause Button */}
+
+                {/* Play/Pause */}
                 <button
                     className="mx-0.5 p-0.5 cursor-default select-none"
                     onClick={() => setplayed(!played)}
                 >
                     <FontAwesomeIcon icon={played ? faPause : faPlay} />
                 </button>
-                {/* Forward Button */}
+
+                {/* Forward */}
                 <button
                     className="mx-0.5 p-0.5 cursor-default select-none"
                     onClick={async () => {
@@ -340,7 +364,8 @@ export default function ControlUI() {
                 >
                     <FontAwesomeIcon icon={faStepForward} />
                 </button>
-                {/* Repeat Button */}
+
+                {/* Repeat */}
                 <button
                     className="relative mx-0.5 p-0.5 cursor-default select-none"
                     onClick={() => {
@@ -371,12 +396,11 @@ export default function ControlUI() {
                     )}
                 </button>
             </div>
-            <div className="player flex flex-row items-center ">
+
+            <div className="player flex flex-row items-center">
                 <span className="mr-1.25 cursor-default select-none text-xs w-24 text-center">
                     {duration > 0
-                        ? `${formatDuration(Time)} / ${formatDuration(
-                              duration,
-                          )}`
+                        ? `${formatDuration(Time)} / ${formatDuration(duration)}`
                         : `Loading`}
                 </span>
                 <Slider

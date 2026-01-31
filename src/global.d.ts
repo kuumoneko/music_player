@@ -11,6 +11,7 @@ declare global {
         discord: {
             setmusic: (track: Track) => Promise<{ ok: boolean }>;
             clearmusic: () => Promise<{ ok: boolean }>;
-        }
+        },
+        YT: any
     }
 }
