@@ -79,18 +79,19 @@ if (system?.youtube_keys && system?.spotify_keys && system?.youtube_keys?.length
 
 if (CLIENT_ID) {
     rpc = new Client({ clientId: CLIENT_ID })
-    rpc.login().catch(console.error);
-
-    rpc.on("ready", async () => {
-        console.log("Discord RPC is ready");
-        await rpc.user.setActivity({
-            details: "Idle...",
-            state: "Waiting for music...",
-            startTimestamp: new Date(),
-            largeImageText: "Kuumo app",
-            instance: false
+    rpc.login().catch(() => { rpc = null });
+    if (rpc) {
+        rpc.on("ready", async () => {
+            console.log("Discord RPC is ready");
+            await rpc.user.setActivity({
+                details: "Idle...",
+                state: "Waiting for music...",
+                startTimestamp: new Date(),
+                largeImageText: "Kuumo app",
+                instance: false
+            })
         })
-    })
+    }
 }
 
 async function createWindow() {
