@@ -57,29 +57,28 @@ export default function SearchBar() {
                     onChange={(e) => {
                         e.preventDefault();
                         settyping(e.target.value);
-                        if (e.target.value === "") {
+                        const letters = e.target.value;
+                        if (letters === "") {
                             setsource("");
                             settype("");
+                            return;
+                        }
+                        if (
+                            letters.includes(":") &&
+                            letters.split(":").length === 3
+                        ) {
                             return;
                         }
                         const {
                             source: sourcee,
                             id,
                             mode,
-                        } = convert_link(e.target.value);
+                        } = convert_link(letters);
                         if (
-                            sourcee === undefined ||
-                            mode === undefined ||
-                            id === undefined
+                            sourcee !== undefined &&
+                            mode !== undefined &&
+                            id !== undefined
                         ) {
-                            if (source === "") {
-                                setsource("youtube");
-                            }
-
-                            if (type === "") {
-                                settype("video");
-                            }
-                        } else {
                             setsource("");
                             settype("");
                             localstorage(
@@ -88,6 +87,16 @@ export default function SearchBar() {
                                 `${mode}:${sourcee}:${id}`,
                             );
                             settyping(`${mode}:${sourcee}:${id}`);
+                        } else {
+                            if (source === "") {
+                                setsource("youtube");
+                            }
+
+                            if (type === "") {
+                                settype("video");
+                            }
+                            localstorage("set", "search", letters);
+                            settyping(letters);
                         }
                     }}
                 />
