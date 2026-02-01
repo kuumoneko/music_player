@@ -18,6 +18,8 @@ export default function SearchBar() {
             const url = localstorage("get", "search", "");
             if (url === "") {
                 settyping("");
+                setsource("");
+                settype("");
             }
         }, 100);
         return () => {
