@@ -34,55 +34,187 @@ const handleCloseTab = () => {
 };
 
 export default function ControlUI() {
-    // --- State ---
+    const isFirstLoad = useRef(true);
     const [played, setplayed] = useState(false);
     const [shuffle, setshuffle] = useState("disable");
     const [repeat, setrepeat] = useState("disable");
     const [isloading, setisloading] = useState(true);
 
-    const [currentTrack, setCurrentTrack] = useState({ source: "", id: "" });
-    const [player, setPlayer] = useState<any>(null);
-    const playerContainerRef = useRef<HTMLDivElement>(null);
+    const currentTrack = useRef<{ source: string; id: string }>(
+        localstorage("get", "playing", { source: "", id: "" }),
+    );
 
+    const player = useRef<any>(null);
+    const playerContainerRef = useRef<HTMLDivElement>(null);
+    const audioRef = useRef<HTMLAudioElement>(new Audio());
+    (audioRef.current as any).isPlaying = () => {
+        if (audioRef.current.paused) {
+            return YoutubePlaybackState.Paused;
+        } else {
+            return YoutubePlaybackState.Playing;
+        }
+    };
+    (audioRef.current as any).getDuration = () => {
+        return audioRef.current.duration;
+    };
+    (audioRef.current as any).seek = (data: number) => {
+        audioRef.current.currentTime = data;
+    };
+    (audioRef.current as any).getCurrentTime = () => {
+        return audioRef.current.currentTime;
+    };
+    (audioRef.current as any).getVolume = () => {
+        return audioRef.current.volume;
+    };
+    (audioRef.current as any).setVolume = (data: number) => {
+        audioRef.current.volume = data / 100;
+    };
     const [Time, setTime] = useState(0);
     const [duration, setduraion] = useState(0);
     const [playedsongs, setplayedsongs] = useState([]);
 
     const TimeSliderRef = useRef<HTMLInputElement>(null);
 
-    // --- 1. One-time Setup: Load Songs & Youtube API ---
+    const check_eot = (temp: sleep_types) => {
+        if (temp === sleep_types.eot) {
+            localstorage("set", "kill time", sleep_types.no);
+            const res = handleCloseTab();
+            if (res === "no") {
+                setplayed(false);
+            }
+        }
+    };
+
+    const loadTrack = async (source: string, id: string) => {
+        if (!source || !id) return;
+
+        setisloading(true);
+        if (source === "local") {
+            const temp = await fetchdata(`play`, "GET", { source, id });
+            const audio_format = id.split(".")[id.split(".").length - 1];
+
+            const byteCharacters = atob(temp);
+            const byteArrays: any = [];
+
+            for (let i = 0; i < byteCharacters.length; i += 1024) {
+                const slice = byteCharacters.slice(i, i + 1024);
+                const byteNumbers = new Array(slice.length);
+                for (let j = 0; j < slice.length; j++) {
+                    byteNumbers[j] = slice.charCodeAt(j);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            const blob = new Blob(byteArrays, {
+                type: `audio/${audio_format}`,
+            });
+
+            const blobUrl = URL.createObjectURL(blob);
+            player.current.stopVideo();
+            audioRef.current.pause();
+            audioRef.current.src = "";
+            audioRef.current.load();
+
+            audioRef.current = new Audio(blobUrl);
+            audioRef.current.load();
+            audioRef.current.addEventListener("ended", () => {
+                const currentRepeat = localstorage("get", "repeat", "disable");
+                const sleepMode = localstorage(
+                    "get",
+                    "kill time",
+                    sleep_types.no,
+                );
+
+                check_eot(sleepMode as sleep_types);
+
+                if (currentRepeat === "one" && audioRef.current) {
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play();
+                    setplayed(true);
+                } else {
+                    forward(loadTrack);
+                }
+            });
+            audioRef.current.addEventListener("loadedmetadata", () => {
+                setduraion(audioRef.current.duration);
+                if (audioRef.current.duration === Infinity) {
+                    audioRef.current.currentTime = 1e101;
+                    audioRef.current.ontimeupdate = () => {
+                        audioRef.current.ontimeupdate = null;
+                        audioRef.current.currentTime = 0;
+                    };
+                }
+            });
+            currentTrack.current = {
+                id: id,
+                source: source,
+            };
+            const volume = localstorage("get", "volume", 50);
+            if (volume && audioRef.current) {
+                audioRef.current.volume = volume / 100;
+            }
+            setTime(0);
+            setisloading(false);
+        } else {
+            if (source === "spotify") {
+                try {
+                    const temp = await fetchdata(`play`, "GET", { source, id });
+                    id = temp;
+                } catch (e) {
+                    console.error("Failed to resolve spotify track", e);
+                    setisloading(false);
+                    return;
+                }
+            }
+
+            if (
+                player.current &&
+                typeof player.current.loadVideoById === "function"
+            ) {
+                currentTrack.current = {
+                    id: id,
+                    source: source,
+                };
+                audioRef.current.pause();
+                audioRef.current.src = "";
+                player.current.loadVideoById(id);
+                const volume = localstorage("get", "volume", 50);
+                if (
+                    volume &&
+                    player.current &&
+                    player.current.getVolume() !== Number(volume)
+                ) {
+                    player.current.setVolume(Number(volume));
+                }
+                setTime(0);
+                setisloading(false);
+            } else if (!player.current) {
+                window.discord.clearmusic();
+            }
+        }
+    };
+
     useEffect(() => {
         setplayedsongs(localstorage("get", "playedsongs", []));
 
-        // Define the callback globally so the API script can find it
         (window as any).onYouTubeIframeAPIReady = () => {
             initializePlayer();
         };
 
-        // Inject the API script if it's not there
         if (!window.YT) {
-            // [!] FIX: Dynamic origin handling.
-            // If on file://, we default to localhost or a specific domain to satisfy YT API.
-            const origin = window.location.origin.startsWith("http")
-                ? window.location.origin
-                : "http://localhost:3000";
-
             const tag = document.createElement("script");
-            tag.src = `https://www.youtube.com/iframe_api?origin=${origin}`;
+            tag.src = `https://www.youtube.com/iframe_api`;
             const firstScriptTag = document.getElementsByTagName("script")[0];
             firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
         } else {
-            // If API is already loaded, init immediately
             initializePlayer();
         }
     }, []);
 
-    // --- 2. Initialize Player Instance (Run Once) ---
     const initializePlayer = () => {
         if (!playerContainerRef.current || (window as any).playerInstance)
             return;
 
-        // Create player without a specific video initially
         const newPlayer = new (window as any).YT.Player(
             playerContainerRef.current,
             {
@@ -92,23 +224,32 @@ export default function ControlUI() {
                     controls: 0,
                     autoplay: 0,
                     enablejsapi: 1,
-                    // [!] FIX: Ensure origin is passed here too
                     origin: window.location.origin,
                 },
+
                 events: {
                     onReady: (event: any) => {
-                        setPlayer(event.target);
-                        // Store strict reference if needed
+                        player.current = event.target;
+                        loadTrack(
+                            currentTrack.current.source,
+                            currentTrack.current.id,
+                        );
+                        player.current.isPlaying = event.target.getPlayerState;
+                        player.current.play = event.target.playVideo;
+                        player.current.pause = event.target.pauseVideo;
+                        player.current.seek = event.target.seekTo;
+                        player.current.getVolume = event.target.getVolume;
+
                         (window as any).playerInstance = event.target;
                     },
                     onStateChange: onPlayerStateChange,
                 },
             },
         );
-        setPlayer(newPlayer);
+        if (newPlayer) {
+        }
     };
 
-    // --- 3. Player Event Handlers ---
     const onPlayerStateChange = (event: any) => {
         const state = event.data;
 
@@ -117,6 +258,10 @@ export default function ControlUI() {
             if (newDuration > 0) setduraion(newDuration);
             setisloading(false);
             setplayed(true);
+            if (isFirstLoad.current) {
+                isFirstLoad.current = false;
+                event.target.pauseVideo();
+            }
         }
 
         if (state === YoutubePlaybackState.Paused) {
@@ -135,135 +280,103 @@ export default function ControlUI() {
                 curr_player.playVideo();
                 setplayed(true);
             } else {
-                forward(setCurrentTrack);
+                forward(loadTrack);
             }
         }
     };
 
-    // --- 4. Watch for Track Changes (Logic) ---
     useEffect(() => {
-        let isMounted = true; // To prevent race conditions on async fetch
-
-        const loadTrack = async () => {
-            let { source, id } = currentTrack;
-
-            if (!source || !id) return;
-
-            setisloading(true);
-
-            // [!] FIX: Resolve Spotify ID to YouTube ID
-            if (source === "spotify") {
-                try {
-                    const temp = await fetchdata(`play`, "GET", { source, id });
-                    if (!isMounted) return; // Stop if user skipped song while fetching
-                    id = temp;
-                } catch (e) {
-                    console.error("Failed to resolve spotify track", e);
-                    setisloading(false);
-                    return;
-                }
-            }
-
-            // [!] FIX: Use loadVideoById instead of recreating player
-            if (player && typeof player.loadVideoById === "function") {
-                player.loadVideoById(id);
-                // Usually loadVideoById starts playing automatically,
-                // but we sync with 'played' state
-                if (played) player.playVideo();
-                const volume = localstorage("get", "volume", 50);
-                alert(volume);
-                if (volume && player.getVolume() !== Number(volume)) {
-                    player.setVolume(Number(volume));
-                }
-            } else if (!player) {
-                // If player isn't ready yet, it will load this ID when it inits
-                // (This is a rare edge case if API loads slowly)
-            }
-        };
-
-        loadTrack();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [currentTrack]); // Only run when internal track state changes
-
-    // --- 5. Poll for Song Updates (Storage -> State) ---
-    useEffect(() => {
-        const checkStorage = () => {
+        const checkStorage = async () => {
             const playing = localstorage("get", "playing", {});
+            if ("mediaSession" in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: playing.name,
+                    artist: playing.artists,
+                    artwork: [
+                        {
+                            src: playing.thumbnail,
+                            sizes: "512x512",
+                            type: "image/png",
+                        },
+                    ],
+                });
+            }
 
-            // Only update if the ID actually changed to prevent loops
             if (
                 playing.id &&
-                (playing.id !== currentTrack.id ||
-                    playing.source !== currentTrack.source)
+                (playing.id !== currentTrack.current.id ||
+                    playing.source !== currentTrack.current.source)
             ) {
-                setCurrentTrack({ id: playing.id, source: playing.source });
-
-                // Update Metadata
-                if ("mediaSession" in navigator) {
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: playing.name,
-                        artist: playing.artists,
-                        artwork: [
-                            {
-                                src: playing.thumbnail,
-                                sizes: "512x512",
-                                type: "image/png",
-                            },
-                        ],
-                    });
+                await loadTrack(playing.source, playing.id);
+                if (played) {
+                    if (playing.source === "local") {
+                        audioRef.current.play();
+                    } else {
+                        player.current.playVideo();
+                    }
                 }
             }
         };
-
         const run = setInterval(checkStorage, 500);
         return () => clearInterval(run);
-    }, [currentTrack]);
+    }, []);
 
-    // --- 6. Sync Play/Pause State ---
     useEffect(() => {
-        if (!player || typeof player.playVideo !== "function") return;
+        if (!player.current || typeof player.current.playVideo !== "function")
+            return;
+        const this_player =
+            currentTrack.current.source === "local"
+                ? audioRef.current
+                : player.current;
 
         if (played) {
-            // Only call play if not already playing (optional optimization)
-            if (player.getPlayerState() !== YoutubePlaybackState.Playing) {
-                player.playVideo();
+            if (this_player.isPlaying() !== YoutubePlaybackState.Playing) {
+                this_player.play();
             }
         } else {
-            if (player.getPlayerState() === YoutubePlaybackState.Playing) {
-                player.pauseVideo();
+            if (this_player.isPlaying() === YoutubePlaybackState.Playing) {
+                this_player.pause();
             }
         }
-    }, [played, player]);
+    }, [played]);
 
-    // --- 7. Progress & Volume Polling ---
     useEffect(() => {
         const run = setInterval(() => {
-            if (player && typeof player.getCurrentTime === "function") {
-                // Only update time if playing or buffering
-                if (player.getPlayerState() === YoutubePlaybackState.Playing) {
-                    setTime(player.getCurrentTime());
+            const this_player =
+                currentTrack.current.source === "local"
+                    ? audioRef.current
+                    : player.current;
+            if (this_player) {
+                const tes = this_player.isPlaying();
+                console.log(tes, " ", YoutubePlaybackState.Playing);
+                if (this_player.isPlaying() === YoutubePlaybackState.Playing) {
+                    setTime(this_player.getCurrentTime());
+                    const now = new Date().getTime();
+                    const start =
+                        now - (this_player.getCurrentTime() ?? Time) * 1000;
+                    const end = start + this_player.getDuration() * 1000;
+
+                    window.discord.setmusic({
+                        ...localstorage("get", "playing", {}),
+                        start,
+                        end,
+                        isPlaying: true,
+                    });
                 }
 
-                // Sync Volume
                 const volume = localstorage("get", "volume", 50);
-                if (volume && player.getVolume() !== Number(volume)) {
-                    player.setVolume(Number(volume));
+                if (volume && this_player.getVolume() !== Number(volume)) {
+                    this_player.setVolume(Number(volume));
                 }
             }
 
-            // Sync settings from local storage
             setrepeat(localstorage("get", "repeat", "disable"));
             setshuffle(localstorage("get", "shuffle", "disable"));
-            setplayed(localstorage("get", "played", "false"));
         }, 500);
 
         return () => clearInterval(run);
     }, [player]);
 
-    // --- 8. Slider Visual Update ---
     useEffect(() => {
         if (TimeSliderRef.current) {
             const min = Number(TimeSliderRef.current.min);
@@ -276,7 +389,6 @@ export default function ControlUI() {
         }
     }, [Time]);
 
-    // --- 9. Media Session Handlers ---
     useEffect(() => {
         if ("mediaSession" in navigator) {
             navigator.mediaSession.setActionHandler("play", () =>
@@ -286,7 +398,7 @@ export default function ControlUI() {
                 setplayed(false),
             );
             navigator.mediaSession.setActionHandler("nexttrack", () =>
-                forward(setCurrentTrack),
+                forward(loadTrack),
             );
             navigator.mediaSession.setActionHandler("previoustrack", () =>
                 backward(),
@@ -294,30 +406,20 @@ export default function ControlUI() {
         }
     }, []);
 
-    const check_eot = (temp: sleep_types) => {
-        if (temp === sleep_types.eot) {
-            localstorage("set", "kill time", sleep_types.no);
-            const res = handleCloseTab();
-            if (res === "no") {
-                setplayed(false);
-                alert(
-                    "I can't close this tab by script. Please close it by yourself.",
-                );
-            }
-        }
-    };
-
     const handleTimeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTime = Number(e.target.value);
         setTime(newTime);
-        if (player) {
-            player.seekTo(newTime, true);
+        const this_player =
+            currentTrack.current.source === "local"
+                ? audioRef.current
+                : player.current;
+        if (this_player) {
+            this_player.seek(newTime, true);
         }
     };
 
     return (
         <div className="flex flex-col items-center">
-            {/* Hidden Player Container */}
             <div
                 ref={playerContainerRef}
                 className="pointer-events-none absolute -top-full -left-full"
@@ -334,7 +436,6 @@ export default function ControlUI() {
                             shuffle === "disable" ? "enable" : "disable";
                         setshuffle(new_shuffle);
                         localstorage("set", "shuffle", new_shuffle);
-                        // localStorage.setItem("shuffle", new_shuffle);
                     }}
                 >
                     <FontAwesomeIcon
@@ -364,7 +465,7 @@ export default function ControlUI() {
                     className="mx-0.5 p-0.5 cursor-default select-none"
                     onClick={async () => {
                         localstorage("set", "playedsongs", []);
-                        await forward(setCurrentTrack);
+                        await forward(loadTrack);
                     }}
                 >
                     <FontAwesomeIcon icon={faStepForward} />
