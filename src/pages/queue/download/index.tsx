@@ -7,18 +7,7 @@ import Download from "./download.tsx";
 import fetch_data from "@/utils/fetch.ts";
 
 export default function Download_Queue() {
-    const download_queue = [];
-    download_queue.sort((a: any, b: any) => {
-        if (a.mode === "playlist" && b.mode === "track") {
-            return -1;
-        }
-        if (b.mode === "playlist" && a.mode === "track") {
-            return 1;
-        }
-        return 0;
-    });
-
-    const [queue, setqueue] = useState(JSON.stringify(download_queue));
+    const [queue, setqueue] = useState("[]");
     const [list, setlist] = useState("{}");
 
     useEffect(() => {
@@ -26,7 +15,7 @@ export default function Download_Queue() {
             const res = await fetch_data("/profile/download", "GET");
 
             const playlists = res.filter((item: any) =>
-                item.mode.includes("playlist")
+                item.mode.includes("playlist"),
             );
             let tracks = res.filter((item: any) => item.mode.includes("track"));
 
@@ -35,7 +24,7 @@ export default function Download_Queue() {
             for (const item of playlists) {
                 const data = await fetch_data(
                     `/music/${item.source}/playlists/${item.id}`,
-                    "GET"
+                    "GET",
                 );
 
                 const tracks_in_playlist = tracks.filter((track: any) => {
@@ -45,14 +34,14 @@ export default function Download_Queue() {
                 });
 
                 if (tracks_in_playlist.length > 0) {
-                    const tracksminus = tracks.filter((trackItem: any) => {
+                    const minusTracks = tracks.filter((trackItem: any) => {
                         return !tracks_in_playlist.some(
                             (tempItem: any) =>
                                 tempItem.id === trackItem.id &&
-                                tempItem.mode === trackItem.mode
+                                tempItem.mode === trackItem.mode,
                         );
                     });
-                    tracks = tracksminus;
+                    tracks = minusTracks;
                 }
 
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
@@ -60,7 +49,7 @@ export default function Download_Queue() {
             for (const item of tracks) {
                 const data = await fetch_data(
                     `/music/${item.source}/tracks/${item.id}`,
-                    "GET"
+                    "GET",
                 );
 
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
@@ -111,18 +100,18 @@ export default function Download_Queue() {
                                             icon={faCircle}
                                             onClick={async () => {
                                                 const temp_map = new Map(
-                                                    Object.entries(data)
+                                                    Object.entries(data),
                                                 );
                                                 temp_map.delete(key);
                                                 const temp_obj = {};
                                                 temp_map.forEach(
                                                     (value: any, key: any) => {
                                                         temp_obj[key] = value;
-                                                    }
+                                                    },
                                                 );
 
                                                 setlist(
-                                                    JSON.stringify(temp_obj)
+                                                    JSON.stringify(temp_obj),
                                                 );
 
                                                 const queue_list: any[] =
@@ -139,22 +128,22 @@ export default function Download_Queue() {
                                                                 list_item.id ===
                                                                     id
                                                             );
-                                                        }
+                                                        },
                                                     );
 
                                                 queue_list.splice(
                                                     deletedItem,
-                                                    1
+                                                    1,
                                                 );
                                                 setqueue(
-                                                    JSON.stringify(queue_list)
+                                                    JSON.stringify(queue_list),
                                                 );
                                                 await fetch_data(
                                                     "/profile/download",
                                                     "POST",
                                                     {
                                                         download: queue_list,
-                                                    }
+                                                    },
                                                 );
                                             }}
                                         />
@@ -213,9 +202,9 @@ export default function Download_Queue() {
                                                         : item.artist
                                                               .map(
                                                                   (
-                                                                      artist: any
+                                                                      artist: any,
                                                                   ) =>
-                                                                      artist.name
+                                                                      artist.name,
                                                               )
                                                               .join(", ")}
                                                 </span>
@@ -227,7 +216,7 @@ export default function Download_Queue() {
                                                     <span className="duration cursor-default select-none ml-3.75">
                                                         {formatDuration(
                                                             (item?.duration as number) /
-                                                                1000
+                                                                1000,
                                                         ) ?? "cant load"}
                                                     </span>
                                                 </div>
@@ -246,14 +235,14 @@ export default function Download_Queue() {
                                                             "https://www.youtube.com/watch?v=" +
                                                             item.id;
                                                         navigator.clipboard.writeText(
-                                                            url
+                                                            url,
                                                         );
                                                     } else {
                                                         const url =
                                                             "https://open.spotify.com/track/" +
                                                             item.id;
                                                         navigator.clipboard.writeText(
-                                                            url
+                                                            url,
                                                         );
                                                     }
                                                 }}
@@ -296,12 +285,12 @@ export default function Download_Queue() {
                                                                         : itemm.artist
                                                                               .map(
                                                                                   (
-                                                                                      artist: any
+                                                                                      artist: any,
                                                                                   ) =>
-                                                                                      artist.name
+                                                                                      artist.name,
                                                                               )
                                                                               .join(
-                                                                                  ", "
+                                                                                  ", ",
                                                                               )}
                                                                 </span>
                                                                 <div className="flex flex-row items-center">
@@ -312,7 +301,7 @@ export default function Download_Queue() {
                                                                     <span className="duration cursor-default select-none ml-3.75">
                                                                         {formatDuration(
                                                                             (itemm?.duration as number) /
-                                                                                1000
+                                                                                1000,
                                                                         ) ??
                                                                             "cant load"}
                                                                     </span>
@@ -332,14 +321,14 @@ export default function Download_Queue() {
                                                                             "https://www.youtube.com/watch?v=" +
                                                                             itemm.id;
                                                                         navigator.clipboard.writeText(
-                                                                            url
+                                                                            url,
                                                                         );
                                                                     } else {
                                                                         const url =
                                                                             "https://open.spotify.com/track/" +
                                                                             itemm.id;
                                                                         navigator.clipboard.writeText(
-                                                                            url
+                                                                            url,
                                                                         );
                                                                     }
                                                                 }}
@@ -353,7 +342,7 @@ export default function Download_Queue() {
                                                         </div>
                                                     </div>
                                                 );
-                                            }
+                                            },
                                         )}
                                     </div>
                                 )}
