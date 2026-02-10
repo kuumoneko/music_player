@@ -37,7 +37,6 @@ let win: BrowserWindow | null;
 let tray: Tray | null;
 let rpc: DiscordRPC.Client;
 let isMaximized = true;
-let isClosed = false;
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -52,6 +51,8 @@ if (!gotTheLock) {
         }
     });
 }
+
+let isClosed = false;
 
 check_env(user_data);
 
