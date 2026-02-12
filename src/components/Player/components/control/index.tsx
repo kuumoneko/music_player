@@ -156,10 +156,11 @@ export default function ControlUI() {
             setTime(0);
             setisloading(false);
         } else {
+            let playedId = id;
             if (source === "spotify") {
                 try {
                     const temp = await fetchdata(`play`, "GET", { source, id });
-                    id = temp;
+                    playedId = temp;
                 } catch (e) {
                     console.error("Failed to resolve spotify track", e);
                     setisloading(false);
@@ -177,7 +178,7 @@ export default function ControlUI() {
                 };
                 audioRef.current.pause();
                 audioRef.current.src = "";
-                player.current.loadVideoById(id);
+                player.current.loadVideoById(playedId);
                 const volume = localstorage("get", "volume", 50);
                 if (
                     volume &&
