@@ -12,20 +12,22 @@ export default function Download_Queue() {
 
     useEffect(() => {
         async function run() {
-            const res = await fetch_data("/profile/download", "GET");
+            const res = await fetch_data("profile", "GET", {
+                key: "download",
+            });
 
             const playlists = res.filter((item: any) =>
                 item.mode.includes("playlist"),
             );
             let tracks = res.filter((item: any) => item.mode.includes("track"));
-
             const temp: any = {};
 
             for (const item of playlists) {
-                const data = await fetch_data(
-                    `/music/${item.source}/playlists/${item.id}`,
-                    "GET",
-                );
+                const data = await fetch_data(`music`, "GET", {
+                    source: item.source,
+                    type: "playlists",
+                    id: item.id,
+                });
 
                 const tracks_in_playlist = tracks.filter((track: any) => {
                     return (data.tracks as any[]).find((trackk: any) => {
@@ -47,17 +49,21 @@ export default function Download_Queue() {
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
             for (const item of tracks) {
-                const data = await fetch_data(
-                    `/music/${item.source}/tracks/${item.id}`,
-                    "GET",
-                );
+                const data = await fetch_data(`music`, "GET", {
+                    source: item.source,
+                    type: "tracks",
+                    id: item.id,
+                });
 
-                temp[`${item.source}:${item.mode}:${item.id}`] = data;
+                temp[`${item.source}:${item.mode}:${item.id}`] =
+                    data?.length > 0 ? data[0] : data;
             }
 
             const hehe = [...playlists, ...tracks];
-            await fetch_data("/profile/download", "POST", {
+            console.log(hehe);
+            await fetch_data("profile", "POST", {
                 download: hehe,
+                key: "download",
             });
             setlist(JSON.stringify(temp));
             setqueue(JSON.stringify(hehe));
@@ -69,8 +75,9 @@ export default function Download_Queue() {
         <>
             <div
                 onClick={async () => {
-                    await fetch_data("/profile/download", "POST", {
+                    await fetch_data("profile", "POST", {
                         download: [],
+                        key: "download",
                     });
                 }}
             >
@@ -139,10 +146,11 @@ export default function Download_Queue() {
                                                     JSON.stringify(queue_list),
                                                 );
                                                 await fetch_data(
-                                                    "/profile/download",
+                                                    "profile",
                                                     "POST",
                                                     {
                                                         download: queue_list,
+                                                        key: "download",
                                                     },
                                                 );
                                             }}
