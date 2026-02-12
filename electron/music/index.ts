@@ -1,12 +1,12 @@
-import Innertube, { ClientType } from "youtubei.js";
 import ffmpeg from "fluent-ffmpeg";
 import Spotify from "./spotify.ts";
 import Youtube from "./youtube.ts";
 import { Download_item, Status, Track } from "../types/index.ts";
-import { existsSync, mkdirSync, readdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, extname, resolve as pathResolve, resolve } from "node:path";
+import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
+import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
 import areStringsSimilar from "../lib/comapre_string.ts";
+import { spawn } from "node:child_process";
 
 export enum Audio_format {
     aac = "aac",
@@ -18,13 +18,11 @@ export enum Audio_format {
     vorbis = "vorbis",
     wav = "wav"
 }
-const client_types = [ClientType.ANDROID, ClientType.IOS, ClientType.WEB, ClientType.TV, ClientType.TV_EMBEDDED];
 
 export default class Player {
     public spotify: Spotify;
     public youtube: Youtube;
     public local: Local;
-    private youtube_player: Innertube | null = null;
     public download_folder: string = "";
     public status: { data: string, track: string } = { data: Status.idle, track: "" };
     public download_queue: Download_item[] = [];
@@ -35,7 +33,8 @@ export default class Player {
         youtube_api_keys: { ApiKey: string, isReached: boolean }[],
         spotify_api_keys: { ApiKey: string, ClientId: string, isReached: boolean, RetryAfter: number }[],
         path: string,
-        download_folder: string
+        download_folder: string,
+        appPath: string
     }) {
         this.spotify = new Spotify({
             spotify_api_keys: options.spotify_api_keys,
@@ -47,17 +46,17 @@ export default class Player {
         });
         this.local = new Local(options.path + "\\data\\local");
         this.download_folder = options.download_folder ?? "";
-        this.folder = options.path;
-        ffmpeg.setFfmpegPath(resolve(options.path, "bin", "ffmpeg.exe"))
+        this.folder = options.appPath;
+        ffmpeg.setFfmpegPath(resolve(options.appPath, "bin", "ffmpeg.exe"))
     }
 
     format_title(title: string): string {
         const emojiAndSymbolPattern =
             /[\u2600-\u27FF\u2B00-\u2BFF\u2300-\u23FF\u{1F000}-\u{1FFFF}\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}]/gu;
         const regionalIndicatorPattern = /[\u{1F1E6}-\u{1F1FF}]{2}/gu;
-        const invalidCharsPattern = /[|/?*:<>"]/g;
+        const invalidCharsPattern = /[\x7C\x2F\x3F\x3A\x2A\x3C\x3E]/gu;
         const multipleSpacesPattern = /\s+/g;
-        const trimSpacesPattern = /(^\s+|\s+$)/g;
+        const trimSpacesPattern = /\s+$/g;
         let cleanedTitle = title;
 
         cleanedTitle = cleanedTitle.replace(regionalIndicatorPattern, "");
@@ -92,6 +91,11 @@ export default class Player {
                 }
             }
             else {
+                this.download_queue = this.download_queue.filter((item) => {
+                    const downloadedItem = checked[0];
+                    return downloadedItem.id === item.id && downloadedItem.title === item.title && downloadedItem.metadata === item.metadata;
+                });
+
                 console.log(`No Deleted: ${filename}`);
             }
         }
@@ -99,129 +103,6 @@ export default class Player {
 
     sleep(ms: number) {
         return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    donwloading(title: string, id: string, metadata: { artist: string, year: string, thumbnail: string }): Promise<any> {
-        return new Promise(async (resolve, reject) => {
-            const __dirname = this.download_folder,
-                outputFileName = `${title}.${this.audio_format}`,
-                outputPath = pathResolve(__dirname, outputFileName), { artist, year, thumbnail } = metadata;
-
-            let tempThumbnailPath: string | null = null;
-
-            try {
-                this.status = {
-                    data: Status.prepare, track: title
-                }
-                console.log(`Fetching info for videos ${title}`);
-                const data = (this.youtube.get_data("tracks", [id]))[0];
-
-                const music_url: string = data.music_url;
-                let download_url: string = ""
-                if (music_url) {
-                    const is_invalid_link = await fetch(music_url);
-                    if (is_invalid_link.ok) {
-                        download_url = music_url;
-                    }
-                    else {
-                        download_url = await this.getAudioURLAlternative(id)
-                        data.music_url = download_url;
-                        this.youtube.write_data("tracks", [id], [data]);
-                    }
-                }
-                else {
-                    download_url = await this.getAudioURLAlternative(id)
-                    data.music_url = download_url;
-                    this.youtube.write_data("tracks", [id], [data]);
-                }
-                const command = ffmpeg(download_url);
-
-                // Embed metadata
-                if (title) command.outputOptions('-metadata', `title=${title}`);
-                if (artist) command.outputOptions('-metadata', `artist=${artist}`);
-                if (year) command.outputOptions('-metadata', `year=${year}`);
-
-                // Set output codec for format
-                command
-                    .audioCodec((this.audio_format === Audio_format.mp3 ? "libmp3lame" : "aac"))
-                    .audioBitrate(192)
-                    .outputOptions([
-                        '-map', '0:a'
-                    ]);
-
-                if (thumbnail) {
-                    console.log(`Downloading thumbnail from: ${thumbnail}`);
-                    const response = await fetch(thumbnail);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const thumbnailBuffer = Buffer.from(arrayBuffer);
-
-                    // Determine image format (e.g., .jpg, .png) from content type or guess
-                    const contentType = response.headers.get('content-type') || 'image/jpeg'; // Default to jpeg
-                    let ext = '.jpg';
-                    if (contentType.includes('png')) {
-                        ext = '.png';
-                    } else if (contentType.includes('jpeg')) {
-                        ext = '.jpeg';
-                    }
-
-                    tempThumbnailPath = pathResolve(__dirname, `temp_thumbnail_123${ext}`);
-                    writeFileSync(tempThumbnailPath, thumbnailBuffer);
-                    console.log(`Thumbnail downloaded to: ${tempThumbnailPath}`);
-
-                    // add thumbnail to 
-                    command.addInput(tempThumbnailPath)
-                        .addOutputOptions([
-                            '-map', '1:v',
-                            '-c:v', 'copy',
-                            '-disposition:v:0', 'attached_pic'
-                        ]);
-                }
-
-                command
-                    .on('start', (commandLine) => {
-                        console.log('FFmpeg command started:', commandLine);
-                        this.status = {
-                            data: Status.downloading, track: title
-                        }
-
-                    })
-                    .on('progress', (progress) => {
-                        console.log(`Processing: ${progress.percent} %`);
-                        this.status = {
-                            data: Status.downloading, track: `${progress.percent?.toFixed(2)} % `
-                        }
-                    })
-                    .on('end', async () => {
-                        console.log(`\nDownload and metadata embedding finished for "${title}". Saved to: ${outputPath}`);
-                        this.status = {
-                            data: Status.done, track: title
-                        }
-
-                        if (tempThumbnailPath && existsSync(tempThumbnailPath)) {
-                            try {
-                                unlinkSync(tempThumbnailPath)
-                            } catch (error) {
-                                console.error('Error during emergency cleanup:', error)
-                            }
-                        }
-                        resolve("ok");
-                    })
-                    .on('error', async (err) => {
-                        throw new Error(err.message);
-                    })
-                    .save(outputPath);
-            } catch (error) {
-                console.log(error)
-                if (tempThumbnailPath && existsSync(tempThumbnailPath)) {
-                    try {
-                        unlinkSync(tempThumbnailPath)
-                    } catch (error) {
-                        console.error('Error during emergency cleanup:', error)
-                    }
-                }
-                reject("not oke");
-            }
-        })
     }
 
     converting(...args: string[]): Promise<any> {
@@ -242,137 +123,109 @@ export default class Player {
         })
     }
 
-    async download() {
-        mkdirSync(`${this.download_folder}`, { recursive: true })
-
-        while (this.download_queue.length > 0) {
-            const downloader = this.download_queue.shift() as Download_item,
-                { title, id, metadata } = downloader,
-                formats = [Audio_format.m4a, Audio_format.mp3],
-                file_name = `${this.download_folder}\\${title}`;
-
-            let isExisted = false,
-                is_converted = false,
-                curr_format: Audio_format = Audio_format.m4a;
-
-            for (const format of formats) {
-                const fileName = file_name + "." + format;
-                if (existsSync(fileName)) {
-                    isExisted = true;
-                    if (format !== this.audio_format) {
-                        is_converted = true;
-                        curr_format = format
-                    }
-                    break;
-                }
-            }
-
-            console.log(`${file_name} is ${!isExisted === true ? "not" : ""} existed`)
-            let downloaded_id = id[id.length - 1];
-            if (downloaded_id.length === 22) {
-                const track = await this.spotify.fetch_track([downloaded_id]);
-                const temp = await this.findMatchingVideo(track[0]);
-                if (temp) {
-                    downloaded_id = temp.id as string;
-                }
-            }
-            try {
-                const formated_title = this.format_title(title)
-                if (!isExisted) {
-                    console.log(`download new file ${formated_title}`)
-                    await this.donwloading(formated_title, downloaded_id, metadata)
-                }
-                else if (is_converted) {
-                    console.log(`Convert ${formated_title} from ${curr_format} to ${this.audio_format}`)
-                    await this.converting(formated_title, curr_format, this.audio_format)
-                }
-            }
-            catch (e) {
-                console.error(e)
-                const source = metadata.source;
-
-                const track: Track[] = await this.youtube.fetch_track([id[0]]);
-                const data = await this.findMatchingVideo(track[0], id);
-                if (data) {
-                    this.download_queue.push({
-                        title: this.format_title(data.name as string) ?? "",
-                        id: [...id, data.id ?? ''],
-                        metadata: {
-                            artist: (data.artist as any)[0].name ?? "",
-                            year: data.releasedDate ?? "",
-                            thumbnail: data.thumbnail ?? "",
-                            source: source
-                        }
-                    })
-                }
-            }
-        }
-        this.status = {
-            data: Status.idle, track: ""
-        }
-        await this.sleep(5000).then(() => {
+    async download_track(data: { id: string, title: string, metadata: { artist: string, year: string, thumbnail: string }, option: string[] }) {
+        return new Promise((resolve, _reject) => {
+            const { title, option } = data;
             this.status = {
-                data: Status.idle, track: ""
+                data: Status.prepare, track: title
             }
+            console.log(title, option)
+            const process = spawn(`${path.resolve(this.folder, "bin", "yt-dlp.exe")}`, option, { shell: true });
+
+            process.stdout.on("data", (data) => {
+                const text = data.toString();
+                const lines = text.split("\n");
+
+                lines.forEach((line: string) => {
+                    if (line.includes("[download]") && line.includes("%")) {
+                        const percentMatch = line.match(/(\d+\.\d+)%/);
+
+                        if (percentMatch && percentMatch[1]) {
+                            const percentage = percentMatch[1];
+
+                            console.log(`Progress: ${percentage}%`);
+                            this.status = {
+                                data: Status.downloading, track: `${percentage}%`
+                            }
+                        }
+                    }
+                });
+            });
+
+            process.stderr.on('data', (data) => {
+                console.error(`stderr: ${data}`);
+            })
+
+            process.on("close", (code: number) => {
+                if (code === 0) {
+                    this.status = {
+                        data: Status.done, track: title
+                    }
+                    resolve(code)
+                }
+                else {
+                    resolve(code)
+                }
+            })
         })
     }
 
-    getAudioURLAlternative(id: string): Promise<string> {
-        return new Promise(async (resolve) => {
-            let url = "";
-            const maxRetry = 5;
-            let retryCount = 0;
-            while (url === "") {
-                if (this.youtube_player === null || this.youtube_player === undefined) {
-                    this.youtube_player = await Innertube.create({
-                        client_type: client_types[retryCount],
-                        generate_session_locally: true,
-                        enable_session_cache: true
-                    });
-                }
-                try {
-                    const info = await this.youtube_player.getBasicInfo(id);
-                    const format = info.chooseFormat({ type: 'audio', quality: 'best' });
-                    console.log(client_types[retryCount], format)
-                    if (format) {
-                        const temp = await format.decipher();
+    async download() {
+        mkdirSync(`${this.download_folder}`, { recursive: true });
 
-                        if (temp && temp.length > 0) {
-                            const test = await fetch(temp);
-                            if (test.ok) {
-                                url = temp;
-                            }
-                            else {
-                                url = "";
-                                this.youtube_player = null as unknown as Innertube;
-                                console.error("Link unvalid")
-                                retryCount++;
-                            }
-                        }
-                    }
-                    else {
-                        url = "";
-                        this.youtube_player = null as unknown as Innertube;
-                        console.error("no format found")
-                        retryCount++;
-                    }
+        const downloade_data = [];
+        const defaultDownloadOptions = [
+            "-x",
+            "--ffmpeg-location",
+            `${resolve(this.folder, "bin", "ffmpeg.exe")}`,
+            "--audio-format",
+            "m4a",
+            "--audio-quality",
+            "0",
+            "--embed-thumbnail",
+            "--add-metadata",
+            "--newline",
+            "--console-title",
+            "-P",
+            `${this.download_folder}`,
+            "--js-runtimes",
+            "node",
+        ]
+        for (const item of this.download_queue) {
+            let temp = item;
+            if (item.id.length > 20) {
+                const track = await this.spotify.fetch_track([item.id[0]]);
+                const Ytb_track = await this.findMatchingVideo(track[0]);
+                if (Ytb_track?.id) {
+                    temp.id[0] = Ytb_track.id as string;
                 }
-                catch (e: any) {
-                    url = "";
-                    this.youtube_player = null as unknown as Innertube;
-                    if (e.reason) {
-                        console.log(e)
-                    }
-                    console.error("bug here", e);
-                    retryCount++;
-                }
-                if (retryCount >= maxRetry) {
-                    throw new Error("Max retry reached")
+                else {
+                    console.error("")
                 }
             }
-            console.log(url);
-            resolve(url)
-        })
+            temp.title = this.format_title(temp.title);
+            const metadata = []
+            for (const [key, value] of Object.entries(item.metadata)) {
+                if (key === "source" || key === "thumbnail") { continue }
+                metadata.push('--parse-metadata', `"${value}":%(${key})s`);
+            }
+
+            downloade_data.push({
+                ...temp,
+                option: [
+                    ...defaultDownloadOptions,
+                    "-o", `"${temp.title}.%(ext)s"`,
+                    '--add-metadata',
+                    ...metadata,
+                    `https://www.youtube.com/watch?v=${temp.id[0]}`,
+                ]
+            });
+        }
+
+        for (const data of downloade_data) {
+            await this.download_track(data);
+        }
+
     }
 
     async findMatchingVideo(trackToMatch: Track, ids_dont_have: string[] = []): Promise<Track | null> {

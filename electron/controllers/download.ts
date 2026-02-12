@@ -127,7 +127,6 @@ export default async function DownloadController(player: Player) {
         data: Status.env, track: ""
     }
     console.log("---------------------- CHECKING ----------------------");
-    console.log(download_queue)
     await player.checking();
     player.download();
     console.log("---------------------- DOWNLOADING ----------------------")
