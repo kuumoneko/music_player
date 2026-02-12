@@ -70,6 +70,7 @@ if (system?.youtube_keys && system?.spotify_keys && system?.youtube_keys?.length
         youtube_api_keys: system.youtube_keys,
         spotify_api_keys: system.spotify_keys,
         path: user_data,
+        appPath: process.env.APP_ROOT,
         download_folder: profile.folder.length > 0 ? profile.folder : resolve(process.env.APP_ROOT, "downloads")
     });
     player.local.getfolder(profile.folder)
@@ -102,10 +103,10 @@ async function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             backgroundThrottling: false,
         },
-        frame: false,
+        // frame: false,
     })
     win.maximize();
-    win.removeMenu();
+    // win.removeMenu();
 
     win.webContents.on('did-finish-load', () => {
         win?.webContents.send('main-process-message', (new Date).toLocaleString())
@@ -113,6 +114,7 @@ async function createWindow() {
 
     if (VITE_DEV_SERVER_URL) {
         win.loadURL(VITE_DEV_SERVER_URL);
+        win.webContents.openDevTools();
     }
     else {
         const PORT: number = 3000;
@@ -298,6 +300,7 @@ ipcMain.handle("api", async (_event: any, arg: any) => {
                     youtube_api_keys: system.youtube_keys,
                     spotify_api_keys: system.spotify_keys,
                     path: user_data,
+                    appPath: process.env.APP_ROOT,
                     download_folder: profile.folder.length > 0 ? profile.folder : resolve(process.env.APP_ROOT, "downloads")
                 });
                 player.local.getfolder(profile.folder)
