@@ -12,6 +12,12 @@ declare global {
             setmusic: (track: Track) => Promise<{ ok: boolean }>;
             clearmusic: () => Promise<{ ok: boolean }>;
         },
-        YT: any
+        YT: any,
+        app: {
+            checkForUpdate: () => Promise<{ current: string, latest: string }>;
+            checkIfRPC: () => Promise<string>;
+            update: () => void;
+            connect: () => void
+        }
     }
 }
