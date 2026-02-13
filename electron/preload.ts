@@ -12,3 +12,11 @@ contextBridge.exposeInMainWorld("discord", {
   setmusic: (track: any) => ipcRenderer.invoke("discord", { url: "setmusic", data: track }),
   clearmusic: () => ipcRenderer.invoke("discord", { url: "clearmusic" })
 })
+
+contextBridge.exposeInMainWorld("app", {
+  checkForUpdate: () => ipcRenderer.invoke("app", { url: "cfu" }),
+  connect: () => ipcRenderer.invoke("app", { url: "RPC" }),
+  checkIfRPC: () => ipcRenderer.invoke("app", { url: "cid" }),
+  update: () => ipcRenderer.invoke("app", { url: "update" })
+
+})

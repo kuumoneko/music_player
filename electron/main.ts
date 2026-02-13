@@ -77,8 +77,6 @@ if (system?.youtube_keys && system?.spotify_keys && system?.youtube_keys?.length
 }
 
 
-
-
 if (CLIENT_ID) {
     rpc = new Client({ clientId: CLIENT_ID })
     rpc.login().catch(() => { rpc = null });
@@ -167,15 +165,6 @@ function createTray() {
         }
     });
 }
-
-autoUpdater.on("update-available", () => {
-    console.log("Update available");
-})
-
-autoUpdater.on("update-downloaded", () => {
-    console.log("Update downloaded");
-    autoUpdater.quitAndInstall();
-})
 
 autoUpdater.on("error", () => {
     console.error("Something went wrong while updating")
@@ -412,6 +401,48 @@ ipcMain.handle("discord", async (_event: any, arg: any) => {
     catch (e) {
         console.log(e);
         throw e;
+    }
+})
+
+ipcMain.handle("app", async (_event: any, arg: any) => {
+    try {
+        const { url } = arg;
+        // Check for update
+        if (url === "cfu") {
+            const result = await autoUpdater.checkForUpdates();
+            return {
+                current: autoUpdater.currentVersion.version,
+                latest: result?.updateInfo?.version ?? autoUpdater.currentVersion.version,
+            };
+        }
+        // check if discord RPC is connected
+        else if (url === "cid") {
+            return rpc.user?.username ?? "Discord RPC is not connected"
+        }
+        // check if discord RPC and login again
+        else if (url === "RPC" && CLIENT_ID) {
+            rpc = new Client({ clientId: CLIENT_ID })
+            rpc.login().catch(() => { rpc = null });
+            if (rpc) {
+                rpc.on("ready", async () => {
+                    console.log("Discord RPC is ready");
+                    await rpc.user.setActivity({
+                        details: "Idle...",
+                        state: "Waiting for music...",
+                        startTimestamp: new Date(),
+                        largeImageText: "Kuumo app",
+                        instance: false
+                    })
+                })
+            }
+        }
+        // update app
+        else if (url === "update") {
+            autoUpdater.quitAndInstall();
+        }
+    }
+    catch (e) {
+        console.log(e);
     }
 })
 
