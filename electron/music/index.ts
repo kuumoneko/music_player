@@ -1,4 +1,3 @@
-import ffmpeg from "fluent-ffmpeg";
 import Spotify from "./spotify.ts";
 import Youtube from "./youtube.ts";
 import { Download_item, Status, Track } from "../types/index.ts";
@@ -44,10 +43,9 @@ export default class Player {
             api_keys: options.youtube_api_keys,
             path: options.path + "\\data\\youtube"
         });
-        this.local = new Local(options.path + "\\data\\local");
+        this.local = new Local(options.path + "\\data\\local", options.appPath);
         this.download_folder = options.download_folder ?? "";
         this.folder = options.appPath;
-        ffmpeg.setFfmpegPath(resolve(options.appPath, "bin", "ffmpeg.exe"))
     }
 
     format_title(title: string): string {
@@ -91,11 +89,6 @@ export default class Player {
                 }
             }
             else {
-                this.download_queue = this.download_queue.filter((item) => {
-                    const downloadedItem = checked[0];
-                    return downloadedItem.id === item.id && downloadedItem.title === item.title && downloadedItem.metadata === item.metadata;
-                });
-
                 console.log(`No Deleted: ${filename}`);
             }
         }
@@ -108,18 +101,23 @@ export default class Player {
     converting(...args: string[]): Promise<any> {
         return new Promise(async (resolve) => {
             const [name, input, output] = args;
-            const inputFile = `${this.download_folder}/${name}.${input}`;
-            const outputFile = `${this.download_folder}/${name}.${output}`;
 
-            ffmpeg(inputFile)
-                .toFormat(output)
-                .on('end', () => {
+            const process = spawn(`${this.folder}\\bin\\ffmpeg.exe`, ["-i", `"${this.download_folder}\\${name}.${input}"`, "-c:a", "aac", "-o", `"${this.download_folder}\\${name}.${output}"`], { shell: true });
+            process.stdout.on('data', (data) => {
+                console.log(`stdout: ${data}`);
+            });
+            process.stderr.on('data', (data) => {
+                console.error(`stderr: ${data}`);
+            });
+
+            process.on("close", (code: number) => {
+                if (code === 0) {
                     resolve("ok")
-                })
-                .on('error', (err: any) => {
-                    throw new Error(err);
-                })
-                .save(outputFile);
+                }
+                else {
+                    resolve(code)
+                }
+            })
         })
     }
 
@@ -223,6 +221,28 @@ export default class Player {
         }
 
         for (const data of downloade_data) {
+            // check if the track is downloaded but in other extesion, just use this.converting()
+            const existingFiles = readdirSync(this.download_folder);
+            const matchingFile = existingFiles.find(file => {
+                const name = basename(file, extname(file));
+                return areStringsSimilar(name, data.title);
+            });
+
+            if (matchingFile) {
+                const currentExt = extname(matchingFile).replace(".", "");
+                if (currentExt !== "m4a" && Object.values(Audio_format).includes(currentExt as Audio_format)) {
+                    await this.converting(data.title, currentExt, "m4a");
+                    try {
+                        unlinkSync(path.join(this.download_folder, matchingFile));
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    continue;
+                } else if (currentExt === "m4a") {
+                    continue;
+                }
+            }
+
             await this.download_track(data);
         }
 
