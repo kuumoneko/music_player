@@ -8,10 +8,10 @@ export class Local {
     public data: any[] = [];
     public folder: string = "";
 
-    constructor(path: string) {
+    constructor(path: string, appPath: string) {
         this.folder = path;
-        ffmpeg.setFfmpegPath(resolve(path, "bin", "ffmpeg.exe"));
-        ffmpeg.setFfprobePath(resolve(path, "bin", "ffprobe.exe"));
+        ffmpeg.setFfmpegPath(resolve(appPath, "bin", "ffmpeg.exe"));
+        ffmpeg.setFfprobePath(resolve(appPath, "bin", "ffprobe.exe"));
     }
 
     get_Thumbnail(path: string): Promise<string> {
