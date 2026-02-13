@@ -1,44 +1,50 @@
-import ffmpeg from "fluent-ffmpeg"
-import { PassThrough } from "node:stream"
 import { readdirSync } from "node:fs";
-import { extname, join, basename, resolve } from "node:path";
+import { extname, join, basename } from "node:path";
 import { getDataFromDatabase, writeDataToDatabase } from "../lib/database.ts";
+import { spawn } from "node:child_process";
 
 export class Local {
     public data: any[] = [];
     public folder: string = "";
+    public appPath: string = "";
+
 
     constructor(path: string, appPath: string) {
         this.folder = path;
-        ffmpeg.setFfmpegPath(resolve(appPath, "bin", "ffmpeg.exe"));
-        ffmpeg.setFfprobePath(resolve(appPath, "bin", "ffprobe.exe"));
+        this.appPath = appPath;
     }
 
-    get_Thumbnail(path: string): Promise<string> {
+    get_Thumbnail(file: string): Promise<string> {
         return new Promise((resolve) => {
-            const imageStream = new PassThrough();
-            let chunks: any[] = [];
+            const ffmpeg = spawn(`${this.appPath}/bin/ffmpeg.exe`, [
+                '-i', file,
+                '-map', '0:v',
+                '-f', 'image2',
+                '-vframes', '1',
+                'pipe:1'
+            ], { shell: true });
 
-            imageStream.on('data', (chunk) => {
+            let chunks = [];
+            let errorOutput = '';
+
+            ffmpeg.stdout.on('data', (chunk) => {
                 chunks.push(chunk);
             });
 
-            imageStream.on('end', () => {
-                const buffer = Buffer.concat(chunks);
-                const base64Image = buffer.toString('base64');
-                resolve(`data:image/jpeg;base64,${base64Image}`)
+            ffmpeg.stderr.on('data', (data) => {
+                errorOutput += data.toString();
             });
 
-            ffmpeg(path, { timeout: 60000 })
-                .outputFormat('mjpeg')
-                .frames(1)
-                .on('error', () => {
+            ffmpeg.on('close', (code) => {
+                if (code === 0 && chunks.length > 0) {
                     const buffer = Buffer.concat(chunks);
                     const base64Image = buffer.toString('base64');
-                    resolve(`data:image/jpeg;base64,${base64Image}`)
-                })
-                .pipe(imageStream, { end: true });
-        })
+                    resolve(`data:image/jpeg;base64,${base64Image}`);
+                } else {
+                    resolve("");
+                }
+            });
+        });
     }
 
     async parseFile(file: string): Promise<{
@@ -46,25 +52,37 @@ export class Local {
     }> {
         return new Promise((resolve, reject) => {
             try {
-                ffmpeg.ffprobe(file, async (err, metadata) => {
-                    if (err) {
-                        console.error('Error while probing file:', err);
-                        return;
+                const ffprobe = spawn(`${this.appPath}/bin/ffprobe.exe`, [
+                    '-v', 'quiet',
+                    '-print_format', 'json',
+                    '-show_format',
+                    '-show_streams',
+                    file
+                ], { shell: true });
+
+                let output = '';
+                let errorOutput = '';
+
+                ffprobe.stdout.on('data', (data) => {
+                    output += data.toString();
+                });
+
+                ffprobe.stderr.on('data', (data) => {
+                    errorOutput += data.toString();
+                });
+
+                ffprobe.on('close', (code) => {
+                    if (code === 0) {
+                        try {
+                            const metadata = JSON.parse(output);
+                            resolve(metadata);
+                        } catch (e) {
+                            reject(new Error("Failed to parse ffprobe output."));
+                        }
+                    } else {
+                        reject(new Error(`ffprobe exited with code ${code}: ${errorOutput}`));
                     }
-
-                    const duration = metadata.format.duration;
-                    const tags = metadata.format.tags;
-                    const title = tags ? tags.title : 'N/A';
-                    const artist = tags ? tags.artist : 'N/A';
-                    const thumbnail = await this.get_Thumbnail(file);
-
-                    resolve({
-                        title: title as string,
-                        artist: artist as string,
-                        duration: duration as number,
-                        thumbnail: thumbnail
-                    })
-                })
+                });
             }
             catch (e) {
                 reject(e)
