@@ -23,6 +23,7 @@ export default function Discord() {
                     </span>
                 </span>
                 <span
+                    className="hover:cursor-pointer"
                     onClick={() => {
                         if (username === "Discord RPC is not connected") {
                             window.app.connect();
