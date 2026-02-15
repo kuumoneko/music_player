@@ -101,10 +101,10 @@ async function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             backgroundThrottling: false,
         },
-        // frame: false,
+        frame: false,
     })
     win.maximize();
-    // win.removeMenu();
+    win.removeMenu();
 
     win.webContents.on('did-finish-load', () => {
         win?.webContents.send('main-process-message', (new Date).toLocaleString())
