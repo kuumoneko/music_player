@@ -440,6 +440,18 @@ ipcMain.handle("app", async (_event: any, arg: any) => {
         else if (url === "update") {
             autoUpdater.quitAndInstall();
         }
+        // check if auto start is enable
+        else if (url === "cia") {
+            const result = app.getLoginItemSettings();
+            return result.openAtLogin;
+        }
+        // change the auto start
+        else if (url === "autostart") {
+            const result = app.getLoginItemSettings();
+            app.setLoginItemSettings({
+                openAtLogin: !result.openAtLogin, path: app.getPath("exe")
+            })
+        }
     }
     catch (e) {
         console.log(e);

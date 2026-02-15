@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld("app", {
   checkForUpdate: () => ipcRenderer.invoke("app", { url: "cfu" }),
   connect: () => ipcRenderer.invoke("app", { url: "RPC" }),
   checkIfRPC: () => ipcRenderer.invoke("app", { url: "cid" }),
-  update: () => ipcRenderer.invoke("app", { url: "update" })
-
+  update: () => ipcRenderer.invoke("app", { url: "update" }),
+  checkIfAutostart: () => ipcRenderer.invoke("app", { url: "cia" }),
+  toggleAutostart: () => ipcRenderer.invoke("app", { url: "autostart" })
 })
