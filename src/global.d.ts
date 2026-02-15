@@ -17,7 +17,10 @@ declare global {
             checkForUpdate: () => Promise<{ current: string, latest: string }>;
             checkIfRPC: () => Promise<string>;
             update: () => void;
-            connect: () => void
+            connect: () => void;
+            checkIfAutostart: () => Promise<boolean>;
+            toggleAutostart: () => void;
+
         }
     }
 }

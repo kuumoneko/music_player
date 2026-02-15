@@ -4,6 +4,7 @@ import Close_Settings from "./settings/other/close.tsx";
 import Profile from "./settings/profile/index.tsx";
 import Discord from "./settings/discord/index.tsx";
 import Update from "./settings/update/index.tsx";
+import Autostart from "./settings/autorun/index.tsx";
 
 function Settings({ isOpen }: { isOpen: boolean }) {
     if (!isOpen) return null;
@@ -24,6 +25,8 @@ function Settings({ isOpen }: { isOpen: boolean }) {
                 <Discord />
 
                 <Update />
+
+                <Autostart />
 
                 <div className="text-center pt-4 text-sm text-gray-400">
                     <p>Other settings will be added in the future.</p>
