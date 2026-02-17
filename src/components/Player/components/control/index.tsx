@@ -348,8 +348,6 @@ export default function ControlUI() {
                     ? audioRef.current
                     : player.current;
             if (this_player) {
-                const tes = this_player.isPlaying();
-                console.log(tes, " ", YoutubePlaybackState.Playing);
                 if (this_player.isPlaying() === YoutubePlaybackState.Playing) {
                     setTime(this_player.getCurrentTime());
                     const now = new Date().getTime();
