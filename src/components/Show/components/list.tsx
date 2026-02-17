@@ -24,11 +24,8 @@ export default function List({
     id: string;
     mode: string;
 }) {
-    if (!list) {
-        return <Loading mode={"Loading data"} />;
-    }
-    if (list.length === 0) {
-        return <Loading mode={"Loading data"} />;
+    if (!list || list.length === 0) {
+        return <Loading mode={"data"} />;
     }
 
     const max_items = 18; // 6 rows * 3 cols
@@ -53,7 +50,7 @@ export default function List({
                 });
                 list.push(...data.tracks);
                 list = Array.from(
-                    new Set(list.map((item: any) => JSON.stringify(item)))
+                    new Set(list.map((item: any) => JSON.stringify(item))),
                 ).map((item: any) => JSON.parse(item));
             }
             const temp: any[] = list.slice(sight.head, sight.tail + 1) as any[];
@@ -134,8 +131,8 @@ export default function List({
                                         {remove_hashtag(
                                             (item.name?.slice(
                                                 0,
-                                                50
-                                            ) as string) ?? "cant load"
+                                                50,
+                                            ) as string) ?? "cant load",
                                         )}
                                     </span>
                                     <span className="artists cursor-default select-none">
@@ -152,7 +149,7 @@ export default function List({
                                             <span className="duration cursor-default select-none ml-3.75">
                                                 {formatDuration(
                                                     ((item.duration as number) ??
-                                                        0) / 1000
+                                                        0) / 1000,
                                                 ) ?? "cant load"}
                                             </span>
                                         </div>
@@ -165,14 +162,14 @@ export default function List({
                                                             "https://www.youtube.com/watch?v=" +
                                                             item.id;
                                                         navigator.clipboard.writeText(
-                                                            url
+                                                            url,
                                                         );
                                                     } else {
                                                         const url =
                                                             "https://open.spotify.com/track/" +
                                                             item.id;
                                                         navigator.clipboard.writeText(
-                                                            url
+                                                            url,
                                                         );
                                                     }
                                                 }}

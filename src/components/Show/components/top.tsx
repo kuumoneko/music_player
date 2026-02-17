@@ -324,7 +324,7 @@ export default function Top({
                     </div>
                 </div>
             ) : (
-                <Loading mode={"Loading data"} />
+                <Loading mode={"data"} />
             )}
         </>
     );
