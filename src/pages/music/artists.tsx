@@ -1,5 +1,8 @@
+import Loading from "@/components/Loading";
 import Music from "@/components/Music/index.tsx";
+import fetch_data from "@/utils/fetch";
 import localstorage from "@/utils/localStorage.ts";
+import { goto } from "@/utils/url";
 import { useEffect, useState } from "react";
 
 export default function Artists() {
@@ -13,6 +16,11 @@ export default function Artists() {
         const [source, id] = localstorage("get", "url", "/")
             .split("/")
             .slice(2);
+
+        if (source === undefined || id === undefined) {
+            setdom(<Index />);
+            return;
+        }
         if (source !== data.source || id !== data.id) {
             setdata({
                 source,
@@ -31,4 +39,44 @@ export default function Artists() {
     }, []);
 
     return <>{dom}</>;
+}
+
+function Index() {
+    const [pin, setpin] = useState<any>(null);
+    useEffect(() => {
+        async function run() {
+            const pin: any[] = await fetch_data("profile", "GET", {
+                key: "pin",
+            });
+            const artists = pin.filter((item: any) =>
+                item.mode.includes("artist"),
+            );
+            setpin(artists);
+        }
+        run();
+    }, []);
+    return (
+        <div className="grid grid-cols-7 items-center">
+            {pin?.map((artist: any) => {
+                return (
+                    <div
+                        className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
+                        onClick={() => {
+                            goto(`/artists/${artist.source}/${artist.id}`);
+                        }}
+                    >
+                        <div>
+                            <img
+                                className="mr-2 rounded-2xl"
+                                src={artist.thumbnail}
+                                height={50}
+                                width={50}
+                            />
+                        </div>
+                        <div>{artist.name}</div>
+                    </div>
+                );
+            }) ?? <Loading mode="artists" />}
+        </div>
+    );
 }
