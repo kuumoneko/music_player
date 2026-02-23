@@ -13,3 +13,7 @@ package-lock.json
 build.json
 installer.nsh
 build
+bun.lock
+electrobun.config.ts
+llms.txt
+postcss.config.js
