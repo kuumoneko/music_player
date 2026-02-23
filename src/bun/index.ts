@@ -14,6 +14,7 @@ import { getDataFromDatabase, writeDataToDatabase } from "./lib/database";
 import Player from "./music/index.ts"
 import { Client, SetActivity } from "@xhayper/discord-rpc"
 import { ActivityType } from "discord-api-types/v10";
+import express from "express";
 
 config();
 
@@ -45,6 +46,9 @@ try {
 
 const DEV_SERVER_URL = `http://localhost:${process.env.PORT}`;
 
+export const APP_ROOT = resolve("./", "..", "Resources", "app");
+export const userData = path.resolve(Utils.paths.userData, "..");
+export const Discord_CLient_ID = process.env.CLIENT_ID;
 
 // Check if Vite dev server is running for HMR
 async function getMainViewUrl(): Promise<string> {
@@ -60,12 +64,18 @@ async function getMainViewUrl(): Promise<string> {
 			);
 		}
 	}
-	return "views://mainview/index.html";
+
+	const app = express();
+	app.use(express.static(path.join(APP_ROOT, "views", "mainview")));
+	app.get("/", (_req, res) => {
+		res.sendFile(path.join(APP_ROOT, "views", "mainview", "index.html"));
+	});
+	app.listen(process.env.FRONT_PORT ?? 5005, () => {
+		console.log(`Server is running on port ${process.env.FRONT_PORT ?? 5005}`);
+	});
+	return `http://localhost:${process.env.FRONT_PORT ?? 5005}`//"views://mainview/index.html";
 }
 
-export const APP_ROOT = resolve("./", "..", "Resources", "app");
-export const userData = path.resolve(Utils.paths.userData, "..");
-export const Discord_CLient_ID = process.env.CLIENT_ID;
 
 check_env(userData);
 
