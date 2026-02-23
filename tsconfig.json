@@ -3,10 +3,10 @@
         "target": "ES2020",
         "useDefineForClassFields": true,
         "lib": ["ES2020", "DOM", "DOM.Iterable"],
-        "module": "nodenext",
+        "module": "es2022",
         "skipLibCheck": true,
 
-        "moduleResolution": "nodenext",
+        "moduleResolution": "bundler",
         "allowImportingTsExtensions": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
@@ -22,14 +22,15 @@
         "allowSyntheticDefaultImports": true,
 
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": ["./src/mainview/*"]
         },
         "baseUrl": ".",
-        "types": ["vite/client"],
+        "types": ["bun"],
         "erasableSyntaxOnly": false,
         "noUncheckedSideEffectImports": true,
         "allowArbitraryExtensions": false,
         "esModuleInterop": true
     },
-    "include": ["src", "electron", "vite.config.ts", "test"]
+    "include": ["src", "vite.config.ts"],
+    "exclude": ["node_modules", "dist", "build", "../../package/dist"]
 }
