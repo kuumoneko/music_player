@@ -97,6 +97,12 @@ setInterval(() => {
 
 setInterval(() => {
 	(playWin.webview.rpc as any).request.setVolume(user.volume)
+	if (user.nextfrom.next.length < 2) {
+		(playWin.webview.rpc as any).request.setIsRepeat(true);
+	}
+	else {
+		(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One);
+	}
 }, 100)
 
 player = new Player(userData, APP_ROOT);
@@ -331,32 +337,26 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				else if (source === "local") {
 					const track = player.local.data.find((localItem) => localItem.id === item.id);
 					user.currentPlaying = {
-						source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", ")
+						source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index
 					}
 					user.current.duration = track?.duration;
 					user.nextfrom = {
-						from: `local:${item.id}`,
+						from: `local:local`,
 						next: player.local.data.slice(0, 20)
 					}
 				}
 				user.current.time = 0;
 				user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
+
 				user.playedTrack = Array.from(new Set([...user.playedTrack, user.currentPlaying.id]));
-				(playWin.webview.rpc as any).request.playTrack({
-					source: user.currentPlaying.source,
-					id: user.currentPlaying.id,
-					title: user.currentPlaying.title,
-					thumbnail: user.currentPlaying.thumbnail,
-					artist: user.currentPlaying.artist
-				});
-				(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One);
-				return {
-					source: user.currentPlaying.source,
-					id: user.currentPlaying.id,
-					title: user.currentPlaying.title,
-					thumbnail: user.currentPlaying.thumbnail,
-					artist: user.currentPlaying.artist
+				(playWin.webview.rpc as any).request.playTrack(user.currentPlaying);
+				if (user.nextfrom.next.length < 2) {
+					(playWin.webview.rpc as any).request.setIsRepeat(true);
 				}
+				else {
+					(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One);
+				}
+				return user.currentPlaying
 			},
 			seekTo: async (time: number) => {
 				try {
@@ -601,20 +601,28 @@ Bun.serve({
 			}
 
 			// Load the file using Bun's native file handler
-			const file = Bun.file(join(player.download_folder, filePath));
-			const exists = await file.exists();
-
-			if (!exists) {
-				return new Response("File not found on disk", {
-					status: 404,
-					headers: { "Access-Control-Allow-Origin": "*" }
-				});
+			const fileName = player.local.data.find((item: Track) => item.index === Number(filePath)).id
+			let file: any;
+			console.log(fileName)
+			file = Bun.file(fileName);
+			const Firstexists = await file.exists();
+			if (!Firstexists) {
+				file = Bun.file(resolve(profile.folder, fileName));
+				const Secexists = await file.exists();
+				if (!Secexists) {
+					return new Response("File not found on disk", {
+						status: 404,
+						headers: { "Access-Control-Allow-Origin": "*" }
+					});
+				}
 			}
 
-			// 🎵 Return the streamed file. Bun automatically handles 'Range' headers for scrubbing!
 			return new Response(file, {
 				headers: {
 					"Access-Control-Allow-Origin": "*",
+					"Accept-Ranges": "bytes",
+					"Content-Length": file.size.toString(),
+					"Content-Type": file.type || "audio/mpeg",
 				}
 			});
 		}
