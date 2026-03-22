@@ -1,17 +1,12 @@
 import { getDataFromDatabase } from "../lib/database";
 import wait_for_downloader from "../lib/player";
 import Player, { Audio_format } from "../music/index.ts";
-import { Download_item, Status, Track } from "../types";
+import { Download_item, Status, Track } from "../../shared/types.ts";
 
-export default async function DownloadController(player: Player) {
+export default async function DownloadController(player: Player, userData: string) {
     await wait_for_downloader(player);
-    const folder = player.folder;
+    const { download: download_queue, folder: download_folder } = await getDataFromDatabase(userData, "data", "profile");
 
-    const { download, folder: download_folder } = getDataFromDatabase(folder, "data", "profile");
-    const download_queue = download;
-    if (download_queue.length === 0) {
-        return "No download queue";
-    }
     player.status = {
         data: Status.idle, track: ""
     };
@@ -29,65 +24,7 @@ export default async function DownloadController(player: Player) {
         player.status = {
             data: Status.prepare, track: `${source} - ${mode} - ${id}`
         }
-
-        if (source === "spotify") {
-            if (mode.includes("track")) {
-                const data = await player.spotify.fetch_track([id]);
-                const track = data[0];
-                const ids: string[] = [track.id]
-                if (track.matched) {
-                    ids.push(track.matched)
-                }
-                track_to_download.push({
-                    id: ids,
-                    title: track.name,
-                    metadata: {
-                        artist: track.artist[0].name,
-                        year: track.releasedDate,
-                        thumbnail: track.thumbnail,
-                        source: "spotify"
-                    }
-                })
-            }
-            else if (mode.includes("playlist")) {
-                const playlist = await player.spotify.fetch_playlist(id);
-                playlist.tracks?.forEach((track: Track) => {
-                    const ids: string[] = [track.id]
-                    if (track.matched) {
-                        ids.push(track.matched)
-                    }
-                    track_to_download.push({
-                        id: ids,
-                        title: track.name,
-                        metadata: {
-                            artist: track.artist[0].name,
-                            year: track.releasedDate,
-                            thumbnail: track.thumbnail,
-                            source: "spotify"
-                        }
-                    })
-                })
-            }
-            else if (mode.includes("album")) {
-                const album = (await player.spotify.fetch_album([id]))[0];
-                album.tracks?.forEach((track: Track) => {
-                    const ids: string[] = [track.id]
-                    if (track.matched) {
-                        ids.push(track.matched)
-                    }
-                    track_to_download.push({
-                        id: ids,
-                        title: track.name,
-                        metadata: {
-                            artist: track.artist[0].name,
-                            year: track.releasedDate,
-                            thumbnail: track.thumbnail,
-                            source: "spotify"
-                        }
-                    })
-                })
-            }
-        }
+        
         if (source === "youtube") {
             if (mode.includes("track")) {
                 const track = (await player.youtube.fetch_track([id]))[0];

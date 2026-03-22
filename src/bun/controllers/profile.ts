@@ -20,7 +20,7 @@ export default async function ProfileController(player: Player, profile: any, da
                 player.local.getfolder(data[key]);
             }
             profile[key] = receivedData[key];
-            writeDataToDatabase(player.folder, "data", "profile", profile)
+            await writeDataToDatabase(player.folder, "data", "profile", profile)
             return "ok"
         }
         else {

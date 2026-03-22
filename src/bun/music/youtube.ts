@@ -1,6 +1,7 @@
-import { Playlist, Track, Artist, API_Key } from "../types/index.ts";
+import { Playlist, Track, Artist, API_Key } from "../../shared/types.ts";
 import iso8601DurationToMilliseconds from "../lib/time.ts";
-import { getDataFromDatabase, writeDataToDatabase } from "../lib/database.ts";
+import { getDataFromDatabase } from "../lib/database.ts";
+import { join } from "node:path";
 
 function getNextResetTimestamp() {
     const now = new Date();
@@ -80,22 +81,30 @@ export default class Youtube {
     private maxResults = 50;
     private running: any[] = [];
     private path: string = "";
-    private tracks: Object = {};
-    private playlists: Object = {};
-    private artists: Object = {};
+    public tracks: Object = {};
+    public playlists: Object = {};
+    public artists: Object = {};
 
-    constructor(option: { api_keys: string[], path: string }) {
-        this.api_keys = option.api_keys.map((item: string) => {
-            return {
-                ApiKey: item,
-                isReached: false,
-                when: 0
-            }
+    constructor(appPath: string, userPath: string) {
+        getDataFromDatabase(appPath, "data", "system").then((data) => {
+            this.api_keys = data.normal.map((key: string) => {
+                return {
+                    ApiKey: key,
+                    isReached: false,
+                    when: 0
+                }
+            });
+        })
+        this.path = join(userPath, 'data');
+        getDataFromDatabase(this.path, "tracks").then((data) => {
+            this.tracks = data;
         });
-        this.path = option.path;
-        this.tracks = getDataFromDatabase(this.path, "tracks");
-        this.playlists = getDataFromDatabase(this.path, "playlists");
-        this.artists = getDataFromDatabase(this.path, "artists");
+        getDataFromDatabase(this.path, "playlists").then((data) => {
+            this.playlists = data;
+        });
+        getDataFromDatabase(this.path, "artists").then((data) => {
+            this.artists = data;
+        });
     }
 
     getRandomItem(list: any[]) {
@@ -130,7 +139,6 @@ export default class Youtube {
                 const item = dataMap.get(id);
                 this[doc][id] = item ?? { id, name: undefined };
             })
-            writeDataToDatabase(this.path, doc, this[doc]);
             return "ok"
         } catch (error) {
             console.error(error);
@@ -502,7 +510,7 @@ export default class Youtube {
             let etag = (this_artist?.etag && this_artist.etag?.length > 0) ? this_artist?.etag : undefined
             const url = `${this.create_end_point(endpoints[EndPoints.Artist])}&id=${id}`;
             const item = (await this.fetch_data(url, etag) as any);
-            if (item === null) {
+            if (item === null || item.items === undefined) {
                 let playlist_id = this_artist.playlistId ?? "";
                 if (playlist_id === "") {
                     const temping = (await this.fetch_data(url) as any);

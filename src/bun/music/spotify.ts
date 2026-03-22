@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer"
-import { Album, Artist, Playlist, Search, Track } from "../types/index.ts";
+import { Album, Artist, Playlist, Search, spotify_api_keys, Track } from "../types/index.ts";
 import { getDataFromDatabase, writeDataToDatabase } from "../lib/database.ts";
 
 interface Spotify_Key { key: string, client_id: string, token: string, isReached: boolean, when: number }
@@ -9,14 +9,13 @@ export default class Spotify {
     private tracks: Object = {};
     private playlists: Object = {};
 
-    constructor(options: { spotify_api_keys: string[], path: string }) {
-        this.spotify_api_keys = options.spotify_api_keys.map((item: string) => {
-            const [apikey, clientId] = item.split(" ");
+    constructor(options: { spotify_api_keys: spotify_api_keys[], path: string }) {
+        this.spotify_api_keys = options.spotify_api_keys.map((item: spotify_api_keys) => {
             return {
-                isReached: false,
-                when: 0,
-                key: apikey ?? "",
-                client_id: clientId ?? "",
+                isReached: item.isReached,
+                when: item.RetryAfter,
+                key: item.ApiKey ?? "",
+                client_id: item.ClientId ?? "",
                 token: ""
             }
         });

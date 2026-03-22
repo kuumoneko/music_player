@@ -1,13 +1,13 @@
 import { readdirSync } from "node:fs";
-import { extname, join, basename } from "node:path";
+import { extname, join } from "node:path";
 import { getDataFromDatabase, writeDataToDatabase } from "../lib/database.ts";
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
+import { Track } from "@/shared/types.ts";
 
 export class Local {
-    public data: any[] = [];
+    public data: Track[] = [];
     public folder: string = "";
     public appPath: string = "";
-
 
     constructor(path: string, appPath: string) {
         this.folder = path;
@@ -17,11 +17,11 @@ export class Local {
     get_Thumbnail(file: string): Promise<string> {
         return new Promise((resolve) => {
             const ffmpeg = spawn(`${this.appPath}/bin/ffmpeg.exe`, [
-                '-i', file,
-                '-map', '0:v',
-                '-f', 'image2',
-                '-vframes', '1',
-                'pipe:1'
+                '-i', `"${file}"`,
+                '-an',
+                '-vcodec', 'mjpeg',
+                '-f', 'image2pipe',
+                '-'
             ], { shell: true });
 
             let chunks = [];
@@ -47,52 +47,52 @@ export class Local {
         });
     }
 
-    async parseFile(file: string): Promise<{
-        title: string, artist: string, duration: number, thumbnail: string
-    }> {
+    async parseFile(file: string): Promise<Track> {
         return new Promise((resolve, reject) => {
             try {
-                execFile(`${this.appPath}/bin/ffprobe.exe`, [
+                const ffprobe = spawn(`${this.appPath}/bin/ffprobe.exe`, [
                     '-v', 'quiet',
                     '-print_format', 'json',
-                    '-show_format', file], (err, stdout, stderr) => {
-                        if (err) {
-                            console.log(stderr);
+                    '-show_format',
+                    '-show_streams',
+                    `"${file}"`
+                ], { shell: true });
+
+                let output = '';
+                let errorOutput = '';
+
+                ffprobe.stdout.on('data', (data) => {
+                    output += data.toString();
+                });
+
+                ffprobe.stderr.on('data', (data) => {
+                    errorOutput += data.toString();
+                });
+
+                ffprobe.on('close', async (code) => {
+                    if (code === 0) {
+                        try {
+                            const metadata = JSON.parse(output);
+                            resolve({
+                                source: "local",
+                                name: metadata.format.tags.title,
+                                id: metadata.format.filename,
+                                duration: Math.floor(metadata.format.duration) * 1000,
+                                releasedDate: "",
+                                artist: [
+                                    {
+                                        id: "", name: metadata.format.tags.artist
+                                    }
+                                ],
+                                thumbnail: await this.get_Thumbnail(file)
+                            });
+                        } catch (e) {
+                            reject(new Error("Failed to parse ffprobe output."));
                         }
-                        const metadata = JSON.parse(stdout);
-                        resolve(metadata);
-                    })
-                // const ffprobe = spawn(`${this.appPath}/bin/ffprobe.exe`, [
-                //     '-v', 'quiet',
-                //     '-print_format', 'json',
-                //     '-show_format',
-                //     '-show_streams',
-                //     file
-                // ], { shell: true });
-
-                // let output = '';
-                // let errorOutput = '';
-
-                // ffprobe.stdout?.on('data', (data) => {
-                //     output += data.toString();
-                // });
-
-                // ffprobe.stderr?.on('data', (data) => {
-                //     errorOutput += data.toString();
-                // });
-
-                // ffprobe.on('close', (code) => {
-                //     if (code === 0) {
-                //         try {
-                //             const metadata = JSON.parse(output);
-                //             resolve(metadata);
-                //         } catch (e) {
-                //             reject(new Error("Failed to parse ffprobe output."));
-                //         }
-                //     } else {
-                //         reject(new Error(`ffprobe exited with code ${code}: ${errorOutput}`));
-                //     }
-                // });
+                    } else {
+                        reject(new Error(`ffprobe exited with code ${code}: ${errorOutput}`));
+                    }
+                });
             }
             catch (e) {
                 reject(e)
@@ -101,10 +101,11 @@ export class Local {
     }
 
     async getfolder(folder: string) {
+        if (folder.length === 0) return []
         const dirents = readdirSync(folder, {
             withFileTypes: true,
         });
-        const local_files = getDataFromDatabase(this.folder, "local");
+        const local_files = await getDataFromDatabase(this.folder, "local");
 
         const audioExtensions = [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"];
 
@@ -115,44 +116,21 @@ export class Local {
         );
         const file: any[] = [];
         audiofiles.forEach((dirent: any) => {
-            // const filePath = join(folder, dirent.name);
-            // split to name and extension, then remove the space if there is in the char[0] or [-1]
-            const ext = extname(dirent.name);
-            const name = basename(dirent.name, ext).trim();
-            // if there is emoji or icon in name, remove it
-            const emojiAndSymbolPattern = /[\u2600-\u27FF\u2B00-\u2BFF\u2300-\u23FF\u{1F000}-\u{1FFFF}\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}]/gu;
-            const cleanedName = name.replace(emojiAndSymbolPattern, "").trim();
-
-            const filePath = join(folder, cleanedName + ext);
-
-            // console.log(cleanedName + ext)
+            const filePath = join(folder, dirent.name);
             const get_data = local_files.find((item: any) => {
                 return item.path === filePath
             })
 
-            if (get_data !== null && get_data !== undefined) {
-                this.data.push(get_data)
-            }
-            else {
+            if (!get_data || get_data.thumbnail.length === 0) {
                 file.push(this.parseFile(filePath).then((data: any) => {
-                    this.data.push({
-                        source: "local",
-                        name:
-                            data.title ||
-                            basename(dirent.name, extname(dirent.name)),
-                        id: `${dirent.name}`,
-                        duration: (data.duration || 0) * 1000,
-                        releasedDate: "",
-                        artist: [{ name: data.artist, id: "" }],
-                        thumbnail: data.thumbnail,
-                        path: filePath
-                    });
+                    this.data.push(data);
                 }).catch((e: any) => {
                     console.error(e)
                 }))
             }
-
-
+            else {
+                this.data.push(get_data)
+            }
         })
         await Promise.all(file);
         writeDataToDatabase(this.folder, "local", this.data);

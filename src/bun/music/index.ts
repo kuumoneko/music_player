@@ -1,11 +1,12 @@
-import Spotify from "./spotify.ts";
+// import Spotify from "./spotify.ts";
 import Youtube from "./youtube.ts";
-import { Download_item, Status, Track } from "../types/index.ts";
+import { Download_item, Status, Track } from "../../shared/types.ts";
 import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
 import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
 import areStringsSimilar from "../lib/comapre_string.ts";
 import { spawn } from "node:child_process";
+import { getDataFromDatabase } from "../lib/database.ts";
 
 export enum Audio_format {
     aac = "aac",
@@ -19,8 +20,8 @@ export enum Audio_format {
 }
 
 export default class Player {
-    public spotify: Spotify;
     public youtube: Youtube;
+    // public spotify: Spotify;
     public local: Local;
     public download_folder: string = "";
     public status: { data: string, track: string } = { data: Status.idle, track: "" };
@@ -28,24 +29,17 @@ export default class Player {
     public audio_format: string = Audio_format.m4a;
     public folder: string = "";
 
-    constructor(options: {
-        youtube_api_keys: string[],
-        spotify_api_keys: string[],
-        path: string,
-        download_folder: string,
-        appPath: string
-    }) {
-        this.spotify = new Spotify({
-            spotify_api_keys: options.spotify_api_keys,
-            path: options.path + "\\data"
+    constructor(
+        userPath: string, appPath: string,
+    ) {
+        // this.spotify
+        this.youtube = new Youtube(appPath, userPath);
+
+        getDataFromDatabase(userPath, 'data', 'profile').then(({ folder }) => {
+            this.download_folder = folder ?? resolve(appPath, "data", "download");
         });
-        this.youtube = new Youtube({
-            api_keys: options.youtube_api_keys,
-            path: options.path + "\\data"
-        });
-        this.local = new Local(options.path + "\\data", options.appPath);
-        this.download_folder = options.download_folder ?? "";
-        this.folder = options.appPath;
+        this.local = new Local(resolve(userPath, "data"), appPath);
+        this.folder = appPath;
     }
 
     format_title(title: string): string {
@@ -191,16 +185,16 @@ export default class Player {
         ]
         for (const item of this.download_queue) {
             let temp = item;
-            if (item.id.length > 20) {
-                const track = await this.spotify.fetch_track([item.id[0]]);
-                const Ytb_track = await this.findMatchingVideo(track[0]);
-                if (Ytb_track?.id) {
-                    temp.id[0] = Ytb_track.id as string;
-                }
-                else {
-                    console.error("")
-                }
-            }
+            // if (item.id.length > 20) {
+            //     const track = await this.spotify.fetch_track([item.id[0]]);
+            //     const Ytb_track = await this.findMatchingVideo(track[0]);
+            //     if (Ytb_track?.id) {
+            //         temp.id[0] = Ytb_track.id as string;
+            //     }
+            //     else {
+            //         console.error("")
+            //     }
+            // }
             temp.title = this.format_title(temp.title);
             const metadata = []
             for (const [key, value] of Object.entries(item.metadata)) {
@@ -249,19 +243,19 @@ export default class Player {
     }
 
     async findMatchingVideo(trackToMatch: Track, ids_dont_have: string[] = []): Promise<Track | null> {
-        const trackId = trackToMatch.id ?? "";
+        // const trackId = trackToMatch.id ?? "";
         const trackName = trackToMatch.name ?? "";
         const artistName = (trackToMatch.artist as any)[0].name ?? "";
         const trackDuration: number = trackToMatch.duration as number ?? 0; // in ms
-        let database: any;
+        // let database: any;
 
-        if (ids_dont_have.length === 0 && trackToMatch.source.includes("spot")) {
-            database = this.spotify.getdata("tracks", [trackId]);
-            if (database && database.matched) {
-                const data = await this.youtube.fetch_track([database.matched]);
-                return data[0];
-            }
-        }
+        // if (ids_dont_have.length === 0 && trackToMatch.source.includes("spot")) {
+        //     database = this.spotify.getdata("tracks", [trackId]);
+        //     if (database && database.matched) {
+        //         const data = await this.youtube.fetch_track([database.matched]);
+        //         return data[0];
+        //     }
+        // }
 
         if (!trackName || !artistName) {
             throw new Error("Track name or artist is missing.");
@@ -340,19 +334,19 @@ export default class Player {
                 }
             }
 
-            if (trackToMatch.source.includes("spot")) {
-                database = {
-                    thumbnail: trackToMatch.thumbnail,
-                    artist: trackToMatch.artist,
-                    music_url: database.music_url ?? null,
-                    matched: bestMatch?.id,
-                    name: trackToMatch.name,
-                    duration: trackToMatch.duration,
-                    releasedDate: trackToMatch.releasedDate,
-                    id: trackId
-                }
-                this.spotify.writedata("tracks", [trackId], [database]);
-            }
+            // if (trackToMatch.source.includes("spot")) {
+            //     database = {
+            //         thumbnail: trackToMatch.thumbnail,
+            //         artist: trackToMatch.artist,
+            //         music_url: database.music_url ?? null,
+            //         matched: bestMatch?.id,
+            //         name: trackToMatch.name,
+            //         duration: trackToMatch.duration,
+            //         releasedDate: trackToMatch.releasedDate,
+            //         id: trackId
+            //     }
+            //     this.spotify.writedata("tracks", [trackId], [database]);
+            // }
 
             return bestMatch ?? null;
         }

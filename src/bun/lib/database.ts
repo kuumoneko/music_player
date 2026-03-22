@@ -1,21 +1,23 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { join } from "node:path";
 
 /**
      * Get data from database
-     * 
      * args[-1] is filename
 */
-export function getDataFromDatabase(...args: string[]): any {
-   
+export async function getDataFromDatabase(...args: string[]): Promise<any> {
+    const filename = args[args.length - 1];
+    const filePath = join(...args.slice(0, -1), `${filename}.json`);
     try {
-        const filename = args[args.length - 1];
-        const filePath = path.join(...args.slice(0, -1), `${filename}.json`);
-        if (!existsSync(filePath)) {
+        const file = Bun.file(filePath);
+        const isExisted = await file.exists();
+        // console.log(isExisted, ' ', filePath)
+        if (isExisted) {
+            const data = await file.json();
+            return data;
+        }
+        else {
             throw new Error(`Database file not found at: ${filePath}`);
         }
-        const dataFromFile = readFileSync(filePath, { encoding: "utf-8" });
-        return JSON.parse(dataFromFile);
     } catch (error) {
         return null
     }
@@ -23,18 +25,16 @@ export function getDataFromDatabase(...args: string[]): any {
 
 /**
      * Write data to database
-     * 
      * args[-1] is data
-     * 
      * args[-2] is filename
 */
 export function writeDataToDatabase(...args: any[]): void {
     const filename = args[args.length - 2];
     const data = args[args.length - 1];
 
-    const filePath = path.join(...args.slice(0, -2), `${filename}.json`);
+    const filePath = join(...args.slice(0, -2), `${filename}.json`);
     try {
-        writeFileSync(filePath, JSON.stringify(data, null, 4), { encoding: "utf-8" });
+        Bun.write(filePath, JSON.stringify(data), { createPath: true });
     } catch (error) {
         console.error(`Failed to write to database file: ${filePath}`, error);
     }
