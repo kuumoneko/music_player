@@ -98,6 +98,7 @@ export default function Player() {
         }
         window.api.rpc.request.setIsPlaying(true);
         localStorage.setItem("isPlayed", "1");
+        isFirstLoad.current = false;
     };
 
     const pauseCurrentTrack = () => {
@@ -110,11 +111,18 @@ export default function Player() {
         localStorage.setItem("isPlayed", "0");
     };
 
-    const loadTrack = async (source: string, id: string) => {
-        if (!source || !id) return;
+    const loadTrack = async (track: any) => {
+        const { source, id, index } = track;
+        if (!source || id === null || id === undefined) return;
         playing.current = { id, source };
 
+        isPlayedRef.current = false;
+        audioRef.current.pause();
+        player.current?.stopVideo?.();
+
+        localStorage.setItem("isPlayed", "0");
         window.api.rpc.request.setLoading(true);
+        window.api.rpc.request.setIsPlaying(false);
 
         if (source === "local") {
             if (
@@ -128,7 +136,7 @@ export default function Player() {
             audioRef.current.removeAttribute("src");
             audioRef.current.load();
 
-            const streamUrl = `http://localhost:${window.location.port}/music?path=${encodeURIComponent(id)}`;
+            const streamUrl = `http://localhost:${window.location.port}/music?path=${encodeURIComponent(index)}`;
 
             audioRef.current = new Audio(streamUrl);
             audioRef.current.volume = volumeRef.current / 100;
@@ -138,9 +146,8 @@ export default function Player() {
 
                 if (isRepeatRef.current) {
                     audioRef.current.currentTime = 0;
-                    audioRef.current.play();
-                    setIsPlayed(true);
-                    localStorage.setItem("isPlayed", "1");
+                    isPlayedRef.current = true;
+                    isFirstLoad.current = false;
                 } else {
                     window.api.rpc.request.endTrack();
                 }
@@ -164,8 +171,6 @@ export default function Player() {
                 player.current &&
                 typeof player.current.loadVideoById === "function"
             ) {
-                audioRef.current.pause();
-
                 player.current.loadVideoById(playedId);
 
                 if (player.current.getVolume() !== volumeRef.current) {
@@ -173,6 +178,9 @@ export default function Player() {
                 }
                 window.api.rpc.request.setLoading(false);
                 window.api.rpc.request.setcurrentTime(0);
+                if (!isRepeatRef.current) {
+                    isPlayedRef.current = true;
+                }
             }
         }
     };
@@ -195,7 +203,7 @@ export default function Player() {
                     player.current = event.target;
                     (window as any).playerInstance = event.target;
 
-                    loadTrack(playing.current.source, playing.current.id);
+                    loadTrack(playing.current);
                 },
                 onStateChange: onPlayerStateChange,
             },
@@ -215,6 +223,9 @@ export default function Player() {
                 isFirstLoad.current = false;
                 event.target.pauseVideo();
                 window.api.rpc.request.setIsPlaying(false);
+            } else {
+                event.target.playVideo();
+                window.api.rpc.request.setIsPlaying(true);
             }
         } else if (state === YoutubePlaybackState.Paused) {
             setIsPlayed(false);
@@ -231,7 +242,6 @@ export default function Player() {
         }
     };
 
-    // Setup YouTube Script Injection
     useEffect(() => {
         (window as any).onYouTubeIframeAPIReady = () => {
             initializePlayer();
@@ -247,7 +257,6 @@ export default function Player() {
         }
 
         return () => {
-            // Cleanup on unmount
             if (
                 player.current &&
                 typeof player.current.destroy === "function"
@@ -257,10 +266,8 @@ export default function Player() {
         };
     }, []);
 
-    // ONE Consolidated Polling Interval (Performance Fix)
     useEffect(() => {
         const syncInterval = setInterval(() => {
-            // 1. Sync settings from LocalStorage
             const storedVolume = Number(localStorage.getItem("volume") ?? 50);
             const storedIsPlayed = localStorage.getItem("isPlayed") === "1";
             const storedIsRepeat = localStorage.getItem("isRepeat") === "1";
@@ -276,7 +283,6 @@ export default function Player() {
                 setIsRepeat(storedIsRepeat);
             if (sleepRef.current !== storedSleep) setSleep(storedSleep);
 
-            // 2. Sync Volume to active player
             if (
                 playing.current.source === "local" &&
                 audioRef.current.volume !== storedVolume / 100
@@ -291,13 +297,12 @@ export default function Player() {
                     player.current.setVolume(storedVolume);
             }
 
-            // 3. Track Changes
             if (
                 storedPlaying.id &&
                 (storedPlaying.id !== playing.current.id ||
                     storedPlaying.source !== playing.current.source)
             ) {
-                loadTrack(storedPlaying.source, storedPlaying.id).then(() => {
+                loadTrack(storedPlaying).then(() => {
                     if (storedIsPlayed) playCurrentTrack();
                 });
             }
@@ -312,13 +317,20 @@ export default function Player() {
 
             if (time !== currentTime && time !== null) {
                 if (playing.current.source === "local") {
-                    audioRef.current.currentTime = time;
+                    if (audioRef.current.readyState >= 1) {
+                        audioRef.current.currentTime = time;
+                        localStorage.removeItem("seekTo");
+                    }
                 } else {
-                    player.current.seekTo(time);
+                    if (
+                        player.current &&
+                        typeof player.current.seekTo === "function"
+                    ) {
+                        player.current.seekTo(time, true);
+                        localStorage.removeItem("seekTo");
+                    }
                 }
-                localStorage.removeItem("seekTo");
             } else if (isCurrentlyPlaying()) {
-                // 4. Time syncing to IPC (only if playing)
                 if (currentTime !== undefined) {
                     window.api.rpc.request.setcurrentTime(currentTime);
                     localStorage.setItem("time", String(currentTime));
@@ -339,6 +351,36 @@ export default function Player() {
             pauseCurrentTrack();
         }
     }, [isPlayed]);
+
+    useEffect(() => {
+        if ("mediaSession" in navigator) {
+            navigator.mediaSession.setActionHandler("play", () => {
+                console.log("Global Play Triggered");
+                isPlayedRef.current = true;
+                localStorage.setItem("isPlayed", "1");
+                audioRef.current?.play();
+                window.api.rpc.request.setIsPlaying(true);
+
+                navigator.mediaSession.playbackState = "playing";
+            });
+
+            navigator.mediaSession.setActionHandler("pause", () => {
+                console.log("Global Pause Triggered");
+                isPlayedRef.current = true;
+                localStorage.setItem("isPlayed", "0");
+                window.api.rpc.request.setIsPlaying(false);
+                audioRef.current?.pause();
+                navigator.mediaSession.playbackState = "paused";
+            });
+        }
+
+        return () => {
+            if ("mediaSession" in navigator) {
+                navigator.mediaSession.setActionHandler("play", null);
+                navigator.mediaSession.setActionHandler("pause", null);
+            }
+        };
+    }, []);
 
     return (
         <div
