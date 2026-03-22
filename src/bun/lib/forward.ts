@@ -21,12 +21,12 @@ export default async function forward(player: Player, user: UserData) {
             }
         }
         else {
-            const track = await player.local.parseFile(id);
+            const track = player.local.data.find((localItem) => localItem.id === id);
             user.currentPlaying = {
                 source: "local",
                 id: id,
                 thumbnail: track.thumbnail,
-                artist: track.artist, title: track.title
+                artist: track.artist.map((item) => { return item.name }).join(", "), title: track.name
             }
             user.current = {
                 time: 0,
