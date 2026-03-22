@@ -30,13 +30,13 @@ export default function Frame() {
             <div className="w-20 flex flex-row items-center justify-between px-4">
                 <div
                     onClick={minimize}
-                    className="cursor-default hover:cursor-pointer hover:bg-slate-500"
+                    className="cursor-default hover:cursor-pointer hover:bg-slate-500 rounded-full px-0.5"
                 >
                     <FontAwesomeIcon icon={faMinus} />
                 </div>
                 <div
                     onClick={close}
-                    className="cursor-default hover:cursor-pointer hover:bg-slate-500"
+                    className="cursor-default hover:cursor-pointer hover:bg-slate-500 rounded-full px-0.5"
                 >
                     <FontAwesomeIcon icon={faXmark} />
                 </div>
