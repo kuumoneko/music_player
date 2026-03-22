@@ -178,7 +178,7 @@ export default function Player() {
                 }
                 window.api.rpc.request.setLoading(false);
                 window.api.rpc.request.setcurrentTime(0);
-                if (!isRepeatRef.current) {
+                if (!isFirstLoad.current) {
                     isPlayedRef.current = true;
                 }
             }
