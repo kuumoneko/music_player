@@ -1,7 +1,6 @@
-import { goto } from "@/utils/url.ts";
+import { goto } from "@/mainview/utils/url.ts";
 import LocalFile from "./settings/music/localfile.tsx";
 import Close_Settings from "./settings/other/close.tsx";
-import Profile from "./settings/profile/index.tsx";
 import Discord from "./settings/discord/index.tsx";
 import Update from "./settings/update/index.tsx";
 import Autostart from "./settings/autorun/index.tsx";
@@ -19,8 +18,6 @@ function Settings({ isOpen }: { isOpen: boolean }) {
                 />
 
                 <LocalFile />
-
-                <Profile />
 
                 <Discord />
 

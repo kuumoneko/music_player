@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircle, faMinus, faShare } from "@fortawesome/free-solid-svg-icons";
-import { formatDuration } from "@/utils/format.ts";
+import { formatDuration } from "@/mainview/utils/format.ts";
 import { faSpotify, faYoutube } from "@fortawesome/free-brands-svg-icons";
 import Download from "./download.tsx";
-import fetch_data from "@/utils/fetch.ts";
+import { Playlist } from "@/shared/types.ts";
 
 export default function Download_Queue() {
     const [queue, setqueue] = useState("[]");
@@ -12,9 +12,7 @@ export default function Download_Queue() {
 
     useEffect(() => {
         async function run() {
-            const res = await fetch_data("profile", "GET", {
-                key: "download",
-            });
+            const res = await window.api.rpc.request.getProfileData("download");
 
             const playlists = res.filter((item: any) =>
                 item.mode.includes("playlist"),
@@ -23,16 +21,18 @@ export default function Download_Queue() {
             const temp: any = {};
 
             for (const item of playlists) {
-                const data = await fetch_data(`music`, "GET", {
-                    source: item.source,
+                const data = await window.api.rpc.request.getMusicData({
+                    source: item.source as any,
                     type: "playlists",
                     id: item.id,
                 });
 
                 const tracks_in_playlist = tracks.filter((track: any) => {
-                    return (data.tracks as any[]).find((trackk: any) => {
-                        return trackk.track.id === track.id;
-                    });
+                    return ((data as Playlist).tracks as any[]).find(
+                        (trackk: any) => {
+                            return trackk.track.id === track.id;
+                        },
+                    );
                 });
 
                 if (tracks_in_playlist.length > 0) {
@@ -49,21 +49,22 @@ export default function Download_Queue() {
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
             for (const item of tracks) {
-                const data = await fetch_data(`music`, "GET", {
-                    source: item.source,
+
+                const data = await window.api.rpc.request.getMusicData({
+                    source: item.source as any,
                     type: "tracks",
                     id: item.id,
                 });
 
-                temp[`${item.source}:${item.mode}:${item.id}`] =
-                    data?.length > 0 ? data[0] : data;
+                //
+                temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
 
             const hehe = [...playlists, ...tracks];
             console.log(hehe);
-            await fetch_data("profile", "POST", {
-                download: hehe,
+            window.api.rpc.request.setProfileData({
                 key: "download",
+                data: hehe,
             });
             setlist(JSON.stringify(temp));
             setqueue(JSON.stringify(hehe));
@@ -75,9 +76,11 @@ export default function Download_Queue() {
         <>
             <div
                 onClick={async () => {
-                    await fetch_data("profile", "POST", {
-                        download: [],
+                    setlist("{}");
+                    setqueue("[]");
+                    window.api.rpc.request.setProfileData({
                         key: "download",
+                        data: [],
                     });
                 }}
             >
@@ -145,12 +148,10 @@ export default function Download_Queue() {
                                                 setqueue(
                                                     JSON.stringify(queue_list),
                                                 );
-                                                await fetch_data(
-                                                    "profile",
-                                                    "POST",
+                                                window.api.rpc.request.setProfileData(
                                                     {
-                                                        download: queue_list,
                                                         key: "download",
+                                                        data: queue_list,
                                                     },
                                                 );
                                             }}

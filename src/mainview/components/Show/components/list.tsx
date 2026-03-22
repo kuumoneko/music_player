@@ -4,14 +4,12 @@ import {
     faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Track } from "@/types/index.ts";
-import { formatDuration } from "@/utils/format.ts";
-import Loading from "@/components/Loading/index.tsx";
-import download from "@/components/Show/common/download.ts";
-import Play from "@/components/Show/common/play.ts";
-import Queue from "@/components/Show/common/queue.ts";
+import { Playlist, Track } from "@/shared/types.ts";
+import { formatDuration } from "@/mainview/utils/format.ts";
+import Loading from "@/mainview/components/Loading/index.tsx";
+import download from "@/mainview/components/Show/common/download.ts";
+import Queue from "@/mainview/components/Show/common/queue.ts";
 import { useEffect, useState } from "react";
-import fetchdata from "@/utils/fetch.ts";
 
 export default function List({
     list,
@@ -43,29 +41,30 @@ export default function List({
                 mode.split(":")[1] !== undefined &&
                 sight.tail > list.length
             ) {
-                const data = await fetchdata(`music`, "GET", {
-                    source,
-                    id,
+                const data = await window.api.rpc.request.getMusicData({
+                    source: source as any,
                     type: "playlists",
+                    id,
                 });
-                list.push(...data.tracks);
-                list = Array.from(
-                    new Set(list.map((item: any) => JSON.stringify(item))),
-                ).map((item: any) => JSON.parse(item));
+                list.push(...(data as Playlist).tracks);
+                list = [
+                    ...new Map(
+                        [...list, (data as Playlist).tracks].map(
+                            (item: Track) => {
+                                return [
+                                    `${source}:${mode}:${id}:${item.id}`,
+                                    item,
+                                ];
+                            },
+                        ),
+                    ).values(),
+                ];
             }
             const temp: any[] = list.slice(sight.head, sight.tail + 1) as any[];
             setlist(temp);
         }
         run();
     }, [sight, list]);
-
-    // remove  #hashtag from the title
-    const remove_hashtag = (title: string): string => {
-        const temp = title.split(" ").filter((item: string) => {
-            return !item.startsWith("#");
-        });
-        return temp.join(" ");
-    };
 
     return (
         <div
@@ -113,7 +112,12 @@ export default function List({
                                 index + 1
                             } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
                             onClick={() => {
-                                Play(item, source, mode, id, list);
+                                window.api.rpc.request.play({
+                                    item: item,
+                                    source: source as any,
+                                    type: mode as any,
+                                    id: id,
+                                });
                             }}
                         >
                             <div className="flex flex-row items-center ml-2.5 w-full">
@@ -128,12 +132,12 @@ export default function List({
                                 </span>
                                 <div className="flex flex-col ml-2.5 w-[80%]">
                                     <span className="title cursor-default select-none">
-                                        {remove_hashtag(
-                                            (item.name?.slice(
-                                                0,
-                                                50,
-                                            ) as string) ?? "cant load",
-                                        )}
+                                        {(item.name?.slice(0, 50) as string)
+                                            .split(" ")
+                                            .filter((item: string) => {
+                                                return !item.startsWith("#");
+                                            })
+                                            .join(" ") ?? "cant load"}
                                     </span>
                                     <span className="artists cursor-default select-none">
                                         {item.artist
@@ -164,13 +168,6 @@ export default function List({
                                                         navigator.clipboard.writeText(
                                                             url,
                                                         );
-                                                    } else {
-                                                        const url =
-                                                            "https://open.spotify.com/track/" +
-                                                            item.id;
-                                                        navigator.clipboard.writeText(
-                                                            url,
-                                                        );
                                                     }
                                                 }}
                                             >
@@ -181,7 +178,7 @@ export default function List({
                                             <span
                                                 className="mr-2.5"
                                                 onClick={() => {
-                                                    Queue(item, source);
+                                                    Queue(item);
                                                 }}
                                             >
                                                 <FontAwesomeIcon

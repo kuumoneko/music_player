@@ -4,13 +4,12 @@ import {
     faShare,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { formatDuration } from "@/utils/format.ts";
-import Loading from "@/components/Loading/index.tsx";
-import Play from "@/components/Show/common/play.ts";
+import { formatDuration } from "@/mainview/utils/format.ts";
+import Loading from "@/mainview/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
-import { goto } from "@/utils/url.ts";
-import { Track } from "@/types/index.ts";
-import Queue from "@/components/Show/common/queue.ts";
+import { goto } from "@/mainview/utils/url.ts";
+import { Track } from "@/shared/types.ts";
+import Queue from "@/mainview/components/Show/common/queue.ts";
 import download from "../Show/common/download";
 
 export default function List({
@@ -89,7 +88,13 @@ export default function List({
                             } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
                             onClick={() => {
                                 if (type === "video") {
-                                    Play(item, source, mode, id, list);
+                                    window.api.rpc.request.play({
+                                        item: item,
+                                        source: source as any,
+                                        type: mode as any,
+                                        id: item.id,
+                                    });
+                                    // Play(item, source, mode, id, list);
                                 } else if (type === "playlist") {
                                     goto(`/playlists/${source}/${item.id}`);
                                 } else if (type === "artist") {
@@ -112,10 +117,10 @@ export default function List({
                                         {remove_hashtag(
                                             (item.name?.slice(
                                                 0,
-                                                50
+                                                50,
                                             ) as string) ??
                                                 item.name ??
-                                                "cant load"
+                                                "cant load",
                                         )}
                                     </span>
                                     <span className="artists cursor-default select-none">
@@ -131,7 +136,7 @@ export default function List({
                                             <span className="duration cursor-default select-none ml-3.75">
                                                 {formatDuration(
                                                     (item.duration as number) /
-                                                        1000
+                                                        1000,
                                                 ) ?? ""}
                                             </span>
                                         </div>
@@ -144,14 +149,14 @@ export default function List({
                                                             "https://www.youtube.com/watch?v=" +
                                                             item.id;
                                                         navigator.clipboard.writeText(
-                                                            url
+                                                            url,
                                                         );
                                                     } else {
                                                         const url =
                                                             "https://open.spotify.com/track/" +
                                                             item.id;
                                                         navigator.clipboard.writeText(
-                                                            url
+                                                            url,
                                                         );
                                                     }
                                                 }}
@@ -163,7 +168,7 @@ export default function List({
                                             <span
                                                 className="mr-2.5"
                                                 onClick={() => {
-                                                    Queue(item, source);
+                                                    Queue(item);
                                                 }}
                                             >
                                                 <FontAwesomeIcon

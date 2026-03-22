@@ -3,14 +3,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
 
 export default function Discord() {
-    const [username, setUsername] = useState<string>("");
-    async function run() {
-        const res = await window.api.rpc.request.checkIfRPC();
-        setUsername(res.data ?? "Discord RPC is not connected");
-    }
+    const [username, setUsername] = useState<string | boolean>("");
 
     useEffect(() => {
-        run();
+        window.api.rpc.request
+            .isHasDiscordRPC()
+            .then((data: string | boolean) => {
+                setUsername(data);
+            });
     }, []);
 
     return (
@@ -26,16 +26,15 @@ export default function Discord() {
                     className="hover:cursor-pointer"
                     onClick={() => {
                         if (username === "Discord RPC is not connected") {
-                            window.api.rpc.request.connect();
-                            setTimeout(() => {
-                                run();
-                            }, 1000);
+                            window.api.rpc.request
+                                .connectDiscordRPC()
+                                .then((data: string) => {
+                                    setUsername(data);
+                                });
                         }
                     }}
                 >
-                    {username !== "Discord RPC is not connected"
-                        ? username
-                        : "Connect"}
+                    {username === false ? "Connect" : username}
                 </span>
             </span>
         </div>

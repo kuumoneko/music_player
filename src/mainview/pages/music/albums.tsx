@@ -1,5 +1,5 @@
-import Music from "@/components/Music/index.tsx";
-import localstorage from "@/utils/localStorage.ts";
+import Music from "@/mainview/components/Music/index.tsx";
+import localstorage from "@/mainview/utils/localStorage.ts";
 
 import { useEffect, useState } from "react";
 

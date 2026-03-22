@@ -7,13 +7,11 @@ import {
     faHeart,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Track } from "@/types/index.ts";
-import { formatDuration } from "@/utils/format.ts";
-import Loading from "@/components/Loading/index.tsx";
+import { formatDuration } from "@/mainview/utils/format.ts";
+import Loading from "@/mainview/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
-import add_to_download from "@/utils/add_download.ts";
-import fetchdata from "@/utils/fetch.ts";
-import localstorage from "@/utils/localStorage.ts";
+import add_to_download from "@/mainview/utils/add_download.ts";
+import { Shuffle } from "@/shared/types";
 
 export default function Top({
     name,
@@ -24,7 +22,7 @@ export default function Top({
     source,
     id,
     mode,
-    playlist,
+    list,
 }: {
     name: string | null;
     thumbnail: string | null;
@@ -34,18 +32,18 @@ export default function Top({
     source: string;
     id: string;
     mode: string;
-    playlist?: any[];
+    list: any[];
 }) {
     const [isPin, setiSPin] = useState(false);
     useEffect(() => {
         async function run() {
-            const pin = await fetchdata("profile", "GET", { key: "pin" });
+            const pin = await window.api.rpc.request.getProfileData("pin");
             if (
                 pin.findIndex(
                     (item: any) =>
                         item.id === id &&
                         item.source === source &&
-                        item.mode === mode,
+                        item.type === mode,
                 ) != -1
             ) {
                 setiSPin(true);
@@ -115,103 +113,27 @@ export default function Top({
                             <div className="flex flex-row items-center">
                                 <span
                                     onClick={async () => {
-                                        if (mode === "track") {
-                                            localstorage("set", "playing", {
-                                                name: name,
-                                                artist: artists
-                                                    ?.map(
-                                                        (artist: any) =>
-                                                            artist.name,
-                                                    )
-                                                    .join(", "),
-                                                thumbnail: thumbnail,
-                                                source: source,
-                                                id: id,
-                                            });
-                                            localstorage("set", "time", "0");
-                                        } else {
-                                            const check = localstorage(
-                                                "get",
-                                                "playing",
-                                                {},
+                                        const shuffle =
+                                            await window.api.rpc.request.getUserData(
+                                                "shuffle",
                                             );
-                                            if (check.playlist === name) {
-                                                return;
-                                            }
 
-                                            const max =
-                                                    (playlist?.length as number) -
-                                                    1,
-                                                min = 0;
-                                            const random =
-                                                Math.floor(
-                                                    Math.random() *
-                                                        (max - min + 1),
-                                                ) + min;
-                                            const track: Track = playlist
-                                                ? playlist[random]
-                                                : [];
-                                            localstorage("set", "playing", {
-                                                name: track.name,
-                                                artist: track.artist
-                                                    ?.map(
-                                                        (artist: any) =>
-                                                            artist.name,
-                                                    )
-                                                    .join(", "),
-                                                thumbnail: track.thumbnail,
-                                                source: source,
-                                                id: track.id,
-                                                playlist: name,
-                                            });
-                                            localstorage("set", "time", "0");
+                                        const randomlist = (list: any[]) => {
+                                            const randomIndex = Math.floor(
+                                                Math.random() * list.length,
+                                            );
+                                            return list[randomIndex];
+                                        };
 
-                                            const other_tracks: any[] =
-                                                playlist?.filter(
-                                                    (item: any) =>
-                                                        item.id !== track.id,
-                                                ) ?? [];
-
-                                            if (other_tracks.length > 0) {
-                                                const shuffle = localstorage(
-                                                    "get",
-                                                    "shuffle",
-                                                    "disable",
-                                                );
-                                                if (shuffle === "enable") {
-                                                    for (
-                                                        let i =
-                                                            other_tracks.length -
-                                                            1;
-                                                        i > 0;
-                                                        i--
-                                                    ) {
-                                                        const j = Math.floor(
-                                                            Math.random() *
-                                                                (i + 1),
-                                                        );
-                                                        [
-                                                            other_tracks[i],
-                                                            other_tracks[j],
-                                                        ] = [
-                                                            other_tracks[j],
-                                                            other_tracks[i],
-                                                        ];
-                                                    }
-                                                }
-                                                localstorage(
-                                                    "set",
-                                                    "nextfrom",
-                                                    {
-                                                        from: "local:local:local",
-                                                        tracks: other_tracks.slice(
-                                                            0,
-                                                            20,
-                                                        ),
-                                                    },
-                                                );
-                                            }
-                                        }
+                                        window.api.rpc.request.play({
+                                            item:
+                                                shuffle === Shuffle.Enable
+                                                    ? randomlist(list)
+                                                    : list[0],
+                                            source: source as any,
+                                            type: mode as any,
+                                            id: id,
+                                        });
                                     }}
                                 >
                                     <FontAwesomeIcon icon={faPlay} />
@@ -285,34 +207,43 @@ export default function Top({
                                     }`}
                                     onClick={() => {
                                         async function run() {
-                                            let pin = await fetchdata(
-                                                "profile",
-                                                "GET",
-                                                { key: "pin" },
-                                            );
+                                            let pin =
+                                                await window.api.rpc.request.getProfileData(
+                                                    "pin",
+                                                );
                                             if (isPin) {
                                                 pin = pin.filter(
                                                     (item: any) => {
-                                                        return item.id !== id;
+                                                        return (
+                                                            item.id !== id &&
+                                                            item.source !==
+                                                                source &&
+                                                            item.type !== mode
+                                                        );
                                                     },
                                                 );
                                             } else {
                                                 pin.push({
                                                     source: source,
-                                                    mode: mode,
+                                                    type: mode,
                                                     id: id,
                                                     thumbnail: thumbnail,
                                                     name: name,
                                                 });
                                             }
                                             setiSPin(!isPin);
-                                            const temp = Array.from(
-                                                new Set(pin),
+
+                                            pin = [
+                                                ...new Map(
+                                                    pin.map((item) => [
+                                                        `${item.source}:${item.type}:${item.id}`,
+                                                        item,
+                                                    ]),
+                                                ).values(),
+                                            ];
+                                            await window.api.rpc.request.setProfileData(
+                                                { key: "pin", data: pin },
                                             );
-                                            await fetchdata("profile", "POST", {
-                                                key: "pin",
-                                                pin: temp,
-                                            });
                                         }
                                         run();
                                     }}

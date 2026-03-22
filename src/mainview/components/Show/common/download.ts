@@ -1,18 +1,15 @@
-import { Track } from "@/types/index.ts";
-import fetch_data from "@/utils/fetch.ts";
+import { Track } from "@/shared/types.ts";
 
 export default async function download(item: Track, source: string) {
-    const queue = await fetch_data('profile', 'GET', {
-        key: "download"
-    });
+    const queue = await window.api.rpc.request.getProfileData("download");
     queue.push({
-        name: item.name,
-        mode: "track",
-        source: source,
         id: item.id,
+        name: item.name,
+        source: source,
+        mode: "track"
     })
-    await fetch_data('profile', 'POST', {
+    await window.api.rpc.request.setProfileData({
         key: "download",
-        download: queue
+        data: queue
     })
 }

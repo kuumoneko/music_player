@@ -1,9 +1,8 @@
-import fetchdata from "./fetch.ts";
 
 export default async function add_to_download(source: string, mode: string, id: string, name: string) {
-    const res = await fetchdata("profile", "GET", { key: "download" });
+    const res = await window.api.rpc.request.getProfileData("download");
     if (
-        res.findIndex((itemm: any) => {
+        res.findIndex((itemm: { source: string, mode: string, id: string }) => {
             return (
                 itemm.source == source &&
                 itemm.mode == mode &&
@@ -14,13 +13,10 @@ export default async function add_to_download(source: string, mode: string, id: 
         return;
     }
     res.push({
-        name: name,
-        source: source,
-        mode: mode,
-        id: id,
+        name, source, mode, id
     });
-    await fetchdata("profile", "POST", {
-        download: res,
-        key: "download"
+    window.api.rpc.request.setProfileData({
+        key: "download",
+        data: res
     })
 }

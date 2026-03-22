@@ -3,19 +3,18 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
 
 export default function Update() {
-    const [version, setVersion] = useState({
-        version: "",
-        updateAvailable: false,
-        updateReady: false,
-    });
+    const [version, setVersion] = useState<string | boolean>("");
     useEffect(() => {
-        async function run() {
-            const res = await window.api.rpc.request.checkForUpdate();
-            setVersion(res.data);
-        }
-        run();
+        window.api.rpc.request.checkUpdate().then((data: string | boolean) => {
+            setVersion(data);
+        });
+        
         const interval = window.setInterval(() => {
-            run();
+            window.api.rpc.request
+                .checkUpdate()
+                .then((data: string | boolean) => {
+                    setVersion(data);
+                });
         }, 1000);
         return () => clearInterval(interval);
     }, []);
@@ -35,13 +34,7 @@ export default function Update() {
                         window.api.rpc.request.update();
                     }}
                 >
-                    {version.updateAvailable
-                        ? version.updateReady
-                            ? "Update ready to install!"
-                            : "Update is available!"
-                        : version.version.length > 0
-                          ? version.version
-                          : "0.0.0"}
+                    {version === true ? "Update is available!" : version}
                 </span>
             </span>
         </div>

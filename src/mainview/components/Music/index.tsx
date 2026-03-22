@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
-import Top from "@/components/Show/components/top.tsx";
-import List from "@/components/Show/components/list.tsx";
-import fetchdata from "@/utils/fetch.ts";
-import { Track } from "@/types/index.ts";
+import Top from "@/mainview/components/Show/components/top.tsx";
+import List from "@/mainview/components/Show/components/list.tsx";
+import { Track } from "@/shared/types.ts";
 
 export default function Music({
     source,
@@ -16,10 +15,15 @@ export default function Music({
     const tracks = useRef<Track[]>([]);
     const data = useRef<any>({});
     const getdata = async () => {
-        const result = await fetchdata(`music`, "GET", { source, type, id });
-        const { tracks: new_tracks, ...args } = result;
-        tracks.current = new_tracks;
-        data.current = args;
+        const result = await window.api.rpc.request.getMusicData({
+            source: source as any,
+            type: type as any,
+            id: id,
+        });
+
+        // @ts-ignore - tracks exists on Album and Playlist types returned by getMusicData
+        tracks.current = result.tracks || [result];
+        data.current = result || {};
     };
 
     useEffect(() => {
@@ -47,7 +51,7 @@ export default function Music({
                 source={source}
                 id={id}
                 mode={type}
-                playlist={tracks.current}
+                list={tracks.current}
             />
             <List list={tracks.current} source={source} id={id} mode={type} />
         </>

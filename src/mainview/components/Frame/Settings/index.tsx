@@ -1,4 +1,4 @@
-import { goto } from "@/utils/url.ts";
+import { goto } from "@/mainview/utils/url.ts";
 import { faGear } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 

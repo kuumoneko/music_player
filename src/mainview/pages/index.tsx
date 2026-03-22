@@ -1,24 +1,24 @@
 import Home from "./home.tsx";
-import Albums from "@/pages/music/albums.tsx";
-import Artists from "@/pages/music/artists.tsx";
-import Playlists from "@/pages/music/playlists.tsx";
-import Search from "@/pages/music/search.tsx";
-import Tracks from "@/pages/music/tracks.tsx";
-import DownloadQueue from "@/pages/queue/download/index.tsx";
-import PlayQueue from "@/pages/queue/play/index.tsx";
-import Local from "@/pages/music/local.tsx";
+import Albums from "@/mainview/pages/music/albums.tsx";
+import Artists from "@/mainview/pages/music/artists.tsx";
+import Playlists from "@/mainview/pages/music/playlists.tsx";
+import Search from "@/mainview/pages/music/search.tsx";
+import Tracks from "@/mainview/pages/music/tracks.tsx";
+import DownloadQueue from "@/mainview/pages/queue/download/index.tsx";
+import PlayQueue from "@/mainview/pages/queue/play/index.tsx";
+import Local from "@/mainview/pages/music/local.tsx";
 
 function Pages({ url }: { url: string }) {
-    if (url.includes("tracks")) {
+    if (url.includes("track")) {
         return <Tracks />;
     }
-    if (url.includes("playlists")) {
+    if (url.includes("playlist")) {
         return <Playlists />;
     }
-    if (url.includes("artists")) {
+    if (url.includes("artist")) {
         return <Artists />;
     }
-    if (url.includes("albums")) {
+    if (url.includes("album")) {
         return <Albums />;
     }
     if (url.includes("search")) {

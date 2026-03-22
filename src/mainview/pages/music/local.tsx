@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import fetchdata from "@/utils/fetch.ts";
-import Top from "@/components/Show/components/top.tsx";
-import List from "@/components/Show/components/list.tsx";
-import localstorage from "@/utils/localStorage.ts";
-import { Track } from "@/types/index.ts";
+import Top from "@/mainview/components/Show/components/top.tsx";
+import List from "@/mainview/components/Show/components/list.tsx";
+import localstorage from "@/mainview/utils/localStorage.ts";
+import { Track } from "@/shared/types.ts";
 
 export default function Local() {
     const check = localstorage("get", "localfile", false);
@@ -11,14 +10,10 @@ export default function Local() {
     const [duration, setduration] = useState(0);
     useEffect(() => {
         async function run() {
-            const data = await fetchdata("music", "GET", {
-                source: "local",
-                type: "local",
-                id: "local",
-            });
-            setlocalfile(data.tracks);
+            const data = await window.api.rpc.request.getLocalfile();
+            setlocalfile(data);
             setduration(
-                data.tracks.reduce((a: number, b: Track) => a + b.duration, 0)
+                data.reduce((a: number, b: Track) => a + b.duration, 0),
             );
         }
         run();
@@ -34,7 +29,7 @@ export default function Local() {
                 source="local"
                 id=""
                 mode="playlist"
-                playlist={localfile}
+                list={localfile}
             />
             <List list={localfile} source="local" id="local" mode="local" />
         </>

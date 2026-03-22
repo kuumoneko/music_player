@@ -1,9 +1,7 @@
-import { Artist, Playlist, Track } from "@/types/index.ts";
+import { Artist, Playlist, Track } from "@/shared/types.ts";
 import { useEffect, useState } from "react";
-import { formatDuration, remove_hashtag } from "@/utils/format.ts";
-import { goto } from "@/utils/url.ts";
-import Play from "@/components/Show/common/play.ts";
-import fetchdata from "@/utils/fetch.ts";
+import { formatDuration, remove_hashtag } from "@/mainview/utils/format.ts";
+import { goto } from "@/mainview/utils/url.ts";
 
 export default function HomePage() {
     const [artists, setartists] = useState([]);
@@ -13,11 +11,12 @@ export default function HomePage() {
 
     useEffect(() => {
         async function run() {
-            const temp = await fetchdata("home", "GET");
-            setartists(temp.artist);
-            setplaylists(temp.playlist);
-            settracks(temp.tracks);
-            const tempp = temp.new_tracks.sort((a: Track, b: Track) => {
+            const temp = await window.api.rpc.request.getHomeData();
+            console.log(temp);
+            setartists(temp.artists ?? []);
+            setplaylists(temp.playlists ?? []);
+            settracks(temp.tracks ?? []);
+            const tempp = (temp.newTracks ?? []).sort((a: Track, b: Track) => {
                 const [yearA, monthA, dayA] = a.releasedDate
                     .split("-")
                     .map(Number);
@@ -41,6 +40,7 @@ export default function HomePage() {
                     <h1 className="text-2xl font-bold">Artists</h1>
                     <div className="flex flex-row overflow-x-scroll [&::-webkit-scrollbar]:hidden">
                         {artists.map((artist: Artist) => {
+                            console.log(artist);
                             return (
                                 <div
                                     className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
@@ -109,13 +109,12 @@ export default function HomePage() {
                                 <div
                                     className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
                                     onClick={() => {
-                                        Play(
-                                            track,
-                                            track.source,
-                                            "track",
-                                            track.id,
-                                            [track],
-                                        );
+                                        window.api.rpc.request.play({
+                                            item: track,
+                                            source: track.source as any,
+                                            type: "track",
+                                            id: track.id,
+                                        });
                                     }}
                                 >
                                     <img
@@ -146,13 +145,12 @@ export default function HomePage() {
                             <div
                                 className="flex flex-row items-center rounded-2xl hover:cursor-pointer hover:bg-slate-600"
                                 onClick={() => {
-                                    Play(
-                                        track,
-                                        track.source,
-                                        "track",
-                                        track.id,
-                                        [track],
-                                    );
+                                    window.api.rpc.request.play({
+                                        item: track,
+                                        source: track.source as any,
+                                        type: "track",
+                                        id: track.id,
+                                    });
                                 }}
                             >
                                 <img

@@ -1,5 +1,4 @@
-import List from "@/components/Search/list.tsx";
-import fetchdata from "@/utils/fetch.ts";
+import List from "@/mainview/components/Search/list.tsx";
 import { useEffect, useState } from "react";
 
 export default function Search({ url }: { url: string }) {
@@ -18,17 +17,15 @@ export default function Search({ url }: { url: string }) {
     useEffect(() => {
         async function run() {
             const [source, type, query] = url.split("/").slice(2);
-            const res = await fetchdata(`music`, "GET", {
-                query,
-                source,
-                type,
-                mode: "search",
+            const res = await window.api.rpc.request.searchMusic({
+                type: type as any,
+                query: query,
             });
             setsearch({
                 query,
                 source,
                 type,
-                result: res,
+                result: res as any,
             });
         }
         run();
@@ -45,8 +42,8 @@ export default function Search({ url }: { url: string }) {
                         url.split("/").slice(2)[1] === "video"
                             ? searchh.result.tracks
                             : url.split("/").slice(2)[1] === "playlist"
-                            ? searchh.result.playlists
-                            : searchh.result.artists ?? []
+                              ? searchh.result.playlists
+                              : (searchh.result.artists ?? [])
                     }
                     source={url.split("/").slice(2)[0]}
                     type={url.split("/").slice(2)[1]}

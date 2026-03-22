@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatDuration } from "@/utils/format.ts";
+import { formatDuration } from "@/mainview/utils/format.ts";
 import {
     faShare,
     faListDots,
@@ -7,18 +7,21 @@ import {
     faMinus,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { add_items } from "@/utils/add_items.ts";
-import add_to_download from "@/utils/add_download.ts";
-import localstorage from "@/utils/localStorage.ts";
+import add_to_download from "@/mainview/utils/add_download.ts";
+import { Track } from "@/shared/types.ts";
+import Queue from "@/mainview/components/Show/common/queue";
 
 export default function Play_Queue() {
     const [queue, setqueue] = useState([]);
-    const [nextfrom, setnextfrom] = useState({ from: "", tracks: [] });
+    const [nextfrom, setnextfrom] = useState({ from: "", next: [] });
 
     useEffect(() => {
         const run = setInterval(async () => {
-            const temp_play_queue = localstorage("get", "play", []);
-            const temp_nextfrom = localstorage("get", "nextfrom", {});
+            const temp_play_queue =
+                await window.api.rpc.request.getUserData("queue");
+            const temp_nextfrom =
+                await window.api.rpc.request.getUserData("nextfrom");
+
             setnextfrom(temp_nextfrom);
             setqueue(temp_play_queue);
         }, 500);
@@ -29,7 +32,11 @@ export default function Play_Queue() {
         <>
             <div
                 onClick={async () => {
-                    localstorage("set", "play", []);
+                    window.api.rpc.request.setUserData({
+                        key: "queue",
+                        data: [],
+                    });
+                    setqueue([]);
                 }}
             >
                 <FontAwesomeIcon icon={faMinus} />
@@ -37,9 +44,16 @@ export default function Play_Queue() {
             </div>
             <div
                 onClick={async () => {
-                    localstorage("set", "nextfrom", {
+                    window.api.rpc.request.setUserData({
+                        key: "nextfrom",
+                        data: {
+                            from: "",
+                            next: [],
+                        },
+                    });
+                    setnextfrom({
                         from: "",
-                        tracks: [],
+                        next: [],
                     });
                 }}
             >
@@ -49,7 +63,7 @@ export default function Play_Queue() {
             <div className="liked_songs flex flex-col max-h-max w-full overflow-y-scroll [&::-webkit-scrollbar]:hidden">
                 {queue.length > 0 && (
                     <>
-                        {queue.map((item: any, index: number) => {
+                        {queue.map((item: Track, index: number) => {
                             return (
                                 <div
                                     key={item.name}
@@ -57,28 +71,12 @@ export default function Play_Queue() {
                                         index + 1
                                     } flex h-25 w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
                                     onDoubleClick={async () => {
-                                        localstorage("set", "playing", {
-                                            name: item.name,
-                                            artist: item.artists,
-                                            thumbnail: item.thumbnail,
-                                            source: item.source,
+                                        window.api.rpc.request.play({
+                                            item: item,
+                                            source: item.source as any,
+                                            type: "track",
                                             id: item.id,
-                                            duration: item.duration,
                                         });
-                                        localstorage("set", "time", "0");
-
-                                        const trackk = queue.findIndex(
-                                            (itemm: any) => {
-                                                return itemm.id === item.id;
-                                            }
-                                        );
-
-                                        setqueue(queue.slice(trackk + 1, -1));
-                                        localstorage(
-                                            "set",
-                                            "play",
-                                            queue.slice(trackk + 1, -1)
-                                        );
                                     }}
                                 >
                                     <div className="flex flex-row items-center ml-2.5">
@@ -95,16 +93,21 @@ export default function Play_Queue() {
                                                 {item.name}
                                             </span>
                                             <span className="artists cursor-default select-none">
-                                                {item.artists}
+                                                {item.artist
+                                                    .map(
+                                                        (artist: any) =>
+                                                            artist.name,
+                                                    )
+                                                    .join(", ")}
                                             </span>
                                             <div className="flex flex-row items-center">
                                                 <span className="releaseDate cursor-default select-none">
-                                                    {item.releaseDate}
+                                                    {item.releasedDate}
                                                 </span>
                                                 <span className="duration cursor-default select-none ml-3.75">
                                                     {formatDuration(
                                                         (item.duration as number) /
-                                                            1000
+                                                            1000,
                                                     )}
                                                 </span>
                                             </div>
@@ -120,14 +123,7 @@ export default function Play_Queue() {
                                                         "https://www.youtube.com/watch?v=" +
                                                         item.id;
                                                     navigator.clipboard.writeText(
-                                                        url
-                                                    );
-                                                } else {
-                                                    const url =
-                                                        "https://open.spotify.com/track/" +
-                                                        item.id;
-                                                    navigator.clipboard.writeText(
-                                                        url
+                                                        url,
                                                     );
                                                 }
                                             }}
@@ -137,25 +133,7 @@ export default function Play_Queue() {
                                         <span
                                             className="mr-2.5"
                                             onClick={async () => {
-                                                const queue = localstorage(
-                                                    "get",
-                                                    "play",
-                                                    []
-                                                );
-                                                queue.push({
-                                                    name: item.name,
-                                                    artist: item.artists,
-                                                    thumbnail: item.thumbnail,
-                                                    source: item.source,
-                                                    id: item.id,
-                                                    duration: item.duration,
-                                                    time: 0,
-                                                });
-                                                localstorage(
-                                                    "set",
-                                                    "play",
-                                                    queue
-                                                );
+                                                Queue(item);
                                             }}
                                         >
                                             <FontAwesomeIcon
@@ -169,7 +147,7 @@ export default function Play_Queue() {
                                                     item.source,
                                                     "track",
                                                     item.id,
-                                                    item.name
+                                                    item.name,
                                                 );
                                             }}
                                         >
@@ -185,7 +163,7 @@ export default function Play_Queue() {
                 )}
                 {nextfrom?.from !== "" && (
                     <>
-                        {nextfrom?.tracks?.map((item: any, index: number) => {
+                        {nextfrom?.next?.map((item: any, index: number) => {
                             return (
                                 <div
                                     key={item.name}
@@ -193,39 +171,11 @@ export default function Play_Queue() {
                                         index + 1
                                     } flex h-25 w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
                                     onDoubleClick={() => {
-                                        localstorage("set", "playing", {
-                                            name: item.name,
-                                            artist: item.artists,
-                                            thumbnail: item.thumbnail,
-                                            source: item.source,
+                                        window.api.rpc.request.play({
+                                            item: item,
+                                            source: item.source as any,
+                                            type: "track",
                                             id: item.id,
-                                            duration: item.duration,
-                                        });
-                                        localstorage("set", "time", "0");
-
-                                        const trackk =
-                                            nextfrom.tracks.findIndex(
-                                                (itemm: any) => {
-                                                    return itemm.id === item.id;
-                                                }
-                                            );
-
-                                        add_items(
-                                            item.source,
-                                            nextfrom.from.split(":")[1],
-                                            nextfrom.from.split(":")[2],
-                                            nextfrom.tracks.slice(
-                                                trackk + 1,
-                                                -1
-                                            )
-                                        );
-
-                                        setnextfrom({
-                                            from: nextfrom.from,
-                                            tracks: nextfrom.tracks.slice(
-                                                trackk + 1,
-                                                -1
-                                            ),
                                         });
                                     }}
                                 >
@@ -252,7 +202,7 @@ export default function Play_Queue() {
                                                 <span className="duration cursor-default select-none ml-3.75">
                                                     {formatDuration(
                                                         (item.duration as number) /
-                                                            1000
+                                                            1000,
                                                     )}
                                                 </span>
                                             </div>
@@ -268,14 +218,14 @@ export default function Play_Queue() {
                                                         "https://www.youtube.com/watch?v=" +
                                                         item.id;
                                                     navigator.clipboard.writeText(
-                                                        url
+                                                        url,
                                                     );
                                                 } else {
                                                     const url =
                                                         "https://open.spotify.com/track/" +
                                                         item.id;
                                                     navigator.clipboard.writeText(
-                                                        url
+                                                        url,
                                                     );
                                                 }
                                             }}
@@ -285,25 +235,7 @@ export default function Play_Queue() {
                                         <span
                                             className="mr-2.5"
                                             onClick={async () => {
-                                                const queue = localstorage(
-                                                    "get",
-                                                    "play",
-                                                    []
-                                                );
-                                                queue.push({
-                                                    name: item.name,
-                                                    artist: item.artists,
-                                                    thumbnail: item.thumbnail,
-                                                    source: item.source,
-                                                    id: item.id,
-                                                    duration: item.duration,
-                                                    time: 0,
-                                                });
-                                                localstorage(
-                                                    "set",
-                                                    "play",
-                                                    queue
-                                                );
+                                                Queue(item);
                                             }}
                                         >
                                             <FontAwesomeIcon
@@ -317,7 +249,7 @@ export default function Play_Queue() {
                                                     item.source,
                                                     "track",
                                                     item.id,
-                                                    item.name
+                                                    item.name,
                                                 );
                                             }}
                                         >

@@ -1,13 +1,12 @@
-import { goto } from "@/utils/url.ts";
-import convert_link from "@/utils/link.ts";
+import { goto } from "@/mainview/utils/url.ts";
+import convert_link from "@/mainview/utils/link.ts";
 import { useEffect, useState } from "react";
-import localstorage from "@/utils/localStorage";
+import localstorage from "@/mainview/utils/localStorage";
 
 export default function SearchBar() {
     const [isAuth, setAuth] = useState(false);
 
     const [typing, settyping] = useState("");
-    const [source, setsource] = useState<"" | "youtube" | "spotify">("");
     const [type, settype] = useState<"video" | "artist" | "playlist" | "">("");
 
     useEffect(() => {
@@ -18,7 +17,6 @@ export default function SearchBar() {
             const url = localstorage("get", "search", "");
             if (url === "") {
                 settyping("");
-                setsource("");
                 settype("");
             }
         }, 100);
@@ -31,10 +29,7 @@ export default function SearchBar() {
         if (typing === "") {
             return;
         }
-        if (source === "") {
-            return goto(`/${typing.split(":").join("/")}`);
-        }
-        return goto(`/search/${source.toLocaleLowerCase()}/${type}/${typing}`);
+        return goto(`/search/youtube/${type}/${typing}`);
     };
 
     if (isAuth) {
@@ -61,7 +56,6 @@ export default function SearchBar() {
                         settyping(e.target.value);
                         const letters = e.target.value;
                         if (letters === "") {
-                            setsource("");
                             settype("");
                             return;
                         }
@@ -81,7 +75,6 @@ export default function SearchBar() {
                             mode !== undefined &&
                             id !== undefined
                         ) {
-                            setsource("");
                             settype("");
                             localstorage(
                                 "set",
@@ -90,10 +83,6 @@ export default function SearchBar() {
                             );
                             settyping(`${mode}:${sourcee}:${id}`);
                         } else {
-                            if (source === "") {
-                                setsource("youtube");
-                            }
-
                             if (type === "") {
                                 settype("video");
                             }
@@ -102,18 +91,6 @@ export default function SearchBar() {
                         }
                     }}
                 />
-                {source !== "" && (
-                    <div
-                        className="px-5 py-2 bg-slate-200 ml-1 text-slate-700 text-lg cursor-pointer flex items-center justify-center min-h-7.5 w-25"
-                        onClick={() => {
-                            setsource(
-                                source === "youtube" ? "spotify" : "youtube",
-                            );
-                        }}
-                    >
-                        <span className="mt-[5%] h-full">{`${source}`}</span>
-                    </div>
-                )}
                 {type !== "" && (
                     <div
                         className="px-5 py-2 bg-slate-200 ml-1 text-slate-700 text-lg cursor-pointer flex items-center justify-center min-h-7.5 w-25"

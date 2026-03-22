@@ -1,5 +1,5 @@
-import localstorage from "@/utils/localStorage.ts";
-import { goto } from "@/utils/url.ts";
+import localstorage from "@/mainview/utils/localStorage.ts";
+import { goto } from "@/mainview/utils/url.ts";
 import { faBars, faUsers, faHome } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";

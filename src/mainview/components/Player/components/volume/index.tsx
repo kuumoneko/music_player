@@ -1,10 +1,15 @@
 import { useState, useRef, useEffect, RefObject } from "react";
-import Slider from "@/components/Player/common/Slider";
-import localstorage from "@/utils/localStorage.ts";
+import Slider from "@/mainview/components/Player/common/Slider";
 
 export default function VolumeUI() {
-    const [volume, setvolume] = useState(localstorage("get", "volume", 50));
+    const [volume, setvolume] = useState(50);
     const volumeSliderRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        window.api.rpc.request.getUserData("volume").then((data) => {
+            setvolume(data);
+        });
+    }, []);
 
     useEffect(() => {
         if (volumeSliderRef.current) {
@@ -15,7 +20,10 @@ export default function VolumeUI() {
                 "--value-percent",
                 `${percent}%`,
             );
-            localstorage("set", "volume", percent);
+            window.api.rpc.request.setUserData({
+                key: "volume",
+                data: volume,
+            });
         }
     }, [volume]);
 
@@ -28,7 +36,6 @@ export default function VolumeUI() {
                 value={volume}
                 Change={(e) => {
                     const newVolume = Number(e.target.value);
-                    localstorage("set", "volume", newVolume);
                     setvolume(newVolume);
                 }}
                 max={100}

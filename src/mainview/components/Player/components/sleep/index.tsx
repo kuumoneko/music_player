@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { sleep_types } from "@/types/index.ts";
+import { SleepMode } from "@/shared/types.ts";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBed } from "@fortawesome/free-solid-svg-icons";
-import localstorage from "@/utils/localStorage.ts";
 
 export default function SleepUI() {
     const sleep_type = [
@@ -15,25 +14,25 @@ export default function SleepUI() {
         "after 1 hours",
         "end of this track",
     ];
-    const [sleep, setsleep] = useState(sleep_types.no);
+    const [sleep, setsleep] = useState(SleepMode.no);
 
     const Sleep_comp = () => {
         switch (sleep) {
-            case sleep_types.no:
+            case SleepMode.no:
                 return (
                     <span className="w-full flex flex-row-reverse">none</span>
                 );
-            case sleep_types.five:
+            case SleepMode.five:
                 return <span className="w-full flex flex-row-reverse">5</span>;
-            case sleep_types.ten:
+            case SleepMode.ten:
                 return <span className="w-full flex flex-row-reverse">10</span>;
-            case sleep_types.tenfive:
+            case SleepMode.fifteen:
                 return <span className="w-full flex flex-row-reverse">15</span>;
-            case sleep_types.threeten:
+            case SleepMode.thirty:
                 return <span className="w-full flex flex-row-reverse">30</span>;
-            case sleep_types.fourfive:
+            case SleepMode.fourtyfive:
                 return <span className="w-full flex flex-row-reverse">45</span>;
-            case sleep_types.hour:
+            case SleepMode.hour:
                 return (
                     <span className="w-full flex flex-row-reverse">1 hour</span>
                 );
@@ -53,36 +52,10 @@ export default function SleepUI() {
                 className="mr-2.5"
                 onClick={() => {
                     const index = sleep_type.indexOf(sleep);
-                    let kill_time: string | number = new Date().getTime();
                     const temp = sleep_type[
                         (index + 1) % sleep_type.length
-                    ] as sleep_types;
-                    switch (temp) {
-                        case sleep_types.no:
-                            kill_time = sleep_types.no;
-                            break;
-                        case sleep_types.five:
-                            kill_time += 30 * 1000;
-                            break;
-                        case sleep_types.ten:
-                            kill_time += 10 * 60 * 1000;
-                            break;
-                        case sleep_types.tenfive:
-                            kill_time += 15 * 60 * 1000;
-                            break;
-                        case sleep_types.threeten:
-                            kill_time += 30 * 60 * 1000;
-                            break;
-                        case sleep_types.fourfive:
-                            kill_time += 45 * 60 * 1000;
-                            break;
-                        case sleep_types.hour:
-                            kill_time += 60 * 60 * 1000;
-                            break;
-                        default:
-                            kill_time = "end of this track";
-                    }
-                    localstorage("set", "kill time", String(kill_time));
+                    ] as SleepMode;
+                    window.api.rpc.request.setSleep(temp);
                     setsleep(temp);
                 }}
             >

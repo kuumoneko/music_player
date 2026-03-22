@@ -1,16 +1,14 @@
 import { faFileArchive } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
-import fetchdata from "@/utils/fetch.ts";
+// import fetchdata from "@/mainview/utils/fetch.ts";
 
 export default function LocalFile() {
     const [location, setlocation] = useState("");
 
     useEffect(() => {
         async function run() {
-            const res = await fetchdata("profile", "GET", {
-                key: "folder",
-            });
+            const res = await window.api.rpc.request.getProfileData("folder");
             setlocation(res);
         }
         run();
@@ -21,8 +19,11 @@ export default function LocalFile() {
     }, []);
 
     const Click = async () => {
-        const res = await window.api.rpc.request.setfolder();
-        setlocation(res.data);
+        const res = await window.api.rpc.request.setProfileData({
+            key: "folder",
+            data: "",
+        });
+        setlocation((res as string) ?? "");
     };
 
     return (

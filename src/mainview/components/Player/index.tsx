@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDatabase } from "@fortawesome/free-solid-svg-icons";
-import { goto } from "@/utils/url.ts";
+import { goto } from "@/mainview/utils/url.ts";
 import DataUI from "./components/data/index.tsx";
 import VolumeUI from "./components/volume/index.tsx";
 import SleepUI from "./components/sleep/index.tsx";

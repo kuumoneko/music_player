@@ -1,8 +1,7 @@
-import Loading from "@/components/Loading";
-import Music from "@/components/Music/index.tsx";
-import fetch_data from "@/utils/fetch";
-import localstorage from "@/utils/localStorage.ts";
-import { goto } from "@/utils/url";
+import Loading from "@/mainview/components/Loading";
+import Music from "@/mainview/components/Music/index.tsx";
+import localstorage from "@/mainview/utils/localStorage.ts";
+import { goto } from "@/mainview/utils/url";
 import { useEffect, useState } from "react";
 
 export default function Artists() {
@@ -45,9 +44,8 @@ function Index() {
     const [pin, setpin] = useState<any>(null);
     useEffect(() => {
         async function run() {
-            const pin: any[] = await fetch_data("profile", "GET", {
-                key: "pin",
-            });
+            const pin: any[] =
+                await window.api.rpc.request.getProfileData("pin");
             const artists = pin.filter((item: any) =>
                 item.mode.includes("artist"),
             );

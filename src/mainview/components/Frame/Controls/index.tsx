@@ -1,5 +1,5 @@
-import localstorage from "@/utils/localStorage.ts";
-import { goto, Force } from "@/utils/url.ts";
+import localstorage from "@/mainview/utils/localStorage.ts";
+import { goto, Force } from "@/mainview/utils/url.ts";
 import {
     faArrowLeft,
     faArrowsRotate,
@@ -13,11 +13,9 @@ import { useEffect, useState } from "react";
 
 export default function ControlPanel() {
     const [backward, setbackward] = useState(
-        localstorage("get", "backward", [])
+        localstorage("get", "backward", []),
     );
-    const [forward, setforward] = useState(
-        localstorage("get", "forward", [])
-    );
+    const [forward, setforward] = useState(localstorage("get", "forward", []));
 
     useEffect(() => {
         const run = setInterval(() => {

@@ -1,7 +1,6 @@
 import { faDownload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
-import fetchdata from "@/utils/fetch.ts";
 
 enum Status {
     idle = "idle",
@@ -19,10 +18,8 @@ export default function Download() {
             try {
                 async function get_download_status() {
                     if (!status) return;
-                    const { data, track } = await fetchdata(
-                        "downloadstatus",
-                        "GET"
-                    );
+                    const { data, track } =
+                        await window.api.rpc.request.getDownloadStatus();
                     if (data == Status.done) {
                         setstatus(Status.done);
                         setdownload(false);
@@ -45,8 +42,8 @@ export default function Download() {
 
     useEffect(() => {
         async function run() {
-            const res = await fetchdata("download", "GET");
-            if (res == "OK") {
+            const res = await window.api.rpc.request.downloadMusic();
+            if (res == "ok") {
                 setstatus(Status.downloading);
             }
         }
