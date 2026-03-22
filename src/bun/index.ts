@@ -10,8 +10,6 @@ import PlayController from "./controllers/play";
 import check_env from "./env";
 import { getDataFromDatabase, writeDataToDatabase } from "./lib/database";
 import Player from "./music/index.ts"
-// import express from "express";
-import getMainViewUrl from "./mode.ts";
 import { Repeat, Shuffle, SleepMode } from "../shared/types.ts";
 import Discord from "./discord/index.ts";
 import { UserData } from "../shared/types.ts";
@@ -28,7 +26,7 @@ let appTray: Tray | null = null;
 let discordRPC: Discord | null = null;
 let log: string[] = [];
 
-let isDevMode: boolean = await getMainViewUrl();
+let isDevMode: boolean = process.env.NODE_ENV === "development";
 const APP_PORT = process.env["APP_PORT"] ?? 3000;
 const MainViewPort = process.env["MAIN_PORT"] ?? 5006;
 const PlayerViewPort = process.env["PLAYER_PORT"] ?? 5005;
@@ -425,38 +423,6 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					return null;
 				}
 			},
-			// getUser: async () => {
-
-			// },
-			// login: async () => {
-			// 	try {
-			// 		const result = await LoginWithGoogle(APP_ROOT);
-			// 		const { personal } = await getDataFromDatabase(APP_ROOT, "data", "system");
-			// 		YTBuser = new User({
-			// 			accessToken: {
-			// 				token: result.access_token,
-			// 				expires: new Date().getTime() + result.expires_in * 1000
-			// 			},
-			// 			refreshToken: {
-			// 				token: result.refresh_token,
-			// 				expires: new Date().getTime() + result.refresh_token_expires_in * 1000
-			// 			},
-			// 			tokenType: result.token_type,
-			// 			client: {
-			// 				id: personal.client_id,
-			// 				secret: personal.client_secret,
-			// 				key: personal.key
-			// 			}
-			// 		})
-
-			// 		const userdata = await YTBuser.getUser();
-			// 		return userdata
-			// 	} catch (error) {
-			// 		addLog(error);
-			// 		return null;
-			// 	}
-			// }
-
 		}
 	}
 })
