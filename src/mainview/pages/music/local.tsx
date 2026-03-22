@@ -11,12 +11,17 @@ export default function Local() {
     useEffect(() => {
         async function run() {
             const data = await window.api.rpc.request.getLocalfile();
+            console.log(data);
             setlocalfile(data);
             setduration(
                 data.reduce((a: number, b: Track) => a + b.duration, 0),
             );
         }
         run();
+        const running = setInterval(() => {
+            run();
+        }, 1000);
+        return () => clearInterval(running);
     }, []);
     return (
         <>
