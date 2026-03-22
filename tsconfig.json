@@ -1,5 +1,10 @@
 {
     "compilerOptions": {
+        "moduleDetection": "force",
+        "allowJs": true,
+        "verbatimModuleSyntax": false,
+        "noPropertyAccessFromIndexSignature": true,
+
         "target": "ES2020",
         "useDefineForClassFields": true,
         "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -22,15 +27,20 @@
         "allowSyntheticDefaultImports": true,
 
         "paths": {
-            "@/*": ["./src/mainview/*"]
+            "@/*": ["./src/*"]
         },
-        "baseUrl": ".",
         "types": ["bun"],
         "erasableSyntaxOnly": false,
         "noUncheckedSideEffectImports": true,
         "allowArbitraryExtensions": false,
         "esModuleInterop": true
     },
-    "include": ["src", "vite.config.ts"],
-    "exclude": ["node_modules", "dist", "build", "../../package/dist"]
+    "include": ["src/**/*", "test", "release"],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "build",
+        "../../package/dist",
+        "backup/**/*"
+    ]
 }

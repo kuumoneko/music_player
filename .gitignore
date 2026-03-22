@@ -7,13 +7,11 @@ node_modules
 /release
 /bin
 /data
-/dist-electron
+/backup
+/build
 package-lock.json
 .env
 build.json
 installer.nsh
-build
 bun.lock
 electrobun.config.ts
-llms.txt
-postcss.config.js
