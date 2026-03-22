@@ -47,7 +47,7 @@ export class Local {
         });
     }
 
-    async parseFile(file: string): Promise<Track> {
+    async parseFile(file: string, index: number): Promise<Track> {
         return new Promise((resolve, reject) => {
             try {
                 const ffprobe = spawn(`${this.appPath}/bin/ffprobe.exe`, [
@@ -84,7 +84,8 @@ export class Local {
                                         id: "", name: metadata.format.tags.artist
                                     }
                                 ],
-                                thumbnail: await this.get_Thumbnail(file)
+                                thumbnail: await this.get_Thumbnail(file),
+                                index: index,
                             });
                         } catch (e) {
                             reject(new Error("Failed to parse ffprobe output."));
@@ -115,14 +116,14 @@ export class Local {
                 audioExtensions.includes(extname(dirent.name).toLowerCase())
         );
         const file: any[] = [];
-        audiofiles.forEach((dirent: any) => {
+        audiofiles.forEach((dirent: any, index: number) => {
             const filePath = join(folder, dirent.name);
             const get_data = local_files.find((item: any) => {
                 return item.path === filePath
             })
 
             if (!get_data || get_data.thumbnail.length === 0) {
-                file.push(this.parseFile(filePath).then((data: any) => {
+                file.push(this.parseFile(filePath, index).then((data: any) => {
                     this.data.push(data);
                 }).catch((e: any) => {
                     console.error(e)
