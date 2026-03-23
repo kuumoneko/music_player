@@ -4,7 +4,6 @@ import {
     faDownload,
     faThumbTack,
     faFileAudio,
-    faHeart,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDuration } from "@/mainview/utils/format.ts";
@@ -68,24 +67,10 @@ export default function Top({
                                     className="rounded-lg"
                                 />
                             ) : (
-                                <>
-                                    {source === "local" && (
-                                        <FontAwesomeIcon
-                                            icon={faFileAudio}
-                                            className="text-[50px]"
-                                        />
-                                    )}
-                                    {mode === "liked songs" && (
-                                        <FontAwesomeIcon
-                                            icon={faHeart}
-                                            className={`text-[50px] ${
-                                                source === "youtube"
-                                                    ? "text-red-600"
-                                                    : "text-green-600"
-                                            }`}
-                                        />
-                                    )}
-                                </>
+                                <FontAwesomeIcon
+                                    icon={faFileAudio}
+                                    className="text-[50px]"
+                                />
                             )}
                         </span>
 
