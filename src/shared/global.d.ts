@@ -20,6 +20,7 @@ declare global {
                     getDownloadStatus: () => Promise<{ data: string, track: string }>,
                     close: () => Promise<void>,
                     minimize: () => Promise<void>,
+                    toggleMaximize: () => Promise<void>,
                     toggleQuitonClose: () => Promise<void>,
                     isQuitonClose: () => Promise<boolean>,
                     togglePlayPause: () => Promise<void>,
@@ -54,7 +55,7 @@ declare global {
                     sleep: () => Promise<void>,
                     setLoading: (isLoading: boolean) => Promise<void>
                     setcurrentTime: (time: number) => Promise<void>
-                    setDuration: (time:number) => Promise<void>
+                    setDuration: (time: number) => Promise<void>
                     setIsPlaying: (isPlaying: boolean) => Promise<void>
 
                 }

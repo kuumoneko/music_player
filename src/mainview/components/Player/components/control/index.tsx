@@ -74,7 +74,7 @@ export default function ControlUI() {
     };
 
     return (
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center w-full">
             <div
                 className={`controls flex flex-row gap-2.5 ${isloading ? "opacity-50 pointer-events-none" : ""}`}
             >
@@ -167,15 +167,14 @@ export default function ControlUI() {
                 </button>
             </div>
 
-            <div className="player flex flex-row items-center">
-                <span className="mr-1.25 cursor-default select-none text-xs w-24 text-center">
+            <div className="player flex flex-row items-center w-full">
+                <span className="mr-1.25 cursor-default select-none text-xs min-w-24 w-1/6 text-center">
                     {playing.duration > 0
                         ? `${formatDuration(playing.time)} / ${formatDuration(playing.duration / 1000)}`
                         : `Loading`}
                 </span>
                 <Slider
                     name={"time"}
-                    width={"800"}
                     reff={TimeSliderRef as RefObject<HTMLInputElement>}
                     value={playing.time ?? 0}
                     Change={handleTimeSliderChange}

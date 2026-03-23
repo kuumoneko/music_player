@@ -1,4 +1,8 @@
-import { faMinus, faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+    faMinus,
+    faWindowMaximize,
+    faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ControlPanel from "./Controls";
 import ControlPages from "./Pages";
@@ -16,29 +20,43 @@ const close = () => {
     }
 };
 
+const toggleMaximize = () => {
+    if (window.api) {
+        window.api.rpc.request.toggleMaximize();
+    }
+};
+
 export default function Frame() {
     return (
-        <div className="h-[5%] w-full flex flex-row items-center justify-between">
-            <div className="w-10"></div>
+        <div className="w-full h-[5%] pt-1 px-1">
+            <div className="w-full h-full flex flex-row items-center justify-between electrobun-webkit-app-region-drag">
+                <div className="w-1/10"></div>
 
-            <div className="w-[80%] h-full bg-slate-700 rounded-4xl flex flex-row items-center justify-between px-4">
-                <ControlPanel />
-                <ControlPages />
-                <Settings />
-            </div>
-
-            <div className="w-20 flex flex-row items-center justify-between px-4">
-                <div
-                    onClick={minimize}
-                    className="cursor-default hover:cursor-pointer hover:bg-slate-500 rounded-full px-0.5"
-                >
-                    <FontAwesomeIcon icon={faMinus} />
+                <div className="w-8/10 h-full bg-slate-700 rounded-4xl flex flex-row items-center justify-between px-4 electrobun-webkit-app-region-no-drag">
+                    <ControlPanel />
+                    <ControlPages />
+                    <Settings />
                 </div>
-                <div
-                    onClick={close}
-                    className="cursor-default hover:cursor-pointer hover:bg-slate-500 rounded-full px-0.5"
-                >
-                    <FontAwesomeIcon icon={faXmark} />
+
+                <div className="w-1/10 flex flex-row-reverse items-center justify-between px-4 electrobun-webkit-app-region-no-drag">
+                    <div
+                        onClick={close}
+                        className="cursor-default hover:cursor-pointer hover:bg-slate-500 hover:text-red-500 rounded-full px-0.5"
+                    >
+                        <FontAwesomeIcon icon={faXmark} />
+                    </div>{" "}
+                    <div
+                        onClick={toggleMaximize}
+                        className="cursor-default hover:cursor-pointer hover:bg-slate-500 rounded-full px-0.5"
+                    >
+                        <FontAwesomeIcon icon={faWindowMaximize} />
+                    </div>
+                    <div
+                        onClick={minimize}
+                        className="cursor-default hover:cursor-pointer hover:bg-slate-500 rounded-full px-0.5"
+                    >
+                        <FontAwesomeIcon icon={faMinus} />
+                    </div>
                 </div>
             </div>
         </div>

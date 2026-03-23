@@ -22,18 +22,6 @@ export type AppRPCType = {
                     newTracks: Track[],
                 }
             },
-            // getUserPlaylists: {
-            //     params: {},
-            //     response: Playlist[]
-            // },
-            // getUserArtists: {
-            //     params: null,
-            //     response: Artist[]
-            // },
-            // getlikedTrack: {
-            //     params: null,
-            //     response: Track[]
-            // },
             getProfileData: {
                 params: keyof UserProfile,
                 response: any
@@ -55,6 +43,10 @@ export type AppRPCType = {
                 response: null
             },
             minimize: {
+                params: null,
+                response: null
+            },
+            toggleMaximize: {
                 params: null,
                 response: null
             },

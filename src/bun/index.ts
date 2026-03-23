@@ -1,4 +1,4 @@
-import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils } from "electrobun/bun";
+import { BrowserView, BrowserWindow, MenuItemConfig, Screen, Tray, Updater, Utils } from "electrobun/bun";
 
 import { config } from "dotenv";
 import { resolve, join } from "node:path";
@@ -240,6 +240,16 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			},
 			minimize: async () => {
 				appWin?.minimize();
+			},
+			toggleMaximize: async () => {
+				if (user.isMaximized) {
+					user.isMaximized = false;
+					appWin.unmaximize();
+				}
+				else {
+					user.isMaximized = true;
+					appWin.maximize();
+				}
 			},
 			toggleQuitonClose: async () => {
 				user.QuitonClose = !user.QuitonClose;
@@ -599,10 +609,20 @@ Bun.serve({
 	},
 });
 
+const primaryDisplay = Screen.getPrimaryDisplay()
+const { width: screenWidth, height: screenHeight } = primaryDisplay.workArea;
+
+const x = Math.floor((screenWidth - 1366) / 2);
+const y = Math.floor((screenHeight - 768) / 2);
+
 appWin = new BrowserWindow({
-	title: "Music app", url: `http://localhost:${MainViewPort}`, rpc: appRPC, titleBarStyle: "hidden",
-	// preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
+	title: "Music app", url: `http://localhost:${MainViewPort}`, rpc: appRPC, titleBarStyle: "hidden", frame: {
+		x: x, y: y, height: 768, width: 1366,
+	},
+	preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
 })
+
+
 
 playWin = new BrowserWindow({
 	url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC, frame: {
@@ -611,15 +631,23 @@ playWin = new BrowserWindow({
 })
 
 appWin?.webview?.on("dom-ready", () => {
-	appWin.maximize();
-	appWin.focus();
-	if (isDevMode) {
-		playWin.webview.openDevTools();
+	if (user.isMaximized) {
+		appWin.maximize();
 	}
+	if (isDevMode) {
+		appWin.webview.openDevTools();
+	}
+
 })
 
 playWin?.webview?.on("dom-ready", () => {
 	if (isDevMode) {
 		playWin.webview.openDevTools();
 	}
+
+})
+
+appWin.on("resize", (event: any) => {
+	const { id, x, y, width, height } = event.data;
+	console.log(`Window ${id} resized to: ${width}x${height} at position (${x}, ${y})`);
 })
