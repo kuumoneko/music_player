@@ -80,7 +80,7 @@ export default function ControlUI() {
             >
                 {/* Shuffle */}
                 <button
-                    className="mx-0.5 p-0.5 cursor-default select-none"
+                    className="mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                     onClick={() => {
                         const new_shuffle =
                             shuffle === Shuffle.Disable
@@ -104,7 +104,7 @@ export default function ControlUI() {
 
                 {/* Backward */}
                 <button
-                    className={`mx-0.5 p-0.5 cursor-default select-none ${playedTrack.length === 0 ? "opacity-50 pointer-events-none" : ""}`}
+                    className={`mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${playedTrack.length === 0 ? "opacity-50 pointer-events-none" : ""}`}
                     onClick={() => window.api.rpc.request.previous()}
                 >
                     <FontAwesomeIcon icon={faStepBackward} />
@@ -112,7 +112,7 @@ export default function ControlUI() {
 
                 {/* Play/Pause */}
                 <button
-                    className="mx-0.5 p-0.5 cursor-default select-none"
+                    className="mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                     onClick={() => {
                         // setplayed(!played);
                         window.api.rpc.request.togglePlayPause();
@@ -123,7 +123,7 @@ export default function ControlUI() {
 
                 {/* Forward */}
                 <button
-                    className="mx-0.5 p-0.5 cursor-default select-none"
+                    className="mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                     onClick={async () => {
                         window.api.rpc.request.next();
                     }}
@@ -133,7 +133,7 @@ export default function ControlUI() {
 
                 {/* Repeat */}
                 <button
-                    className="relative mx-0.5 p-0.5 cursor-default select-none"
+                    className="relative mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                     onClick={() => {
                         const new_repeat =
                             repeat === Repeat.Disable
