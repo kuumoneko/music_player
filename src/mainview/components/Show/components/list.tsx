@@ -159,7 +159,7 @@ export default function List({
                                         </div>
                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
-                                                className="mr-2.5"
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                                 onClick={() => {
                                                     if (source === "youtube") {
                                                         const url =
@@ -176,7 +176,7 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className="mr-2.5"
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                                 onClick={() => {
                                                     Queue(item);
                                                 }}
@@ -186,7 +186,7 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className={`mr-2.5 ${
+                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${
                                                     mode === "local"
                                                         ? "opacity-50 pointer-events-none"
                                                         : ""
