@@ -275,11 +275,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			},
 			next: async () => {
 				try {
-					// console.log(Math.random() * 100)
-					// console.log(user.nextfrom.next[0])
 					await forward(player, user);
-					// console.log(user.nextfrom.next[0]);
-					// console.log(user.currentPlaying);
 
 					(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
 				} catch (error) {
