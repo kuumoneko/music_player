@@ -15,6 +15,7 @@ export default function SleepUI() {
         "end of this track",
     ];
     const [sleep, setsleep] = useState(SleepMode.no);
+    const [isHover, setIsHover] = useState(false);
 
     const Sleep_comp = () => {
         switch (sleep) {
@@ -44,12 +45,16 @@ export default function SleepUI() {
     };
 
     return (
-        <span className="flex flex-row">
+        <div
+            className="flex flex-row"
+            onMouseEnter={() => setIsHover(true)}
+            onMouseLeave={() => setIsHover(false)}
+        >
             <span className="w-15  mr-1.25 flex flex-row-reverse">
                 <Sleep_comp />
             </span>
             <span
-                className="mr-2.5"
+                className={`mr-2.5 px-1 py-0.5 ${!isHover ? "" : "rounded-full bg-slate-500 cursor-pointer"}`}
                 onClick={() => {
                     const index = sleep_type.indexOf(sleep);
                     const temp = sleep_type[
@@ -61,6 +66,6 @@ export default function SleepUI() {
             >
                 <FontAwesomeIcon icon={faBed} />
             </span>
-        </span>
+        </div>
     );
 }
