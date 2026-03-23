@@ -87,7 +87,7 @@ export default class Youtube {
 
     constructor(appPath: string, userPath: string) {
         getDataFromDatabase(appPath, "data", "system").then((data) => {
-            this.api_keys = data.normal.map((key: string) => {
+            this.api_keys = data.map((key: string) => {
                 return {
                     ApiKey: key,
                     isReached: false,
