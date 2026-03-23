@@ -38,6 +38,7 @@ export default function Play_Queue() {
                     });
                     setqueue([]);
                 }}
+                className="hover:text-red-500 hover:cursor-pointer"
             >
                 <FontAwesomeIcon icon={faMinus} />
                 Clear queue
@@ -56,6 +57,7 @@ export default function Play_Queue() {
                         next: [],
                     });
                 }}
+                className="hover:text-red-500 hover:cursor-pointer"
             >
                 <FontAwesomeIcon icon={faMinus} />
                 Clear next from
@@ -116,7 +118,7 @@ export default function Play_Queue() {
 
                                     <div className="action_button flex flex-row-reverse mr-2.5">
                                         <span
-                                            className="mr-2.5"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 if (item.source === "youtube") {
                                                     const url =
@@ -131,7 +133,7 @@ export default function Play_Queue() {
                                             <FontAwesomeIcon icon={faShare} />
                                         </span>
                                         <span
-                                            className="mr-2.5"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                             onClick={async () => {
                                                 Queue(item);
                                             }}
@@ -141,7 +143,7 @@ export default function Play_Queue() {
                                             />
                                         </span>
                                         <span
-                                            className="mr-2.5"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 add_to_download(
                                                     item.source,
@@ -211,7 +213,7 @@ export default function Play_Queue() {
 
                                     <div className="action_button flex flex-row-reverse mr-2.5">
                                         <span
-                                            className="mr-2.5"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 if (item.source === "youtube") {
                                                     const url =
@@ -233,7 +235,7 @@ export default function Play_Queue() {
                                             <FontAwesomeIcon icon={faShare} />
                                         </span>
                                         <span
-                                            className="mr-2.5"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                             onClick={async () => {
                                                 Queue(item);
                                             }}
@@ -243,7 +245,7 @@ export default function Play_Queue() {
                                             />
                                         </span>
                                         <span
-                                            className="mr-2.5"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 add_to_download(
                                                     item.source,
