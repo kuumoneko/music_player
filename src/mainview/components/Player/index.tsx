@@ -18,7 +18,7 @@ export default function Player() {
                 <SleepUI />
 
                 <span
-                    className="mr-2.5"
+                    className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                     onClick={() => {
                         goto("/queue/play");
                     }}
