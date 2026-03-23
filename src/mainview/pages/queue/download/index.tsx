@@ -49,7 +49,6 @@ export default function Download_Queue() {
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
             for (const item of tracks) {
-
                 const data = await window.api.rpc.request.getMusicData({
                     source: item.source as any,
                     type: "tracks",
@@ -83,12 +82,13 @@ export default function Download_Queue() {
                         data: [],
                     });
                 }}
+                className="hover:text-red-500 hover:cursor-pointer"
             >
                 <FontAwesomeIcon icon={faMinus} />
                 Clear queue
             </div>
             <div className="download flex flex-col items-center justify-normal w-full h-full ">
-                <div className="title w-[90%] h-[10%]">
+                <div className="title w-[90%] h-[10%] hover:cursor-pointer">
                     <span className="text-4xl">Download queue</span>
                     <Download />
                 </div>
@@ -105,7 +105,7 @@ export default function Download_Queue() {
                                 className="download flex flex-col"
                             >
                                 <div className="flex flex-row bg-slate-800 mb-3">
-                                    <span className="w-12.5 flex flex-row items-center justify-center dot text-slate-300 hover:text-red-500 transition-all">
+                                    <span className="w-12.5 flex flex-row items-center justify-center dot text-slate-300 hover:text-red-500 hover:cursor-pointer transition-all">
                                         <FontAwesomeIcon
                                             icon={faCircle}
                                             onClick={async () => {
@@ -173,11 +173,7 @@ export default function Download_Queue() {
                                                         ? faYoutube
                                                         : faSpotify
                                                 }
-                                                className={`size-10 ${
-                                                    source === "youtube"
-                                                        ? "text-red-500"
-                                                        : "text-green-500"
-                                                }`}
+                                                className={`size-10 text-red-500`}
                                             />
                                         </span>
                                         <span className="mr-1.25">{mode}</span>
@@ -234,7 +230,7 @@ export default function Download_Queue() {
 
                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
-                                                className="mr-2.5"
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                                 onClick={() => {
                                                     if (
                                                         item.source ===
@@ -320,7 +316,7 @@ export default function Download_Queue() {
 
                                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                                             <span
-                                                                className="mr-2.5"
+                                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                                                                 onClick={() => {
                                                                     if (
                                                                         itemm.source ===
