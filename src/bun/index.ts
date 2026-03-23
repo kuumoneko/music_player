@@ -529,12 +529,10 @@ Bun.serve({
 	async fetch(req) {
 		const url = new URL(req.url);
 
-		// 1. Handle the root route "/"
 		if (url.pathname === "/") {
 			return new Response(Bun.file(join(APP_ROOT, "views", "src", "mainview", "index.html")));
 		}
 
-		// 2. Handle static files (Replacing express.static)
 		const filePath = join(APP_ROOT, "views", url.pathname);
 		const file = Bun.file(filePath);
 
@@ -542,7 +540,6 @@ Bun.serve({
 			return new Response(file);
 		}
 
-		// 3. Fallback 404
 		return new Response("Not Found", { status: 404 });
 	},
 });
@@ -562,10 +559,8 @@ Bun.serve({
 				});
 			}
 
-			// Load the file using Bun's native file handler
 			const fileName = player.local.data.find((item: Track) => item.index === Number(filePath)).id
 			let file: any;
-			console.log(fileName)
 			file = Bun.file(fileName);
 			const Firstexists = await file.exists();
 			if (!Firstexists) {
