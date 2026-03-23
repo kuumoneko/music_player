@@ -48,17 +48,16 @@ export default function ControlPages() {
             url: "artists",
         },
     ];
-    const itemWidth = -70;
     if (isAuth) {
         return <></>;
     }
     return (
-        <div className="relative flex items-center justify-center w-100 h-full bg-slate-700 rounded-lg">
+        <div className="relative flex items-center justify-center w-3/5 min-w-100 h-full bg-slate-700 rounded-lg">
             <ul className="flex w-52.5">
                 {menuItems.map((item, index) => (
                     <li
                         key={item.text}
-                        className="relative z-10 w-17.5 h-17.5 list-none hover:cursor-pointer"
+                        className="relative z-10 w-1/2 h-full list-none hover:cursor-pointer"
                         onClick={() => {
                             setActiveIndex(index);
                             if (
@@ -72,34 +71,14 @@ export default function ControlPages() {
                     >
                         <a className="relative flex flex-col items-center justify-center w-full text-center font-medium">
                             <span
-                                className={`relative block text-2xl leading-18.75 text-center text-white transition-transform duration-500 
-                            ${activeIndex === index ? "translate-y-8" : ""}`}
+                                className={`relative block text-2xl text-center transition-transform duration-500 hover:text-red-400 px-1 py-1 rounded-full
+                            ${activeIndex === index ? "text-lime-400" : "text-white"}`}
                             >
                                 {item.icon}
-                            </span>
-                            <span
-                                className={`absolute font-normal text-xs tracking-wider text-white transition-all duration-500 
-                            ${
-                                activeIndex === index
-                                    ? "opacity-100 -translate-y-3.75"
-                                    : "opacity-0 translate-y-5"
-                            }`}
-                            >
-                                {item.text}
                             </span>
                         </a>
                     </li>
                 ))}
-
-                <div
-                    className="absolute top-[52%] w-17.5 h-17.5 bg-[#636ec1] rounded-full border-[6px] border-slate-900 transition-transform duration-500
-                      before:content-[''] before:absolute before:top-[65%] before:-left-4.5 before:w-5 before:h-5 before:bg-transparent before:rounded-tr-[20px] before:shadow-[1px_-10px_0_0_#0f172b]
-                      after:content-[''] after:absolute after:top-[65%] after:-right-4.5 after:w-5 after:h-5 after:bg-transparent after:rounded-tl-[20px] after:shadow-[-1px_-10px_0_0_#0f172b] rotate-180"
-                    style={{
-                        transform: `translateX(${activeIndex * itemWidth}px)`,
-                        opacity: activeIndex === -1 ? 0 : 1,
-                    }}
-                ></div>
             </ul>
         </div>
     );

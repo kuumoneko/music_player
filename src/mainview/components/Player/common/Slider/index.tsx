@@ -1,6 +1,18 @@
 import { RefObject } from "react";
 
-export default function Slider({ name, width, reff, value, Change, max }: { name: string, width: number | string, reff: RefObject<HTMLInputElement>, value: number, Change: (e: React.ChangeEvent<HTMLInputElement>) => void, max: number }) {
+export default function Slider({
+    name,
+    reff,
+    value,
+    Change,
+    max,
+}: {
+    name: string;
+    reff: RefObject<HTMLInputElement>;
+    value: number;
+    Change: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    max: number;
+}) {
     return (
         <input
             title={name}
@@ -9,11 +21,8 @@ export default function Slider({ name, width, reff, value, Change, max }: { name
             min="0"
             max={max}
             value={value ?? 0}
-            style={{
-                width: `${width}px`,
-            }}
             className={`${name} 
-                        w-[${width}px] h-1.25
+            ${name === "time" ? "w-5/6" : "w-full"} h-1.25
                         cursor-pointer 
                         apperance-none
                         bg-transparent 
@@ -40,5 +49,5 @@ export default function Slider({ name, width, reff, value, Change, max }: { name
                 Change(e);
             }}
         />
-    )
+    );
 }

@@ -11,10 +11,10 @@ export default function Player() {
         <div className="player h-[5%] w-[90%] bg-slate-700 text-white mt-5 rounded-xl flex justify-between items-center px-1.25 m-0 select-none">
             <DataUI />
 
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center w-1/2">
                 <ControlUI />
             </div>
-            <div className="volume group flex flex-row mr-2.5 cursor-pointer select-none">
+            <div className="volume group flex flex-row mr-2.5 cursor-pointer select-none w-1/6">
                 <SleepUI />
 
                 <span

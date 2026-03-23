@@ -31,7 +31,6 @@ export default function VolumeUI() {
         <div className="volume group flex flex-col items-center mr-2.5 cursor-pointer select-none">
             <Slider
                 name={"volume"}
-                width={"100"}
                 reff={volumeSliderRef as RefObject<HTMLInputElement>}
                 value={volume}
                 Change={(e) => {
@@ -40,7 +39,7 @@ export default function VolumeUI() {
                 }}
                 max={100}
             />
-            <span className="cursor-default">Volume: {volume}</span>
+            <span className="cursor-default">{volume}</span>
         </div>
     );
 }

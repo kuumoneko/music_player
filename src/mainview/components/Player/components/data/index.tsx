@@ -61,7 +61,7 @@ export default function DataUI() {
     }, []);
 
     return (
-        <div className="flex flex-row items-center ml-3.75">
+        <div className="flex flex-row items-center ml-3.75 w-1/6">
             <span>
                 {thumbnail ? (
                     <img
@@ -78,7 +78,7 @@ export default function DataUI() {
             <div className="currently-playing ml-1.25 cursor-default select-none flex flex-col">
                 {id !== "" && (
                     <span
-                        className="text-sm hover:underline hover:cursor-pointer"
+                        className="text-sm hover:underline hover:cursor-pointer truncate"
                         onClick={() => {
                             goto(`/track/${source}/${id}`);
                         }}
