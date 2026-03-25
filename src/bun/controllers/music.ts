@@ -34,20 +34,6 @@ export default async function MusicController(player: Player, data: { source, mo
         if (!["tracks", "playlists", "artists", "local"].includes(type)) {
             throw new Error("Invalid type");
         }
-        // if (source === "spotify") {
-        //     if (type === "tracks") {
-        //         result = await player.spotify.fetch_track(typeof id === "string" ? [id] : id);
-        //     }
-        //     else if (type === "playlists") {
-        //         result = await player.spotify.fetch_playlist(id);
-        //     }
-        //     else if (type === "artists") {
-        //         result = await player.spotify.fetch_artist(id);
-        //     }
-        //     else if (type === "albums") {
-        //         result = await player.spotify.fetch_album(typeof id === "string" ? [id] : id);
-        //     }
-        // }
         else if (source === "youtube") {
             if (type === "tracks") {
                 const temp = await player.youtube.fetch_track(typeof id === "string" ? [id] : id)
