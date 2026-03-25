@@ -26,7 +26,6 @@ let appTray: Tray | null = null;
 let discordRPC: Discord | null = null;
 let log: string[] = [];
 
-let isDevMode: boolean = process.env.NODE_ENV === "development";
 const APP_PORT = process.env["APP_PORT"] ?? 3000;
 const MainViewPort = process.env["MAIN_PORT"] ?? 5006;
 const PlayerViewPort = process.env["PLAYER_PORT"] ?? 5005;
@@ -37,16 +36,7 @@ try {
 		fetch(_req: any) {
 			console.log("A second instance tried to open!");
 
-			if (appWin) {
-				appWin?.show();
-				appWin?.focus();
-				appWin?.maximize();
-			}
-			else {
-				appWin = new BrowserWindow({
-					title: "Music app", url: `http://localhost:${MainViewPort}`, rpc: appRPC, titleBarStyle: "hidden", preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
-				})
-			}
+			appWin?.show();
 
 			return new Response("OK");
 		}
@@ -233,8 +223,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					process.exit(0)
 				}
 				else {
-					appWin?.close();
-					appWin = null;
+					appWin.hide();
 					appTray?.setMenu(getTrayMenu(false))
 				}
 			},
@@ -516,21 +505,18 @@ appTray?.on("tray-clicked", (e: any) => {
 
 	switch (action) {
 		case "show":
-			appWin = new BrowserWindow({
-				title: "Music app", url: `http://localhost:${MainViewPort}`, rpc: appRPC, titleBarStyle: "hidden"
-			})
-			appTray.setMenu(getTrayMenu(true));
+			appWin?.show();
+			appTray?.setMenu(getTrayMenu(true));
 			break;
 		case "hide":
-			user.QuitonClose = false;
-			appWin?.close();
-			appWin = null;
-			appTray.setMenu(getTrayMenu(false));
+			appWin?.hide();
+			appTray?.setMenu(getTrayMenu(false));
 			break;
-
 		case "quit":
+			appWin?.close();
+			playWin?.close();
 			Utils.quit();
-			break;
+			process.exit(0);
 	}
 })
 
@@ -622,8 +608,6 @@ appWin = new BrowserWindow({
 	preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
 })
 
-
-
 playWin = new BrowserWindow({
 	url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC, frame: {
 		x: 0, y: 0, height: 800, width: 600
@@ -634,17 +618,10 @@ appWin?.webview?.on("dom-ready", () => {
 	if (user.isMaximized) {
 		appWin.maximize();
 	}
-	if (isDevMode) {
-		appWin.webview.openDevTools();
-	}
-
 })
 
 playWin?.webview?.on("dom-ready", () => {
-	if (isDevMode) {
-		playWin.webview.openDevTools();
-	}
-
+	playWin.hide();
 })
 
 appWin.on("resize", (event: any) => {
