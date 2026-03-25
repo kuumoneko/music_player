@@ -46,10 +46,6 @@ export type AppRPCType = {
                 params: null,
                 response: null
             },
-            toggleMaximize: {
-                params: null,
-                response: null
-            },
             toggleQuitonClose: {
                 params: null,
                 response: null
@@ -115,20 +111,6 @@ export type AppRPCType = {
                 params: null,
                 response: string // folder full path
             },
-            // getUser: {
-            //     params: null,
-            //     response: {
-            //         username: string,
-            //         thumbnail: string
-            //     },
-            // }
-            // login: {
-            //     params: null,
-            //     response: {
-            //         username: string,
-            //         thumbnail: string
-            //     },
-            // }
         },
         messages: {}
     }>,

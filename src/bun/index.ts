@@ -1,4 +1,4 @@
-import { BrowserView, BrowserWindow, MenuItemConfig, Screen, Tray, Updater, Utils } from "electrobun/bun";
+import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils } from "electrobun/bun";
 
 import { config } from "dotenv";
 import { resolve, join } from "node:path";
@@ -595,29 +595,18 @@ Bun.serve({
 	},
 });
 
-const primaryDisplay = Screen.getPrimaryDisplay()
-const { width: screenWidth, height: screenHeight } = primaryDisplay.workArea;
-
-const x = Math.floor((screenWidth - 1366) / 2);
-const y = Math.floor((screenHeight - 768) / 2);
-
 appWin = new BrowserWindow({
-	title: "Music app", url: `http://localhost:${MainViewPort}`, rpc: appRPC, titleBarStyle: "hidden", frame: {
-		x: x, y: y, height: 768, width: 1366,
-	},
+	title: "Music app", url: `http://localhost:${MainViewPort}`, rpc: appRPC, titleBarStyle: "hidden",
 	preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
 })
 
 playWin = new BrowserWindow({
-	url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC, frame: {
-		x: 0, y: 0, height: 800, width: 600
-	}
+	url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
 })
 
 appWin?.webview?.on("dom-ready", () => {
-	if (user.isMaximized) {
-		appWin.maximize();
-	}
+	appWin.maximize();
+	appWin.focus();
 })
 
 playWin?.webview?.on("dom-ready", () => {

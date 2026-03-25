@@ -1,6 +1,5 @@
 import {
     faMinus,
-    faWindowMaximize,
     faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -20,12 +19,6 @@ const close = () => {
     }
 };
 
-const toggleMaximize = () => {
-    if (window.api) {
-        window.api.rpc.request.toggleMaximize();
-    }
-};
-
 export default function Frame() {
     return (
         <div className="w-full h-[5%] pt-1 px-1">
@@ -38,18 +31,12 @@ export default function Frame() {
                     <Settings />
                 </div>
 
-                <div className="w-1/10 flex flex-row-reverse items-center justify-between px-4 electrobun-webkit-app-region-no-drag">
+                <div className="w-1/10 flex flex-row-reverse items-center px-4 electrobun-webkit-app-region-no-drag">
                     <div
                         onClick={close}
                         className="cursor-default hover:cursor-pointer hover:bg-slate-500 hover:text-red-500 rounded-full px-0.5"
                     >
                         <FontAwesomeIcon icon={faXmark} />
-                    </div>{" "}
-                    <div
-                        onClick={toggleMaximize}
-                        className="cursor-default hover:cursor-pointer hover:bg-slate-500 rounded-full px-0.5"
-                    >
-                        <FontAwesomeIcon icon={faWindowMaximize} />
                     </div>
                     <div
                         onClick={minimize}
