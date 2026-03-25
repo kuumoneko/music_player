@@ -9,13 +9,13 @@ import PlayQueue from "@/mainview/pages/queue/play/index.tsx";
 import Local from "@/mainview/pages/music/local.tsx";
 
 function Pages({ url }: { url: string }) {
-    if (url.includes("track")) {
+    if (url.includes("tracks")) {
         return <Tracks />;
     }
-    if (url.includes("playlist")) {
+    if (url.includes("playlists")) {
         return <Playlists />;
     }
-    if (url.includes("artist")) {
+    if (url.includes("artists")) {
         return <Artists />;
     }
     if (url.includes("album")) {

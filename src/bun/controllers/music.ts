@@ -17,9 +17,6 @@ export default async function MusicController(player: Player, data: { source, mo
         if (query.length < 0 || type.length < 0 || source.length < 0) {
             throw new Error("Invalid query, type or source");
         }
-        // if (source === "spotify") {
-        //     result = await player.spotify.search(query as string, type as any);
-        // }
         else if (source === "youtube") {
             result = await player.youtube.search(query as string, type as any);
         }
@@ -28,7 +25,7 @@ export default async function MusicController(player: Player, data: { source, mo
         if (!id || !type || !source) {
             throw new Error("Missing id, type or source");
         }
-        if (!["spotify", "youtube", "local"].includes(source)) {
+        if (!["youtube", "local"].includes(source)) {
             throw new Error("Invalid source");
         }
         if (!["tracks", "playlists", "artists", "local"].includes(type)) {

@@ -82,16 +82,8 @@ export default function HomePage() {
                                     <img
                                         className="mr-2 rounded-2xl"
                                         src={playlist.thumbnail}
-                                        height={
-                                            playlist.source === "spotify"
-                                                ? 60
-                                                : 50
-                                        }
-                                        width={
-                                            playlist.source === "spotify"
-                                                ? 60
-                                                : 80
-                                        }
+                                        height="50"
+                                        width="80"
                                     />
                                     <div>{playlist.name.slice(0, 25)}</div>
                                 </div>
@@ -120,12 +112,8 @@ export default function HomePage() {
                                     <img
                                         className="mr-2 rounded-2xl"
                                         src={track.thumbnail}
-                                        height={
-                                            track.source === "spotify" ? 60 : 50
-                                        }
-                                        width={
-                                            track.source === "spotify" ? 60 : 80
-                                        }
+                                        height="50"
+                                        width="80"
                                     />
                                     <div>
                                         {remove_hashtag(

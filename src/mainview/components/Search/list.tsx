@@ -151,13 +151,6 @@ export default function List({
                                                         navigator.clipboard.writeText(
                                                             url,
                                                         );
-                                                    } else {
-                                                        const url =
-                                                            "https://open.spotify.com/track/" +
-                                                            item.id;
-                                                        navigator.clipboard.writeText(
-                                                            url,
-                                                        );
                                                     }
                                                 }}
                                             >

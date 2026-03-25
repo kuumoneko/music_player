@@ -222,14 +222,7 @@ export default function Play_Queue() {
                                                     navigator.clipboard.writeText(
                                                         url,
                                                     );
-                                                } else {
-                                                    const url =
-                                                        "https://open.spotify.com/track/" +
-                                                        item.id;
-                                                    navigator.clipboard.writeText(
-                                                        url,
-                                                    );
-                                                }
+                                                } 
                                             }}
                                         >
                                             <FontAwesomeIcon icon={faShare} />

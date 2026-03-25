@@ -135,13 +135,6 @@ export default function Top({
                                                 navigator.clipboard.writeText(
                                                     url,
                                                 );
-                                            } else {
-                                                const url =
-                                                    "https://open.spotify.com/track/" +
-                                                    id;
-                                                navigator.clipboard.writeText(
-                                                    url,
-                                                );
                                             }
                                         } else if (mode === "playlist") {
                                             if (source === "youtube") {
@@ -151,23 +144,7 @@ export default function Top({
                                                 navigator.clipboard.writeText(
                                                     url,
                                                 );
-                                            } else {
-                                                const url =
-                                                    "https://open.spotify.com/playlist/" +
-                                                    id;
-                                                navigator.clipboard.writeText(
-                                                    url,
-                                                );
-                                            }
-                                        } else if (mode === "album") {
-                                            if (source === "spotify") {
-                                                const url =
-                                                    "https://open.spotify.com/album/" +
-                                                    id;
-                                                navigator.clipboard.writeText(
-                                                    url,
-                                                );
-                                            }
+                                            } 
                                         }
                                     }}
                                 >

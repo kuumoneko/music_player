@@ -1,4 +1,3 @@
-// import Spotify from "./spotify.ts";
 import Youtube from "./youtube.ts";
 import { Download_item, Status, Track } from "../../shared/types.ts";
 import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
@@ -21,7 +20,6 @@ export enum Audio_format {
 
 export default class Player {
     public youtube: Youtube;
-    // public spotify: Spotify;
     public local: Local;
     public download_folder: string = "";
     public status: { data: string, track: string } = { data: Status.idle, track: "" };
@@ -32,7 +30,6 @@ export default class Player {
     constructor(
         userPath: string, appPath: string,
     ) {
-        // this.spotify
         this.youtube = new Youtube(appPath, userPath);
 
         getDataFromDatabase(userPath, 'data', 'profile').then(({ folder }) => {
@@ -185,16 +182,6 @@ export default class Player {
         ]
         for (const item of this.download_queue) {
             let temp = item;
-            // if (item.id.length > 20) {
-            //     const track = await this.spotify.fetch_track([item.id[0]]);
-            //     const Ytb_track = await this.findMatchingVideo(track[0]);
-            //     if (Ytb_track?.id) {
-            //         temp.id[0] = Ytb_track.id as string;
-            //     }
-            //     else {
-            //         console.error("")
-            //     }
-            // }
             temp.title = this.format_title(temp.title);
             const metadata = []
             for (const [key, value] of Object.entries(item.metadata)) {
@@ -243,19 +230,9 @@ export default class Player {
     }
 
     async findMatchingVideo(trackToMatch: Track, ids_dont_have: string[] = []): Promise<Track | null> {
-        // const trackId = trackToMatch.id ?? "";
         const trackName = trackToMatch.name ?? "";
         const artistName = (trackToMatch.artist as any)[0].name ?? "";
         const trackDuration: number = trackToMatch.duration as number ?? 0; // in ms
-        // let database: any;
-
-        // if (ids_dont_have.length === 0 && trackToMatch.source.includes("spot")) {
-        //     database = this.spotify.getdata("tracks", [trackId]);
-        //     if (database && database.matched) {
-        //         const data = await this.youtube.fetch_track([database.matched]);
-        //         return data[0];
-        //     }
-        // }
 
         if (!trackName || !artistName) {
             throw new Error("Track name or artist is missing.");
@@ -333,20 +310,6 @@ export default class Player {
                     bestMatch = ytVideo as any;
                 }
             }
-
-            // if (trackToMatch.source.includes("spot")) {
-            //     database = {
-            //         thumbnail: trackToMatch.thumbnail,
-            //         artist: trackToMatch.artist,
-            //         music_url: database.music_url ?? null,
-            //         matched: bestMatch?.id,
-            //         name: trackToMatch.name,
-            //         duration: trackToMatch.duration,
-            //         releasedDate: trackToMatch.releasedDate,
-            //         id: trackId
-            //     }
-            //     this.spotify.writedata("tracks", [trackId], [database]);
-            // }
 
             return bestMatch ?? null;
         }

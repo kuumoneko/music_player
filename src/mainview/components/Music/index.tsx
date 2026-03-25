@@ -8,7 +8,7 @@ export default function Music({
     type,
     id,
 }: {
-    source: "youtube" | "spotify";
+    source: "youtube";
     type: "tracks" | "playlists" | "albums" | "artists";
     id: string;
 }) {
@@ -22,7 +22,7 @@ export default function Music({
         });
 
         // @ts-ignore - tracks exists on Album and Playlist types returned by getMusicData
-        tracks.current = result.tracks || [result];
+        tracks.current = result.tracks || (type === "tracks" ? [result] : []);
         data.current = result || {};
     };
 

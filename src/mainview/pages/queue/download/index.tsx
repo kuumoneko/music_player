@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircle, faMinus, faShare } from "@fortawesome/free-solid-svg-icons";
 import { formatDuration } from "@/mainview/utils/format.ts";
-import { faSpotify, faYoutube } from "@fortawesome/free-brands-svg-icons";
+import { faYoutube } from "@fortawesome/free-brands-svg-icons";
 import Download from "./download.tsx";
 import { Playlist } from "@/shared/types.ts";
 
@@ -168,11 +168,7 @@ export default function Download_Queue() {
                                     <span className="flex flex-row items-center justify-center ml-2.5">
                                         <span className="mr-1.25">
                                             <FontAwesomeIcon
-                                                icon={
-                                                    source === "youtube"
-                                                        ? faYoutube
-                                                        : faSpotify
-                                                }
+                                                icon={faYoutube}
                                                 className={`size-10 text-red-500`}
                                             />
                                         </span>
@@ -238,13 +234,6 @@ export default function Download_Queue() {
                                                     ) {
                                                         const url =
                                                             "https://www.youtube.com/watch?v=" +
-                                                            item.id;
-                                                        navigator.clipboard.writeText(
-                                                            url,
-                                                        );
-                                                    } else {
-                                                        const url =
-                                                            "https://open.spotify.com/track/" +
                                                             item.id;
                                                         navigator.clipboard.writeText(
                                                             url,
@@ -328,14 +317,7 @@ export default function Download_Queue() {
                                                                         navigator.clipboard.writeText(
                                                                             url,
                                                                         );
-                                                                    } else {
-                                                                        const url =
-                                                                            "https://open.spotify.com/track/" +
-                                                                            itemm.id;
-                                                                        navigator.clipboard.writeText(
-                                                                            url,
-                                                                        );
-                                                                    }
+                                                                    } 
                                                                 }}
                                                             >
                                                                 <FontAwesomeIcon
