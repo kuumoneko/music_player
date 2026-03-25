@@ -1,61 +1,25 @@
-# React + Tailwind + Vite Electrobun Template
+# Music player app
 
-A fast Electrobun desktop app template with React, Tailwind CSS, and Vite for hot module replacement (HMR).
+> A Music app built on React.js and Electrobun
 
-## Getting Started
+## ABOUT
 
-```bash
-# Install dependencies
-bun install
+> This is a web that you can find, play and download songs from Youtube
+>
+> Now just support Windows platform
 
-# Development without HMR (uses bundled assets)
-bun run dev
+## VERSION
 
-# Development with HMR (recommended)
-bun run dev:hmr
+> 5.0.0
 
-# Build for production
-bun run build
+## ABOUT THIS VERSION
 
-# Build for production release
-bun run build:prod
-```
+- This version, I use Electrobun instead of Electron to build this app.
+- Remove Spotify API and playing Spotify songs.
+- Improve experience when using app.
 
-## How HMR Works
+## NEWS
 
-When you run `bun run dev:hmr`:
-
-1. **Vite dev server** starts on `http://localhost:5173` with HMR enabled
-2. **Electrobun** starts and detects the running Vite server
-3. The app loads from the Vite dev server instead of bundled assets
-4. Changes to React components update instantly without full page reload
-
-When you run `bun run dev` (without HMR):
-
-1. Electrobun starts and loads from `views://mainview/index.html`
-2. You need to rebuild (`bun run build`) to see changes
-
-## Project Structure
-
-```
-├── src/
-│   ├── bun/
-│   │   └── index.ts        # Main process (Electrobun/Bun)
-│   └── mainview/
-│       ├── App.tsx         # React app component
-│       ├── main.tsx        # React entry point
-│       ├── index.html      # HTML template
-│       └── index.css       # Tailwind CSS
-├── electrobun.config.ts    # Electrobun configuration
-├── vite.config.ts          # Vite configuration
-├── tailwind.config.js      # Tailwind configuration
-└── package.json
-```
-
-## Customizing
-
-- **React components**: Edit files in `src/mainview/`
-- **Tailwind theme**: Edit `tailwind.config.js`
-- **Vite settings**: Edit `vite.config.ts`
-- **Window settings**: Edit `src/bun/index.ts`
-- **App metadata**: Edit `electrobun.config.ts`
+- From March 9th 2026, Playing Spotify music is not avaiable, because Spotify API need Premium subscription account to access. And I'm poor 🤧🤧🤧
+- I will try to add more Youtube features to this app. Thanks for using my app.
+- In the next version, I will add a lite version to reduce app size on your disk.
