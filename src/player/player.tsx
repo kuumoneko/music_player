@@ -267,59 +267,18 @@ export default function Player() {
     }, []);
 
     useEffect(() => {
-        const syncInterval = setInterval(() => {
-            const storedVolume = Number(localStorage.getItem("volume") ?? 50);
-            const storedIsPlayed = localStorage.getItem("isPlayed") === "1";
-            const storedIsRepeat = localStorage.getItem("isRepeat") === "1";
-            const storedSleep = localStorage.getItem("sleep") as SleepMode;
-            const storedPlaying = JSON.parse(
-                localStorage.getItem("playing") ?? "{}",
-            );
-
-            if (volumeRef.current !== storedVolume) setVolume(storedVolume);
-            if (isPlayedRef.current !== storedIsPlayed)
-                setIsPlayed(storedIsPlayed);
-            if (isRepeatRef.current !== storedIsRepeat)
-                setIsRepeat(storedIsRepeat);
-            if (sleepRef.current !== storedSleep) setSleep(storedSleep);
-
-            if (
-                playing.current.source === "local" &&
-                audioRef.current.volume !== storedVolume / 100
-            ) {
-                audioRef.current.volume = storedVolume / 100;
-            } else if (
-                playing.current.source !== "local" &&
-                player.current &&
-                typeof player.current.setVolume === "function"
-            ) {
-                if (player.current.getVolume() !== storedVolume)
-                    player.current.setVolume(storedVolume);
-            }
-
-            if (
-                storedPlaying.id &&
-                (storedPlaying.id !== playing.current.id ||
-                    storedPlaying.source !== playing.current.source)
-            ) {
-                loadTrack(storedPlaying).then(() => {
-                    if (storedIsPlayed) playCurrentTrack();
-                });
-            }
-
-            const time = localStorage.getItem("seekTo")
-                ? Number(localStorage.getItem("seekTo"))
-                : null;
+        window.addEventListener("seekTo", (event: any) => {
+            const time = event.detail;
             const currentTime =
                 playing.current.source === "local"
                     ? audioRef.current.currentTime
                     : player.current?.getCurrentTime?.();
 
-            if (time !== currentTime && time !== null) {
+            if (time !== currentTime && time !== null && time !== undefined) {
                 if (playing.current.source === "local") {
                     if (audioRef.current.readyState >= 1) {
                         audioRef.current.currentTime = time;
-                        localStorage.removeItem("seekTo");
+                        // localStorage.removeItem("seekTo");
                     }
                 } else {
                     if (
@@ -327,10 +286,62 @@ export default function Player() {
                         typeof player.current.seekTo === "function"
                     ) {
                         player.current.seekTo(time, true);
-                        localStorage.removeItem("seekTo");
+                        // localStorage.removeItem("seekTo");
                     }
                 }
-            } else if (isCurrentlyPlaying()) {
+            }
+        });
+
+        window.addEventListener("setVolume", (e: any) => {
+            const volume = e.detail;
+            if (
+                playing.current.source === "local" &&
+                audioRef.current.volume !== volume / 100
+            ) {
+                audioRef.current.volume = volume / 100;
+            } else if (
+                playing.current.source !== "local" &&
+                player.current &&
+                typeof player.current.setVolume === "function"
+            ) {
+                if (player.current.getVolume() !== volume)
+                    player.current.setVolume(volume);
+            }
+            setVolume(volume);
+        });
+
+        window.addEventListener("playTrack", (e) => {
+            const track = e.detail;
+            loadTrack(track).then(() => {
+                if (track) playCurrentTrack();
+            });
+        });
+
+        window.addEventListener("togglePlayPause", (e) => {
+            const storedIsPlayed = !e.detail;
+            if (isPlayedRef.current !== storedIsPlayed)
+                setIsPlayed(storedIsPlayed);
+        });
+
+        window.addEventListener("setIsRepeat", (e) => {
+            const repeat = e.detail;
+            if (isRepeatRef.current !== repeat) setIsRepeat(repeat);
+        });
+
+        window.addEventListener("setSleep", (e) => {
+            const sleep = e.detail;
+            setSleep(sleep);
+        });
+    }, []);
+
+    useEffect(() => {
+        const syncInterval = setInterval(() => {
+            const currentTime =
+                playing.current.source === "local"
+                    ? audioRef.current.currentTime
+                    : player.current?.getCurrentTime?.();
+
+            if (isCurrentlyPlaying()) {
                 if (currentTime !== undefined) {
                     window.api.rpc.request.setcurrentTime(currentTime);
                     localStorage.setItem("time", String(currentTime));

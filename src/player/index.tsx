@@ -9,23 +9,63 @@ const rpc = Electroview.defineRPC<PlayerRPCType>({
     handlers: {
         requests: {
             seekTo: (time: number) => {
-                localStorage.setItem("seekTo", String(time));
+                window.dispatchEvent(
+                    new CustomEvent("seekTo", {
+                        detail: time,
+                    }),
+                );
             },
             setVolume: (volume: number) => {
+                window.dispatchEvent(
+                    new CustomEvent("setVolume", {
+                        detail: volume,
+                    }),
+                );
+
                 localStorage.setItem("volume", String(volume));
             },
             playTrack: (track: Track) => {
+                window.dispatchEvent(
+                    new CustomEvent("playTrack", {
+                        detail: track,
+                    }),
+                );
+
                 localStorage.setItem("playing", JSON.stringify(track));
             },
             togglePlayPause: () => {
-                const isPlaying =
-                    localStorage.getItem("isPlayed") === "1" ? true : false;
-                localStorage.setItem("isPlayed", isPlaying ? "0" : "1");
+                window.dispatchEvent(
+                    new CustomEvent("togglePlayPause", {
+                        detail:
+                            localStorage.getItem("isPlayed") === "1"
+                                ? true
+                                : false,
+                    }),
+                );
+
+                localStorage.setItem(
+                    "isPlayed",
+                    (localStorage.getItem("isPlayed") === "1" ? true : false)
+                        ? "0"
+                        : "1",
+                );
             },
             setIsRepeat: (repeat: boolean) => {
+                window.dispatchEvent(
+                    new CustomEvent("setIsRepeat", {
+                        detail: repeat,
+                    }),
+                );
+
                 localStorage.setItem("isRepeat", repeat ? "1" : "0");
             },
             setSleep: (sleep: SleepMode) => {
+                window.dispatchEvent(
+                    new CustomEvent("setSleep", {
+                        detail: sleep,
+                    }),
+                );
+
                 localStorage.setItem("sleep", sleep);
             },
         },
