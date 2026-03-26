@@ -36,7 +36,7 @@ export default function Download() {
                     get_download_status();
                 }
             } catch {}
-        }, 200);
+        }, 100);
         return () => window.clearInterval(intervalId);
     }, []);
 
