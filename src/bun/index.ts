@@ -572,7 +572,6 @@ appWin?.webview?.on("dom-ready", () => {
 
 playWin?.webview?.on("dom-ready", () => {
 	playWin.hide();
-	playWin.webview.openDevTools();
 })
 
 appWin.on("resize", (event: any) => {
