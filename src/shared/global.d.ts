@@ -43,7 +43,6 @@ declare global {
                     connectDiscordRPC: () => Promise<string>,
                     isAutoStart: () => Promise<boolean>,
                     toggleAutoStart: () => Promise<void>,
-                    setFolder: () => Promise<string>,
                     // player
                     seekToPlayer: (time: number) => Promise<void>,
                     setVolume: (volume: number) => Promise<void>,
