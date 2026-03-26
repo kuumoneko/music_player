@@ -6,7 +6,6 @@ import { join } from "node:path";
 export default async function PlayController(player: Player, data: UserData): Promise<ArrayBuffer> {
     await wait_for_downloader(player);
     const folder = player.download_folder;
-    // console.log(data.currentPlaying.id, ' ', folder)
     const file = Bun.file(join(folder, data.currentPlaying.id));
     return await file.arrayBuffer();
 }

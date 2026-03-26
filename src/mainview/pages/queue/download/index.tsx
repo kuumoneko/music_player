@@ -55,7 +55,6 @@ export default function Download_Queue() {
                     id: item.id,
                 });
 
-                //
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
 

@@ -10,7 +10,6 @@ export async function getDataFromDatabase(...args: string[]): Promise<any> {
     try {
         const file = Bun.file(filePath);
         const isExisted = await file.exists();
-        // console.log(isExisted, ' ', filePath)
         if (isExisted) {
             const data = await file.json();
             return data;
