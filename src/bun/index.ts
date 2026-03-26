@@ -153,24 +153,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			getHomeData: async () => {
 				try {
 					const result = await HomeController(player, profile.pin);
-					// console.log(result)
 					return result;
-				} catch (error) {
-					addLog(error);
-					return null;
-				}
-			},
-			getUserPlaylists: async () => {
-				try {
-					// later
-				} catch (error) {
-					addLog(error);
-					return null;
-				}
-			},
-			getUserArtists: async () => {
-				try {
-					// later
 				} catch (error) {
 					addLog(error);
 					return null;
@@ -397,27 +380,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					addLog(error);
 					return null;
 				}
-			},
-			setFolder: async () => {
-				try {
-					const value = await Utils.openFileDialog({
-						canChooseDirectory: true,
-						canChooseFiles: false
-					});
-
-					if (!value || value.length === 0) {
-						return { ok: false, data: "No folder selected" };
-					}
-
-					profile.folder = value[0];
-					player.local.getfolder(value[0]);
-
-					return value[0]
-				} catch (error) {
-					addLog(error);
-					return null;
-				}
-			},
+			}
 		}
 	}
 })
@@ -439,9 +402,7 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 			endTrack: async () => {
 				try {
 					try {
-						// console.log(user.currentPlaying);
 						await forward(player, user);
-						// console.log(user.currentPlaying);
 						(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
 					} catch (error) {
 						addLog(error);
@@ -611,6 +572,7 @@ appWin?.webview?.on("dom-ready", () => {
 
 playWin?.webview?.on("dom-ready", () => {
 	playWin.hide();
+	playWin.webview.openDevTools();
 })
 
 appWin.on("resize", (event: any) => {
