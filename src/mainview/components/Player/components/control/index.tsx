@@ -18,38 +18,67 @@ export default function ControlUI() {
     const [shuffle, setshuffle] = useState(Shuffle.Disable);
     const [repeat, setrepeat] = useState(Repeat.Disable);
     const [isloading, setisloading] = useState(true);
-    const [playedTrack, setPlayedTrack] = useState([]);
+    const [playedTrack, setPlayedTrack] = useState(false);
     const [playing, setPlaying] = useState({
         time: 0,
         duration: 0,
     });
 
+    const isPlayingRef = useRef(false);
+    const isLoadingRef = useRef(true);
+    const currentRef = useRef({
+        time: 0,
+        duration: 0,
+    });
+
+    useEffect(() => {
+        isPlayingRef.current = played;
+    }, [played]);
+
+    useEffect(() => {
+        isLoadingRef.current = isloading;
+    }, [isloading]);
+
+    useEffect(() => {
+        currentRef.current = playing;
+    }, [playing]);
+
     const update = () => {
-        window.api.rpc.request.getUserData("current").then((data) => {
-            setPlaying(data);
-        });
-        window.api.rpc.request.getUserData("shuffle").then((data) => {
-            setshuffle(data);
-        });
-        window.api.rpc.request.getUserData("repeat").then((data) => {
-            setrepeat(data);
-        });
-        window.api.rpc.request.getUserData("isPlaying").then((data) => {
-            setplayed(data);
-        });
-        window.api.rpc.request.getUserData("isLoading").then((data) => {
-            setisloading(data);
-        });
-        window.api.rpc.request.getUserData("playedTrack").then((data) => {
-            setPlayedTrack(data.length > 0 ? [1] : []);
+        window.api.rpc.request.getPlayingData().then((data) => {
+            if (
+                isPlayingRef.current !== data.isPlaying ||
+                isLoadingRef.current !== data.isLoading ||
+                currentRef.current.duration !== data.current.duration
+            ) {
+                setPlaying(data.current);
+            } else if (currentRef.current.time * 1000 > data.current.duration) {
+                setPlaying({
+                    time: 0,
+                    duration: currentRef.current.duration,
+                });
+            } else if (isPlayingRef.current === true) {
+                setPlaying({
+                    time: currentRef.current.time + 0.1,
+                    duration: currentRef.current.duration,
+                });
+            }
+            setplayed(data.isPlaying);
+            setisloading(data.isLoading);
+            setPlayedTrack(data.playedTrack);
         });
     };
 
     useEffect(() => {
         update();
+        window.api.rpc.request
+            .getUserData("shuffle")
+            .then((data) => setshuffle(data));
+        window.api.rpc.request
+            .getUserData("repeat")
+            .then((data) => setrepeat(data));
         const run = setInterval(() => {
             update();
-        }, 500);
+        }, 100);
         return () => clearInterval(run);
     }, []);
 
@@ -71,6 +100,11 @@ export default function ControlUI() {
     const handleTimeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTime = Number(e.target.value);
         window.api.rpc.request.seekTo(newTime);
+        setTimeout(() => {
+            window.api.rpc.request
+                .getUserData("current")
+                .then((data) => setPlaying(data));
+        }, 100);
     };
 
     return (
@@ -104,7 +138,7 @@ export default function ControlUI() {
 
                 {/* Backward */}
                 <button
-                    className={`mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${playedTrack.length === 0 ? "opacity-50 pointer-events-none" : ""}`}
+                    className={`mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${playedTrack ? "opacity-50 pointer-events-none" : ""}`}
                     onClick={() => window.api.rpc.request.previous()}
                 >
                     <FontAwesomeIcon icon={faStepBackward} />
@@ -114,7 +148,7 @@ export default function ControlUI() {
                 <button
                     className="mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
                     onClick={() => {
-                        // setplayed(!played);
+                        setplayed(!played);
                         window.api.rpc.request.togglePlayPause();
                     }}
                 >
