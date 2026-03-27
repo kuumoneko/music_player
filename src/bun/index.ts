@@ -72,8 +72,6 @@ setInterval(() => {
 	writeDataToDatabase(userData, 'data', 'tracks', player.youtube.tracks);
 	writeDataToDatabase(userData, 'data', 'playlists', player.youtube.playlists);
 	writeDataToDatabase(userData, 'data', 'artists', player.youtube.artists);
-	writeDataToDatabase(userData, 'data', 'log', log);
-
 
 	if (user.current.duration !== 0) {
 		discordRPC.setMusic(user.currentPlaying, userData, player, user.current);
@@ -109,6 +107,7 @@ const addLog = (message: string) => {
 	log.push(`[${date} ${time}]`);
 	log.push(message);
 	log.push("");
+	writeDataToDatabase(userData, "data", "log", log.join("\n"));
 
 	console.log(message)
 }
@@ -253,6 +252,16 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				} catch (error) {
 					addLog(error);
 					return null;
+				}
+			},
+			getPlayingData: () => {
+				return {
+					shuffle: user.shuffle,
+					repeat: user.repeat,
+					isPlaying: user.isPlaying,
+					isLoading: user.isLoading,
+					playedTrack: user.playedTrack?.length > 0,
+					current: user.current
 				}
 			},
 			next: async () => {
@@ -455,7 +464,7 @@ const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 
 appTray = new Tray({
 	title: "Music app",
-	image: join(APP_ROOT, "assests", "trayicon.ico"),
+	image: join(APP_ROOT, "assets", "trayicon.ico"),
 	template: true
 })
 
