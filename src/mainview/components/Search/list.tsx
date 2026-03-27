@@ -94,7 +94,6 @@ export default function List({
                                         type: mode as any,
                                         id: item.id,
                                     });
-                                    // Play(item, source, mode, id, list);
                                 } else if (type === "playlist") {
                                     goto(`/playlists/${source}/${item.id}`);
                                 } else if (type === "artist") {

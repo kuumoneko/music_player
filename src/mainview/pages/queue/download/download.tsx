@@ -16,39 +16,52 @@ export default function Download() {
     useEffect(() => {
         const intervalId = window.setInterval(() => {
             try {
-                async function get_download_status() {
-                    if (!status) return;
-                    const { data, track } =
-                        await window.api.rpc.request.getDownloadStatus();
-                    if (data == Status.done) {
-                        setstatus(Status.done);
-                        setdownload(false);
-                        setdata("");
-                    } else if (data == Status.downloading) {
-                        setstatus(Status.downloading);
-                    } else if (data === Status.idle) {
-                        setstatus(Status.idle);
-                    } else {
-                        setdata(data + " " + track);
-                    }
-                }
+                // async function get_download_status() {
+                //     if (!status) return;
+                //     const { data, track } =
+                //         await window.api.rpc.request.getDownloadStatus();
+                //     if (data == Status.done) {
+                //         setstatus(Status.done);
+                //         setdownload(false);
+                //         setdata("");
+                //     } else if (data == Status.downloading) {
+                //         setstatus(Status.downloading);
+                //     } else if (data === Status.idle) {
+                //         setstatus(Status.idle);
+                //     } else {
+                //         setdata(data + " " + track);
+                //     }
+                // }
                 if (status !== "done") {
-                    get_download_status();
+                    (async () => {
+                        if (!status) return;
+                        const { data, track } =
+                            await window.api.rpc.request.getDownloadStatus();
+                        if (data == Status.done) {
+                            setstatus(Status.done);
+                            setdownload(false);
+                            setdata("");
+                        } else if (data == Status.downloading) {
+                            setstatus(Status.downloading);
+                        } else if (data === Status.idle) {
+                            setstatus(Status.idle);
+                        } else {
+                            setdata(data + " " + track);
+                        }
+                    })();
                 }
             } catch {}
-        }, 100);
+        }, 500);
         return () => window.clearInterval(intervalId);
     }, []);
 
     useEffect(() => {
-        async function run() {
-            const res = await window.api.rpc.request.downloadMusic();
-            if (res == "ok") {
-                setstatus(Status.downloading);
-            }
-        }
         if (download && status === Status.idle) {
-            run();
+            window.api.rpc.request.downloadMusic().then((res) => {
+                if (res == "ok") {
+                    setstatus(Status.downloading);
+                }
+            });
         }
     }, [download]);
 
