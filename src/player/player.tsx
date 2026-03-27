@@ -161,6 +161,7 @@ export default function Player() {
                         audioRef.current.currentTime = 0;
                     };
                 }
+                window.api.rpc.request.setcurrentTime(0);
             });
 
             audioRef.current.load();
@@ -176,12 +177,12 @@ export default function Player() {
                 if (player.current.getVolume() !== volumeRef.current) {
                     player.current.setVolume(volumeRef.current);
                 }
-                window.api.rpc.request.setLoading(false);
                 window.api.rpc.request.setcurrentTime(0);
                 if (!isFirstLoad.current) {
                     isPlayedRef.current = true;
                 }
             }
+            window.api.rpc.request.setLoading(false);
         }
     };
 
@@ -218,6 +219,7 @@ export default function Player() {
             setIsPlayed(true);
             localStorage.setItem("isPlayed", "1");
             window.api.rpc.request.setIsPlaying(true);
+            window.api.rpc.request.setLoading(false);
 
             if (isFirstLoad.current) {
                 isFirstLoad.current = false;
@@ -332,24 +334,6 @@ export default function Player() {
             const sleep = e.detail;
             setSleep(sleep);
         });
-    }, []);
-
-    useEffect(() => {
-        const syncInterval = setInterval(() => {
-            const currentTime =
-                playing.current.source === "local"
-                    ? audioRef.current.currentTime
-                    : player.current?.getCurrentTime?.();
-
-            if (isCurrentlyPlaying()) {
-                if (currentTime !== undefined) {
-                    window.api.rpc.request.setcurrentTime(currentTime);
-                    localStorage.setItem("time", String(currentTime));
-                }
-            }
-        }, 300);
-
-        return () => clearInterval(syncInterval);
     }, []);
 
     // Handle Play/Pause toggles from State
