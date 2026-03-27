@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readdirSync, rmSync, unlinkSync, writeFileSync }
 import { join, resolve } from "node:path"
 
 const all_paths = [
+    { path: "/log.json", default: "[]" },
     { path: '/local.json', default: '{}' },
     { path: '/profile.json', default: '{"play":[],"local":[],"folder":"","pin":[],"download":[]}' },
     { path: '/tracks.json', default: '{}' },
