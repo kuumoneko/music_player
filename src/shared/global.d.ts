@@ -1,5 +1,5 @@
 import { Electroview } from "electrobun/view";
-import { Album, Artist, Playlist, Track, UserData, UserProfile } from "./types.ts";
+import { Album, Artist, Playlist, Repeat, Shuffle, Track, UserData, UserProfile } from "./types.ts";
 
 export { };
 
@@ -25,6 +25,16 @@ declare global {
                     isQuitonClose: () => Promise<boolean>,
                     togglePlayPause: () => Promise<void>,
                     getUserData: <K extends keyof UserData> (key: K) => Promise<UserData[K]>,
+                    getPlayingData: () => Promise<{
+                        shuffle: Shuffle,
+                        repeat: Repeat,
+                        isPlaying: boolean,
+                        isLoading: boolean,
+                        playedTrack: boolean,
+                        current: {
+                            time: number, duration: number
+                        }
+                    }>,
                     setUserData: <K extends keyof UserData>({ key, data }: { key: K, data: UserData[K] }) => Promise<void>,
                     play: ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => Promise<{
                         source: "youtube" | "local",

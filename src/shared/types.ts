@@ -66,6 +66,19 @@ export type AppRPCType = {
                 params: { key: keyof UserData, data: string },
                 response: any
             },
+            getPlayingData: {
+                params: null,
+                response: {
+                    shuffle: Shuffle,
+                    repeat: Repeat,
+                    isPlaying: boolean,
+                    isLoading: boolean,
+                    playedTrack: boolean,
+                    current: {
+                        time: number, duration: number
+                    }
+                }
+            },
             next: {
                 params: null,
                 response: {
