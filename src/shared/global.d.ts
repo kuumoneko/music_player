@@ -59,7 +59,6 @@ declare global {
                     playTrack: (track: { source: string, id: string, title: string, thumbnail: string, artist: string }) => Promise<void>,
                     togglePlayPause: () => Promise<void>,
 
-                    //getTrack: () => Promise<ArrayBuffer>,
                     endTrack: () => Promise<void>,
                     sleep: () => Promise<void>,
                     setLoading: (isLoading: boolean) => Promise<void>
