@@ -56,7 +56,7 @@ export default function DataUI() {
                 update();
             }
             run();
-        }, 100);
+        }, 1000);
         return () => window.clearInterval(run);
     }, []);
 
