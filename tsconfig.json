@@ -1,12 +1,17 @@
 {
     "compilerOptions": {
+        "moduleDetection": "force",
+        "allowJs": true,
+        "verbatimModuleSyntax": false,
+        "noPropertyAccessFromIndexSignature": true,
+
         "target": "ES2020",
         "useDefineForClassFields": true,
         "lib": ["ES2020", "DOM", "DOM.Iterable"],
-        "module": "nodenext",
+        "module": "es2022",
         "skipLibCheck": true,
 
-        "moduleResolution": "nodenext",
+        "moduleResolution": "bundler",
         "allowImportingTsExtensions": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
@@ -24,12 +29,18 @@
         "paths": {
             "@/*": ["./src/*"]
         },
-        "baseUrl": ".",
-        "types": ["vite/client"],
+        "types": ["bun"],
         "erasableSyntaxOnly": false,
         "noUncheckedSideEffectImports": true,
         "allowArbitraryExtensions": false,
         "esModuleInterop": true
     },
-    "include": ["src", "electron", "vite.config.ts", "test"]
+    "include": ["src/**/*", "test", "release"],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "build",
+        "../../package/dist",
+        "backup/**/*"
+    ]
 }

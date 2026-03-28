@@ -1,0 +1,40 @@
+import { join } from "node:path";
+
+/**
+     * Get data from database
+     * args[-1] is filename
+*/
+export async function getDataFromDatabase(...args: string[]): Promise<any> {
+    const filename = args[args.length - 1];
+    const filePath = join(...args.slice(0, -1), `${filename}.json`);
+    try {
+        const file = Bun.file(filePath);
+        const isExisted = await file.exists();
+        if (isExisted) {
+            const data = await file.json();
+            return data;
+        }
+        else {
+            throw new Error(`Database file not found at: ${filePath}`);
+        }
+    } catch (error) {
+        return null
+    }
+}
+
+/**
+     * Write data to database
+     * args[-1] is data
+     * args[-2] is filename
+*/
+export function writeDataToDatabase(...args: any[]): void {
+    const filename = args[args.length - 2];
+    const data = args[args.length - 1];
+
+    const filePath = join(...args.slice(0, -2), `${filename}.json`);
+    try {
+        Bun.write(filePath, JSON.stringify(data), { createPath: true });
+    } catch (error) {
+        console.error(`Failed to write to database file: ${filePath}`, error);
+    }
+}
