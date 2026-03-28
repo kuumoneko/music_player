@@ -35,6 +35,12 @@ const check_eot = () => {
     }
 };
 
+setInterval(() => {
+    window.api.rpc.request.setcurrentTime(
+        playing.source === "local" ? audioRef.currentTime : ytPlayerInstance.getCurrentTime()
+    )
+}, 1000);
+
 const isCurrentlyPlaying = () => {
     if (playing.source === "local") {
         return !audioRef.paused && audioRef.currentTime > 0 && !audioRef.ended;

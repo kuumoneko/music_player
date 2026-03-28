@@ -45,23 +45,7 @@ export default function ControlUI() {
 
     const update = () => {
         window.api.rpc.request.getPlayingData().then((data) => {
-            if (
-                isPlayingRef.current !== data.isPlaying ||
-                isLoadingRef.current !== data.isLoading ||
-                currentRef.current.duration !== data.current.duration
-            ) {
-                setPlaying(data.current);
-            } else if (currentRef.current.time * 1000 > data.current.duration) {
-                setPlaying({
-                    time: 0,
-                    duration: currentRef.current.duration,
-                });
-            } else if (isPlayingRef.current === true) {
-                setPlaying({
-                    time: currentRef.current.time + 0.1,
-                    duration: currentRef.current.duration,
-                });
-            }
+            setPlaying(data.current);
             setplayed(data.isPlaying);
             setisloading(data.isLoading);
             setPlayedTrack(data.playedTrack);
