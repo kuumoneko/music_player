@@ -26,9 +26,8 @@ let appTray: Tray | null = null;
 let discordRPC: Discord | null = null;
 let log: string[] = [];
 
-const APP_PORT = process.env["APP_PORT"] ?? 3000;
-const MainViewPort = process.env["MAIN_PORT"] ?? 5006;
-const PlayerViewPort = process.env["PLAYER_PORT"] ?? 5005;
+const APP_PORT = process.env["APP_PORT"] ?? 61710;
+const PlayerViewPort = process.env["PLAYER_PORT"] ?? 56087;
 
 try {
 	Bun.serve({
@@ -36,7 +35,19 @@ try {
 		fetch(_req: any) {
 			console.log("A second instance tried to open!");
 
-			appWin?.show();
+			if (appWin) {
+				appWin.show();
+			}
+			else {
+				appWin = new BrowserWindow({
+					title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
+					preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
+				})
+				appWin?.webview?.on("dom-ready", () => {
+					appWin.maximize();
+					appWin.focus();
+				})
+			}
 
 			return new Response("OK");
 		}
@@ -205,7 +216,9 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					process.exit(0)
 				}
 				else {
-					appWin.hide();
+					appWin.close();
+					appWin = null;
+					Bun.gc(true)
 					appTray?.setMenu(getTrayMenu(false))
 				}
 			},
@@ -475,11 +488,25 @@ appTray?.on("tray-clicked", (e: any) => {
 
 	switch (action) {
 		case "show":
-			appWin?.show();
+			if (appWin) {
+				appWin.show();
+			}
+			else {
+				appWin = new BrowserWindow({
+					title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
+					preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
+				})
+				appWin?.webview?.on("dom-ready", () => {
+					appWin.maximize();
+					appWin.focus();
+				})
+			}
 			appTray?.setMenu(getTrayMenu(true));
 			break;
 		case "hide":
-			appWin?.hide();
+			appWin.close();
+			appWin = null;
+			Bun.gc(true)
 			appTray?.setMenu(getTrayMenu(false));
 			break;
 		case "quit":
@@ -489,26 +516,6 @@ appTray?.on("tray-clicked", (e: any) => {
 			process.exit(0);
 	}
 })
-
-Bun.serve({
-	port: MainViewPort,
-	async fetch(req) {
-		const url = new URL(req.url);
-
-		if (url.pathname === "/") {
-			return new Response(Bun.file(join(APP_ROOT, "views", "src", "mainview", "index.html")));
-		}
-
-		const filePath = join(APP_ROOT, "views", url.pathname);
-		const file = Bun.file(filePath);
-
-		if (await file.exists()) {
-			return new Response(file);
-		}
-
-		return new Response("Not Found", { status: 404 });
-	},
-});
 
 Bun.serve({
 	port: PlayerViewPort,
@@ -566,7 +573,7 @@ Bun.serve({
 });
 
 appWin = new BrowserWindow({
-	title: "Music app", url: `http://localhost:${MainViewPort}`, rpc: appRPC, titleBarStyle: "hidden",
+	title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
 	preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
 })
 
@@ -587,3 +594,11 @@ appWin.on("resize", (event: any) => {
 	const { id, x, y, width, height } = event.data;
 	console.log(`Window ${id} resized to: ${width}x${height} at position (${x}, ${y})`);
 })
+
+process.on('uncaughtException', (err) => {
+	addLog(err.cause as string);
+	addLog(err.message);
+	addLog(err.stack)
+	console.error('There was an uncaught error', err);
+	process.exit(1);
+});
