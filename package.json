@@ -8,12 +8,8 @@
         "url": "https://github.com/kuumoneko"
     },
     "scripts": {
-        "dev": "bun run build && electrobun dev",
-        "dev:hmr": "concurrently \"bun run hmr\" \"bun run dev\"",
-        "hmr": "vite --port 5173",
-        "build": "vite build && electrobun build",
-        "build:prod": "vite build && electrobun build --env=stable",
-        "start": "bun run dev"
+        "dev": "vite build && electrobun dev",
+        "build:prod": "vite build && electrobun build --env=stable"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.2.2",
@@ -29,9 +25,11 @@
         "utf-8-validate": "^6.0.6"
     },
     "devDependencies": {
+        "7zip-min": "^2.1.0",
         "@fortawesome/free-brands-svg-icons": "^7.2.0",
         "@fortawesome/free-solid-svg-icons": "^7.2.0",
         "@fortawesome/react-fontawesome": "^3.3.0",
+        "@octokit/rest": "^22.0.1",
         "@types/bun": "^1.3.11",
         "@types/discord-rpc": "^4.0.10",
         "@types/dotenv": "^8.2.3",
@@ -40,12 +38,8 @@
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^5.2.0",
-        "7zip-min": "^2.1.0",
         "autoprefixer": "^10.4.27",
-        "concurrently": "^9.2.1",
-        "cross-env": "^10.1.0",
         "postcss": "^8.5.8",
-        "rcedit": "^5.0.2",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3",
         "vite": "^7.3.1"
