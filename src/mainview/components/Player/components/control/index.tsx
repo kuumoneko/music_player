@@ -49,6 +49,8 @@ export default function ControlUI() {
             setplayed(data.isPlaying);
             setisloading(data.isLoading);
             setPlayedTrack(data.playedTrack);
+            setrepeat(data.repeat);
+            setshuffle(data.shuffle);
         });
     };
 
