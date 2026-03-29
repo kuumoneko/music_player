@@ -12,11 +12,10 @@ import { getDataFromDatabase, writeDataToDatabase } from "./lib/database";
 import Player from "./music/index.ts"
 import { Repeat, Shuffle, SleepMode } from "../shared/types.ts";
 import Discord from "./discord/index.ts";
-import { UserData } from "../shared/types.ts";
 import forward from "./lib/forward.ts";
 import backward from "./lib/backward.ts";
 import type { AppRPCType, PlayerRPCType, UserProfile } from "@/shared/types.ts";
-import { Track } from '../shared/types';
+import { Track, UserData } from '../shared/types';
 
 config();
 
@@ -29,26 +28,28 @@ let log: string[] = [];
 const APP_PORT = process.env["APP_PORT"] ?? 61710;
 const PlayerViewPort = process.env["PLAYER_PORT"] ?? 56087;
 
+const openAppUI = () => {
+	if (appWin) {
+		appWin.show();
+	}
+	else {
+		appWin = new BrowserWindow({
+			title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
+			preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
+		})
+		appWin?.webview?.on("dom-ready", () => {
+			appWin.maximize();
+			appWin.focus();
+		})
+	}
+}
+
 try {
 	Bun.serve({
 		port: APP_PORT,
 		fetch(_req: any) {
 			console.log("A second instance tried to open!");
-
-			if (appWin) {
-				appWin.show();
-			}
-			else {
-				appWin = new BrowserWindow({
-					title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
-					preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
-				})
-				appWin?.webview?.on("dom-ready", () => {
-					appWin.maximize();
-					appWin.focus();
-				})
-			}
-
+			openAppUI();
 			return new Response("OK");
 		}
 	});
@@ -58,12 +59,13 @@ try {
 		process.exit(0);
 	} else {
 		console.error("Failed to acquire single instance lock:", error);
+		process.exit(0);
 	}
 }
 
-export const APP_ROOT = resolve("./", "..", "Resources", "app");
-export const userData = resolve(Utils.paths.userData, "..");
-export const Discord_CLient_ID = process.env["CLIENT_ID"];
+const APP_ROOT = resolve("./", "..", "Resources", "app");
+const userData = resolve(Utils.paths.userData, "..");
+const Discord_CLient_ID = process.env["CLIENT_ID"];
 
 check_env(userData);
 
@@ -215,22 +217,17 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					process.exit(0)
 				}
 				else {
-					appWin.hide();
+					try {
+						appWin?.close();
+						appWin = null;
+					} catch (error) {
+						appWin?.hide();
+					}
 					appTray?.setMenu(getTrayMenu(false))
 				}
 			},
 			minimize: async () => {
 				appWin?.minimize();
-			},
-			toggleMaximize: async () => {
-				if (user.isMaximized) {
-					user.isMaximized = false;
-					appWin.unmaximize();
-				}
-				else {
-					user.isMaximized = true;
-					appWin.maximize();
-				}
 			},
 			toggleQuitonClose: async () => {
 				user.QuitonClose = !user.QuitonClose;
@@ -252,11 +249,8 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				try {
 					(user as any)[key] = data;
 
-					if (key === "repeat" && data === Repeat.One) {
-						(playWin.webview.rpc as any).request.setIsRepeat(true);
-					}
-					else if (key === "repeat") {
-						(playWin.webview.rpc as any).request.setIsRepeat(false);
+					if (key === "repeat") {
+						(playWin.webview.rpc as any).request.setIsRepeat(data === Repeat.One);
 					}
 
 				} catch (error) {
@@ -486,19 +480,7 @@ appTray?.on("tray-clicked", (e: any) => {
 	const action = e?.data?.action ?? "nothing";
 
 	if (action === "show") {
-		if (appWin !== null) {
-			appWin.show();
-		}
-		else {
-			appWin = new BrowserWindow({
-				title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
-				preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
-			})
-			appWin?.webview?.on("dom-ready", () => {
-				appWin.maximize();
-				appWin.focus();
-			})
-		}
+		openAppUI();
 		appTray?.setMenu(getTrayMenu(true));
 	}
 	else if (action === "hide") {
@@ -506,7 +488,7 @@ appTray?.on("tray-clicked", (e: any) => {
 			appWin?.close();
 			appWin = null;
 		} catch (error) {
-			appWin.hide();
+			appWin?.hide();
 		}
 		appTray?.setMenu(getTrayMenu(false));
 	}
@@ -577,18 +559,10 @@ Bun.serve({
 	},
 });
 
-appWin = new BrowserWindow({
-	title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
-	preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
-})
+openAppUI();
 
 playWin = new BrowserWindow({
 	url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
-})
-
-appWin?.webview?.on("dom-ready", () => {
-	appWin.maximize();
-	appWin.focus();
 })
 
 playWin?.webview?.on("dom-ready", () => {
