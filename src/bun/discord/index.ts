@@ -25,7 +25,7 @@ export default class Discord {
         }
     }
 
-    async setMusic(track: any, userData: string, player: Player, current: { time: number, duration: number }) {
+    async setMusic(track: any, userData: string, player: Player, current: { time: number, duration: number }, isPlaying: boolean) {
         if (track.source === "local") {
             const { title } = track;
             const ytb_tracks = await getDataFromDatabase(userData, "data", "tracks");
@@ -64,10 +64,10 @@ export default class Discord {
             smallImageText: track.title,
             instance: false,
         }
-        if (track.isPlaying) {
+        if (isPlaying) {
             const now = new Date().getTime();
             const start = (now - current.time * 1000);
-            activity.endTimestamp = start + current.duration * 1000;
+            activity.endTimestamp = start + current.duration;
             activity.startTimestamp = start;
         }
         await this.rpc?.user.setActivity(activity)
