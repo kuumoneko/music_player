@@ -9,11 +9,7 @@ import App from "./view";
 const rpc = Electroview.defineRPC({
     maxRequestTime: 60 * 1000,
     handlers: {
-        requests: {
-            log: () => {
-                console.log("hello");
-            },
-        },
+        requests: {},
     },
 });
 

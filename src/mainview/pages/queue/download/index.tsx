@@ -59,7 +59,6 @@ export default function Download_Queue() {
             }
 
             const hehe = [...playlists, ...tracks];
-            console.log(hehe);
             window.api.rpc.request.setProfileData({
                 key: "download",
                 data: hehe,

@@ -12,7 +12,6 @@ export default function HomePage() {
     useEffect(() => {
         async function run() {
             const temp = await window.api.rpc.request.getHomeData();
-            console.log(temp);
             setartists(temp.artists ?? []);
             setplaylists(temp.playlists ?? []);
             settracks(temp.tracks ?? []);
@@ -40,7 +39,6 @@ export default function HomePage() {
                     <h1 className="text-2xl font-bold">Artists</h1>
                     <div className="flex flex-row overflow-x-scroll [&::-webkit-scrollbar]:hidden">
                         {artists.map((artist: Artist) => {
-                            console.log(artist);
                             return (
                                 <div
                                     className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
