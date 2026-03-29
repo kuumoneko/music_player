@@ -24,7 +24,7 @@ export default async function DownloadController(player: Player, userData: strin
         player.status = {
             data: Status.prepare, track: `${source} - ${mode} - ${id}`
         }
-        
+
         if (source === "youtube") {
             if (mode.includes("track")) {
                 const track = (await player.youtube.fetch_track([id]))[0];
@@ -57,7 +57,7 @@ export default async function DownloadController(player: Player, userData: strin
         }
     }
 
-    console.log("--------------------- READY ---------------------")
+    console.log("---------------------- READY ---------------------")
     player.download_queue = track_to_download;
     player.download_folder = download_folder;
     player.status = {
