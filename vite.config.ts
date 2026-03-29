@@ -5,7 +5,7 @@ import { resolve } from "node:path"
 
 
 export default defineConfig({
-	plugins: [react({ exclude: "assets/favicon.ico" }), tailwindcss()],
+	plugins: [react(), tailwindcss()],
 	build: {
 		outDir: "./dist",
 		emptyOutDir: true,

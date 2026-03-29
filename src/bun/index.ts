@@ -76,7 +76,6 @@ user.current = {
 	duration: user.current.duration
 }
 
-
 setInterval(() => {
 	writeDataToDatabase(userData, "data", "profile", profile);
 	writeDataToDatabase(userData, 'data', 'user', user);
@@ -85,7 +84,7 @@ setInterval(() => {
 	writeDataToDatabase(userData, 'data', 'artists', player.youtube.artists);
 
 	if (user.current.duration !== 0) {
-		discordRPC.setMusic(user.currentPlaying, userData, player, user.current);
+		discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
 	}
 	else {
 		discordRPC.clearMusic();
@@ -120,7 +119,7 @@ const addLog = (message: string) => {
 	log.push("");
 	writeDataToDatabase(userData, "data", "log", log.join("\n"));
 
-	console.log(message)
+	console.error(message)
 }
 
 // @ts-ignore
@@ -216,9 +215,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					process.exit(0)
 				}
 				else {
-					appWin.close();
-					appWin = null;
-					Bun.gc(true)
+					appWin.hide();
 					appTray?.setMenu(getTrayMenu(false))
 				}
 			},
@@ -280,7 +277,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			next: async () => {
 				try {
 					await forward(player, user);
-
+					discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
 					(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
 				} catch (error) {
 					addLog(error);
@@ -290,6 +287,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			previous: async () => {
 				try {
 					await backward(player, user);
+					discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
 					(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
 				} catch (error) {
 					addLog(error);
@@ -314,10 +312,10 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					}
 					else {
 						let otherTracks = [];
-						if (type === "playlist") {
+						if (type.includes("playlist")) {
 							otherTracks = (await player.youtube.fetch_playlist(id)).tracks;
 						}
-						else if (type === "artist") {
+						else if (type.includes("artist")) {
 							otherTracks = (await player.youtube.fetch_artist(id)).tracks;
 						}
 						if (user.shuffle === Shuffle.Enable) {
@@ -393,10 +391,10 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					return null;
 				}
 			},
-			isAutoStart: async () => { return Bun.argv.includes("--autostart") },
+			isAutoStart: async () => { return process.argv?.includes("--autostart") ?? false },
 			toggleAutoStart: async () => {
 				try {
-					const i = process.argv.indexOf("--autostart");
+					const i = process.argv?.indexOf("--autostart") ?? -1;
 					i > -1 ? process.argv.splice(i, 1) : process.argv.push("--autostart");
 				} catch (error) {
 					addLog(error);
@@ -425,6 +423,7 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 				try {
 					try {
 						await forward(player, user);
+						discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
 						(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
 					} catch (error) {
 						addLog(error);
@@ -486,89 +485,95 @@ appTray?.setMenu(getTrayMenu(true))
 appTray?.on("tray-clicked", (e: any) => {
 	const action = e?.data?.action ?? "nothing";
 
-	switch (action) {
-		case "show":
-			if (appWin) {
-				appWin.show();
-			}
-			else {
-				appWin = new BrowserWindow({
-					title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
-					preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
-				})
-				appWin?.webview?.on("dom-ready", () => {
-					appWin.maximize();
-					appWin.focus();
-				})
-			}
-			appTray?.setMenu(getTrayMenu(true));
-			break;
-		case "hide":
-			appWin.close();
-			appWin = null;
-			Bun.gc(true)
-			appTray?.setMenu(getTrayMenu(false));
-			break;
-		case "quit":
+	if (action === "show") {
+		if (appWin !== null) {
+			appWin.show();
+		}
+		else {
+			appWin = new BrowserWindow({
+				title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
+				preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
+			})
+			appWin?.webview?.on("dom-ready", () => {
+				appWin.maximize();
+				appWin.focus();
+			})
+		}
+		appTray?.setMenu(getTrayMenu(true));
+	}
+	else if (action === "hide") {
+		try {
 			appWin?.close();
-			playWin?.close();
-			Utils.quit();
-			process.exit(0);
+			appWin = null;
+		} catch (error) {
+			appWin.hide();
+		}
+		appTray?.setMenu(getTrayMenu(false));
+	}
+	else if (action === "quit") {
+		appWin?.close();
+		playWin?.close();
+		Utils.quit();
+		process.exit(0);
 	}
 })
 
 Bun.serve({
 	port: PlayerViewPort,
 	async fetch(req) {
-		const url = new URL(req.url);
+		try {
+			const url = new URL(req.url);
 
-		if (url.pathname === "/music") {
-			const filePath = url.searchParams.get("path");
+			if (url.pathname === "/music") {
+				const filePath = url.searchParams.get("path");
 
-			if (!filePath) {
-				return new Response("Missing path parameter", {
-					status: 400,
-					headers: { "Access-Control-Allow-Origin": "*" }
-				});
-			}
-
-			const fileName = player.local.data.find((item: Track) => item.index === Number(filePath)).id
-			let file: any;
-			file = Bun.file(fileName);
-			const Firstexists = await file.exists();
-			if (!Firstexists) {
-				file = Bun.file(resolve(profile.folder, fileName));
-				const Secexists = await file.exists();
-				if (!Secexists) {
-					return new Response("File not found on disk", {
-						status: 404,
+				if (!filePath) {
+					return new Response("Missing path parameter", {
+						status: 400,
 						headers: { "Access-Control-Allow-Origin": "*" }
 					});
 				}
+
+				const fileName = player.local.data.find((item: Track) => item.index === Number(filePath)).id
+				let file: any;
+				file = Bun.file(fileName);
+				const Firstexists = await file.exists();
+				if (!Firstexists) {
+					file = Bun.file(resolve(profile.folder, fileName));
+					const Secexists = await file.exists();
+					if (!Secexists) {
+						return new Response("File not found on disk", {
+							status: 404,
+							headers: { "Access-Control-Allow-Origin": "*" }
+						});
+					}
+				}
+
+				return new Response(file, {
+					headers: {
+						"Access-Control-Allow-Origin": "*",
+						"Accept-Ranges": "bytes",
+						"Content-Length": file.size.toString(),
+						"Content-Type": file.type || "audio/mpeg",
+					}
+				});
 			}
 
-			return new Response(file, {
-				headers: {
-					"Access-Control-Allow-Origin": "*",
-					"Accept-Ranges": "bytes",
-					"Content-Length": file.size.toString(),
-					"Content-Type": file.type || "audio/mpeg",
-				}
-			});
+			if (url.pathname === "/") {
+				return new Response(Bun.file(join(APP_ROOT, "views", "src", "player", "index.html")));
+			}
+
+			const filePath = join(APP_ROOT, "views", url.pathname);
+			const file = Bun.file(filePath);
+
+			if (await file.exists()) {
+				return new Response(file);
+			}
+
+			return new Response("Not Found", { status: 404 });
+		} catch (error) {
+			addLog(error)
 		}
-
-		if (url.pathname === "/") {
-			return new Response(Bun.file(join(APP_ROOT, "views", "src", "player", "index.html")));
-		}
-
-		const filePath = join(APP_ROOT, "views", url.pathname);
-		const file = Bun.file(filePath);
-
-		if (await file.exists()) {
-			return new Response(file);
-		}
-
-		return new Response("Not Found", { status: 404 });
 	},
 });
 
@@ -589,16 +594,3 @@ appWin?.webview?.on("dom-ready", () => {
 playWin?.webview?.on("dom-ready", () => {
 	playWin.hide();
 })
-
-appWin.on("resize", (event: any) => {
-	const { id, x, y, width, height } = event.data;
-	console.log(`Window ${id} resized to: ${width}x${height} at position (${x}, ${y})`);
-})
-
-process.on('uncaughtException', (err) => {
-	addLog(err.cause as string);
-	addLog(err.message);
-	addLog(err.stack)
-	console.error('There was an uncaught error', err);
-	process.exit(1);
-});
