@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path"
 
 const all_paths = [
@@ -65,10 +65,15 @@ export default function check_user_data(executableDir: string) {
             try {
                 rmSync(fullPath, { recursive: true });
             } catch (e) {
-                // If unlinkSync fails because it's a directory, use rmSync or ignore
                 console.error(`Could not remove directory: ${fullPath}`);
             }
         }
+    }
 
+    for (const item of expectedFiles) {
+        const data = readFileSync(item.path);
+        if (!data || data.length < item.default.length) {
+            writeFileSync(item.path, item.default);
+        }
     }
 }
