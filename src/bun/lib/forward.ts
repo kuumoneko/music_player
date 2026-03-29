@@ -53,7 +53,6 @@ export default async function forward(player: Player, user: UserData) {
                             [data[i], data[j]] = [data[j], data[i]];
                         }
                         user.nextfrom.next.push(...data.slice(0, 25 - (user.nextfrom.next?.length ?? 0)))
-
                     }
                     else {
                         if (user?.nextfrom?.next?.length > 1) {
@@ -65,7 +64,6 @@ export default async function forward(player: Player, user: UserData) {
                         }
                     }
 
-
                     if (user.shuffle === Shuffle.Enable) {
                         for (let i = user.nextfrom.next.length - 1; i > 0; i--) {
                             const j = Math.floor(Math.random() * (i + 1));
@@ -75,15 +73,10 @@ export default async function forward(player: Player, user: UserData) {
                 } catch (error) {
                     console.log(error)
                 }
-
-
             }
-            // console.log(Math.random())
-            // console.log(user.nextfrom.next[0])
             const trackId = user.nextfrom.next[0];
             user.nextfrom.next = user.nextfrom.next.slice(1);
             const tracks = await player.youtube.fetch_track([trackId.id]);
-            // console.log(tracks[0])
             user.currentPlaying = {
                 source: "youtube",
                 id: trackId.id,
