@@ -88,6 +88,15 @@ const a = Bun.spawn(["bunx", "electrobun", "dev"], {
     stdout: "inherit",
 });
 
+setTimeout(async () => {
+    console.info("Restoring Electrobun config...");
+    await Bun.write(
+        resolve(thisWorkSpace, "..", "..", "electrobun.config.ts"),
+        electrobunConfigText,
+    );
+    console.info("Done.");
+}, 2000);
+
 process.stdin.setRawMode(true);
 process.stdin.resume();
 process.stdin.setEncoding("utf8");
@@ -96,13 +105,6 @@ process.stdin.on("data", async (key) => {
     // Check for 'q' or Ctrl+C (\u0003)
     if (key === "q" || key === "\u0003") {
         console.warn("\nExitting development turn.");
-
-        console.info("Restoring Electrobun config...");
-        await Bun.write(
-            resolve(thisWorkSpace, "..", "..", "electrobun.config.ts"),
-            electrobunConfigText,
-        );
-        console.info("Done.");
 
         console.info("\nKilling electrobun dev...");
         Bun.spawnSync(["taskkill", "/F", "/T", "/PID", a.pid.toString()]);
