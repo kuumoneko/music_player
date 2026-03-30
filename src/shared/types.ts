@@ -22,6 +22,10 @@ export type AppRPCType = {
                     newTracks: Track[],
                 }
             },
+            getSystem: {
+                params: keyof System,
+                response: any
+            },
             getProfileData: {
                 params: keyof UserProfile,
                 response: any
@@ -111,14 +115,6 @@ export type AppRPCType = {
             connectDiscordRPC: {
                 params: null,
                 response: string // username
-            },
-            isAutoStart: {
-                params: null,
-                response: any
-            },
-            toggleAutoStart: {
-                params: null,
-                response: null
             },
             setFolder: {
                 params: null,
@@ -270,11 +266,6 @@ export interface Playing_track {
     thumbnail: string
 }
 
-export interface youtube_api_keys {
-    ApiKey: string,
-    isReached: boolean
-}
-
 export enum Status {
     idle = "idle",
     downloading = "downloading",
@@ -310,6 +301,12 @@ export interface UserProfile {
     download: {
         name: string, source: string, mode: string, id: string
     }[]
+}
+
+export interface System {
+    youtubeApiKeys: string[],
+    isLocal: boolean,
+    isDiscord: boolean,
 }
 
 export interface Download_item {

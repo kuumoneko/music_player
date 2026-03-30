@@ -1,5 +1,5 @@
 import { Electroview } from "electrobun/view";
-import { Album, Artist, Playlist, Repeat, Shuffle, Track, UserData, UserProfile } from "./types.ts";
+import { Album, Artist, Playlist, Repeat, Shuffle, System, Track, UserData, UserProfile } from "./types.ts";
 
 export { };
 
@@ -24,6 +24,7 @@ declare global {
                     toggleQuitonClose: () => Promise<void>,
                     isQuitonClose: () => Promise<boolean>,
                     togglePlayPause: () => Promise<void>,
+                    getSystem: <K extends keyof System> (key: K) => Promise<System[K]>,
                     getUserData: <K extends keyof UserData> (key: K) => Promise<UserData[K]>,
                     getPlayingData: () => Promise<{
                         shuffle: Shuffle,
@@ -51,8 +52,6 @@ declare global {
                     update: () => Promise<void>,
                     isHasDiscordRPC: () => Promise<boolean | string>,
                     connectDiscordRPC: () => Promise<string>,
-                    isAutoStart: () => Promise<boolean>,
-                    toggleAutoStart: () => Promise<void>,
                     // player
                     seekToPlayer: (time: number) => Promise<void>,
                     setVolume: (volume: number) => Promise<void>,
