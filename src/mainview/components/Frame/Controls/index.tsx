@@ -16,6 +16,7 @@ export default function ControlPanel() {
         localstorage("get", "backward", []),
     );
     const [forward, setforward] = useState(localstorage("get", "forward", []));
+    const [isLocal, setIsLocal] = useState(true);
 
     useEffect(() => {
         const run = setInterval(() => {
@@ -23,6 +24,12 @@ export default function ControlPanel() {
             setforward(localstorage("get", "forward", []));
         }, 100);
         return () => clearInterval(run);
+    }, []);
+
+    useEffect(() => {
+        window.api.rpc.request
+            .getSystem("isLocal")
+            .then((data) => setIsLocal(data));
     }, []);
 
     return (
@@ -59,14 +66,16 @@ export default function ControlPanel() {
             >
                 <FontAwesomeIcon icon={faArrowRight} />
             </span>
-            <span
-                className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none`}
-                onClick={() => {
-                    goto("/local");
-                }}
-            >
-                <FontAwesomeIcon icon={faDatabase} />
-            </span>
+            {isLocal && (
+                <span
+                    className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none`}
+                    onClick={() => {
+                        goto("/local");
+                    }}
+                >
+                    <FontAwesomeIcon icon={faDatabase} />
+                </span>
+            )}
             <span
                 className="material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none"
                 onClick={() => {
@@ -75,14 +84,16 @@ export default function ControlPanel() {
             >
                 <FontAwesomeIcon icon={faList} />
             </span>
-            <span
-                className="material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none"
-                onClick={() => {
-                    goto("/queue/download");
-                }}
-            >
-                <FontAwesomeIcon icon={faDownload} />
-            </span>
+            {isLocal && (
+                <span
+                    className="material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none"
+                    onClick={() => {
+                        goto("/queue/download");
+                    }}
+                >
+                    <FontAwesomeIcon icon={faDownload} />
+                </span>
+            )}
         </div>
     );
 }

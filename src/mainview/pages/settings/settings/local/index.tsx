@@ -18,6 +18,10 @@ export default function LocalFile() {
         return () => clearInterval(interval);
     }, []);
 
+    if (location === null) {
+        return <></>;
+    }
+
     const Click = async () => {
         window.api.rpc.request
             .setProfileData({

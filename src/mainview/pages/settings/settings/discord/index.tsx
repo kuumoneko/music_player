@@ -13,6 +13,10 @@ export default function Discord() {
             });
     }, []);
 
+    if (username === null) {
+        return <></>;
+    }
+
     return (
         <div>
             <span className="flex flex-row justify-between items-center">
