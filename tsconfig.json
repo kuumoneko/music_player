@@ -35,6 +35,6 @@
         "allowArbitraryExtensions": false,
         "esModuleInterop": true
     },
-    "include": ["src/**/*", "test", "release"],
+    "include": ["src/**/*", "test", "scripts"],
     "exclude": ["node_modules", "dist", "build", "electrobun", "backup/**/*"]
 }
