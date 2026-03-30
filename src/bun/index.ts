@@ -50,6 +50,8 @@ const Discord_CLient_ID = process.env["CLIENT_ID"];
 
 const PlayerViewPort = process.env["PLAYER_PORT"] ?? 56087;
 
+check_env(userData);
+
 let profile: UserProfile = await getDataFromDatabase(userData, "data", "profile");
 let user: UserData = await getDataFromDatabase(userData, "data", "user");
 let player: Player | null = null;
@@ -89,8 +91,6 @@ const play = () => {
 	}
 	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
 }
-
-check_env(userData);
 
 setInterval(() => {
 	writeDataToDatabase(userData, "data", "profile", profile);
