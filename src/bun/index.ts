@@ -14,39 +14,14 @@ import { Repeat, Shuffle, SleepMode } from "../shared/types.ts";
 import Discord from "./discord/index.ts";
 import forward from "./lib/forward.ts";
 import backward from "./lib/backward.ts";
-import type { AppRPCType, PlayerRPCType, UserProfile } from "@/shared/types.ts";
+import type { AppRPCType, PlayerRPCType, System, UserProfile } from "@/shared/types.ts";
 import { Track, UserData } from '../shared/types';
 
 config();
 
-let appWin: BrowserWindow | null = null;
-let playWin: BrowserWindow | null = null;
-let appTray: Tray | null = null;
-let discordRPC: Discord | null = null;
-let log: string[] = [];
-
-const APP_PORT = process.env["APP_PORT"] ?? 61710;
-const PlayerViewPort = process.env["PLAYER_PORT"] ?? 56087;
-
-const openAppUI = () => {
-	if (appWin) {
-		appWin.show();
-	}
-	else {
-		appWin = new BrowserWindow({
-			title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
-			preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
-		})
-		appWin?.webview?.on("dom-ready", () => {
-			appWin.maximize();
-			appWin.focus();
-		})
-	}
-}
-
 try {
 	Bun.serve({
-		port: APP_PORT,
+		port: process.env["APP_PORT"] ?? 61710,
 		fetch(_req: any) {
 			console.log("A second instance tried to open!");
 			openAppUI();
@@ -63,11 +38,17 @@ try {
 	}
 }
 
+let appWin: BrowserWindow | null = null;
+let playWin: BrowserWindow | null = null;
+let appTray: Tray | null = null;
+let discordRPC: Discord | null = null;
+let log: string[] = [];
+
 const APP_ROOT = resolve("./", "..", "Resources", "app");
 const userData = resolve(Utils.paths.userData, "..");
 const Discord_CLient_ID = process.env["CLIENT_ID"];
 
-check_env(userData);
+const PlayerViewPort = process.env["PLAYER_PORT"] ?? 56087;
 
 let profile: UserProfile = await getDataFromDatabase(userData, "data", "profile");
 let user: UserData = await getDataFromDatabase(userData, "data", "user");
@@ -77,6 +58,39 @@ user.current = {
 	time: 0,
 	duration: user.current.duration
 }
+const { isLocal, isDiscord } = await getDataFromDatabase(APP_ROOT, "data", "system");
+
+if (!isLocal) {
+	profile.folder = ""
+	profile.download = []
+	profile.local = []
+}
+
+const openAppUI = () => {
+	if (appWin) {
+		appWin.show();
+	}
+	else {
+		appWin = new BrowserWindow({
+			title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
+			preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
+		})
+		appWin?.webview?.on("dom-ready", () => {
+			appWin.maximize();
+			appWin.focus();
+
+		})
+	}
+}
+
+const play = () => {
+	if (isDiscord) {
+		discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
+	}
+	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
+}
+
+check_env(userData);
 
 setInterval(() => {
 	writeDataToDatabase(userData, "data", "profile", profile);
@@ -85,11 +99,13 @@ setInterval(() => {
 	writeDataToDatabase(userData, 'data', 'playlists', player.youtube.playlists);
 	writeDataToDatabase(userData, 'data', 'artists', player.youtube.artists);
 
-	if (user.current.duration !== 0) {
-		discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
-	}
-	else {
-		discordRPC.clearMusic();
+	if (isDiscord) {
+		if (user.current.duration !== 0) {
+			discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
+		}
+		else {
+			discordRPC.clearMusic();
+		}
 	}
 }, 10 * 1000);
 
@@ -104,11 +120,11 @@ setInterval(() => {
 }, 100)
 
 player = new Player(userData, APP_ROOT);
-if (profile.folder.length > 0) {
-	player.local.getfolder(profile.folder);
+if (profile.folder.length > 0 && isLocal) {
+	player?.local?.getfolder(profile.folder);
 }
 
-if (Discord_CLient_ID) {
+if (Discord_CLient_ID && isDiscord) {
 	discordRPC = new Discord(Discord_CLient_ID);
 }
 
@@ -170,10 +186,14 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					return null;
 				}
 			},
-			getProfileData: async (key: keyof UserProfile) => { return profile[key as keyof UserProfile] },
+			getSystem: (key: keyof System) => { return key === "youtubeApiKeys" ? null : key === "isDiscord" ? isDiscord : isLocal },
+			getProfileData: async (key: keyof UserProfile) => { return key === "folder" && !isLocal ? null : profile[key as keyof UserProfile] },
 			setProfileData: async ({ key, data }: { key: keyof UserProfile, data: any }) => {
 				try {
-					if (key === "folder") {
+					if (key === "folder" && !isLocal) {
+						return null;
+					}
+					else if (key === "folder") {
 						const value = await Utils.openFileDialog({
 							canChooseDirectory: true,
 							canChooseFiles: false
@@ -199,6 +219,9 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					if (profile.download.length === 0) {
 						throw new Error("No download queue");
 					}
+					if (!isLocal) {
+						throw new Error("User dont set this app has local file")
+					}
 					return await DownloadController(player, userData);
 				} catch (error) {
 					addLog(error);
@@ -206,7 +229,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				}
 			},
 			getDownloadStatus: async () => {
-				return player.status;
+				return !isLocal ? null : player.status;
 			},
 			close: async () => {
 				if (user.QuitonClose) {
@@ -271,8 +294,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			next: async () => {
 				try {
 					await forward(player, user);
-					discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
-					(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
+					play();
 				} catch (error) {
 					addLog(error);
 					return null;
@@ -281,8 +303,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			previous: async () => {
 				try {
 					await backward(player, user);
-					discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
-					(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
+					play();
 				} catch (error) {
 					addLog(error);
 					return null;
@@ -376,25 +397,21 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				}
 			},
 			update: async () => { Updater.applyUpdate(); },
-			isHasDiscordRPC: async () => { return discordRPC.rpc.user.username ?? false },
+			isHasDiscordRPC: async () => {
+				if (isDiscord) {
+					return discordRPC.rpc.user.username ?? false
+				}
+				else return null;
+			},
 			connectDiscordRPC: async () => {
 				try {
-					discordRPC = new Discord(Discord_CLient_ID);
+					if (isDiscord)
+						discordRPC = new Discord(Discord_CLient_ID);
 				} catch (error) {
 					addLog(error);
 					return null;
 				}
 			},
-			isAutoStart: async () => { return process.argv?.includes("--autostart") ?? false },
-			toggleAutoStart: async () => {
-				try {
-					const i = process.argv?.indexOf("--autostart") ?? -1;
-					i > -1 ? process.argv.splice(i, 1) : process.argv.push("--autostart");
-				} catch (error) {
-					addLog(error);
-					return null;
-				}
-			}
 		}
 	}
 })

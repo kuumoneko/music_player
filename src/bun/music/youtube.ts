@@ -1,4 +1,4 @@
-import { Playlist, Track, Artist, API_Key } from "../../shared/types.ts";
+import { Playlist, Track, Artist, API_Key, System } from "../../shared/types.ts";
 import iso8601DurationToMilliseconds from "../lib/time.ts";
 import { getDataFromDatabase } from "../lib/database.ts";
 import { join } from "node:path";
@@ -86,8 +86,8 @@ export default class Youtube {
     public artists: Object = {};
 
     constructor(appPath: string, userPath: string) {
-        getDataFromDatabase(appPath, "data", "system").then((data) => {
-            this.api_keys = data.map((key: string) => {
+        getDataFromDatabase(appPath, "data", "system").then((data: System) => {
+            this.api_keys = data.youtubeApiKeys.map((key: string) => {
                 return {
                     ApiKey: key,
                     isReached: false,

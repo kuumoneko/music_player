@@ -1,5 +1,5 @@
 import Youtube from "./youtube.ts";
-import { Download_item, Status, Track } from "../../shared/types.ts";
+import { Download_item, Status, System, Track, UserProfile } from "../../shared/types.ts";
 import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
 import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
@@ -32,10 +32,14 @@ export default class Player {
     ) {
         this.youtube = new Youtube(appPath, userPath);
 
-        getDataFromDatabase(userPath, 'data', 'profile').then(({ folder }) => {
+        (getDataFromDatabase(userPath, 'data', 'profile') as Promise<UserProfile>).then(({ folder }) => {
             this.download_folder = folder ?? resolve(appPath, "data", "download");
         });
-        this.local = new Local(resolve(userPath, "data"), appPath);
+        (getDataFromDatabase(appPath, 'data', 'system') as Promise<System>).then(({ isLocal }) => {
+            if (isLocal) {
+                this.local = new Local(resolve(userPath, "data"), appPath);
+            }
+        });
         this.folder = appPath;
     }
 
