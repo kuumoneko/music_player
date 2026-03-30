@@ -9,7 +9,7 @@
     },
     "scripts": {
         "dev": "bun ./scripts/dev.ts",
-        "build:prod": "vite build && electrobun build --env=stable"
+        "build:prod": "bun ./scripts/build.ts"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.2.2",
