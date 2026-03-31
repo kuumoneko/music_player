@@ -13,6 +13,7 @@ export default defineConfig({
 			input: {
 				mainview: resolve(__dirname, 'src/mainview/index.html'),
 				player: resolve(__dirname, 'src/player/index.html'),
+				setup: resolve(__dirname, "src/setup/index.html")
 			},
 		},
 	},
