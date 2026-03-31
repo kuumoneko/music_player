@@ -9,7 +9,8 @@
     },
     "scripts": {
         "dev": "bun ./scripts/dev.ts",
-        "build:prod": "bun ./scripts/build.ts"
+        "build:prod": "bun ./scripts/build.ts",
+        "release": "bun ./scripts/release.ts"
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.2.2",
