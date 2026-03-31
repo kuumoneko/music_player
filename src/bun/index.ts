@@ -16,26 +16,35 @@ import forward from "./lib/forward.ts";
 import backward from "./lib/backward.ts";
 import type { AppRPCType, PlayerRPCType, System, UserProfile } from "@/shared/types.ts";
 import { Track, UserData } from '../shared/types';
+import getLocalIPv4 from "./lib/ipv4.ts";
 
 config();
+const host = getLocalIPv4();
+const port = process.env["APP_PORT"];
+
+const lockUrl = `http://${host}:${port}`
 
 try {
+	const response = await fetch(lockUrl);
+
+	if (response.ok) {
+		console.log("App is already running. Notified the first instance.");
+		process.exit(0);
+	}
+} catch (error: any) {
+	console.log("No existing instance found. Starting primary instance...");
+
 	Bun.serve({
-		port: process.env["APP_PORT"] ?? 61710,
+		port: port,
+		hostname: host,
 		fetch(_req: any) {
 			console.log("A second instance tried to open!");
 			openAppUI();
 			return new Response("OK");
 		}
 	});
-} catch (error: any) {
-	if (error.code === 'EADDRINUSE') {
-		console.log("App is already running. Quitting this instance.");
-		process.exit(0);
-	} else {
-		console.error("Failed to acquire single instance lock:", error);
-		process.exit(0);
-	}
+
+	console.log(`Primary instance listening on ${lockUrl}`);
 }
 
 let appWin: BrowserWindow | null = null;
@@ -47,8 +56,7 @@ let log: string[] = [];
 const APP_ROOT = resolve("./", "..", "Resources", "app");
 const userData = resolve(Utils.paths.userData, "..");
 const Discord_CLient_ID = process.env["CLIENT_ID"];
-
-const PlayerViewPort = process.env["PLAYER_PORT"] ?? 56087;
+const PlayerViewPort = process.env["PLAYER_PORT"];
 
 check_env(userData);
 
