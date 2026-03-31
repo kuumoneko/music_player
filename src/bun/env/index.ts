@@ -3,13 +3,13 @@ import { rm, readdir, unlink, mkdir, exists } from 'node:fs/promises';
 
 export async function checkUserDataFolder(userDataFolder: string) {
     const all_paths = [
-        { path: "/log.json", default: "[]" },
-        { path: '/local.json', default: '[]' },
-        { path: '/profile.json', default: '{"play":[],"local":[],"folder":"","pin":[],"download":[]}' },
-        { path: '/tracks.json', default: '{}' },
-        { path: '/playlists.json', default: '{}' },
-        { path: '/artists.json', default: '{}' },
-        { path: '/user.json', default: '{"repeat":0,"shuffle":0,"volume":50,"height":600,"width":800,"currentPlaying":{"source":"","id":"","title":"","thumbnail":"","artist":""},"isMaximized":false,"queue":[],"nextfrom":{"from":"","next":[]},"QuitonClose":false,"playedTrack":[],"isLoading":false,"current":{"time":0,"duration":0},"isPlaying":false}' }
+        { path: "log.json", default: "[]" },
+        { path: 'local.json', default: '[]' },
+        { path: 'profile.json', default: '{"play":[],"local":[],"folder":"","pin":[],"download":[]}' },
+        { path: 'tracks.json', default: '{}' },
+        { path: 'playlists.json', default: '{}' },
+        { path: 'artists.json', default: '{}' },
+        { path: 'user.json', default: '{"repeat":0,"shuffle":0,"volume":50,"height":600,"width":800,"currentPlaying":{"source":"","id":"","title":"","thumbnail":"","artist":""},"isMaximized":false,"queue":[],"nextfrom":{"from":"","next":[]},"QuitonClose":false,"playedTrack":[],"isLoading":false,"current":{"time":0,"duration":0},"isPlaying":false}' }
     ]
 
     async function getAllFilesInDirectory(dir: string, fileArray: string[] = []) {
