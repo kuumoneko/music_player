@@ -33,7 +33,7 @@ export default async function config(thisWorkSpace: string, isDev: boolean) {
         electrobunConfig.build.copy[`./dist/assets/${item}`] =
             `views/src/assets/${item}`;
     });
-    electrobunConfig.build.copy[`data/system.json`] = `data/system.json`;
+    electrobunConfig.build.copy[`bin/`] = `bin/`;
 
     if (!isDev) {
         let DiscordClientId = process.env["CLIENT_ID"];
@@ -42,11 +42,11 @@ export default async function config(thisWorkSpace: string, isDev: boolean) {
             `CLIENT_ID=${DiscordClientId}`
         )
         electrobunConfig.build.copy["temp.env"] = ".env";
-
+        electrobunConfig.build.copy[`data/tempsystem.json`] = `data/system.json`;
     }
     else {
         electrobunConfig.build.copy[`.env`] = `/.env`;
-        electrobunConfig.build.copy[`bin/`] = `bin/`;
+        electrobunConfig.build.copy[`data/system.json`] = `data/system.json`;
     }
 
     const tempConfig = `import type { ElectrobunConfig } from "electrobun";\n\nexport default ${JSON.stringify(electrobunConfig, null, 2)} satisfies ElectrobunConfig`
