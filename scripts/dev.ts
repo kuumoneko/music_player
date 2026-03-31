@@ -16,9 +16,9 @@ try {
 console.info("Done.");
 
 console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
-const isLocal: boolean = await chose("Is Local:", ["yes", "no"]);
-const isDiscord: boolean = await chose("Is Discord:", ["yes", "no"]);
-const isBuildElectrobun = await chose("Do you want to build Local Electrobun first:", ["yes", "no"]);
+const isLocal: boolean = await chose("Is Local?");
+const isDiscord: boolean = await chose("Is Discord?");
+const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?");
 
 if (isBuildElectrobun) {
     await Build_Electrobun()
