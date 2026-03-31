@@ -1,4 +1,4 @@
-import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils } from "electrobun/bun";
+import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils, Screen } from "electrobun/bun";
 
 import { config } from "dotenv";
 import { resolve, join } from "node:path";
@@ -17,6 +17,7 @@ import backward from "./lib/backward.ts";
 import type { AppRPCType, PlayerRPCType, System, UserProfile } from "@/shared/types.ts";
 import { Track, UserData } from '../shared/types';
 import getLocalIPv4 from "./lib/ipv4.ts";
+import checkLocal from "./lib/localCheck.ts";
 
 config();
 const host = getLocalIPv4();
@@ -52,6 +53,34 @@ let playWin: BrowserWindow | null = null;
 let appTray: Tray | null = null;
 let discordRPC: Discord | null = null;
 let log: string[] = [];
+let isSetup: boolean = true;
+
+const primaryDisplay = Screen.getPrimaryDisplay();
+const { height: screenHeight, width: screenWidth } = primaryDisplay.workArea;
+const windowWidth = 400;
+const windowHeight = 250;
+
+const x = Math.round((screenWidth - windowWidth) / 2);
+const y = Math.round((screenHeight - windowHeight) / 2);
+const setupWin = new BrowserWindow({
+	url: "views://src/setup/index.html", titleBarStyle: "hidden", frame: {
+		x, y, height: windowHeight, width: windowWidth
+	}
+})
+const setupinterval = setInterval(() => {
+	if (!isSetup) {
+		setupWin.close();
+		clearInterval(setupinterval)
+		openAppUI();
+		playWin = new BrowserWindow({
+			url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
+		})
+
+		playWin?.webview?.on("dom-ready", () => {
+			playWin.hide();
+		})
+	}
+}, 200)
 
 const APP_ROOT = resolve("./", "..", "Resources", "app");
 const userData = resolve(Utils.paths.userData, "..");
@@ -70,15 +99,19 @@ user.current = {
 }
 const { isLocal, isDiscord } = await getDataFromDatabase(APP_ROOT, "data", "system");
 
-if (!isLocal) {
+if (isLocal === false) {
 	profile.folder = ""
 	profile.download = []
 	profile.local = []
 }
+else {
+	await checkLocal(APP_ROOT);
+	isSetup = false;
+}
 
 const openAppUI = () => {
 	if (appWin) {
-		appWin.show();
+		appWin?.show();
 	}
 	else {
 		appWin = new BrowserWindow({
@@ -86,8 +119,8 @@ const openAppUI = () => {
 			preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
 		})
 		appWin?.webview?.on("dom-ready", () => {
-			appWin.maximize();
-			appWin.focus();
+			appWin?.maximize();
+			appWin?.focus();
 
 		})
 	}
@@ -97,6 +130,7 @@ const play = () => {
 	if (isDiscord) {
 		discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
 	}
+	if (!playWin) return;
 	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
 }
 
@@ -118,6 +152,7 @@ setInterval(() => {
 }, 10 * 1000);
 
 setInterval(() => {
+	if (!playWin) return;
 	(playWin.webview.rpc as any).request.setVolume(user.volume)
 	if (user.nextfrom.next.length < 2) {
 		(playWin.webview.rpc as any).request.setIsRepeat(true);
@@ -584,12 +619,25 @@ Bun.serve({
 	},
 });
 
-openAppUI();
+// const thisinterval = setInterval(() => {
+// 	if (isSetup === false) {
+// 		openAppUI();
 
-playWin = new BrowserWindow({
-	url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
+// 		playWin = new BrowserWindow({
+// 			url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
+// 		})
+
+// 		playWin?.webview?.on("dom-ready", () => {
+// 			playWin.hide();
+// 		})
+// 		clearInterval(thisinterval)
+// 	}
+// }, 200);
+
+process.on("uncaughtException", (error: any) => {
+	console.error(error)
 })
 
-playWin?.webview?.on("dom-ready", () => {
-	playWin.hide();
+process.on("unhandledRejection", (error: any) => {
+	console.error(error)
 })
