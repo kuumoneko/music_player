@@ -1,6 +1,6 @@
 import readline from "node:readline";
 
-export default function chose(question: string, options: string[]) {
+export default function chose(question: string, options: string[]): Promise<boolean> {
     let firstRender = true;
     let isDone = false;
 
@@ -15,7 +15,7 @@ export default function chose(question: string, options: string[]) {
             // Move cursor to top-left and clear from cursor down
             if (!firstRender) {
                 // Move cursor up (options length + 2 lines for header/spacing)
-                process.stdout.write(`\u001b[${options.length + 2}A`);
+                process.stdout.write(`\u001b[${options.length + 1}A`);
             }
             firstRender = false;
             console.log(question);
