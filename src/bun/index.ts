@@ -105,10 +105,14 @@ if (isLocal === false) {
 	profile.download = []
 	profile.local = []
 	for (const binFile of ["ffmpeg", "ffprobe", "yt-dlp"]) {
-		if (await exists(resolve(APP_ROOT, "bin", `${binFile}.exe`))) {
+		const isExisted = await exists(resolve(APP_ROOT, "bin", `${binFile}.exe`));
+		if (isExisted) {
 			await rm(resolve(APP_ROOT, "bin", `${binFile}.exe`), { recursive: true });
 		}
 	}
+	isSetup = false;
+}
+else {
 	isSetup = false;
 }
 
