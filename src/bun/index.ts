@@ -7,7 +7,6 @@ import DownloadController from "./controllers/download";
 import HomeController from "./controllers/home";
 import MusicController from "./controllers/music";
 import PlayController from "./controllers/play";
-import check_env from "./env";
 import { getDataFromDatabase, writeDataToDatabase } from "./lib/database";
 import Player from "./music/index.ts"
 import { Repeat, Shuffle, SleepMode } from "../shared/types.ts";
@@ -17,7 +16,9 @@ import backward from "./lib/backward.ts";
 import type { AppRPCType, PlayerRPCType, System, UserProfile } from "@/shared/types.ts";
 import { Track, UserData } from '../shared/types';
 import getLocalIPv4 from "./lib/ipv4.ts";
-import checkLocal from "./lib/localCheck.ts";
+import { checkUserDataFolder } from "./env/index"
+import { exists } from 'node:fs/promises';
+import { rm } from "node:fs/promises";
 
 config();
 const host = getLocalIPv4();
@@ -87,7 +88,7 @@ const userData = resolve(Utils.paths.userData, "..");
 const Discord_CLient_ID = process.env["CLIENT_ID"];
 const PlayerViewPort = process.env["PLAYER_PORT"];
 
-check_env(userData);
+await checkUserDataFolder(userData);
 
 let profile: UserProfile = await getDataFromDatabase(userData, "data", "profile");
 let user: UserData = await getDataFromDatabase(userData, "data", "user");
@@ -103,9 +104,11 @@ if (isLocal === false) {
 	profile.folder = ""
 	profile.download = []
 	profile.local = []
-}
-else {
-	await checkLocal(APP_ROOT);
+	for (const binFile of ["ffmpeg", "ffprobe", "yt-dlp"]) {
+		if (await exists(resolve(APP_ROOT, "bin", `${binFile}.exe`))) {
+			await rm(resolve(APP_ROOT, "bin", `${binFile}.exe`), { recursive: true });
+		}
+	}
 	isSetup = false;
 }
 
