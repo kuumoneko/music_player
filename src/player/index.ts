@@ -15,6 +15,52 @@ enum YoutubePlaybackState {
     Unstarted = -1, Ended = 0, Playing = 1, Paused = 2, Buffering = 3, Cued = 5,
 }
 
+// @ts-ignore
+const rpc = Electroview.defineRPC<PlayerRPCType>({
+    maxRequestTime: 60 * 1000,
+    handlers: {
+        requests: {
+            seekTo: (time: number) => {
+                const currentTime = playing.source === "local" ? audioRef.currentTime : ytPlayerInstance?.getCurrentTime?.();
+                if (time !== currentTime && time !== null && time !== undefined) {
+                    if (playing.source === "local" && audioRef.readyState >= 1) {
+                        audioRef.currentTime = time;
+                    } else if (ytPlayerInstance && typeof ytPlayerInstance.seekTo === "function") {
+                        ytPlayerInstance.seekTo(time, true);
+                    }
+                }
+            },
+            setVolume: (newVolume: number) => {
+                volume = newVolume;
+                localStorage.setItem("volume", String(volume));
+                if (playing.source === "local" && audioRef.volume !== volume / 100) {
+                    audioRef.volume = volume / 100;
+                } else if (ytPlayerInstance && typeof ytPlayerInstance.setVolume === "function") {
+                    ytPlayerInstance.setVolume(volume);
+                }
+            },
+            playTrack: (track: Track) => {
+                localStorage.setItem("playing", JSON.stringify(track));
+                loadTrack(track).then(() => { if (track) playCurrentTrack(); });
+            },
+            togglePlayPause: () => {
+                const storedIsPlayed = localStorage.getItem("isPlayed") !== "1";
+                setIsPlayedState(storedIsPlayed);
+            },
+            setIsRepeat: (repeat: boolean) => {
+                isRepeat = repeat;
+                localStorage.setItem("isRepeat", repeat ? "1" : "0");
+            },
+            setSleep: (newSleep: SleepMode) => {
+                sleep = newSleep;
+                localStorage.setItem("sleep", sleep);
+            },
+        },
+    },
+});
+
+window.api = new Electroview({ rpc: rpc }) as any;
+
 const handleCloseTab = () => {
     try {
         window.api.rpc.request.sleep();
@@ -223,50 +269,6 @@ if (!window.YT) {
     initializePlayer();
 }
 
-// @ts-ignore
-const rpc = Electroview.defineRPC<PlayerRPCType>({
-    maxRequestTime: 60 * 1000,
-    handlers: {
-        requests: {
-            seekTo: (time: number) => {
-                const currentTime = playing.source === "local" ? audioRef.currentTime : ytPlayerInstance?.getCurrentTime?.();
-                if (time !== currentTime && time !== null && time !== undefined) {
-                    if (playing.source === "local" && audioRef.readyState >= 1) {
-                        audioRef.currentTime = time;
-                    } else if (ytPlayerInstance && typeof ytPlayerInstance.seekTo === "function") {
-                        ytPlayerInstance.seekTo(time, true);
-                    }
-                }
-            },
-            setVolume: (newVolume: number) => {
-                volume = newVolume;
-                localStorage.setItem("volume", String(volume));
-                if (playing.source === "local" && audioRef.volume !== volume / 100) {
-                    audioRef.volume = volume / 100;
-                } else if (ytPlayerInstance && typeof ytPlayerInstance.setVolume === "function") {
-                    ytPlayerInstance.setVolume(volume);
-                }
-            },
-            playTrack: (track: Track) => {
-                localStorage.setItem("playing", JSON.stringify(track));
-                loadTrack(track).then(() => { if (track) playCurrentTrack(); });
-            },
-            togglePlayPause: () => {
-                const storedIsPlayed = localStorage.getItem("isPlayed") !== "1";
-                setIsPlayedState(storedIsPlayed);
-            },
-            setIsRepeat: (repeat: boolean) => {
-                isRepeat = repeat;
-                localStorage.setItem("isRepeat", repeat ? "1" : "0");
-            },
-            setSleep: (newSleep: SleepMode) => {
-                sleep = newSleep;
-                localStorage.setItem("sleep", sleep);
-            },
-        },
-    },
-});
 
-window.api = new Electroview({ rpc: rpc }) as any;
 localStorage.setItem("isPlayed", "0");
 localStorage.setItem("time", "0");
