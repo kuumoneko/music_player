@@ -307,6 +307,8 @@ export interface System {
     youtubeApiKeys: string[],
     isLocal: boolean,
     isDiscord: boolean,
+    appPort: number,
+    playerPort: number
 }
 
 export interface Download_item {
