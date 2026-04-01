@@ -1,52 +1,38 @@
-import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils, Screen } from "electrobun/bun";
-
+// Electrobun
+import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils } from "electrobun/bun";
+// Node
+import { join, resolve } from "node:path";
+// env variables
 import { config } from "dotenv";
-import { resolve, join } from "node:path";
-
-import DownloadController from "./controllers/download";
-import HomeController from "./controllers/home";
-import MusicController from "./controllers/music";
-import PlayController from "./controllers/play";
-import { getDataFromDatabase, writeDataToDatabase } from "./lib/database";
-import Player from "./music/index.ts"
-import { Repeat, Shuffle, SleepMode } from "../shared/types.ts";
-import Discord from "./discord/index.ts";
+// Controller
+import DownloadController from "./controllers/download.ts";
+import HomeController from "./controllers/home.ts";
+import MusicController from "./controllers/music.ts";
+import PlayController from "./controllers/play.ts";
+// lib
+import { getDataFromDatabase, writeDataToDatabase } from "./lib/database.ts";
 import forward from "./lib/forward.ts";
 import backward from "./lib/backward.ts";
-import type { AppRPCType, PlayerRPCType, System, UserProfile } from "@/shared/types.ts";
-import { Track, UserData } from '../shared/types';
 import getLocalIPv4 from "./lib/ipv4.ts";
-import { checkUserDataFolder } from "./env/index"
-import { exists } from 'node:fs/promises';
-import { rm } from "node:fs/promises";
+import { checkBinFolder, checkUserDataFolder } from "./lib/env.ts"
+// Features
+import Player from "./music/index.ts"
+import Discord from "./discord/index.ts";
+// types
+import { Repeat, Shuffle, SleepMode, Track, UserData } from "@/shared/types.ts";
+import type { AppRPCType, PlayerRPCType, System, UserProfile } from "@/shared/types.ts";
 
 config();
-const host = getLocalIPv4();
-const port = process.env["APP_PORT"];
 
-const lockUrl = `http://${host}:${port}`
-
-try {
-	const response = await fetch(lockUrl);
-
-	if (response.ok) {
-		console.log("App is already running. Notified the first instance.");
-		process.exit(0);
-	}
-} catch (error: any) {
-	console.log("No existing instance found. Starting primary instance...");
-
-	Bun.serve({
-		port: port,
-		hostname: host,
-		fetch(_req: any) {
-			console.log("A second instance tried to open!");
-			openAppUI();
-			return new Response("OK");
-		}
-	});
-
-	console.log(`Primary instance listening on ${lockUrl}`);
+// app variables
+const APP_ROOT = resolve("./", "..", "Resources", "app");
+const { isLocal, isDiscord, appPort, playerPort } = await getDataFromDatabase(APP_ROOT, "data", "system");
+if (isLocal === null || isDiscord === null || appPort === null || playerPort === null) {
+	await Utils.showMessageBox({
+		type: "error",
+		message: "Null Object, please reinstall app."
+	})
+	process.exit(1);
 }
 
 let appWin: BrowserWindow | null = null;
@@ -54,40 +40,10 @@ let playWin: BrowserWindow | null = null;
 let appTray: Tray | null = null;
 let discordRPC: Discord | null = null;
 let log: string[] = [];
-let isSetup: boolean = true;
+let Discord_CLient_ID: string | null = null;
 
-const primaryDisplay = Screen.getPrimaryDisplay();
-const { height: screenHeight, width: screenWidth } = primaryDisplay.workArea;
-const windowWidth = 400;
-const windowHeight = 250;
-
-const x = Math.round((screenWidth - windowWidth) / 2);
-const y = Math.round((screenHeight - windowHeight) / 2);
-const setupWin = new BrowserWindow({
-	url: "views://src/setup/index.html", titleBarStyle: "hidden", frame: {
-		x, y, height: windowHeight, width: windowWidth
-	}
-})
-const setupinterval = setInterval(() => {
-	if (!isSetup) {
-		setupWin.close();
-		clearInterval(setupinterval)
-		openAppUI();
-		playWin = new BrowserWindow({
-			url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
-		})
-
-		playWin?.webview?.on("dom-ready", () => {
-			playWin.hide();
-		})
-	}
-}, 200)
-
-const APP_ROOT = resolve("./", "..", "Resources", "app");
 const userData = resolve(Utils.paths.userData, "..");
-const Discord_CLient_ID = process.env["CLIENT_ID"];
-const PlayerViewPort = process.env["PLAYER_PORT"];
-
+const PlayerViewPort = playerPort;
 await checkUserDataFolder(userData);
 
 let profile: UserProfile = await getDataFromDatabase(userData, "data", "profile");
@@ -97,85 +53,6 @@ user.isPlaying = false;
 user.current = {
 	time: 0,
 	duration: user.current.duration
-}
-const { isLocal, isDiscord } = await getDataFromDatabase(APP_ROOT, "data", "system");
-
-if (isLocal === false) {
-	profile.folder = ""
-	profile.download = []
-	profile.local = []
-	for (const binFile of ["ffmpeg", "ffprobe", "yt-dlp"]) {
-		const isExisted = await exists(resolve(APP_ROOT, "bin", `${binFile}.exe`));
-		if (isExisted) {
-			await rm(resolve(APP_ROOT, "bin", `${binFile}.exe`), { recursive: true });
-		}
-	}
-	isSetup = false;
-}
-else {
-	isSetup = false;
-}
-
-const openAppUI = () => {
-	if (appWin) {
-		appWin?.show();
-	}
-	else {
-		appWin = new BrowserWindow({
-			title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
-			preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
-		})
-		appWin?.webview?.on("dom-ready", () => {
-			appWin?.maximize();
-			appWin?.focus();
-
-		})
-	}
-}
-
-const play = () => {
-	if (isDiscord) {
-		discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
-	}
-	if (!playWin) return;
-	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
-}
-
-setInterval(() => {
-	writeDataToDatabase(userData, "data", "profile", profile);
-	writeDataToDatabase(userData, 'data', 'user', user);
-	writeDataToDatabase(userData, 'data', 'tracks', player.youtube.tracks);
-	writeDataToDatabase(userData, 'data', 'playlists', player.youtube.playlists);
-	writeDataToDatabase(userData, 'data', 'artists', player.youtube.artists);
-
-	if (isDiscord) {
-		if (user.current.duration !== 0) {
-			discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
-		}
-		else {
-			discordRPC.clearMusic();
-		}
-	}
-}, 10 * 1000);
-
-setInterval(() => {
-	if (!playWin) return;
-	(playWin.webview.rpc as any).request.setVolume(user.volume)
-	if (user.nextfrom.next.length < 2) {
-		(playWin.webview.rpc as any).request.setIsRepeat(true);
-	}
-	else {
-		(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One);
-	}
-}, 100)
-
-player = new Player(userData, APP_ROOT);
-if (profile.folder.length > 0 && isLocal) {
-	player?.local?.getfolder(profile.folder);
-}
-
-if (Discord_CLient_ID && isDiscord) {
-	discordRPC = new Discord(Discord_CLient_ID);
 }
 
 const addLog = (message: string) => {
@@ -190,6 +67,40 @@ const addLog = (message: string) => {
 	console.error(message)
 }
 
+const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
+	{
+		type: "normal",
+		label: "Show",
+		action: "show",
+		hidden: isShown
+	},
+	{
+		type: "normal",
+		label: "Hide",
+		action: "hide",
+		hidden: !isShown
+	},
+	{
+		type: "separator"
+	},
+	{
+		type: "normal",
+		label: "Quit",
+		action: "quit"
+	},
+];
+
+const play = () => {
+	if (isDiscord) {
+		discordRPC.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
+	}
+	if (!playWin) return;
+	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
+}
+player = new Player(userData, APP_ROOT);
+if (profile.folder.length > 0 && isLocal) {
+	player?.local?.getfolder(profile.folder);
+}
 // @ts-ignore
 const appRPC = BrowserView.defineRPC<AppRPCType>({
 	maxRequestTime: 60 * 1000,
@@ -512,37 +423,64 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 	}
 })
 
-const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
-	{
-		type: "normal",
-		label: "Show",
-		action: "show",
-		hidden: isShown
-	},
-	{
-		type: "normal",
-		label: "Hide",
-		action: "hide",
-		hidden: !isShown
-	},
-	{
-		type: "separator"
-	},
-	{
-		type: "normal",
-		label: "Quit",
-		action: "quit"
-	},
-];
+const openAppUI = () => {
+	if (appWin) {
+		appWin?.show();
+	}
+	else {
+		appWin = new BrowserWindow({
+			title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
+			preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
+		})
+		appWin?.webview?.on("dom-ready", () => {
+			appWin?.maximize();
+			appWin?.focus();
 
+		})
+	}
+}
+
+await checkBinFolder(APP_ROOT, isLocal, profile);
+
+const host = getLocalIPv4();
+const port = appPort;
+const lockUrl = `http://${host}:${port}`
+try {
+	const response = await fetch(lockUrl);
+
+	if (response.ok) {
+		console.log("App is already running. Notified the first instance.");
+		process.exit(0);
+	}
+} catch (error: any) {
+	console.log("No existing instance found. Starting primary instance...");
+
+	Bun.serve({
+		port: port,
+		hostname: host,
+		fetch(_req: any) {
+			console.log("A second instance tried to open!");
+			openAppUI();
+			return new Response("OK");
+		}
+	});
+
+	console.log(`Primary instance listening on ${lockUrl}`);
+}
+
+if (isDiscord) {
+	Discord_CLient_ID = process.env["CLIENT_ID"] ?? "";
+	if (Discord_CLient_ID?.length > 0) {
+		discordRPC = new Discord(Discord_CLient_ID);
+	}
+}
+// Create Tray Menu
 appTray = new Tray({
 	title: "Music app",
 	image: join(APP_ROOT, "assets", "trayicon.ico"),
 	template: true
-})
-
-appTray?.setMenu(getTrayMenu(true))
-
+});
+appTray?.setMenu(getTrayMenu(true));
 appTray?.on("tray-clicked", (e: any) => {
 	const action = e?.data?.action ?? "nothing";
 
@@ -565,8 +503,11 @@ appTray?.on("tray-clicked", (e: any) => {
 		Utils.quit();
 		process.exit(0);
 	}
-})
+});
 
+openAppUI();
+
+// Create Player Windows
 Bun.serve({
 	port: PlayerViewPort,
 	async fetch(req) {
@@ -625,26 +566,10 @@ Bun.serve({
 		}
 	},
 });
-
-// const thisinterval = setInterval(() => {
-// 	if (isSetup === false) {
-// 		openAppUI();
-
-// 		playWin = new BrowserWindow({
-// 			url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
-// 		})
-
-// 		playWin?.webview?.on("dom-ready", () => {
-// 			playWin.hide();
-// 		})
-// 		clearInterval(thisinterval)
-// 	}
-// }, 200);
-
-process.on("uncaughtException", (error: any) => {
-	console.error(error)
+playWin = new BrowserWindow({
+	url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
+})
+playWin?.webview?.on("dom-ready", () => {
+	playWin.hide();
 })
 
-process.on("unhandledRejection", (error: any) => {
-	console.error(error)
-})
