@@ -16,9 +16,9 @@ try {
 console.info("Done.");
 
 console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
-const isLocal: boolean = await chose("Is Local?");
-const isDiscord: boolean = await chose("Is Discord?");
-const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?");
+const isLocal: boolean = await chose("Is Local?", true);
+const isDiscord: boolean = await chose("Is Discord?", true);
+const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?", false);
 
 if (isBuildElectrobun) {
     await Build_Electrobun()
@@ -35,7 +35,7 @@ const electrobunConfigText = await ElectroBunConfig(thisWorkSpace, true)
 console.info("\n\n");
 console.info("Starting...");
 
-const a = Bun.spawn(["bunx", "electrobun", "dev"], { stdout: "inherit", })
+const a = Bun.spawn(["bunx", "electrobun", "dev"], { stdout: "inherit", stderr: "inherit" })
 
 setTimeout(async () => {
     console.info("Restoring Electrobun config...");

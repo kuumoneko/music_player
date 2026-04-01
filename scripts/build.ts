@@ -16,7 +16,7 @@ try {
 console.info("Done.");
 
 console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
-const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?");
+const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?", false);
 
 if (isBuildElectrobun) {
     await Build_Electrobun()
