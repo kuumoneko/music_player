@@ -14,7 +14,7 @@ import { getDataFromDatabase, writeDataToDatabase } from "./lib/database.ts";
 import forward from "./lib/forward.ts";
 import backward from "./lib/backward.ts";
 import getLocalIPv4 from "./lib/ipv4.ts";
-import { checkBinFolder, checkUserDataFolder } from "./lib/env.ts"
+import { checkUserDataFolder } from "./lib/env.ts"
 // Features
 import Player from "./music/index.ts"
 import Discord from "./discord/index.ts";
@@ -441,7 +441,18 @@ const openAppUI = () => {
 	}
 }
 
-await checkBinFolder(APP_ROOT, isLocal, profile);
+if (!isLocal) {
+	profile.folder = ""
+	profile.download = []
+	profile.local = []
+
+	for (const binFile of ["ffmpeg", "ffprobe", "yt-dlp"]) {
+		const file = Bun.file(resolve(APP_ROOT, "bin", `${binFile}.exe`));
+		if (await file.exists()) {
+			file.delete();
+		}
+	}
+}
 
 const host = getLocalIPv4();
 const port = appPort;
