@@ -1,5 +1,7 @@
+import { BrowserWindow, Screen } from "electrobun/bun";
 import { resolve } from 'node:path';
 import { rm, readdir, unlink, mkdir, exists } from 'node:fs/promises';
+import { UserProfile } from "@/shared/types";
 
 export async function checkUserDataFolder(userDataFolder: string) {
     const all_paths = [
@@ -71,5 +73,34 @@ export async function checkUserDataFolder(userDataFolder: string) {
         if (!data || data.length < item.default.length) {
             await Bun.write(Bun.file(item.path), item.default)
         }
+    }
+}
+
+export async function checkBinFolder(appPath: string, isLocal: boolean, profile: UserProfile) {
+    if (isLocal === false) {
+        const primaryDisplay = Screen.getPrimaryDisplay();
+        const { height: screenHeight, width: screenWidth } = primaryDisplay.workArea;
+        const windowWidth = 400;
+        const windowHeight = 250;
+
+        const x = Math.round((screenWidth - windowWidth) / 2);
+        const y = Math.round((screenHeight - windowHeight) / 2);
+        const setupWin = new BrowserWindow({
+            url: "views://src/setup/index.html", titleBarStyle: "hidden", frame: {
+                x, y, height: windowHeight, width: windowWidth
+            }
+        })
+
+        profile.folder = ""
+        profile.download = []
+        profile.local = []
+
+        for (const binFile of ["ffmpeg", "ffprobe", "yt-dlp"]) {
+            const isExisted = await exists(resolve(appPath, "bin", `${binFile}.exe`));
+            if (isExisted) {
+                await rm(resolve(appPath, "bin", `${binFile}.exe`), { recursive: true });
+            }
+        }
+        setupWin?.close();
     }
 }
