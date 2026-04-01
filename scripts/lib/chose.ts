@@ -1,6 +1,6 @@
 import readline from "node:readline/promises";
 
-export default async function chose(question: string): Promise<boolean> {
+export default async function ChoseYesNoQuestion(question: string, defaultValue: boolean): Promise<boolean> {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout
@@ -10,13 +10,13 @@ export default async function chose(question: string): Promise<boolean> {
     return new Promise(async (resolve, reject) => {
         try {
             while (!isDone) {
-                const answer = await rl.question(`${question} (Y for yes, N for No, default Yes): `)
-                if (["Y", "y", "N", "n"].includes(answer)) {
+                const answer = await rl.question(`${question} (y/n) [${defaultValue ? "y" : "n"}]: `)
+                if (["y", "n"].includes(answer)) {
                     result = answer;
                     isDone = true;
                 }
                 else if (answer.length === 0) {
-                    result = "Y";
+                    result = defaultValue ? "y" : "n";
                     isDone = true;
                 }
                 else {
@@ -24,7 +24,7 @@ export default async function chose(question: string): Promise<boolean> {
                 }
             }
             if (isDone) {
-                resolve(result === "Y" || result === "y")
+                resolve(result === "y")
             }
         } catch (error) {
             reject(error)
