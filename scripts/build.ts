@@ -28,7 +28,7 @@ const electrobunConfigText = await ElectroBunConfig(thisWorkSpace, false)
 
 
 console.info("\nBuilding...")
-Bun.spawnSync(["bunx", "electrobun", "build", "--env=stable"], { stdout: "inherit" })
+Bun.spawnSync(["bunx", "electrobun", "build", "--env=stable"], { stdout: "inherit", stderr: "inherit" })
 console.info("Done.")
 
 console.info("Deleting temporary files...")
