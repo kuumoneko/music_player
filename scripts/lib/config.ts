@@ -36,16 +36,9 @@ export default async function config(thisWorkSpace: string, isDev: boolean) {
     electrobunConfig.build.copy[`bin/`] = `bin/`;
 
     if (!isDev) {
-        let DiscordClientId = process.env["CLIENT_ID"];
-        await Bun.write(
-            resolve(thisWorkSpace, "temp.env"),
-            `CLIENT_ID=${DiscordClientId}`
-        )
-        electrobunConfig.build.copy["temp.env"] = ".env";
         electrobunConfig.build.copy[`data/tempsystem.json`] = `data/system.json`;
     }
     else {
-        electrobunConfig.build.copy[`.env`] = `/.env`;
         electrobunConfig.build.copy[`data/system.json`] = `data/system.json`;
     }
 
