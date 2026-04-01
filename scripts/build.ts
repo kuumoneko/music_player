@@ -33,7 +33,6 @@ console.info("Done.")
 
 console.info("Deleting temporary files...")
 await Bun.write(resolve(thisWorkSpace, "electrobun.config.ts"), electrobunConfigText)
-await Bun.file(resolve(thisWorkSpace, "temp.env")).unlink()
 await Bun.file(resolve(thisWorkSpace, "data", "tempsystem.json")).unlink()
 console.info("Done.")
 
