@@ -19,7 +19,7 @@ import { checkBinFolder, checkUserDataFolder } from "./lib/env.ts"
 import Player from "./music/index.ts"
 import Discord from "./discord/index.ts";
 // types
-import { Repeat, Shuffle, SleepMode, Track, UserData } from "@/shared/types.ts";
+import { Repeat, Shuffle, SleepMode, Track, UserData } from "../shared/types.ts";
 import type { AppRPCType, PlayerRPCType, System, UserProfile } from "@/shared/types.ts";
 
 config();
