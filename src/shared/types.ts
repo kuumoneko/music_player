@@ -308,7 +308,8 @@ export interface System {
     isLocal: boolean,
     isDiscord: boolean,
     appPort: number,
-    playerPort: number
+    playerPort: number,
+    DiscordClientId: number
 }
 
 export interface Download_item {
