@@ -1,31 +1,50 @@
-import { Client, SetActivity } from "@xhayper/discord-rpc"
-import Player from '../music/index';
+import net from "node:net";
 import { getDataFromDatabase } from "../lib/database";
-import { ActivityType } from "discord-api-types/v10";
+import Player from "../music";
 
-export default class Discord {
-    public rpc: Client;
+export default class DiscordRPC {
+    private socket: net.Socket | null = null;
+    private clientId: string;
+    public isReady: boolean = false;
+    public username: string;
+
     constructor(clientId: string) {
-        if (clientId) {
-            this.rpc = new Client({ clientId })
-            this.rpc?.login().catch(() => { this.rpc = null }).then(() => {
-                if (this.rpc) {
-                    this.rpc?.on("ready", async () => {
-                        console.log("Discord RPC is ready");
-                        await this.rpc?.user.setActivity({
-                            details: "Idle...",
-                            state: "Waiting for music...",
-                            startTimestamp: new Date(),
-                            largeImageText: "Kuumo app",
-                            instance: false
-                        })
-                    })
+        this.clientId = clientId;
+    }
+
+    async connect() {
+        return new Promise((resolve, reject) => {
+            this.socket = net.connect('\\\\.\\pipe\\discord-ipc-0');
+
+            this.socket.on('connect', () => {
+                console.log('Connected to pipe, sending handshake...');
+                this.send(0, { v: 1, client_id: this.clientId });
+            });
+
+            this.socket.once('data', (data) => {
+                const { a: response, evt } = JSON.parse('{"a":' + data.toString().split('"data":')[1]);
+                if (response.user !== null) {
+                    this.username = response.user.username;
                 }
-            })
-        }
+
+                if (evt === 'READY') {
+                    console.log('Discord is READY!');
+                    this.isReady = true;
+                    this.clearMusic();
+                    resolve(true);
+                }
+            });
+
+            this.socket.on('error', (err) => reject(err));
+        });
     }
 
     async setMusic(track: any, userData: string, player: Player, current: { time: number, duration: number }, isPlaying: boolean) {
+        if (!this.isReady) {
+            console.error("Cannot set activity: Discord not ready yet.");
+            return;
+        }
+
         if (track.source === "local") {
             const { title } = track;
             const ytb_tracks = await getDataFromDatabase(userData, "data", "tracks");
@@ -56,32 +75,72 @@ export default class Discord {
             track.thumbnail = `https://i.ytimg.com/vi/${track.id}/default.jpg`;
         }
 
-        const activity: SetActivity = {
-            type: ActivityType.Listening,
-            details: track.title,
-            state: track.artist,
-            smallImageKey: track.thumbnail,
-            smallImageText: track.title,
-            instance: false,
-        }
+        const payload = {
+            cmd: 'SET_ACTIVITY',
+            args: {
+                pid: process.pid,
+                activity: {
+                    type: 2,
+                    details: track.title,
+                    state: track.arist,
+                    assets: {
+                        large_image: track.thumbnail, // Ensure this name exists in your Dev Portal
+                        large_text: track.title
+                    },
+                    timestamps: {
+                        start: new Date().getTime(),
+                        end: new Date().getTime()
+                    }
+                }
+            },
+            nonce: crypto.randomUUID()
+        };
+
         if (isPlaying) {
             const now = new Date().getTime();
             const start = (now - current.time * 1000);
-            activity.endTimestamp = start + current.duration;
-            activity.startTimestamp = start;
+            payload.args.activity.timestamps = {
+                start: start,
+                end: start + current.duration
+            }
         }
-        await this.rpc?.user.setActivity(activity)
+
+        this.send(1, payload);
     }
 
-    async clearMusic() {
-        if (this.rpc) {
-            await this.rpc?.user.setActivity({
-                details: "Idle...",
-                state: "Waiting for music...",
-                startTimestamp: new Date(),
-                largeImageText: "Kuumo app",
-                instance: false
-            })
+    clearMusic() {
+        if (!this.isReady) {
+            console.error("Cannot set activity: Discord not ready yet.");
+            return;
         }
+
+        const payload = {
+            cmd: 'SET_ACTIVITY',
+            args: {
+                pid: process.pid,
+                activity: {
+                    type: 0,
+                    details: "Idling....",
+                    state: "Finding a song...",
+                    timestamps: {
+                        start: Date.now()
+                    }
+                }
+            },
+            nonce: crypto.randomUUID()
+        };
+
+        this.send(1, payload);
+    }
+
+    private send(op: number, payload: object) {
+        if (!this.socket) return;
+        const json = JSON.stringify(payload);
+        const data = Buffer.from(json);
+        const header = Buffer.alloc(8);
+        header.writeUInt32LE(op, 0);
+        header.writeUInt32LE(data.length, 4);
+        this.socket.write(header);
+        this.socket.write(data);
     }
 }
