@@ -22,7 +22,7 @@ if (isBuildElectrobun) {
     await Build_Electrobun()
 }
 
-const thisWorkSpace = resolve(import.meta.url.split("file:///")[1], "..", "..");
+const thisWorkSpace = resolve(import.meta.path.split(import.meta.file)[0], "..");
 await system(thisWorkSpace, true, true, "tempsystem")
 const electrobunConfigText = await ElectroBunConfig(thisWorkSpace, false)
 

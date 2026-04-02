@@ -1,6 +1,6 @@
 import { exec } from "node:child_process";
 import { rmSync, existsSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import download from "./download";
 import seven from "7zip-min";
 
@@ -39,7 +39,7 @@ function checkForUpdate_ffmpeg(): Promise<string> {
     });
 }
 
-const folderPath = join(import.meta.url, "..").split(".\\file:\\")[1];
+const folderPath = resolve(import.meta.path.split(import.meta.file)[0], "..")
 
 /**
  * Update ffmpeg and ffprobe
