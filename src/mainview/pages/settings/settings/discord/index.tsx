@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useEffect, useState } from "react";
 
 export default function Discord() {
-    const [username, setUsername] = useState<string | boolean>("");
+    const [username, setUsername] = useState<string | boolean | null>(null);
 
     useEffect(() => {
         window.api.rpc.request
@@ -29,7 +29,7 @@ export default function Discord() {
                 <span
                     className="hover:cursor-pointer"
                     onClick={() => {
-                        if (username === "Discord RPC is not connected") {
+                        if (username === false) {
                             window.api.rpc.request
                                 .connectDiscordRPC()
                                 .then((data: string) => {
@@ -38,6 +38,7 @@ export default function Discord() {
                         }
                     }}
                 >
+                    {username === null && "Not installed"}
                     {username === false ? "Connect" : username}
                 </span>
             </span>
