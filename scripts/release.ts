@@ -1,14 +1,14 @@
 import { readdirSync } from "fs";
-import { join } from "path";
+import { basename, resolve } from "node:path";
 import { config } from "dotenv";
 
 config();
 const GITHUB_TOKEN = process.env["GH_TOKEN"];
 const OWNER = process.env["GHUSERNAME"];
 const REPO = process.env["REPO"];
-const BUILD_DIR = "./artifacts";
+const workSpace = resolve(import.meta.path.split(import.meta.file)[0], "..")
 
-const { version } = await Bun.file("./artifacts").json()
+const { version } = await Bun.file(resolve(workSpace, "artifacts", "stable-win-x64-update.json")).json()
 const TAG = `v${version}`;
 
 
@@ -38,17 +38,23 @@ async function uploadDraftRelease() {
     const releaseId = releaseData.id;
     console.log(`Draft release created! ID: ${releaseId}`);
 
-    const files = readdirSync(BUILD_DIR).filter(file =>
-        file.endsWith('.exe') || file.endsWith('.tar.zst') || file.endsWith('.json') || file.endsWith('.patch') || file.endsWith(".zip")
-    );
+    const files = [
+        resolve(workSpace, "build", "stable-win-x64", "kuumoapp-Setup.exe"),
+        resolve(workSpace, "artifacts", "stable-win-x64-update.json")
+    ]
+
+    const patchFiles = readdirSync(resolve(workSpace, "artifacts")).filter(file => file.endsWith(".patch"))
+    if (patchFiles.length > 0) {
+        files.push(patchFiles[0])
+    }
 
     for (const file of files) {
-        const filePath = join(BUILD_DIR, file);
-        const fileData = await Bun.file(filePath).arrayBuffer();
+        // const filePath = join(BUILD_DIR, file);
+        const fileData = await Bun.file(file).arrayBuffer();
 
         console.log(`Uploading ${file}...`);
 
-        const uploadRes = await fetch(`https://uploads.github.com/repos/${OWNER}/${REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(file)}`, {
+        const uploadRes = await fetch(`https://uploads.github.com/repos/${OWNER}/${REPO}/releases/${releaseId}/assets?name=${encodeURIComponent(basename(file))}`, {
             method: "POST",
             headers: {
                 "Authorization": `Bearer ${GITHUB_TOKEN}`,
