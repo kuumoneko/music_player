@@ -361,14 +361,34 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			update: async () => { Updater.applyUpdate(); },
 			isHasDiscordRPC: async () => {
 				if (isDiscord) {
-					return discordRPC?.username;
+					return discordRPC?.username ?? false;
 				}
 				else return null;
 			},
 			connectDiscordRPC: async () => {
 				try {
-					if (isDiscord)
+					if (isDiscord) {
 						discordRPC = new Discord(DiscordClientId);
+						try {
+							await discordRPC.connect();
+							return discordRPC?.username ?? false;
+						} catch (error) {
+							Utils.showMessageBox({
+								type: "info",
+								title: "Discord Client is not running",
+								message: "Please open Discord Client then Connect again."
+							});
+							return false;
+						}
+					}
+					else {
+						Utils.showMessageBox({
+							type: "info",
+							title: "Discord RPC is not installed",
+							message: "Please reinstall and set isDiscord is true."
+						});
+						return null;
+					}
 				} catch (error) {
 					addLog(error);
 					return null;
@@ -482,7 +502,11 @@ try {
 
 if (isDiscord && DiscordClientId.length > 0) {
 	discordRPC = new Discord(DiscordClientId);
-	await discordRPC.connect();
+	try {
+		await discordRPC.connect();
+	} catch (error) {
+		console.log("Discord Client is not running")
+	}
 }
 
 // Create Tray Menu
