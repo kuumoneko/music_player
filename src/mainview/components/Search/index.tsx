@@ -29,6 +29,10 @@ export default function SearchBar() {
         if (typing === "") {
             return;
         }
+        const [tempType, tempSource, tempId] = typing.split(":");
+        if (tempId && tempSource && tempType) {
+            return goto(`/${tempType}/${tempSource}/${tempId}`);
+        }
         return goto(`/search/youtube/${type}/${typing}`);
     };
 
