@@ -9,28 +9,28 @@ import PlayQueue from "@/mainview/pages/queue/play/index.tsx";
 import Local from "@/mainview/pages/music/local.tsx";
 
 function Pages({ url }: { url: string }) {
-    if (url.includes("tracks")) {
+    if (url.startsWith("/tracks")) {
         return <Tracks />;
     }
-    if (url.includes("playlists")) {
+    if (url.startsWith("/playlists")) {
         return <Playlists />;
     }
-    if (url.includes("artists")) {
+    if (url.startsWith("/artists")) {
         return <Artists />;
     }
-    if (url.includes("album")) {
+    if (url.startsWith("/album")) {
         return <Albums />;
     }
-    if (url.includes("search")) {
+    if (url.startsWith("/search")) {
         return <Search url={url} />;
     }
-    if (url.includes("download")) {
+    if (url.startsWith("/queue/download")) {
         return <DownloadQueue />;
     }
-    if (url.includes("play")) {
+    if (url.startsWith("/queue/play")) {
         return <PlayQueue />;
     }
-    if (url.includes("/local")) {
+    if (url.startsWith("/local")) {
         return <Local />;
     }
 
