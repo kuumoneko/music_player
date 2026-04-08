@@ -110,7 +110,7 @@ const play = () => {
 		discordRPC?.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
 	}
 	if (!playWin) return;
-	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
+	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch(() => console.log("Error on sending rpc"))
 }
 player = new Player(userData, APP_ROOT);
 if (profile.folder.length > 0 && isLocal) {
@@ -236,7 +236,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			togglePlayPause: async () => {
 				try {
 					user.isPlaying = !user.isPlaying;
-					(playWin.webview.rpc as any).request.togglePlayPause();
+					(playWin.webview.rpc as any).request.togglePlayPause().catch(() => console.log("Error on sending rpc"));
 				} catch (error) {
 					addLog(error);
 					return null;
@@ -250,7 +250,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					(user as any)[key] = data;
 
 					if (key === "repeat") {
-						(playWin.webview.rpc as any).request.setIsRepeat(data === Repeat.One);
+						(playWin.webview.rpc as any).request.setIsRepeat(data === Repeat.One).catch(() => console.log("Error on sending rpc"));
 					}
 
 				} catch (error) {
@@ -339,12 +339,12 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
 
 				user.playedTrack = Array.from(new Set([...user.playedTrack, user.currentPlaying.id]));
-				(playWin.webview.rpc as any).request.playTrack(user.currentPlaying);
+				(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch(() => console.log("Error on sending rpc"));
 				if (user.nextfrom.next.length < 2) {
-					(playWin.webview.rpc as any).request.setIsRepeat(true);
+					(playWin.webview.rpc as any).request.setIsRepeat(true).catch(() => console.log("Error on sending rpc"));
 				}
 				else {
-					(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One);
+					(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One).catch(() => console.log("Error on sending rpc"));
 				}
 				return user.currentPlaying
 			},
@@ -359,7 +359,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			},
 			setSleep: async (mode: SleepMode) => {
 				try {
-					(playWin.webview.rpc as any).request.setSleep(mode);
+					(playWin.webview.rpc as any).request.setSleep(mode).catch(() => console.log("Error on sending rpc"));
 				} catch (error) {
 					addLog(error);
 					return null;
@@ -422,7 +422,7 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 		requests: {
 			getTrack: async () => {
 				try {
-					const result = await PlayController(player, user);
+					const result = await PlayController(profile.folder, user);
 					return result
 				} catch (error) {
 					addLog(error);
@@ -434,7 +434,7 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 					try {
 						await forward(player, user);
 						discordRPC?.setMusic(user.currentPlaying, userData, player, user.current, user.isPlaying);
-						(playWin.webview.rpc as any).request.playTrack(user.currentPlaying)
+						(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch(() => console.log("Error on sending rpc"))
 					} catch (error) {
 						addLog(error);
 						return null;
@@ -648,11 +648,11 @@ setInterval(async () => {
 
 setInterval(() => {
 	if (!playWin) return;
-	(playWin.webview.rpc as any).request.setVolume(user.volume)
+	(playWin.webview.rpc as any).request.setVolume(user.volume).catch(() => console.log("Error on sending rpc"))
 	if (user.nextfrom.next.length < 2) {
-		(playWin.webview.rpc as any).request.setIsRepeat(true);
+		(playWin.webview.rpc as any).request.setIsRepeat(true).catch(() => console.log("Error on sending rpc"));
 	}
 	else {
-		(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One);
+		(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One).catch(() => console.log("Error on sending rpc"));
 	}
 }, 100)
