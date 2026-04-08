@@ -85,6 +85,9 @@ setInterval(() => {
     window.api.rpc.request.setcurrentTime(
         playing.source === "local" ? audioRef.currentTime : ytPlayerInstance.getCurrentTime()
     )
+    window.api.rpc.request.setIsLive(
+        playing.source === "youtube" ? ytPlayerInstance.getVideoData().isLive : false
+    )
 }, 1000);
 
 const isCurrentlyPlaying = () => {
@@ -156,10 +159,19 @@ const loadTrack = async (track: any) => {
             if (ytPlayerInstance.getVolume() !== volume) {
                 ytPlayerInstance.setVolume(volume);
             }
-            window.api.rpc.request.setcurrentTime(0);
-            if (!isFirstLoad) {
-                isPlayed = true;
+            if (ytPlayerInstance.getVideoData().isLive && isFirstLoad) {
+                ytPlayerInstance.seekTo(Infinity, true);
+                window.api.rpc.request.setcurrentTime(ytPlayerInstance.getCurrentTime());
+
+                playCurrentTrack();
             }
+            else {
+                window.api.rpc.request.setcurrentTime(0);
+                if (!isFirstLoad) {
+                    isPlayed = true;
+                }
+            }
+
         }
         window.api.rpc.request.setLoading(false);
     }
