@@ -46,7 +46,7 @@ export default function Search({ url }: { url: string }) {
                               : (searchh.result.artists ?? [])
                     }
                     source={url.split("/").slice(2)[0]}
-                    type={url.split("/").slice(2)[1]}
+                    type={url.split("/").slice(2)[1] + "s"}
                     id=""
                     mode="search"
                 />
