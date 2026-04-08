@@ -146,6 +146,26 @@ export type PlayerRPCType = {
                 params: null,
                 response: null
             },
+            setLoading: {
+                params: boolean,
+                response: null
+            },
+            setCurrentTime: {
+                params: boolean,
+                response: null
+            },
+            setDuration: {
+                params: boolean,
+                response: null
+            },
+            setIsPlaying: {
+                params: boolean,
+                response: null
+            },
+            setIsLive: {
+                params: boolean,
+                response: null
+            }
         },
         messages: {}
     }>,
@@ -246,7 +266,8 @@ export interface Track {
     thumbnail: string,
     duration: number,
     releasedDate: string // DD-MM-YYYY,
-    matched?: string | null, index?: number // this is for local file
+    matched?: string | null, index?: number // this is for local file,
+    liveBroadcastContent: boolean
 }
 
 export interface Search {
@@ -280,14 +301,14 @@ export interface UserData {
     volume: number,
     height: number, width: number,
     currentPlaying: {
-        source: string, id: string, title: string, thumbnail: string, artist: string, index?: number
+        source: string, id: string, title: string, thumbnail: string, artist: string, index?: number, liveBroadcastContent: boolean
     },
     queue: Track[],
     isMaximized: boolean, nextfrom: { from: string, next: Track[] },
     playedTrack: string[],
     QuitonClose: boolean,
     current: {
-        time: number, duration: number
+        time: number, duration: number, isLived: boolean
     },
     isPlaying: boolean,
     isLoading: boolean
