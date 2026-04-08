@@ -1,5 +1,4 @@
 import Player from "../music/index.ts"
-import wait_for_downloader from '../lib/player';
 export default async function MusicController(player: Player, data: { source, mode, type, id, query }) {
     const { source, mode, type, id, query }: {
         source: string,
@@ -8,7 +7,7 @@ export default async function MusicController(player: Player, data: { source, mo
         id: string,
         query: string
     } = data;
-    await wait_for_downloader(player);
+    if (!player) throw new Error("Player is null.")
     let result: any = null;
     if (mode === "search") {
         if (!query || !type || !source) {
