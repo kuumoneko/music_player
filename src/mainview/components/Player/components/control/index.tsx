@@ -22,6 +22,7 @@ export default function ControlUI() {
     const [playing, setPlaying] = useState({
         time: 0,
         duration: 0,
+        isLived: false,
     });
 
     const isPlayingRef = useRef(false);
@@ -29,6 +30,7 @@ export default function ControlUI() {
     const currentRef = useRef({
         time: 0,
         duration: 0,
+        isLived: false,
     });
 
     useEffect(() => {
@@ -189,9 +191,20 @@ export default function ControlUI() {
 
             <div className="player flex flex-row items-center w-full">
                 <span className="mr-1.25 cursor-default select-none text-xs min-w-24 w-1/6 text-center">
-                    {playing.duration > 0
-                        ? `${formatDuration(playing.time)} / ${formatDuration(playing.duration / 1000)}`
-                        : `Loading`}
+                    {playing.isLived && (
+                        <>
+                            {playing.time > 0
+                                ? `${formatDuration(playing.time)} / ${formatDuration(playing.time)}`
+                                : `Loading`}
+                        </>
+                    )}
+                    {!playing.isLived && (
+                        <>
+                            {playing.duration > 0
+                                ? `${formatDuration(playing.time)} / ${formatDuration(playing.duration / 1000)}`
+                                : `Loading`}
+                        </>
+                    )}
                 </span>
                 <Slider
                     name={"time"}
