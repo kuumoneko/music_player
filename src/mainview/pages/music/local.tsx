@@ -17,8 +17,12 @@ export default function Local() {
             );
         }
         run();
-        const running = setInterval(() => {
+        let running = setInterval(() => {
             run();
+            if (localfile.length > 0) {
+                clearInterval(running);
+                running = setInterval(run, 60 * 1000);
+            }
         }, 1000);
         return () => clearInterval(running);
     }, []);

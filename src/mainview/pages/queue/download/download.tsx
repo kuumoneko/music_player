@@ -16,22 +16,6 @@ export default function Download() {
     useEffect(() => {
         const intervalId = window.setInterval(() => {
             try {
-                // async function get_download_status() {
-                //     if (!status) return;
-                //     const { data, track } =
-                //         await window.api.rpc.request.getDownloadStatus();
-                //     if (data == Status.done) {
-                //         setstatus(Status.done);
-                //         setdownload(false);
-                //         setdata("");
-                //     } else if (data == Status.downloading) {
-                //         setstatus(Status.downloading);
-                //     } else if (data === Status.idle) {
-                //         setstatus(Status.idle);
-                //     } else {
-                //         setdata(data + " " + track);
-                //     }
-                // }
                 if (status !== "done") {
                     (async () => {
                         if (!status) return;

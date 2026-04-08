@@ -45,29 +45,44 @@ export default function ControlUI() {
         currentRef.current = playing;
     }, [playing]);
 
-    const update = () => {
-        window.api.rpc.request.getPlayingData().then((data) => {
-            setPlaying(data.current);
-            setplayed(data.isPlaying);
-            setisloading(data.isLoading);
-            setPlayedTrack(data.playedTrack);
-            setrepeat(data.repeat);
-            setshuffle(data.shuffle);
-        });
-    };
-
     useEffect(() => {
-        update();
-        window.api.rpc.request
-            .getUserData("shuffle")
-            .then((data) => setshuffle(data));
-        window.api.rpc.request
-            .getUserData("repeat")
-            .then((data) => setrepeat(data));
-        const run = setInterval(() => {
-            update();
-        }, 100);
-        return () => clearInterval(run);
+        let isMounted = true;
+        let timerId: any;
+
+        const safeUpdate = async () => {
+            if (!isMounted) return;
+
+            try {
+                const data = await window.api.rpc.request.getPlayingData();
+
+                if (isMounted) {
+                    setPlaying(data.current);
+                    setplayed(data.isPlaying);
+                    setisloading(data.isLoading);
+                    setPlayedTrack(data.playedTrack);
+                    setrepeat(data.repeat);
+                    setshuffle(data.shuffle);
+                }
+            } catch (err) {
+                console.error("RPC Error:", err);
+            } finally {
+                // ONLY schedule the next update AFTER this one is totally done
+                if (isMounted) {
+                    timerId = setTimeout(safeUpdate, 200); // 200ms is safer than 100ms
+                }
+            }
+        };
+
+        // Initial calls
+        window.api.rpc.request.getUserData("shuffle").then(setshuffle);
+        window.api.rpc.request.getUserData("repeat").then(setrepeat);
+
+        safeUpdate(); // Start the loop
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timerId);
+        };
     }, []);
 
     const TimeSliderRef = useRef<HTMLInputElement>(null);
