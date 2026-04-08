@@ -51,7 +51,8 @@ let player: Player | null = null;
 user.isPlaying = false;
 user.current = {
 	time: 0,
-	duration: user.current.duration
+	duration: user.current.duration,
+	isLived: user.current.isLived,
 }
 
 
@@ -66,6 +67,20 @@ const addLog = (message: string) => {
 
 	console.error(message)
 }
+
+process.on("uncaughtException", (error) => {
+	Utils.showMessageBox({
+		type: "error",
+		title: error.name,
+		message: error.message,
+		detail: error.cause as string + " " + error.stack
+	})
+	addLog(error.cause + " " + error.message)
+})
+
+process.on("beforeExit", (code: number) => {
+	addLog(String(code))
+})
 
 const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 	{
@@ -107,10 +122,10 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 	maxRequestTime: 60 * 1000,
 	handlers: {
 		requests: {
-			getMusicData: async ({ type, id }: { type: "youtube" | "local", id: string }) => {
+			getMusicData: async ({ source, type, id }: { source: "youtube" | "local", type: string, id: string }) => {
 				try {
 					const result = await MusicController(player, {
-						source: "youtube",
+						source: source,
 						type: type,
 						id: id,
 						query: "",
@@ -276,9 +291,10 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				if (source === "youtube") {
 					const track = await player.youtube.fetch_track([item.id])
 					user.currentPlaying = {
-						source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", ")
+						source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", "), liveBroadcastContent: track[0].liveBroadcastContent
 					}
 					user.current.duration = track[0].duration;
+					user.current.isLived = track[0].liveBroadcastContent;
 					if (type === "track") {
 						user.nextfrom = {
 							from: `youtube:track:${id}`,
@@ -310,9 +326,10 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				else if (source === "local") {
 					const track = player.local.data.find((localItem) => localItem.id === item.id);
 					user.currentPlaying = {
-						source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index
+						source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index, liveBroadcastContent: track?.liveBroadcastContent
 					}
 					user.current.duration = track?.duration;
+					user.current.isLived = false;
 					user.nextfrom = {
 						from: `local:local`,
 						next: player.local.data.slice(0, 20)
@@ -439,6 +456,11 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 			},
 			setIsPlaying: (isPlaying: boolean) => {
 				user.isPlaying = isPlaying;
+			},
+			// get isLive from player and add to this
+			setisLive: (isLive: boolean) => {
+				user.currentPlaying.liveBroadcastContent = isLive;
+				user.current.isLived = isLive;
 			}
 		}
 	}
@@ -456,7 +478,6 @@ const openAppUI = () => {
 		appWin?.webview?.on("dom-ready", () => {
 			appWin?.maximize();
 			appWin?.focus();
-
 		})
 	}
 }
