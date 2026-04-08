@@ -260,7 +260,6 @@ export default class Youtube {
                     const endpoint = url + `&id=${tracks_out_database.map((item: any) => item.id).slice(st, ed + 1).join("%2C")}`
                     const data: any = await this.fetch_data(endpoint);
                     for (const item of data.items) {
-
                         temp_tracks.push({
                             etag: "",
                             source: "youtube",
@@ -275,7 +274,8 @@ export default class Youtube {
                             id: item.id as string,
                             duration: item.snippet.liveBroadcastContent === "none" ? iso8601DurationToMilliseconds(item.contentDetails.duration) : 0, // in miliseconds
                             releasedDate: item.snippet.publishedAt.split("T")[0] as unknown as string ?? "",
-                            matched: null
+                            matched: null,
+                            liveBroadcastContent: item.snippet.liveBroadcastContent === "live"
                         })
                     }
                     st = ed + 1;
