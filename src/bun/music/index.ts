@@ -89,10 +89,6 @@ export default class Player {
         }
     }
 
-    sleep(ms: number) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
     converting(...args: string[]): Promise<any> {
         return new Promise(async (resolve) => {
             const [name, input, output] = args;
