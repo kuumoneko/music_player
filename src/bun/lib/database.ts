@@ -1,4 +1,6 @@
 import { join } from "node:path";
+import consolelog, { LogType } from "./log.ts"
+import { rename } from "node:fs/promises";
 
 /**
      * Get data from database
@@ -33,8 +35,10 @@ export async function writeDataToDatabase(...args: any[]) {
 
     const filePath = join(...args.slice(0, -2), `${filename}.json`);
     try {
-        await Bun.write(filePath, JSON.stringify(data), { createPath: true });
+
+        await Bun.write(`${filePath}.tmp`, JSON.stringify(data, null, 2), { createPath: true });
+        await rename(`${filePath}.tmp`, filePath);
     } catch (error) {
-        console.error(`Failed to write to database file: ${filePath}`, error);
+        consolelog(`Failed to write to database file: ${filePath} \n Error: ${error}`, LogType.Error);
     }
 }
