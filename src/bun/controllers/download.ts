@@ -1,10 +1,8 @@
 import { getDataFromDatabase } from "../lib/database";
-import wait_for_downloader from "../lib/player";
 import Player, { Audio_format } from "../music/index.ts";
 import { Download_item, Status, Track } from "../../shared/types.ts";
 
 export default async function DownloadController(player: Player, userData: string) {
-    await wait_for_downloader(player);
     const { download: download_queue, folder: download_folder } = await getDataFromDatabase(userData, "data", "profile");
 
     player.status = {
