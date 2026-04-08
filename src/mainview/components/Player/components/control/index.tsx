@@ -126,7 +126,7 @@ export default function ControlUI() {
 
                 {/* Backward */}
                 <button
-                    className={`mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${playedTrack ? "opacity-50 pointer-events-none" : ""}`}
+                    className={`mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${!playedTrack ? "opacity-50 pointer-events-none" : ""}`}
                     onClick={() => window.api.rpc.request.previous()}
                 >
                     <FontAwesomeIcon icon={faStepBackward} />
