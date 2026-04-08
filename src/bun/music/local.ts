@@ -86,6 +86,7 @@ export class Local {
                                 ],
                                 thumbnail: await this.get_Thumbnail(file),
                                 index: index,
+                                liveBroadcastContent: false,
                             });
                         } catch (e) {
                             reject(new Error("Failed to parse ffprobe output."));
@@ -134,6 +135,6 @@ export class Local {
             }
         })
         await Promise.all(file);
-        writeDataToDatabase(this.folder, "local", this.data);
+        await writeDataToDatabase(this.folder, "local", this.data);
     }
 }
