@@ -194,7 +194,7 @@ export default function List({
                                                     pin.filter(
                                                         (data) =>
                                                             data.source ===
-                                                                item.source &&
+                                                                source &&
                                                             data.id ===
                                                                 item.id &&
                                                             data.type === type,
@@ -207,7 +207,7 @@ export default function List({
                                                         pin.filter(
                                                             (data) =>
                                                                 data.source ===
-                                                                    item.source &&
+                                                                    source &&
                                                                 data.id ===
                                                                     item.id &&
                                                                 data.type ===
@@ -240,7 +240,7 @@ export default function List({
                                                                     ...pin,
                                                                     {
                                                                         id: item.id,
-                                                                        source: item.source,
+                                                                        source: source,
                                                                         type: type,
                                                                         thumbnail:
                                                                             item.thumbnail,
