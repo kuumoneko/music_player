@@ -2,6 +2,7 @@ import {
     faDownload,
     faListDots,
     faShare,
+    faThumbTack,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDuration } from "@/mainview/utils/format.ts";
@@ -36,6 +37,7 @@ export default function List({
         tail: Math.min(max_items, list.length),
     });
     const [show_list, setlist] = useState<any[]>([]);
+    const [pin, setPin] = useState<any[]>([]);
 
     useEffect(() => {
         async function run() {
@@ -44,6 +46,12 @@ export default function List({
         }
         run();
     }, [sight, list]);
+
+    useEffect(() => {
+        window.api.rpc.request
+            .getProfileData("pin")
+            .then((data) => setPin(data));
+    }, [list]);
 
     // remove  #hashtag from the title
     const remove_hashtag = (title: string): string => {
@@ -179,6 +187,85 @@ export default function List({
                                             >
                                                 <FontAwesomeIcon
                                                     icon={faDownload}
+                                                />
+                                            </span>
+                                            <span
+                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${
+                                                    pin.filter(
+                                                        (data) =>
+                                                            data.source ===
+                                                                item.source &&
+                                                            data.id ===
+                                                                item.id &&
+                                                            data.type === type,
+                                                    ).length > 0
+                                                        ? "text-red-600"
+                                                        : "text-slate-200"
+                                                }`}
+                                                onClick={() => {
+                                                    const isPin =
+                                                        pin.filter(
+                                                            (data) =>
+                                                                data.source ===
+                                                                    item.source &&
+                                                                data.id ===
+                                                                    item.id &&
+                                                                data.type ===
+                                                                    type,
+                                                        ).length > 0;
+                                                    if (isPin) {
+                                                        const temp = pin.filter(
+                                                            (item: any) => {
+                                                                return (
+                                                                    item.id !==
+                                                                        id &&
+                                                                    item.source !==
+                                                                        source &&
+                                                                    item.type !==
+                                                                        type
+                                                                );
+                                                            },
+                                                        );
+                                                        setPin(temp);
+                                                        window.api.rpc.request.setProfileData(
+                                                            {
+                                                                key: "pin",
+                                                                data: temp,
+                                                            },
+                                                        );
+                                                    } else {
+                                                        const temp = [
+                                                            ...new Map(
+                                                                [
+                                                                    ...pin,
+                                                                    {
+                                                                        id: item.id,
+                                                                        source: item.source,
+                                                                        type: type,
+                                                                        thumbnail:
+                                                                            item.thumbnail,
+                                                                        name: item.name,
+                                                                    },
+                                                                ].map(
+                                                                    (item) => [
+                                                                        `${item.source}:${type}:${item.id}`,
+                                                                        item,
+                                                                    ],
+                                                                ),
+                                                            ).values(),
+                                                        ];
+                                                        window.api.rpc.request.setProfileData(
+                                                            {
+                                                                key: "pin",
+                                                                data: temp,
+                                                            },
+                                                        );
+                                                        setPin(temp);
+                                                    }
+                                                }}
+                                            >
+                                                <FontAwesomeIcon
+                                                    icon={faThumbTack}
                                                 />
                                             </span>
                                         </div>
