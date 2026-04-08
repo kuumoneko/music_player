@@ -27,13 +27,13 @@ export async function getDataFromDatabase(...args: string[]): Promise<any> {
      * args[-1] is data
      * args[-2] is filename
 */
-export function writeDataToDatabase(...args: any[]): void {
+export async function writeDataToDatabase(...args: any[]) {
     const filename = args[args.length - 2];
     const data = args[args.length - 1];
 
     const filePath = join(...args.slice(0, -2), `${filename}.json`);
     try {
-        Bun.write(filePath, JSON.stringify(data), { createPath: true });
+        await Bun.write(filePath, JSON.stringify(data), { createPath: true });
     } catch (error) {
         console.error(`Failed to write to database file: ${filePath}`, error);
     }
