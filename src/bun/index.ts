@@ -629,12 +629,12 @@ playWin?.webview?.on("dom-ready", () => {
 	playWin.hide();
 })
 
-setInterval(() => {
-	writeDataToDatabase(userData, "data", "profile", profile);
-	writeDataToDatabase(userData, 'data', 'user', user);
-	writeDataToDatabase(userData, 'data', 'tracks', player.youtube.tracks);
-	writeDataToDatabase(userData, 'data', 'playlists', player.youtube.playlists);
-	writeDataToDatabase(userData, 'data', 'artists', player.youtube.artists);
+setInterval(async () => {
+	await writeDataToDatabase(userData, "data", "profile", profile);
+	await writeDataToDatabase(userData, 'data', 'user', user);
+	await writeDataToDatabase(userData, 'data', 'tracks', player.youtube.tracks);
+	await writeDataToDatabase(userData, 'data', 'playlists', player.youtube.playlists);
+	await writeDataToDatabase(userData, 'data', 'artists', player.youtube.artists);
 
 	if (isDiscord === true && discordRPC?.isReady === true) {
 		if (user.current.duration !== 0) {
