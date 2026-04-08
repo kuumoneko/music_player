@@ -33,7 +33,7 @@ declare global {
                         isLoading: boolean,
                         playedTrack: boolean,
                         current: {
-                            time: number, duration: number
+                            time: number, duration: number, isLived: boolean
                         }
                     }>,
                     setUserData: <K extends keyof UserData>({ key, data }: { key: K, data: UserData[K] }) => Promise<void>,
@@ -64,7 +64,7 @@ declare global {
                     setcurrentTime: (time: number) => Promise<void>
                     setDuration: (time: number) => Promise<void>
                     setIsPlaying: (isPlaying: boolean) => Promise<void>
-
+                    setIsLive: (isLive: boolean) => Promise<void>
                 }
             }
         }
