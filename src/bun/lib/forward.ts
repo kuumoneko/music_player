@@ -13,11 +13,13 @@ export default async function forward(player: Player, user: UserData) {
                 id: id,
                 title: tracks[0].name,
                 thumbnail: tracks[0].thumbnail,
-                artist: tracks[0].artist.map((item) => { return item.name }).join(", ")
+                artist: tracks[0].artist.map((item) => { return item.name }).join(", "),
+                liveBroadcastContent: tracks[0].liveBroadcastContent
             }
             user.current = {
                 time: 0,
-                duration: tracks[0].duration
+                duration: tracks[0].duration,
+                isLived: tracks[0].liveBroadcastContent
             }
         }
         else {
@@ -26,11 +28,14 @@ export default async function forward(player: Player, user: UserData) {
                 source: "local",
                 id: id,
                 thumbnail: track.thumbnail,
-                artist: track.artist.map((item) => { return item.name }).join(", "), title: track.name
+                artist: track.artist.map((item) => { return item.name }).join(", "), title: track.name,
+                liveBroadcastContent: track?.liveBroadcastContent
+
             }
             user.current = {
                 time: 0,
-                duration: track.duration
+                duration: track.duration,
+                isLived: track.liveBroadcastContent
             }
         }
     }
@@ -82,11 +87,14 @@ export default async function forward(player: Player, user: UserData) {
                 id: trackId.id,
                 title: tracks[0].name,
                 thumbnail: tracks[0].thumbnail,
-                artist: tracks[0].artist.map((item) => { return item.name }).join(", ")
+                artist: tracks[0].artist.map((item) => { return item.name }).join(", "),
+                liveBroadcastContent: tracks[0].liveBroadcastContent
+
             }
             user.current = {
                 time: 0,
-                duration: tracks[0].duration
+                duration: tracks[0].duration,
+                isLived: tracks[0].liveBroadcastContent
             }
 
 
