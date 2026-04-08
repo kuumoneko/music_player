@@ -1,6 +1,7 @@
 import { Playlist, Track, Artist, API_Key, System } from "../../shared/types.ts";
 import iso8601DurationToMilliseconds from "../lib/time.ts";
 import { getDataFromDatabase } from "../lib/database.ts";
+import consolelog, { LogType } from "../lib/log.ts"
 import { join } from "node:path";
 
 function getNextResetTimestamp() {
@@ -119,6 +120,10 @@ export default class Youtube {
         return this.getRandomItem(temp).ApiKey
     }
 
+    log(message: string) {
+        consolelog(message, LogType.Error)
+    }
+
     get_data(doc: "tracks" | "playlists" | "artists", ids: string[]) {
         try {
             const res = ids.map((id: string) => {
@@ -127,7 +132,7 @@ export default class Youtube {
 
             return res;
         } catch (error) {
-            console.error(error);
+            this.log(error);
             return [];
         }
     }
@@ -141,7 +146,7 @@ export default class Youtube {
             })
             return "ok"
         } catch (error) {
-            console.error(error);
+            this.log(error);
             return undefined
         }
     }
@@ -186,7 +191,7 @@ export default class Youtube {
                             data = JSON.parse(data)
                         }
                         catch (e) {
-                            console.log(e)
+                            this.log(e)
                         }
                         if (data?.error && data?.error?.errors[0].reason === "quotaExceeded") {
                             const temp = this.api_keys;
@@ -209,7 +214,7 @@ export default class Youtube {
                     }
                 }
                 catch (e) {
-                    console.log(e)
+                    this.log(e)
                 }
             }
         }
@@ -293,7 +298,7 @@ export default class Youtube {
             return res;
         }
         catch (e: any) {
-            console.error(e)
+            this.log(e)
             throw new Error(e.message);
         }
     }
@@ -371,7 +376,7 @@ export default class Youtube {
             }
             catch (e) {
                 this.running = this.running.filter((item: { name: string }) => { return item.name !== `playlist:${id}` })
-                console.error(e)
+                this.log(e)
             }
         })
     }
@@ -400,7 +405,7 @@ export default class Youtube {
             return durations;
         }
         catch (e) {
-            console.error(e);
+            this.log(e);
             return durations;
         }
     }
@@ -492,7 +497,7 @@ export default class Youtube {
             }
         }
         catch (e: any) {
-            console.warn(e)
+            this.log(e)
             throw new Error(e);
         }
     }
@@ -561,7 +566,7 @@ export default class Youtube {
         }
         catch (e) {
             this.running = this.running.filter((item: { name: string }) => { return item.name !== `artist:${id}` })
-            console.error(e);
+            this.log(e);
             return null as unknown as Artist;
         }
     }
@@ -663,14 +668,14 @@ export default class Youtube {
                     new_tracks.push(...ids);
                 }
                 catch (e) {
-                    console.log(e);
+                    this.log(e);
                 }
             }
 
             const tracks = await this.fetch_track(new_tracks);
             return tracks;
         } catch (e) {
-            console.error(e);
+            this.log(e);
             return []
         }
     }

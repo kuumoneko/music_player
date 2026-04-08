@@ -6,6 +6,7 @@ import { Local } from "./local.ts";
 import areStringsSimilar from "../lib/comapre_string.ts";
 import { spawn } from "node:child_process";
 import { getDataFromDatabase } from "../lib/database.ts";
+import consolelog, { LogType } from "../lib/log.ts"
 
 export enum Audio_format {
     aac = "aac",
@@ -78,13 +79,13 @@ export default class Player {
             if (checked.length === 0) {
                 try {
                     unlinkSync(`${this.download_folder}\\${filename}${ext}`);
-                    console.log(`Deleted: ${filename}`);
+                    consolelog(`Deleted: ${filename}`, LogType.Info)
                 } catch (error) {
-                    console.error(`Error deleting ${filename}:`, error);
+                    consolelog(`Error when deleting ${filename}`, LogType.Error)
                 }
             }
             else {
-                console.log(`No Deleted: ${filename}`);
+                consolelog(`No deleted: ${filename}`, LogType.Info)
             }
         }
     }
@@ -93,13 +94,7 @@ export default class Player {
         return new Promise(async (resolve) => {
             const [name, input, output] = args;
 
-            const process = spawn(`${this.folder}\\bin\\ffmpeg.exe`, ["-i", `"${this.download_folder}\\${name}.${input}"`, "-c:a", "aac", "-o", `"${this.download_folder}\\${name}.${output}"`], { shell: true });
-            process.stdout.on('data', (data) => {
-                console.log(`stdout: ${data}`);
-            });
-            process.stderr.on('data', (data) => {
-                console.error(`stderr: ${data}`);
-            });
+            const process = spawn(`${this.folder}\\bin\\ffmpeg.exe`, ["-i", `"${this.download_folder}\\${name}.${input}"`, "-c:a", "aac", "-o", `"${this.download_folder}\\${name}.${output}"`], { shell: true, stdio: "inherit" });
 
             process.on("close", (code: number) => {
                 if (code === 0) {
@@ -118,7 +113,6 @@ export default class Player {
             this.status = {
                 data: Status.prepare, track: title
             }
-            console.log(title, option)
             const process = spawn(`${path.resolve(this.folder, "bin", "yt-dlp.exe")}`, option, { shell: true });
 
             process.stdout.on("data", (data) => {
@@ -131,8 +125,8 @@ export default class Player {
 
                         if (percentMatch && percentMatch[1]) {
                             const percentage = percentMatch[1];
+                            consolelog(`Progress: ${percentage}%`, LogType.Info)
 
-                            console.log(`Progress: ${percentage}%`);
                             this.status = {
                                 data: Status.downloading, track: `${percentage}%`
                             }
@@ -142,7 +136,7 @@ export default class Player {
             });
 
             process.stderr.on('data', (data) => {
-                console.error(`stderr: ${data}`);
+                consolelog(`stderr: ${data}`, LogType.Error)
             })
 
             process.on("close", (code: number) => {
@@ -216,7 +210,7 @@ export default class Player {
                     try {
                         unlinkSync(path.join(this.download_folder, matchingFile));
                     } catch (e) {
-                        console.error(e);
+                        consolelog(e, LogType.Error)
                     }
                     continue;
                 } else if (currentExt === "m4a") {
@@ -314,7 +308,7 @@ export default class Player {
             return bestMatch ?? null;
         }
         catch (e) {
-            console.error(e)
+            consolelog(e, LogType.Error);
             return null
         }
     }

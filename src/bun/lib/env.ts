@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import consolelog, { LogType } from "../lib/log.ts"
 import { rm, readdir, unlink, mkdir, exists } from 'node:fs/promises';
 
 export async function checkUserDataFolder(userDataFolder: string) {
@@ -60,7 +61,7 @@ export async function checkUserDataFolder(userDataFolder: string) {
             try {
                 await rm(fullPath, { recursive: true });
             } catch (e) {
-                console.error(`Could not remove directory: ${fullPath}`);
+                consolelog(e, LogType.Error)
             }
         }
     }

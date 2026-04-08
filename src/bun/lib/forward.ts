@@ -1,5 +1,6 @@
 import { Shuffle, Track, UserData } from "../../shared/types";
 import Player from "../music";
+import consolelog, { LogType } from "../lib/log.ts"
 
 export default async function forward(player: Player, user: UserData) {
     user.playedTrack = Array.from(new Set(user.playedTrack.concat([user.currentPlaying.id])));
@@ -76,7 +77,7 @@ export default async function forward(player: Player, user: UserData) {
                         }
                     }
                 } catch (error) {
-                    console.log(error)
+                    consolelog(error, LogType.Error)
                 }
             }
             const trackId = user.nextfrom.next[0];

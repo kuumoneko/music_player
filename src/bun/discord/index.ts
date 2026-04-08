@@ -1,6 +1,7 @@
 import net from "node:net";
 import { getDataFromDatabase } from "../lib/database";
 import Player from "../music";
+import consolelog, { LogType } from "../lib/log.ts"
 
 export default class DiscordRPC {
     private socket: net.Socket | null = null;
@@ -17,7 +18,7 @@ export default class DiscordRPC {
             this.socket = net.connect('\\\\.\\pipe\\discord-ipc-0');
 
             this.socket.on('connect', () => {
-                console.log('Connected to pipe, sending handshake...');
+                consolelog('Connected to pipe, sending handshake...', LogType.Info);
                 this.send(0, { v: 1, client_id: this.clientId });
             });
 
@@ -28,7 +29,7 @@ export default class DiscordRPC {
                 }
 
                 if (evt === 'READY') {
-                    console.log('Discord is READY!');
+                    consolelog('Discord is READY!', LogType.Info);
                     this.isReady = true;
                     this.clearMusic();
                     resolve(true);
@@ -41,7 +42,7 @@ export default class DiscordRPC {
 
     async setMusic(track: any, userData: string, player: Player, current: { time: number, duration: number }, isPlaying: boolean) {
         if (!this.isReady) {
-            console.error("Cannot set activity: Discord not ready yet.");
+            consolelog("Cannot set activity: Discord not ready yet.", LogType.Error);
             return;
         }
 
@@ -110,7 +111,7 @@ export default class DiscordRPC {
 
     clearMusic() {
         if (!this.isReady) {
-            console.error("Cannot set activity: Discord not ready yet.");
+            consolelog("Cannot set activity: Discord not ready yet.", LogType.Error);
             return;
         }
 
