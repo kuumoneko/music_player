@@ -185,7 +185,9 @@ audioRef.addEventListener("ended", () => {
         isFirstLoad = false;
         playCurrentTrack();
     } else {
-        window.api.rpc.request.endTrack();
+        window.api.rpc.request.endTrack().then(data => {
+            loadTrack(data).then(() => { if (data) playCurrentTrack(); });
+        })
     }
 });
 
@@ -244,7 +246,9 @@ const onPlayerStateChange = (event: any) => {
             event.target.playVideo();
             isPlayed = true;
         } else {
-            window.api.rpc.request.endTrack();
+            window.api.rpc.request.endTrack().then(data => {
+                loadTrack(data).then(() => { if (data) playCurrentTrack(); });
+            })
         }
     }
 };
