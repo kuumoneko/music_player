@@ -16,6 +16,7 @@ import backward from "./lib/backward.ts";
 import getLocalIPv4 from "./lib/ipv4.ts";
 import { checkUserDataFolder } from "./lib/env.ts"
 import consoleLog, { LogType } from "./lib/log.ts";
+import { getAllLocalFiles, getLocalFileByIndex } from "./db/index.ts";
 // Features
 import Player from "./music/index.ts"
 import Discord from "./discord/index.ts";
@@ -63,7 +64,6 @@ function formatBytes(bytes: number, decimals = 2) {
 	const dm = decimals < 0 ? 0 : decimals;
 	const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 
-	// Math.log identifies which index of 'sizes' we need
 	const i = Math.floor(Math.log(bytes) / Math.log(k));
 
 	return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
@@ -132,7 +132,7 @@ const play = () => {
 }
 player = new Player(userData, APP_ROOT);
 if (profile.folder.length > 0 && isLocal) {
-	player?.local?.getfolder(profile.folder);
+	player.local.getfolder(profile.folder);
 }
 
 // @ts-ignore
@@ -158,7 +158,13 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				}
 			},
 			getLocalfile: async () => {
-				return player.local.data
+				try {
+					const result = getAllLocalFiles();
+					return result;
+				} catch (error) {
+					addLog(error);
+					return null;
+				}
 			},
 			searchMusic: async ({ type, query }: { type: "video" | "playlist" | "artist", query: string }) => {
 				try {
@@ -315,10 +321,9 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				if (source === "youtube") {
 					const track = await player.youtube.fetch_track([item.id])
 					user.currentPlaying = {
-						source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", "), liveBroadcastContent: track[0].liveBroadcastContent
+						source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", ")
 					}
 					user.current.duration = track[0].duration;
-					user.current.isLived = track[0].liveBroadcastContent;
 					if (type === "track") {
 						user.nextfrom = {
 							from: `youtube:track:${id}`,
@@ -348,15 +353,16 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					}
 				}
 				else if (source === "local") {
-					const track = player.local.data.find((localItem) => localItem.id === item.id);
+					const localFiles = getAllLocalFiles();
+					const track = localFiles.find((localItem) => localItem.id === item.id);
 					user.currentPlaying = {
-						source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index, liveBroadcastContent: track?.liveBroadcastContent
+						source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index
 					}
 					user.current.duration = track?.duration;
 					user.current.isLived = false;
 					user.nextfrom = {
 						from: `local:local`,
-						next: player.local.data.slice(0, 20)
+						next: localFiles.slice(0, 20)
 					}
 				}
 				user.current.time = 0;
@@ -477,7 +483,6 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 				user.isPlaying = isPlaying;
 			},
 			setisLive: (isLive: boolean) => {
-				user.currentPlaying.liveBroadcastContent = isLive;
 				user.current.isLived = isLive;
 			}
 		}
@@ -598,8 +603,7 @@ Bun.serve({
 						headers: { "Access-Control-Allow-Origin": "*" }
 					});
 				}
-
-				const fileName = player.local.data.find((item: Track) => item.index === Number(filePath)).id
+				const fileName = getLocalFileByIndex(Number(filePath)).id
 				let file: any;
 				file = Bun.file(fileName);
 				const Firstexists = await file.exists();
@@ -651,9 +655,6 @@ playWin?.webview?.on("dom-ready", () => {
 setInterval(async () => {
 	await writeDataToDatabase(userData, "data", "profile", profile);
 	await writeDataToDatabase(userData, 'data', 'user', user);
-	await writeDataToDatabase(userData, 'data', 'tracks', player.youtube.tracks);
-	await writeDataToDatabase(userData, 'data', 'playlists', player.youtube.playlists);
-	await writeDataToDatabase(userData, 'data', 'artists', player.youtube.artists);
 
 	if (isDiscord === true && discordRPC?.isReady === true) {
 		if (user.current.duration !== 0) {
@@ -664,14 +665,3 @@ setInterval(async () => {
 		}
 	}
 }, 10 * 1000);
-
-setInterval(async () => {
-	if (!playWin) return;
-	await (playWin.webview.rpc as any).request.setVolume(user.volume).catch(() => consoleLog("Error on sending rpc", LogType.Error))
-	if (user.nextfrom.next.length < 2) {
-		await (playWin.webview.rpc as any).request.setIsRepeat(true).catch(() => consoleLog("Error on sending rpc", LogType.Error));
-	}
-	else {
-		await (playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One).catch(() => consoleLog("Error on sending rpc", LogType.Error));
-	}
-}, 100)
