@@ -1,12 +1,12 @@
 import { readdirSync } from "node:fs";
 import { extname, join } from "node:path";
-import { getDataFromDatabase, writeDataToDatabase } from "../lib/database.ts";
 import consolelog, { LogType } from "../lib/log.ts"
 import { spawn } from "node:child_process";
 import { Track } from "@/shared/types.ts";
+import { getAllLocalFiles } from "../db/index.ts";
+import { writeManyLocalFiles } from "../db/index.ts";
 
 export class Local {
-    public data: Track[] = [];
     public folder: string = "";
     public appPath: string = "";
 
@@ -87,7 +87,6 @@ export class Local {
                                 ],
                                 thumbnail: await this.get_Thumbnail(file),
                                 index: index,
-                                liveBroadcastContent: false,
                             });
                         } catch (e) {
                             reject(new Error("Failed to parse ffprobe output."));
@@ -108,10 +107,10 @@ export class Local {
         const dirents = readdirSync(folder, {
             withFileTypes: true,
         });
-        const local_files = await getDataFromDatabase(this.folder, "local");
+        const local_files = getAllLocalFiles(); //await getDataFromDatabase(this.folder, "local");
 
         const audioExtensions = [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"];
-
+        const result: Track[] = []
         const audiofiles = dirents.filter(
             (dirent) =>
                 dirent.isFile() &&
@@ -126,16 +125,16 @@ export class Local {
 
             if (!get_data || get_data.thumbnail.length === 0) {
                 file.push(this.parseFile(filePath, index).then((data: any) => {
-                    this.data.push(data);
+                    result.push(data);
                 }).catch((e: any) => {
                     consolelog(e, LogType.Error)
                 }))
             }
             else {
-                this.data.push(get_data)
+                result.push(get_data)
             }
         })
         await Promise.all(file);
-        await writeDataToDatabase(this.folder, "local", this.data);
+        writeManyLocalFiles(result)
     }
 }

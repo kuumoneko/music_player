@@ -3,6 +3,9 @@ import iso8601DurationToMilliseconds from "../lib/time.ts";
 import { getDataFromDatabase } from "../lib/database.ts";
 import consolelog, { LogType } from "../lib/log.ts"
 import { join } from "node:path";
+import { getTracks } from "../db/tracks/get.ts";
+import { writeManyTracks } from "../db/tracks/write.ts";
+import { getArtistById, getPlaylist, writeArtist, writePlaylist } from "../db/index.ts";
 
 function getNextResetTimestamp() {
     const now = new Date();
@@ -235,23 +238,12 @@ export default class Youtube {
     async fetch_track(ids: string[]): Promise<Track[]> {
         try {
             ids = Array.from(new Set([...ids]));
-            const tracks: Track[] = this.get_data("tracks", ids) as Track[];
-            const tracks_in_database: Track[] = tracks.filter(
-                (item: {
-                    name: string,
-                    id: string
-                }) => {
-                    return item.name !== undefined
-                })
+            const tracks = getTracks(ids) ?? [];
+            const tracks_in_database: Track[] = tracks.filter((track: Track) => {
+                return ids.findIndex(id => id === track.id) !== -1
+            })
 
-            const tracks_out_database = tracks.filter(
-                (item: {
-                    name: string,
-                    id: string
-                }) => {
-                    return item.name === undefined
-                })
-
+            const tracks_out_database = ids.filter(track => tracks_in_database.findIndex(trackk => trackk.id === track) === -1);
             const temp_tracks: Track[] = []
             if (tracks_out_database.length > 0) {
                 let st = 0, ed = 49;
@@ -262,7 +254,7 @@ export default class Youtube {
                 const url = `${this.create_end_point(endpoints[EndPoints.Videos])}`;
 
                 while (st <= tracks_out_database.length - 1) {
-                    const endpoint = url + `&id=${tracks_out_database.map((item: any) => item.id).slice(st, ed + 1).join("%2C")}`
+                    const endpoint = url + `&id=${tracks_out_database.map((item: any) => item).slice(st, ed + 1).join("%2C")}`
                     const data: any = await this.fetch_data(endpoint);
                     for (const item of data.items) {
                         temp_tracks.push({
@@ -279,8 +271,6 @@ export default class Youtube {
                             id: item.id as string,
                             duration: item.snippet.liveBroadcastContent === "none" ? iso8601DurationToMilliseconds(item.contentDetails.duration) : 0, // in miliseconds
                             releasedDate: item.snippet.publishedAt.split("T")[0] as unknown as string ?? "",
-                            matched: null,
-                            liveBroadcastContent: item.snippet.liveBroadcastContent === "live"
                         })
                     }
                     st = ed + 1;
@@ -290,10 +280,9 @@ export default class Youtube {
                     }
                 }
             }
-
             const res = [...tracks_in_database, ...temp_tracks]
-            if (temp_tracks.length > 0) {
-                this.write_data("tracks", tracks_out_database.map((item: any) => item.id), temp_tracks)
+            if (res.length > 0) {
+                writeManyTracks(res)
             }
             return res;
         }
@@ -307,11 +296,11 @@ export default class Youtube {
         return new Promise(async (resolve) => {
             const tracks: string[] = [];
             const url = `${this.create_end_point(endpoints[EndPoints.PlaylistItem])}&maxResults=${this.maxResults}&playlistId=${id}`;
-            let this_playlist = (this.get_data("playlists", [id]) as any)[0] as unknown as Playlist;
+            let this_playlist = getPlaylist(id)
             try {
                 let thumbnail: string = "";
-                if (this_playlist && ((this_playlist.ids as string[] ?? []).length) > 0) {
-                    const tracks = await this.fetch_track(this_playlist.ids as string[]);
+                if (this_playlist !== null && this_playlist !== undefined && ((this_playlist?.ids as string[] ?? []).length) > 0) {
+                    const tracks = await this.fetch_track(this_playlist?.ids as string[]);
                     resolve({
                         source: "youtube",
                         name: this_playlist.name,
@@ -335,11 +324,11 @@ export default class Youtube {
                 while (!done && pagetoken !== undefined && pagetoken !== null) {
                     const endpoint = url + `&pageToken=${pagetoken}`;
                     let video = await this.fetch_data(endpoint, etag);
-                    if (video === null && (this_playlist.ids as string[] ?? []).length >= video?.pageInfo?.totalResults) {
+                    if (video === null && (this_playlist?.ids as string[] ?? []).length >= video?.pageInfo?.totalResults) {
                         done = true
                         break;
                     }
-                    else if ((this_playlist.ids as string[] ?? []).length === video?.pageInfo?.totalResults) {
+                    else if ((this_playlist?.ids as string[] ?? []).length === video?.pageInfo?.totalResults) {
                         done = true
                         break;
                     }
@@ -363,20 +352,24 @@ export default class Youtube {
                     this_playlist = {
                         etag: etag ?? "",
                         thumbnail: thumbnail,
-                        name: this_playlist.name ?? await this.fetch_playlist_name(id),
-                        ids: Array.from(new Set([...tracks, ...this_playlist.ids as [] ?? []])),
+                        name: this_playlist?.name ?? await this.fetch_playlist_name(id),
+                        ids: Array.from(new Set([...tracks, ...this_playlist?.ids as [] ?? []])),
                         id: id,
                         source: "youtube",
                         duration: 0
                     }
                     pagetoken = video.nextPageToken
                 }
-                this.running = this.running.filter((item: { name: string }) => { return item.name !== `playlist:${id}` })
-                this.write_data("playlists", [id], [this_playlist]);
+                this.running = this.running.filter((item: { name: string }) => { return item.name !== `playlist:${id}` });
+                const Realtracks = await this.fetch_track(this_playlist.ids);
+                writePlaylist({
+                    ...this_playlist,
+                    tracks: Realtracks
+                });
             }
             catch (e) {
                 this.running = this.running.filter((item: { name: string }) => { return item.name !== `playlist:${id}` })
-                this.log(e)
+                this.log(`Fetch playlist id=${id}, ${e}`)
             }
         })
     }
@@ -510,7 +503,7 @@ export default class Youtube {
         } else {
             return null as unknown as Artist;
         }
-        let this_artist = (this.get_data("artists", [id]) as Artist[])[0];
+        let this_artist = getArtistById(id);//(this.get_data("artists", [id]) as Artist[])[0];
         try {
             let etag = (this_artist?.etag && this_artist.etag?.length > 0) ? this_artist?.etag : undefined
             const url = `${this.create_end_point(endpoints[EndPoints.Artist])}&id=${id}`;
@@ -523,10 +516,11 @@ export default class Youtube {
                 }
                 const playlist = await this.fetch_playlist(playlist_id)
                 const artist_tracks = playlist.tracks as Track[];
-                this.write_data("artists", [id], [{
-                    ...this_artist,
-                    playlistId: playlist_id
-                }]);
+                writeArtist({ ...this_artist, playlistId: playlist_id })
+                // this.write_data("artists", [id], [{
+                //     ...this_artist,
+                //     playlistId: playlist_id
+                // }]);
                 this.running = this.running.filter((item: { name: string }) => { return item.name !== `artist:${id}` })
 
                 return {
@@ -552,7 +546,8 @@ export default class Youtube {
                 playlistId: playlist_id,
                 tracks: []
             }
-            this.write_data("artists", [id], [this_artist]);
+            writeArtist(this_artist)
+            // this.write_data("artists", [id], [this_artist]);
             this.running = this.running.filter((item: { name: string }) => { return item.name !== `artist:${id}` })
 
             return {
@@ -572,13 +567,12 @@ export default class Youtube {
     }
 
     async get_new_tracks(ids: string[]) {
-        // const new_tracks = this.getdata("new_tracks") ?? {};
 
         const base_playlist__url = `${this.create_end_point(endpoints[EndPoints.PlaylistItem])}&maxResults=${this.maxResults}`;
         const base_artist__url = `${this.create_end_point(endpoints[EndPoints.Artist])}`;
 
         const artist = async (id: string): Promise<string> => {
-            let this_artist: Artist = this.get_data("artists", [id]) as unknown as Artist
+            let this_artist: Artist = getArtistById(id)//this.get_data("artists", [id]) as unknown as Artist
             const artist_url = base_artist__url + `&id=${id}`;
 
             const artist_etag = (this_artist?.etag && this_artist?.etag?.length > 0) ? this_artist?.etag : undefined;
@@ -613,22 +607,18 @@ export default class Youtube {
                     tracks: []
                 }
             }
-
-            this.write_data("artists", [id], [this_artist]);
+            writeArtist(this_artist)
             return playlistId;
         }
 
         const playlist = async (id: string) => {
 
-            // check playlist
-            let this_playlist: Playlist = this.get_data("playlists", [id]) as unknown as Playlist
+            let this_playlist: Playlist = getPlaylist(id);
             const playlist_etag = (this_playlist?.etag && this_playlist?.etag?.length > 0) ? this_playlist?.etag : undefined;
 
-            // check new_tracks
             let this_new_tracks: any = { etag: "", ids: [] };
             const new_tracks_etag = this_new_tracks.etag && this_new_tracks?.etag?.length > 0 ? this_new_tracks?.etag : undefined;
 
-            // fetch data
             const playlist_url = base_playlist__url + `&playlistId=${id}`;
             const videos = await this.fetch_data(playlist_url, playlist_etag);
 
@@ -636,26 +626,25 @@ export default class Youtube {
                 playlist_etag && new_tracks_etag &&
                 playlist_etag !== new_tracks_etag
             ) {
-                this_new_tracks.ids = this_playlist.ids;
+                this_new_tracks.ids = this_playlist?.ids;
                 this_new_tracks.etag = playlist_etag;
             }
             else if (videos === null) {
-                this_new_tracks.ids.push(...this_playlist.ids?.slice(0, 6) ?? [])
+                this_new_tracks.ids.push(...this_playlist?.ids?.slice(0, 6) ?? [])
             }
             else {
                 const TotalResult = videos.pageInfo.totalResults;
                 this_new_tracks.ids.push(...videos.items.slice(0, 6).map((item: any) => { return item.snippet.resourceId.videoId }))
-                const ids = Array.from(new Set([...this_playlist.ids ?? [], ...this_new_tracks.ids]));
+                const ids = Array.from(new Set([...this_playlist?.ids ?? [], ...this_new_tracks.ids]));
                 if (ids.length <= TotalResult) {
                     this.fetch_playlist(id);
                 }
                 else {
                     this_playlist.ids = ids;
                     this_playlist.etag = videos.etag;
-                    this.write_data("playlists", [id], [this_playlist]);
+                    writePlaylist(this_playlist)
                 }
             }
-            // new_tracks[id] = this_new_tracks;
             return this_new_tracks.ids;
         }
 

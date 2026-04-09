@@ -1,3 +1,4 @@
+import { getAllLocalFiles } from "../db/index.ts";
 import Player from "../music/index.ts"
 export default async function MusicController(player: Player, data: { source, mode, type, id, query }) {
     const { source, mode, type, id, query }: {
@@ -49,8 +50,9 @@ export default async function MusicController(player: Player, data: { source, mo
             source === "local"
         ) {
             try {
+                const localFiles = getAllLocalFiles()
                 result = {
-                    tracks: player.local.data
+                    tracks: localFiles
                 };
             } catch (error: any) {
                 if (error.code === "ENOENT") {

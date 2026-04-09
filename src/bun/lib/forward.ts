@@ -1,6 +1,7 @@
 import { Shuffle, Track, UserData } from "../../shared/types";
 import Player from "../music";
 import consolelog, { LogType } from "../lib/log.ts"
+import { getLocalFileById } from "../db/index.ts";
 
 export default async function forward(player: Player, user: UserData) {
     user.playedTrack = Array.from(new Set(user.playedTrack.concat([user.currentPlaying.id])));
@@ -15,28 +16,25 @@ export default async function forward(player: Player, user: UserData) {
                 title: tracks[0].name,
                 thumbnail: tracks[0].thumbnail,
                 artist: tracks[0].artist.map((item) => { return item.name }).join(", "),
-                liveBroadcastContent: tracks[0].liveBroadcastContent
             }
             user.current = {
                 time: 0,
                 duration: tracks[0].duration,
-                isLived: tracks[0].liveBroadcastContent
+                isLived: false
             }
         }
         else {
-            const track = player.local.data.find((localItem) => localItem.id === id);
+            const track = getLocalFileById(id);
             user.currentPlaying = {
                 source: "local",
                 id: id,
                 thumbnail: track.thumbnail,
                 artist: track.artist.map((item) => { return item.name }).join(", "), title: track.name,
-                liveBroadcastContent: track?.liveBroadcastContent
-
             }
             user.current = {
                 time: 0,
                 duration: track.duration,
-                isLived: track.liveBroadcastContent
+                isLived: false
             }
         }
     }
@@ -89,13 +87,12 @@ export default async function forward(player: Player, user: UserData) {
                 title: tracks[0].name,
                 thumbnail: tracks[0].thumbnail,
                 artist: tracks[0].artist.map((item) => { return item.name }).join(", "),
-                liveBroadcastContent: tracks[0].liveBroadcastContent
 
             }
             user.current = {
                 time: 0,
                 duration: tracks[0].duration,
-                isLived: tracks[0].liveBroadcastContent
+                isLived: false
             }
 
 
