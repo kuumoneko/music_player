@@ -266,8 +266,7 @@ export interface Track {
     thumbnail: string,
     duration: number,
     releasedDate: string // DD-MM-YYYY,
-    matched?: string | null, index?: number // this is for local file,
-    liveBroadcastContent: boolean
+    index?: number // this is for local file,
 }
 
 export interface Search {
@@ -301,7 +300,7 @@ export interface UserData {
     volume: number,
     height: number, width: number,
     currentPlaying: {
-        source: string, id: string, title: string, thumbnail: string, artist: string, index?: number, liveBroadcastContent: boolean
+        source: string, id: string, title: string, thumbnail: string, artist: string, index?: number
     },
     queue: Track[],
     isMaximized: boolean, nextfrom: { from: string, next: Track[] },
