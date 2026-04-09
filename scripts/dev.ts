@@ -44,7 +44,7 @@ setTimeout(async () => {
         electrobunConfigText,
     );
     console.info("Done.");
-}, 2000);
+}, 1500);
 
 process.stdin.setRawMode(true);
 process.stdin.resume();
