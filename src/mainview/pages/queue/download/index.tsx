@@ -12,12 +12,22 @@ export default function Download_Queue() {
 
     useEffect(() => {
         async function run() {
-            const res = await window.api.rpc.request.getProfileData("download");
-
-            const playlists = res.filter((item: any) =>
+            const res =
+                await window.api.rpc.request.getUserData("downloadQueue");
+            const data = res.map((item) => {
+                const [source, mode, id] = item.split(":");
+                return {
+                    source,
+                    mode,
+                    id,
+                };
+            });
+            const playlists = data.filter((item: any) =>
                 item.mode.includes("playlist"),
             );
-            let tracks = res.filter((item: any) => item.mode.includes("track"));
+            let tracks = data.filter((item: any) =>
+                item.mode.includes("track"),
+            );
             const temp: any = {};
 
             for (const item of playlists) {
@@ -58,9 +68,16 @@ export default function Download_Queue() {
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
 
-            const hehe = [...playlists, ...tracks];
-            window.api.rpc.request.setProfileData({
-                key: "download",
+            const hehe = [
+                ...playlists.map(
+                    (item) => `${item.source}:${item.mode}:${item.id}`,
+                ),
+                ...tracks.map(
+                    (item) => `${item.source}:${item.mode}:${item.id}`,
+                ),
+            ];
+            window.api.rpc.request.setUserData({
+                key: "downloadQueue",
                 data: hehe,
             });
             setlist(JSON.stringify(temp));
@@ -75,8 +92,8 @@ export default function Download_Queue() {
                 onClick={async () => {
                     setlist("{}");
                     setqueue("[]");
-                    window.api.rpc.request.setProfileData({
-                        key: "download",
+                    window.api.rpc.request.setUserData({
+                        key: "downloadQueue",
                         data: [],
                     });
                 }}
@@ -146,9 +163,9 @@ export default function Download_Queue() {
                                                 setqueue(
                                                     JSON.stringify(queue_list),
                                                 );
-                                                window.api.rpc.request.setProfileData(
+                                                window.api.rpc.request.setUserData(
                                                     {
-                                                        key: "download",
+                                                        key: "downloadQueue",
                                                         data: queue_list,
                                                     },
                                                 );
@@ -315,7 +332,7 @@ export default function Download_Queue() {
                                                                         navigator.clipboard.writeText(
                                                                             url,
                                                                         );
-                                                                    } 
+                                                                    }
                                                                 }}
                                                             >
                                                                 <FontAwesomeIcon
