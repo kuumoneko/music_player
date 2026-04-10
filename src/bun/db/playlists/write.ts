@@ -1,6 +1,6 @@
 import db from "../setup.ts"
 import type { Playlist } from "../../../shared/types.ts";
-import { writeManyTracks } from "../tracks/write.ts";
+import writeTracks from "../tracks/write.ts";
 
 const upsertPlaylistStmt = db.prepare(`
   INSERT INTO playlists (id, etag, name, source, thumbnail, duration)
@@ -19,9 +19,9 @@ const insertPlaylistTrackStmt = db.prepare(`
   SELECT ?, id FROM tracks WHERE id = ?;
 `);
 
-export const writePlaylist = db.transaction((playlist: Playlist) => {
+const writePlaylist = db.transaction((playlist: Playlist) => {
     if (playlist.tracks && playlist.tracks.length > 0) {
-        writeManyTracks(playlist.tracks);
+        writeTracks(playlist.tracks);
     }
 
     upsertPlaylistStmt.run({
@@ -33,16 +33,12 @@ export const writePlaylist = db.transaction((playlist: Playlist) => {
         $duration: playlist.duration || 0
     });
 
-
     try {
-
         if (playlist.tracks !== undefined || playlist.ids !== undefined) {
             const trackIdsToSave = playlist.tracks
                 ? playlist.tracks.map(t => t.id)
                 : (playlist.ids || []);
-
             clearPlaylistTracksStmt.run(playlist.id);
-
             for (const trackId of trackIdsToSave) {
                 insertPlaylistTrackStmt.run(playlist.id, trackId);
             }
@@ -50,7 +46,6 @@ export const writePlaylist = db.transaction((playlist: Playlist) => {
     } catch (error) {
         console.error(error)
     }
-
-
-
 });
+
+export default writePlaylist
