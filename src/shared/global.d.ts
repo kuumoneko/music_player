@@ -14,8 +14,8 @@ declare global {
                     getLocalfile: () => Promise<Track[]>,
                     searchMusic: ({ type, query }: { type: "video" | "playlist" | "artist", query: string }) => Promise<{ tracks: Track[], playlists: Playlist[], artists: Artist[] }>
                     getHomeData: () => Promise<{ artists: Artist[], playlists: Playlist[], tracks: Track[], newTracks: Track[] }>,
-                    getProfileData: <K extends keyof UserProfile>(key: K) => Promise<UserProfile[K]>,
-                    setProfileData: <K extends keyof UserProfile>({ key, data }: { key: K, data: UserProfile[K] }) => Promise<void | string>,
+                    // getProfileData: <K extends keyof UserProfile>(key: K) => Promise<UserProfile[K]>,
+                    // setProfileData: <K extends keyof UserProfile>({ key, data }: { key: K, data: UserProfile[K] }) => Promise<void | string>,
                     downloadMusic: () => Promise<string>,
                     getDownloadStatus: () => Promise<{ data: string, track: string }>,
                     close: () => Promise<void>,

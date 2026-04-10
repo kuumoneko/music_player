@@ -26,14 +26,14 @@ export type AppRPCType = {
                 params: keyof System,
                 response: any
             },
-            getProfileData: {
-                params: keyof UserProfile,
-                response: any
-            },
-            setProfileData: {
-                params: { key: keyof UserProfile, data: any },
-                response: any
-            },
+            // getProfileData: {
+            //     params: keyof UserProfile,
+            //     response: any
+            // },
+            // setProfileData: {
+            //     params: { key: keyof UserProfile, data: any },
+            //     response: any
+            // },
             downloadMusic: {
                 params: null,
                 response: string
@@ -298,30 +298,31 @@ export interface UserData {
     repeat: Repeat,
     shuffle: Shuffle,
     volume: number,
-    height: number, width: number,
     currentPlaying: {
         source: string, id: string, title: string, thumbnail: string, artist: string, index?: number
     },
-    queue: Track[],
-    isMaximized: boolean, nextfrom: { from: string, next: Track[] },
+    nextfrom: { from: string, next: Track[] },
     playedTrack: string[],
     QuitonClose: boolean,
     current: {
         time: number, duration: number, isLived: boolean
     },
     isPlaying: boolean,
-    isLoading: boolean
+    isLoading: boolean,
+    playQueue: { id: string, source: "youtube" | "local" }[],
+    folder: string,
+    pin: string[],
+    downloadQueue: string[]
 }
 
-export interface UserProfile {
-    play: string[],
-    local: string[],
-    folder: string,
-    pin: { id: string, source: string, type: string, thumbnail: string, name: string }[],
-    download: {
-        name: string, source: string, mode: string, id: string
-    }[]
-}
+// export interface UserProfile {
+//     play: string[],
+//     folder: string,
+//     pin: { id: string, source: string, type: string, thumbnail: string, name: string }[],
+//     download: {
+//         name: string, source: string, mode: string, id: string
+//     }[]
+// }
 
 export interface System {
     youtubeApiKeys: string[],
