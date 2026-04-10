@@ -10,13 +10,12 @@ import HomeController from "./controllers/home.ts";
 import MusicController from "./controllers/music.ts";
 import PlayController from "./controllers/play.ts";
 // lib
-import { getDataFromDatabase, writeDataToDatabase } from "./lib/database.ts";
+import { getDataFromDatabase } from "./lib/database.ts";
 import forward from "./lib/forward.ts";
 import backward from "./lib/backward.ts";
 import getLocalIPv4 from "./lib/ipv4.ts";
 import CheckUserData from "./lib/env.ts"
-import consoleLog, { LogType } from "./lib/log.ts";
-import { getAllLocalFiles, getLocalFileByIndex, getUserData, getUserDatas, writeUserData, writeUserDatas } from "./db/index.ts";
+import { getAllLocalFiles, getLocalFileByIndex, getUserData, getUserDatas, writeLogs, writeUserData, writeUserDatas } from "./db/index.ts";
 // Features
 import Player from "./music/index.ts"
 import Discord from "./discord/index.ts";
@@ -41,7 +40,6 @@ let appWin: BrowserWindow | null = null;
 let playWin: BrowserWindow | null = null;
 let appTray: Tray | null = null;
 let discordRPC: Discord | null = null;
-let log: string[] = [];
 
 const userData = resolve(Utils.paths.userData, "..");
 const PlayerViewPort = playerPort;
@@ -59,29 +57,6 @@ let player: Player | null = null;
 	})
 };
 
-function formatBytes(bytes: number, decimals = 2) {
-	if (bytes === 0) return '0 Bytes';
-
-	const k = 1024;
-	const dm = decimals < 0 ? 0 : decimals;
-	const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-	return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-}
-
-const addLog = (message: string) => {
-	const now = new Date();
-	const date = `${now.getDate()}-${now.getMonth() + 1}-${now.getFullYear()}`;
-	const time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`;
-	log.push(`[${date} ${time}]`);
-	log.push(message);
-	log.push("");
-	writeDataToDatabase(userData, "data", "log", log.join("\n"));
-	consoleLog(message, LogType.Error);
-}
-
 process.on("uncaughtException", (error) => {
 	Utils.showMessageBox({
 		type: "error",
@@ -89,17 +64,25 @@ process.on("uncaughtException", (error) => {
 		message: error.message,
 		detail: error.cause as string + " " + error.stack
 	})
-	addLog(error.cause + " " + error.message)
+	writeLogs([{
+		type: "error",
+		message: error.message
+	}])
 })
 
 process.on('unhandledRejection', (reason, promise) => {
-	consoleLog(`Unhandled Promise Rejection at: ${promise}`, LogType.Error);
-	consoleLog(`Reason: ${reason}`, LogType.Error);
+	writeLogs([{
+		type: "error",
+		message: `Unhandled Promise Rejection at: ${promise}`
+	}, {
+		type: "error",
+		message: `Reason: ${reason}`
+	}])
 	process.exit(1);
 });
 
 process.on("beforeExit", (code: number) => {
-	addLog(String(code))
+	writeLogs([{ type: "error", message: `Exit with code ${code}` }])
 })
 
 const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
@@ -131,7 +114,7 @@ const play = () => {
 		discordRPC?.setMusic(user.currentPlaying, player, user.current, user.isPlaying);
 	}
 	if (!playWin) return;
-	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch(() => consoleLog("Error on sending rpc", LogType.Error))
+	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch()
 }
 player = new Player(userData, APP_ROOT);
 () => {
@@ -148,7 +131,6 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 		requests: {
 			getMusicData: async ({ source, type, id }: { source: "youtube" | "local", type: string, id: string }) => {
 				try {
-					consoleLog(`Get music data ${source} ${type} ${id}`, LogType.Debug);
 					const result = await MusicController(player, {
 						source: source,
 						type: type,
@@ -156,10 +138,11 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 						query: "",
 						mode: ""
 					})
-					consoleLog(`Done task get music data ${source} ${type} ${id} with ${formatBytes(JSON.stringify(result).length)} data will be transfer`, LogType.Debug);
 					return result
 				} catch (error) {
-					addLog(error);
+					writeLogs([{
+						type: "error", message: `Error when getting music data with:\nSource = ${source}\nMode = ${type}\nId = ${id}\n ${error}`
+					}]);
 					return null;
 				}
 			},
@@ -168,35 +151,31 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					const result = getAllLocalFiles();
 					return result;
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when getting Local files:\n${error}` }]);
 					return null;
 				}
 			},
 			searchMusic: async ({ type, query }: { type: "video" | "playlist" | "artist", query: string }) => {
 				try {
-					consoleLog(`Get search data ${type} ${query}`, LogType.Debug);
 					const result = await MusicController(player, {
 						source: "youtube",
 						id: "",
 						type: type,
 						query: query, mode: "search"
 					})
-					consoleLog(`Done task get search data ${type} ${query} with ${formatBytes(JSON.stringify(result).length)} data will be transfer`, LogType.Debug);
 					return result
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when searching music data with:\nType = ${type}\nQuery = ${query}\n${error}` }]);
 					return null;
 				}
 			},
 			getHomeData: async () => {
 				try {
-					consoleLog(`Get home data`, LogType.Debug);
 					const pin = getUserData("pin")
 					const result = await HomeController(player, pin);
-					consoleLog(`Done task get Home data with ${formatBytes(JSON.stringify(result).length)} data will be transfer`, LogType.Debug);
 					return result;
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Unexpected error when getting home data:\n${error}` }]);
 					return null;
 				}
 			},
@@ -212,7 +191,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					}
 					return await DownloadController(player);
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when preparing download music:\n${error}` }]);
 					return null;
 				}
 			},
@@ -249,15 +228,8 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				return QuitonClose;
 			},
 			togglePlayPause: async () => {
-				try {
-
-					writeUserData("isPlaying", !getUserData("isPlaying"));
-
-					(playWin.webview.rpc as any).request.togglePlayPause().catch(() => consoleLog("Error on sending rpc", LogType.Error));
-				} catch (error) {
-					addLog(error);
-					return null;
-				}
+				writeUserData("isPlaying", !getUserData("isPlaying"));
+				(playWin.webview.rpc as any).request.togglePlayPause().catch();
 			},
 			getUserData: async (key: keyof UserData) => {
 				if (key === "folder" && !isLocal) {
@@ -287,14 +259,14 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					writeUserData(key, data)
 
 					if (key === "volume") {
-						(playWin.webview.rpc as any).request.setVolume(data).catch(() => consoleLog("Error on sending rpc", LogType.Error));
+						(playWin.webview.rpc as any).request.setVolume(data).catch();
 					}
 					if (key === "repeat") {
-						(playWin.webview.rpc as any).request.setIsRepeat(data === Repeat.One).catch(() => consoleLog("Error on sending rpc", LogType.Error));
+						(playWin.webview.rpc as any).request.setIsRepeat(data === Repeat.One).catch();
 					}
 
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when writing user data with\nKey = ${key}\nValue = ${data}\n${error}` }]);
 					return null;
 				}
 			},
@@ -307,7 +279,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					await forward(player);
 					play();
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when switching to next track\n${error}` }]);
 					return null;
 				}
 			},
@@ -316,7 +288,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					await backward(player);
 					play();
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when switching to previous track\n${error}` }]);
 					return null;
 				}
 			},
@@ -331,7 +303,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					user.current.duration = track[0].duration;
 					if (type === "track") {
 						user.nextfrom = {
-							from: `youtube:track:${id}`,
+							from: `youtube: track: ${id}`,
 							next: [
 								track[0]
 							]
@@ -352,7 +324,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 							}
 						}
 						user.nextfrom = {
-							from: `youtube:${type}:${id}`,
+							from: `youtube: ${type}: ${id}`,
 							next: otherTracks.slice(0, 20)
 						}
 					}
@@ -366,7 +338,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					user.current.duration = track?.duration;
 					user.current.isLived = false;
 					user.nextfrom = {
-						from: `local:local`,
+						from: `local: local`,
 						next: localFiles.slice(0, 20)
 					}
 				}
@@ -374,12 +346,12 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
 
 				user.playedTrack = Array.from(new Set([...user.playedTrack, user.currentPlaying.id]));
-				(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch(() => consoleLog("Error on sending rpc", LogType.Error));
+				(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch();
 				if (user.nextfrom.next.length < 2) {
-					(playWin.webview.rpc as any).request.setIsRepeat(true).catch(() => consoleLog("Error on sending rpc", LogType.Error));
+					(playWin.webview.rpc as any).request.setIsRepeat(true).catch();
 				}
 				else {
-					(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One).catch(() => consoleLog("Error on sending rpc", LogType.Error));
+					(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One).catch();
 				}
 				writeUserDatas(user);
 				return user.currentPlaying
@@ -391,15 +363,15 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					writeUserData("current", current);
 					(playWin.webview.rpc as any).request.seekTo(time);
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when changing time\n${error}` }]);
 					return null;
 				}
 			},
 			setSleep: async (mode: SleepMode) => {
 				try {
-					(playWin.webview.rpc as any).request.setSleep(mode).catch(() => consoleLog("Error on sending rpc", LogType.Error));
+					(playWin.webview.rpc as any).request.setSleep(mode).catch();
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when setting Sleep mode\n${error}` }]);
 					return null;
 				}
 			},
@@ -409,7 +381,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					const { updateAvailable } = await Updater.checkForUpdate();
 					return updateAvailable === true ? updateAvailable : version;
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when checking for update\n${error}` }]);
 					return null;
 				}
 			},
@@ -445,7 +417,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 						return null;
 					}
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when connecting with Discord\n${error}` }]);
 					return null;
 				}
 			},
@@ -464,7 +436,7 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 					const result = await PlayController(folder);
 					return result
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when get track data from local file\n${error}` }]);
 					return null;
 				}
 			},
@@ -475,7 +447,7 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 					discordRPC?.setMusic(user.currentPlaying, player, user.current, user.isPlaying);
 					return user.currentPlaying;
 				} catch (error) {
-					addLog(error);
+					writeLogs([{ type: "error", message: `Error when sending endTrack\n${error}` }]);
 					return null;
 				}
 			},
@@ -528,7 +500,7 @@ const openAppUI = () => {
 	else {
 		appWin = new BrowserWindow({
 			title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
-			preload: `window.addEventListener('contextmenu', (e) => {e.preventDefault();}, false);`
+			preload: `window.addEventListener('contextmenu', (e) => { e.preventDefault(); }, false); `
 		})
 		appWin?.webview?.on("dom-ready", () => {
 			appWin?.maximize();
@@ -558,24 +530,27 @@ try {
 	const response = await fetch(lockUrl);
 
 	if (response.ok) {
-		consoleLog("Error on sending rpc", LogType.Error)
-		consoleLog("App is already running. Notified the first instance.", LogType.Info);
+		writeLogs([{
+			type: "error", message: `Error on sending rpc`
+		}])
+		// consoleLog("Error on sending rpc", LogType.Error)
+		// consoleLog("App is already running. Notified the first instance.", LogType.Info);
 		process.exit(0);
 	}
 } catch (error: any) {
-	consoleLog("No existing instance found. Starting primary instance...", LogType.Info);
+	// consoleLog("No existing instance found. Starting primary instance...", LogType.Info);
 
 	Bun.serve({
 		port: port,
 		hostname: host,
 		fetch(_req: any) {
-			consoleLog("A second instance tried to open!", LogType.Info);
+			// consoleLog("A second instance tried to open!", LogType.Info);
 			openAppUI();
 			return new Response("OK");
 		}
 	});
 
-	consoleLog(`Primary instance listening on ${lockUrl}`, LogType.Info);
+	// consoleLog(`Primary instance listening on ${lockUrl}`, LogType.Info);
 }
 
 if (isDiscord && DiscordClientId.length > 0) {
@@ -583,7 +558,7 @@ if (isDiscord && DiscordClientId.length > 0) {
 	try {
 		await discordRPC.connect();
 	} catch (error) {
-		consoleLog("Discord Client is not running", LogType.Info)
+		// consoleLog("Discord Client is not running", LogType.Info)
 	}
 }
 
@@ -674,7 +649,7 @@ Bun.serve({
 
 			return new Response("Not Found", { status: 404 });
 		} catch (error) {
-			addLog(error)
+			writeLogs([{ type: "error", message: `Unexpected error: ${error}` }])
 		}
 	},
 });
