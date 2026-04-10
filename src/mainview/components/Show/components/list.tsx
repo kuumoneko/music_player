@@ -160,7 +160,8 @@ export default function List({
                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
                                                 className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     if (source === "youtube") {
                                                         const url =
                                                             "https://www.youtube.com/watch?v=" +
@@ -177,7 +178,8 @@ export default function List({
                                             </span>
                                             <span
                                                 className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     Queue(item);
                                                 }}
                                             >
@@ -191,7 +193,8 @@ export default function List({
                                                         ? "opacity-50 pointer-events-none"
                                                         : ""
                                                 }`}
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     download(item);
                                                 }}
                                             >
