@@ -148,8 +148,7 @@ export default function Play_Queue() {
                                                 add_to_download(
                                                     item.source,
                                                     "track",
-                                                    item.id,
-                                                    item.name,
+                                                    item.id
                                                 );
                                             }}
                                         >
@@ -243,8 +242,7 @@ export default function Play_Queue() {
                                                 add_to_download(
                                                     item.source,
                                                     "track",
-                                                    item.id,
-                                                    item.name,
+                                                    item.id
                                                 );
                                             }}
                                         >
