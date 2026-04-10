@@ -43,9 +43,7 @@ const writePlaylist = db.transaction((playlist: Playlist) => {
                 insertPlaylistTrackStmt.run(playlist.id, trackId);
             }
         }
-    } catch (error) {
-        console.error(error)
-    }
+    } catch { }
 });
 
 export default writePlaylist

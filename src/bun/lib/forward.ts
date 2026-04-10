@@ -1,6 +1,5 @@
 import { Shuffle, Track } from "../../shared/types";
 import Player from "../music";
-import consolelog, { LogType } from "../lib/log.ts"
 import { getLocalFileById, getUserDatas, writeUserDatas } from "../db/index.ts";
 
 export default async function forward(player: Player) {
@@ -58,32 +57,28 @@ export default async function forward(player: Player) {
                     data = (await player.youtube.fetch_playlist(id)).tracks;
                 }
 
-                try {
-                    if (user.shuffle === Shuffle.Enable) {
-                        for (let i = data.length - 1; i > 0; i--) {
-                            const j = Math.floor(Math.random() * (i + 1));
-                            [data[i], data[j]] = [data[j], data[i]];
-                        }
-                        user.nextfrom.next.push(...data.slice(0, 25 - (user.nextfrom.next?.length ?? 0)))
+                if (user.shuffle === Shuffle.Enable) {
+                    for (let i = data.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [data[i], data[j]] = [data[j], data[i]];
+                    }
+                    user.nextfrom.next.push(...data.slice(0, 25 - (user.nextfrom.next?.length ?? 0)))
+                }
+                else {
+                    if (user?.nextfrom?.next?.length > 1) {
+                        const last = data.findIndex((item: Track) => item.id === user.nextfrom.next[user.nextfrom.next.length - 1].id);
+                        user.nextfrom.next.push(...data.slice(last, last + (25 - (user.nextfrom.next?.length ?? 0))))
                     }
                     else {
-                        if (user?.nextfrom?.next?.length > 1) {
-                            const last = data.findIndex((item: Track) => item.id === user.nextfrom.next[user.nextfrom.next.length - 1].id);
-                            user.nextfrom.next.push(...data.slice(last, last + (25 - (user.nextfrom.next?.length ?? 0))))
-                        }
-                        else {
-                            user.nextfrom.next = data.slice(0, 25)
-                        }
+                        user.nextfrom.next = data.slice(0, 25)
                     }
+                }
 
-                    if (user.shuffle === Shuffle.Enable) {
-                        for (let i = user.nextfrom.next.length - 1; i > 0; i--) {
-                            const j = Math.floor(Math.random() * (i + 1));
-                            [user.nextfrom.next[i], user.nextfrom.next[j]] = [user.nextfrom.next[j], user.nextfrom.next[i]];
-                        }
+                if (user.shuffle === Shuffle.Enable) {
+                    for (let i = user.nextfrom.next.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [user.nextfrom.next[i], user.nextfrom.next[j]] = [user.nextfrom.next[j], user.nextfrom.next[i]];
                     }
-                } catch (error) {
-                    consolelog(error, LogType.Error)
                 }
             }
             const trackId = user.nextfrom.next[0];

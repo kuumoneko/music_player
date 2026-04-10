@@ -1,8 +1,7 @@
 import { Playlist, Track, Artist, API_Key, System } from "../../shared/types.ts";
 import iso8601DurationToMilliseconds from "../lib/time.ts";
 import { getDataFromDatabase } from "../lib/database.ts";
-import consolelog, { LogType } from "../lib/log.ts"
-import { getArtistById, getPlaylist, getTracks, writeArtist, writePlaylist, writeTracks } from "../db/index.ts";
+import { getArtistById, getPlaylist, getTracks, writeArtist, writeLogs, writePlaylist, writeTracks } from "../db/index.ts";
 
 function getNextResetTimestamp() {
     const now = new Date();
@@ -107,7 +106,7 @@ export default class Youtube {
     }
 
     log(message: string) {
-        consolelog(message, LogType.Error)
+        writeLogs([{ type: "error", message: message }])
     }
 
     get_data(doc: "tracks" | "playlists" | "artists", ids: string[]) {

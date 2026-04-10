@@ -1,6 +1,5 @@
 import net from "node:net";
 import Player from "../music";
-import consolelog, { LogType } from "../lib/log.ts"
 import { getTrackByName } from "../db/index.ts";
 import os from "node:os"
 
@@ -60,7 +59,6 @@ export default class DiscordRPC {
 
     async setMusic(track: any, player: Player, current: { time: number, duration: number }, isPlaying: boolean) {
         if (!this.isReady) {
-            consolelog("Cannot set activity: Discord not ready yet.", LogType.Error);
             return;
         }
 
@@ -124,7 +122,6 @@ export default class DiscordRPC {
 
     clearMusic() {
         if (!this.isReady) {
-            consolelog("Cannot set activity: Discord not ready yet.", LogType.Error);
             return;
         }
 

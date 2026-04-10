@@ -533,33 +533,24 @@ try {
 		writeLogs([{
 			type: "error", message: `Error on sending rpc`
 		}])
-		// consoleLog("Error on sending rpc", LogType.Error)
-		// consoleLog("App is already running. Notified the first instance.", LogType.Info);
 		process.exit(0);
 	}
 } catch (error: any) {
-	// consoleLog("No existing instance found. Starting primary instance...", LogType.Info);
-
 	Bun.serve({
 		port: port,
 		hostname: host,
 		fetch(_req: any) {
-			// consoleLog("A second instance tried to open!", LogType.Info);
 			openAppUI();
 			return new Response("OK");
 		}
 	});
-
-	// consoleLog(`Primary instance listening on ${lockUrl}`, LogType.Info);
 }
 
 if (isDiscord && DiscordClientId.length > 0) {
 	discordRPC = new Discord(DiscordClientId);
 	try {
 		await discordRPC.connect();
-	} catch (error) {
-		// consoleLog("Discord Client is not running", LogType.Info)
-	}
+	} catch { }
 }
 
 // Create Tray Menu

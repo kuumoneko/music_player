@@ -53,9 +53,7 @@ export const getUserDatas = <K extends keyof UserData>(keys: K[]) => {
       else {
         result[row.key as keyof UserData] = JSON.parse(row.value)
       }
-    } catch (err) {
-      console.error(`Error parsing key "${row.key}":`, err);
-    }
+    } catch { }
   }
 
   return result;

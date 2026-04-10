@@ -1,9 +1,8 @@
 import { readdirSync } from "node:fs";
 import { extname, join } from "node:path";
-import consolelog, { LogType } from "../lib/log.ts"
 import { spawn } from "node:child_process";
 import { Track } from "@/shared/types.ts";
-import { getAllLocalFiles } from "../db/index.ts";
+import { getAllLocalFiles, writeLogs } from "../db/index.ts";
 import { writeLocalFiles } from "../db/index.ts";
 
 export class Local {
@@ -127,7 +126,7 @@ export class Local {
                 file.push(this.parseFile(filePath, index).then((data: any) => {
                     result.push(data);
                 }).catch((e: any) => {
-                    consolelog(e, LogType.Error)
+                    writeLogs([{ type: "error", message: e }])
                 }))
             }
             else {

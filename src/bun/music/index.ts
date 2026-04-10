@@ -6,8 +6,7 @@ import { Local } from "./local.ts";
 import areStringsSimilar from "../lib/comapre_string.ts";
 import { spawn } from "node:child_process";
 import { getDataFromDatabase } from "../lib/database.ts";
-import consolelog, { LogType } from "../lib/log.ts"
-import { getUserData } from "../db/index.ts";
+import { getUserData, writeLogs } from "../db/index.ts";
 
 export enum Audio_format {
     aac = "aac",
@@ -61,6 +60,7 @@ export default class Player {
     }
 
     async checking(): Promise<void> {
+        writeLogs([{ type: "info", message: "Checking download folder before downloading" }])
         const files = readdirSync(this.download_folder, {
             withFileTypes: true
         });
@@ -77,15 +77,11 @@ export default class Player {
             if (checked.length === 0) {
                 try {
                     unlinkSync(`${this.download_folder}\\${filename}${ext}`);
-                    consolelog(`Deleted: ${filename}`, LogType.Info)
-                } catch (error) {
-                    consolelog(`Error when deleting ${filename}`, LogType.Error)
-                }
-            }
-            else {
-                consolelog(`No deleted: ${filename}`, LogType.Info)
+                    writeLogs([{ type: "info", message: `Delete unused file: ${filename}` }])
+                } catch { }
             }
         }
+        writeLogs([{ type: "info", message: "Done check download folder before downloading!" }])
     }
 
     converting(...args: string[]): Promise<any> {
@@ -108,6 +104,7 @@ export default class Player {
     async download_track(data: { id: string, title: string, metadata: { artist: string, year: string, thumbnail: string }, option: string[] }) {
         return new Promise((resolve, _reject) => {
             const { title, option } = data;
+            writeLogs([{ type: "info", message: `Downloading ${title}...` }])
             this.status = {
                 data: Status.prepare, track: title
             }
@@ -123,7 +120,7 @@ export default class Player {
 
                         if (percentMatch && percentMatch[1]) {
                             const percentage = percentMatch[1];
-                            consolelog(`Progress: ${percentage}%`, LogType.Info)
+                            console.log(`Progress: ${percentage}%`)
 
                             this.status = {
                                 data: Status.downloading, track: `${percentage}%`
@@ -134,7 +131,7 @@ export default class Player {
             });
 
             process.stderr.on('data', (data) => {
-                consolelog(`stderr: ${data}`, LogType.Error)
+                writeLogs([{ type: "error", message: data }])
             })
 
             process.on("close", (code: number) => {
@@ -142,6 +139,7 @@ export default class Player {
                     this.status = {
                         data: Status.done, track: title
                     }
+                    writeLogs([{ type: "info", message: `Done download ${title}!` }])
                     resolve(code)
                 }
                 else {
@@ -194,7 +192,6 @@ export default class Player {
         }
 
         for (const data of downloade_data) {
-            // check if the track is downloaded but in other extesion, just use this.converting()
             const existingFiles = readdirSync(this.download_folder);
             const matchingFile = existingFiles.find(file => {
                 const name = basename(file, extname(file));
@@ -207,9 +204,7 @@ export default class Player {
                     await this.converting(data.title, currentExt, "m4a");
                     try {
                         unlinkSync(path.join(this.download_folder, matchingFile));
-                    } catch (e) {
-                        consolelog(e, LogType.Error)
-                    }
+                    } catch { }
                     continue;
                 } else if (currentExt === "m4a") {
                     continue;
@@ -306,7 +301,7 @@ export default class Player {
             return bestMatch ?? null;
         }
         catch (e) {
-            consolelog(e, LogType.Error);
+            writeLogs([{ type: "error", message: e }])
             return null
         }
     }
