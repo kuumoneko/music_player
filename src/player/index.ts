@@ -26,7 +26,12 @@ const rpc = Electroview.defineRPC<PlayerRPCType>({
                     if (playing.source === "local" && audioRef.readyState >= 1) {
                         audioRef.currentTime = time;
                     } else if (ytPlayerInstance && typeof ytPlayerInstance.seekTo === "function") {
-                        ytPlayerInstance.seekTo(time, true);
+                        if ((ytPlayerInstance.getVideoData())?.isLive === true) {
+                            ytPlayerInstance.seekTo(Infinity, true);
+                        }
+                        else {
+                            ytPlayerInstance.seekTo(time, true);
+                        }
                     }
                 }
             },
