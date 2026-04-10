@@ -154,7 +154,7 @@ export default function Top({
                                             : ""
                                     } rounded-full px-1 py-0.5 hover:bg-slate-600 hover:cursor-pointer`}
                                     onClick={() => {
-                                        add_to_download(source, mode, id, name);
+                                        add_to_download(source, mode, id);
                                     }}
                                 >
                                     <FontAwesomeIcon icon={faDownload} />
