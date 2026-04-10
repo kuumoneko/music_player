@@ -405,12 +405,11 @@ export default class Youtube {
                 endpoint += `&sp=${video_sp}`;
             }
             else if (type === "playlist") {
-                endpoint += `&sp${playlist_sp}`;
+                endpoint += `&sp=${playlist_sp}`;
             }
             else if (type === "artist") {
                 endpoint += `&sp=${channel_sp}`;
             }
-
             const create_page = await fetch(endpoint, {
                 headers: {
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
@@ -441,11 +440,12 @@ export default class Youtube {
                     content.itemSectionRenderer.contents.forEach((item: any) => {
                         if (item.videoRenderer && type === "video") {
                             const videoRender = item.videoRenderer;
-
+                            if (!videoRender) return
                             ids.push(videoRender.videoId)
                         }
                         else if (item.lockupViewModel && type === "playlist") {
                             const playListRender = item.lockupViewModel;
+                            if (!playListRender) return
                             playlist_ids.push({
                                 type: "youtube:playlist",
                                 id: playListRender.metadata.lockupMetadataViewModel.metadata.contentMetadataViewModel.metadataRows[playListRender.metadata.lockupMetadataViewModel.metadata.contentMetadataViewModel.metadataRows.length - 1].metadataParts[0].text.commandRuns[0].onTap.innertubeCommand.commandMetadata.webCommandMetadata.url.split("list=")[1] ?? "",
@@ -455,6 +455,7 @@ export default class Youtube {
                         }
                         else if (item.channelRenderer && type === "artist") {
                             const channelRenderer = item.channelRenderer;
+                            if (!channelRenderer) return
                             artist_ids.push({
                                 type: "youtube:artist",
                                 id: channelRenderer.channelId,
@@ -492,13 +493,13 @@ export default class Youtube {
         } else {
             return null as unknown as Artist;
         }
-        let this_artist = getArtistById(id);//(this.get_data("artists", [id]) as Artist[])[0];
+        let this_artist = getArtistById(id);
         try {
             let etag = (this_artist?.etag && this_artist.etag?.length > 0) ? this_artist?.etag : undefined
             const url = `${this.create_end_point(endpoints[EndPoints.Artist])}&id=${id}`;
             const item = (await this.fetch_data(url, etag) as any);
             if (item === null || item.items === undefined) {
-                let playlist_id = this_artist.playlistId ?? "";
+                let playlist_id = this_artist?.playlistId ?? "";
                 if (playlist_id === "") {
                     const temping = (await this.fetch_data(url) as any);
                     playlist_id = temping.items[0].contentDetails.relatedPlaylists.uploads
@@ -506,10 +507,7 @@ export default class Youtube {
                 const playlist = await this.fetch_playlist(playlist_id)
                 const artist_tracks = playlist.tracks as Track[];
                 writeArtist({ ...this_artist, playlistId: playlist_id })
-                // this.write_data("artists", [id], [{
-                //     ...this_artist,
-                //     playlistId: playlist_id
-                // }]);
+
                 this.running = this.running.filter((item: { name: string }) => { return item.name !== `artist:${id}` })
 
                 return {
@@ -536,7 +534,6 @@ export default class Youtube {
                 tracks: []
             }
             writeArtist(this_artist)
-            // this.write_data("artists", [id], [this_artist]);
             this.running = this.running.filter((item: { name: string }) => { return item.name !== `artist:${id}` })
 
             return {
@@ -556,96 +553,12 @@ export default class Youtube {
     }
 
     async get_new_tracks(ids: string[]) {
-
-        const base_playlist__url = `${this.create_end_point(endpoints[EndPoints.PlaylistItem])}&maxResults=${this.maxResults}`;
-        const base_artist__url = `${this.create_end_point(endpoints[EndPoints.Artist])}`;
-
-        const artist = async (id: string): Promise<string> => {
-            let this_artist: Artist = getArtistById(id)//this.get_data("artists", [id]) as unknown as Artist
-            const artist_url = base_artist__url + `&id=${id}`;
-
-            const artist_etag = (this_artist?.etag && this_artist?.etag?.length > 0) ? this_artist?.etag : undefined;
-
-            let artist = await this.fetch_data(artist_url, artist_etag);
-
-            let playlistId: string = "",
-                thumbnail = "", name = "";
-            if (artist === null) {
-                if (this_artist.playlistId && this_artist.playlistId?.length > 0) {
-                    playlistId = this_artist.playlistId;
-                    thumbnail = this_artist.thumbnail;
-                    name = this_artist.name
-                }
-                else {
-                    artist = await this.fetch_data(artist_url);
-                }
-            }
-            if (artist !== null) {
-                const itemm = artist.items[0];
-                playlistId = itemm.contentDetails.relatedPlaylists.uploads;
-                thumbnail = itemm.snippet.thumbnails.default.url ?? "";
-                name = itemm.snippet.title;
-
-                this_artist = {
-                    source: "youtube",
-                    etag: artist.etag,
-                    name: name,
-                    id: itemm.id,
-                    thumbnail: thumbnail,
-                    playlistId: playlistId,
-                    tracks: []
-                }
-            }
-            writeArtist(this_artist)
-            return playlistId;
-        }
-
-        const playlist = async (id: string) => {
-
-            let this_playlist: Playlist = getPlaylist(id);
-            const playlist_etag = (this_playlist?.etag && this_playlist?.etag?.length > 0) ? this_playlist?.etag : undefined;
-
-            let this_new_tracks: any = { etag: "", ids: [] };
-            const new_tracks_etag = this_new_tracks.etag && this_new_tracks?.etag?.length > 0 ? this_new_tracks?.etag : undefined;
-
-            const playlist_url = base_playlist__url + `&playlistId=${id}`;
-            const videos = await this.fetch_data(playlist_url, playlist_etag);
-
-            if (videos === null &&
-                playlist_etag && new_tracks_etag &&
-                playlist_etag !== new_tracks_etag
-            ) {
-                this_new_tracks.ids = this_playlist?.ids;
-                this_new_tracks.etag = playlist_etag;
-            }
-            else if (videos === null) {
-                this_new_tracks.ids.push(...this_playlist?.ids?.slice(0, 6) ?? [])
-            }
-            else {
-                const TotalResult = videos.pageInfo.totalResults;
-                this_new_tracks.ids.push(...videos.items.slice(0, 6).map((item: any) => { return item.snippet.resourceId.videoId }))
-                const ids = Array.from(new Set([...this_playlist?.ids ?? [], ...this_new_tracks.ids]));
-                if (ids.length <= TotalResult) {
-                    this.fetch_playlist(id);
-                }
-                else {
-                    this_playlist.ids = ids;
-                    this_playlist.etag = videos.etag;
-                    writePlaylist(this_playlist)
-                }
-            }
-            return this_playlist.ids;
-        }
-
         try {
             const new_tracks: Track[] = []
             for (const id of ids) {
                 try {
-                    const playlistId = await artist(id);
-                    const ids = await playlist(playlistId);
-                    const temp = await this.fetch_track(ids);
-
-                    new_tracks.push(...temp.slice(0, 6));
+                    const tracks = (await this.fetch_artist(id)).tracks;
+                    new_tracks.push(...tracks.slice(0, 6));
                 }
                 catch (e) {
                     this.log(e);
