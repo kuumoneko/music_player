@@ -18,7 +18,7 @@ export default function Play_Queue() {
     useEffect(() => {
         const run = setInterval(async () => {
             const temp_play_queue =
-                await window.api.rpc.request.getUserData("queue");
+                await window.api.rpc.request.getUserData("playQueue");
             const temp_nextfrom =
                 await window.api.rpc.request.getUserData("nextfrom");
 
@@ -33,7 +33,7 @@ export default function Play_Queue() {
             <div
                 onClick={async () => {
                     window.api.rpc.request.setUserData({
-                        key: "queue",
+                        key: "playQueue",
                         data: [],
                     });
                     setqueue([]);
@@ -222,7 +222,7 @@ export default function Play_Queue() {
                                                     navigator.clipboard.writeText(
                                                         url,
                                                     );
-                                                } 
+                                                }
                                             }}
                                         >
                                             <FontAwesomeIcon icon={faShare} />
