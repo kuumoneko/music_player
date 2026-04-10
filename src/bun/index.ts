@@ -286,6 +286,9 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					}
 					writeUserData(key, data)
 
+					if (key === "volume") {
+						(playWin.webview.rpc as any).request.setVolume(data).catch(() => consoleLog("Error on sending rpc", LogType.Error));
+					}
 					if (key === "repeat") {
 						(playWin.webview.rpc as any).request.setIsRepeat(data === Repeat.One).catch(() => consoleLog("Error on sending rpc", LogType.Error));
 					}
@@ -492,10 +495,23 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 					duration: duration
 				})
 			},
-			setIsPlaying: (isPlaying: boolean) => {
+			setIsPlaying: async (isPlaying: boolean) => {
+				if (discordRPC.isReady === true) {
+					await discordRPC.isDiscordRun();
+				}
+				if (isDiscord === true && discordRPC?.isReady === true) {
+					const user = getUserDatas(["current", 'currentPlaying'])
+					if (user.current.duration !== 0) {
+						discordRPC?.setMusic(user.currentPlaying, player, user.current, isPlaying);
+					}
+					else {
+						discordRPC?.clearMusic();
+					}
+				}
+
 				writeUserData("isPlaying", isPlaying);
 			},
-			setisLive: (isLived: boolean) => {
+			setIsLive: (isLived: boolean) => {
 				writeUserData("current", {
 					...getUserData("current"),
 					isLived: isLived
@@ -668,15 +684,3 @@ playWin = new BrowserWindow({
 playWin?.webview?.on("dom-ready", () => {
 	playWin.hide();
 })
-
-setInterval(async () => {
-	if (isDiscord === true && discordRPC?.isReady === true) {
-		const user = getUserDatas(["current", 'currentPlaying', 'isPlaying'])
-		if (user.current.duration !== 0) {
-			discordRPC?.setMusic(user.currentPlaying, player, user.current, user.isPlaying);
-		}
-		else {
-			discordRPC?.clearMusic();
-		}
-	}
-}, 10 * 1000);
