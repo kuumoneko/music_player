@@ -58,6 +58,12 @@ db.run(`
     key TEXT NOT NULL PRIMARY KEY, 
     value TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS log (
+  date TEXT NOT NULL PRIMARY KEY,
+  type TEXT NOT NULL,
+  message TEXT
+  );
 `);
 
 export default db;
