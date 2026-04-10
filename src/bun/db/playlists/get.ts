@@ -1,6 +1,6 @@
 import db from "../setup.ts"
 import type { Playlist } from "../../../shared/types.ts";
-import { getTracks } from "../tracks/get.ts";
+import getTracks from "../tracks/get.ts";
 
 const getPlaylistStmt = db.prepare(`
   SELECT 
@@ -14,7 +14,7 @@ const getPlaylistStmt = db.prepare(`
 `);
 
 
-export function getPlaylist(id: string, includeTracks: boolean = true): Playlist | null {
+export default function getPlaylist(id: string, includeTracks: boolean = true): Playlist | null {
     const row = getPlaylistStmt.get({ $id: id }) as any;
     if (!row) return null;
 
