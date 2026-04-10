@@ -8,7 +8,7 @@ export default function LocalFile() {
     useEffect(() => {
         async function run() {
             window.api.rpc.request
-                .getProfileData("folder")
+                .getUserData("folder")
                 .then((data) => setlocation(data));
         }
         run();
@@ -24,7 +24,7 @@ export default function LocalFile() {
 
     const Click = async () => {
         window.api.rpc.request
-            .setProfileData({
+            .setUserData({
                 key: "folder",
                 data: "",
             })
