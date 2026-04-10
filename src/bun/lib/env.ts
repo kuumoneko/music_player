@@ -1,5 +1,5 @@
 import { Repeat, Shuffle, UserData } from '../../shared/types.ts';
-import { getUserData, writeUserData } from '../db/index.ts';
+import { deleteLogs, getUserData, writeUserData } from '../db/index.ts';
 
 export default function CheckUserData() {
     const defaultUserData = [
@@ -41,4 +41,6 @@ export default function CheckUserData() {
             writeUserData(item.key as keyof UserData, item.value);
         }
     }
+
+    deleteLogs();
 }
