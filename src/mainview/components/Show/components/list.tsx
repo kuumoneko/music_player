@@ -60,14 +60,7 @@ export default function List({
                     ).values(),
                 ];
             }
-            const temp: any[] = list
-                .sort((a: Track, b: Track) => {
-                    return (
-                        new Date(b.releasedDate).getTime() -
-                        new Date(a.releasedDate).getTime()
-                    );
-                })
-                .slice(sight.head, sight.tail + 1) as any[];
+            const temp: any[] = list.slice(sight.head, sight.tail + 1) as any[];
             setlist(temp);
         }
         run();
@@ -199,7 +192,7 @@ export default function List({
                                                         : ""
                                                 }`}
                                                 onClick={() => {
-                                                    download(item, source);
+                                                    download(item);
                                                 }}
                                             >
                                                 <FontAwesomeIcon
