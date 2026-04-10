@@ -2,6 +2,11 @@ import net from "node:net";
 import Player from "../music";
 import consolelog, { LogType } from "../lib/log.ts"
 import { getTrackByName } from "../db/index.ts";
+import os from "node:os"
+
+const pipePath = os.platform() === 'win32'
+    ? '\\\\.\\pipe\\discord-ipc-0'
+    : `/tmp/discord-ipc-0`;
 
 export default class DiscordRPC {
     private socket: net.Socket | null = null;
@@ -13,30 +18,43 @@ export default class DiscordRPC {
         this.clientId = clientId;
     }
 
+    isDiscordRun() {
+        return new Promise((resolve) => {
+            const socket = net.connect(pipePath);
+            socket.on('connect', () => {
+                resolve(true);
+            });
+            socket.on('error', () => {
+                this.isReady = false;
+                this.username = null;
+                this.socket = null;
+                resolve(false);
+            });
+        })
+    }
+
     async connect() {
         return new Promise((resolve, reject) => {
-            this.socket = net.connect('\\\\.\\pipe\\discord-ipc-0');
-
+            this.socket = net.connect(pipePath);
             this.socket.on('connect', () => {
-                consolelog('Connected to pipe, sending handshake...', LogType.Info);
+                console.log('Connected to pipe, sending handshake...');
                 this.send(0, { v: 1, client_id: this.clientId });
             });
 
-            this.socket.once('data', (data) => {
-                const { a: response, evt } = JSON.parse('{"a":' + data.toString().split('"data":')[1]);
-                if (response.user !== null) {
-                    this.username = response.user.username;
-                }
-
-                if (evt === 'READY') {
-                    consolelog('Discord is READY!', LogType.Info);
-                    this.isReady = true;
-                    this.clearMusic();
-                    resolve(true);
-                }
+            this.socket.on('data', (data) => {
+                try {
+                    const { evt } = JSON.parse('{"a":' + data.toString().split('"data":')[1]);
+                    if (evt === 'READY') {
+                        console.log('Discord is READY!');
+                        this.isReady = true;
+                        resolve(true);
+                    }
+                } catch { }
             });
-
             this.socket.on('error', (err) => reject(err));
+            this.socket.on("close", (isError) => {
+                console.log(isError)
+            })
         });
     }
 
@@ -80,7 +98,7 @@ export default class DiscordRPC {
                     details: track.title,
                     state: track.arist,
                     assets: {
-                        large_image: track.thumbnail, // Ensure this name exists in your Dev Portal
+                        large_image: track.thumbnail,
                         large_text: track.title
                     },
                     timestamps: {
