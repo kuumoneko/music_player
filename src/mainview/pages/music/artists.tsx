@@ -44,8 +44,7 @@ function Index() {
     const [pin, setpin] = useState<any>(null);
     useEffect(() => {
         async function run() {
-            const pin: any[] =
-                await window.api.rpc.request.getProfileData("pin");
+            const pin: any[] = await window.api.rpc.request.getUserData("pin");
             const artists = pin.filter((item: any) =>
                 item.mode.includes("artist"),
             );
