@@ -44,8 +44,10 @@ const writeLocalFile = db.transaction((file: Track) => {
   }
 });
 
-export const writeManyLocalFiles = db.transaction((files: Track[]) => {
+const writeLocalFiles = db.transaction((files: Track[]) => {
   for (const file of files) {
     writeLocalFile(file);
   }
 });
+
+export default writeLocalFiles
