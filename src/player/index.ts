@@ -86,7 +86,7 @@ setInterval(() => {
         playing.source === "local" ? audioRef.currentTime : ytPlayerInstance.getCurrentTime()
     )
     window.api.rpc.request.setIsLive(
-        playing.source === "youtube" ? ytPlayerInstance.getVideoData().isLive : false
+        playing.source === "youtube" ? (ytPlayerInstance.getVideoData())?.isLive ?? false : false
     )
 }, 1000);
 
@@ -133,6 +133,7 @@ const loadTrack = async (track: any) => {
     const { source, id, index } = track;
     if (!source || id === null || id === undefined) return;
     playing = { id, source, index };
+    localStorage.setItem("playing", JSON.stringify(track))
 
     isPlayed = false;
     audioRef.pause();
@@ -159,7 +160,7 @@ const loadTrack = async (track: any) => {
             if (ytPlayerInstance.getVolume() !== volume) {
                 ytPlayerInstance.setVolume(volume);
             }
-            if (ytPlayerInstance.getVideoData().isLive && isFirstLoad) {
+            if ((ytPlayerInstance.getVideoData())?.isLive && isFirstLoad) {
                 ytPlayerInstance.seekTo(Infinity, true);
                 window.api.rpc.request.setcurrentTime(ytPlayerInstance.getCurrentTime());
 
