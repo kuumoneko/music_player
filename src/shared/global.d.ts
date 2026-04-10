@@ -36,7 +36,7 @@ declare global {
                             time: number, duration: number, isLived: boolean
                         }
                     }>,
-                    setUserData: <K extends keyof UserData>({ key, data }: { key: K, data: UserData[K] }) => Promise<void>,
+                    setUserData: <K extends keyof UserData>({ key, data }: { key: K, data: UserData[K] }) => Promise<void | string>,
                     play: ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => Promise<{
                         source: "youtube" | "local",
                         id: string,
