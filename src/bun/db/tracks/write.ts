@@ -35,8 +35,10 @@ const writeTrack = db.transaction((track: Track) => {
   }
 });
 
-export const writeManyTracks = db.transaction((tracks: Track[]) => {
+const writeTracks = db.transaction((tracks: Track[]) => {
   for (const track of tracks) {
     writeTrack(track);
   }
 });
+
+export default writeTracks
