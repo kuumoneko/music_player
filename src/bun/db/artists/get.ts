@@ -1,6 +1,6 @@
 import db from "../setup.ts"
 import type { Artist } from "../../../shared/types.ts";
-import { getTracks } from "../tracks/get.ts"; 
+import getTracks from "../tracks/get.ts";
 
 const getArtistByIdStmt = db.prepare(`
   SELECT 
@@ -13,11 +13,7 @@ const getArtistByIdStmt = db.prepare(`
   GROUP BY a.id;
 `);
 
-const getAllArtistsStmt = db.prepare(`
-  SELECT * FROM artists;
-`);
-
-export function getArtistById(id: string, includeTracks: boolean = true): Artist | null {
+export default function getArtistById(id: string, includeTracks: boolean = true): Artist | null {
   const row = getArtistByIdStmt.get({ $id: id }) as any;
   if (!row) return null;
 
@@ -34,7 +30,7 @@ export function getArtistById(id: string, includeTracks: boolean = true): Artist
     source: row.source,
     thumbnail: row.thumbnail,
     playlistId: row.playlistId,
-    tracks: [] // Default to empty array
+    tracks: []
   };
 
   if (includeTracks && trackIds.length > 0) {
@@ -42,18 +38,4 @@ export function getArtistById(id: string, includeTracks: boolean = true): Artist
   }
 
   return artist;
-}
-
-
-export function getAllArtists(): Omit<Artist, 'tracks'>[] {
-  const rows = getAllArtistsStmt.all() as any[];
-
-  return rows.map(row => ({
-    id: row.id,
-    etag: row.etag || undefined,
-    name: row.name,
-    source: row.source,
-    thumbnail: row.thumbnail,
-    playlistId: row.playlistId,
-  }));
 }
