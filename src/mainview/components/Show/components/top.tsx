@@ -36,13 +36,10 @@ export default function Top({
     const [isPin, setiSPin] = useState(false);
     useEffect(() => {
         async function run() {
-            const pin = await window.api.rpc.request.getProfileData("pin");
+            const pin = await window.api.rpc.request.getUserData("pin");
             if (
                 pin.findIndex(
-                    (item: any) =>
-                        item.id === id &&
-                        item.source === source &&
-                        item.type === mode,
+                    (item: any) => item !== `${source}:${mode}:${id}`,
                 ) != -1
             ) {
                 setiSPin(true);
@@ -144,7 +141,7 @@ export default function Top({
                                                 navigator.clipboard.writeText(
                                                     url,
                                                 );
-                                            } 
+                                            }
                                         }
                                     }}
                                 >
@@ -171,40 +168,27 @@ export default function Top({
                                     onClick={() => {
                                         async function run() {
                                             let pin =
-                                                await window.api.rpc.request.getProfileData(
+                                                await window.api.rpc.request.getUserData(
                                                     "pin",
                                                 );
                                             if (isPin) {
                                                 pin = pin.filter(
                                                     (item: any) => {
                                                         return (
-                                                            item.id !== id &&
-                                                            item.source !==
-                                                                source &&
-                                                            item.type !== mode
+                                                            item !==
+                                                            `${source}:${mode}:${id}`
                                                         );
                                                     },
                                                 );
                                             } else {
-                                                pin.push({
-                                                    source: source,
-                                                    type: mode,
-                                                    id: id,
-                                                    thumbnail: thumbnail,
-                                                    name: name,
-                                                });
+                                                pin.push(
+                                                    `${source}:${mode}:${id}`,
+                                                );
                                             }
                                             setiSPin(!isPin);
 
-                                            pin = [
-                                                ...new Map(
-                                                    pin.map((item) => [
-                                                        `${item.source}:${item.type}:${item.id}`,
-                                                        item,
-                                                    ]),
-                                                ).values(),
-                                            ];
-                                            await window.api.rpc.request.setProfileData(
+                                            pin = [...new Set(pin)];
+                                            await window.api.rpc.request.setUserData(
                                                 { key: "pin", data: pin },
                                             );
                                         }
