@@ -1,10 +1,17 @@
-import { UserData } from "@/shared/types";
 import Player from "../music";
-import { getLocalFileById } from "../db";
+import { getLocalFileById, getUserDatas, writeUserDatas } from "../db/index.ts";
 
-export default async function backward(player: Player, user: UserData) {
+export default async function backward(player: Player) {
+    const user = getUserDatas([
+        "playedTrack",
+        "currentPlaying",
+        "playQueue",
+        "current",
+        "nextfrom",
+        "shuffle"
+    ])
     const preTrack = user.playedTrack.splice(0, 1);
-    user.queue.unshift(
+    user.playQueue.unshift(
         {
             id: user.currentPlaying.id,
             source: user.currentPlaying.source as any
@@ -42,8 +49,8 @@ export default async function backward(player: Player, user: UserData) {
                 duration: track.duration,
                 isLived: false
             }
-
         }
+        writeUserDatas(user)
     }
     else {
         return null;

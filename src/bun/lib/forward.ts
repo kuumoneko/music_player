@@ -1,12 +1,20 @@
-import { Shuffle, Track, UserData } from "../../shared/types";
+import { Shuffle, Track } from "../../shared/types";
 import Player from "../music";
 import consolelog, { LogType } from "../lib/log.ts"
-import { getLocalFileById } from "../db/index.ts";
+import { getLocalFileById, getUserDatas, writeUserDatas } from "../db/index.ts";
 
-export default async function forward(player: Player, user: UserData) {
+export default async function forward(player: Player) {
+    const user = getUserDatas([
+        "playedTrack",
+        "currentPlaying",
+        "playQueue",
+        "current",
+        "nextfrom",
+        "shuffle"
+    ])
     user.playedTrack = Array.from(new Set(user.playedTrack.concat([user.currentPlaying.id])));
-    if (user.queue?.length > 0) {
-        const { source, id } = user.queue.splice(0, 1)[0]
+    if (user.playQueue?.length > 0) {
+        const { source, id } = user.playQueue.splice(0, 1)[0]
 
         if (source === "youtube") {
             const tracks = await player.youtube.fetch_track([id]);
@@ -94,9 +102,8 @@ export default async function forward(player: Player, user: UserData) {
                 duration: tracks[0].duration,
                 isLived: false
             }
-
-
         }
+        writeUserDatas(user)
     }
     else {
         return null;
