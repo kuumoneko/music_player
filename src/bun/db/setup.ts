@@ -53,6 +53,11 @@ db.run(`
     FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE CASCADE,
     PRIMARY KEY (playlist_id, track_id)
   );
+
+  CREATE TABLE IF NOT EXISTS user_data (
+    key TEXT NOT NULL PRIMARY KEY, 
+    value TEXT
+  );
 `);
 
 export default db;
