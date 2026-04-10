@@ -16,7 +16,7 @@ export default async function HomeController(player: Player, pin: string[]) {
     const playlists = newPins.filter((item: any) => item.type.includes("playlist"));
     const pinPlaylists = [];
     for (const item of playlists) {
-        pinPlaylists.push(await player.youtube.fetch_artist(item.id))
+        pinPlaylists.push(await player.youtube.fetch_playlist(item.id))
     }
     const tracks = newPins.filter((item: any) => item.type.includes("track"));
 
