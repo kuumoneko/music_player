@@ -1,12 +1,8 @@
 import db from "../setup.ts"
 
 const upsertLog = db.prepare(`
-  INSERT INTO log (
-  date, type, message
-  )
-  VALUES (
-    $date, $type, $message
-  );
+  INSERT INTO log (date, type, message)
+  VALUES ($date, $type, $message);
 `);
 
 const writeLog = db.transaction((log: { type: "error" | "info", message: string }) => {

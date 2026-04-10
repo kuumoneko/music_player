@@ -60,10 +60,12 @@ db.run(`
   );
 
   CREATE TABLE IF NOT EXISTS log (
-  date TEXT NOT NULL PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,
   type TEXT NOT NULL,
   message TEXT
   );
 `);
 
+db.run(`CREATE INDEX IF NOT EXISTS idx_log_date ON log(date);`);
 export default db;

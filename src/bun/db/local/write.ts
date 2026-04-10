@@ -1,5 +1,6 @@
 import db from "../setup.ts"
 import type { Track } from "../../../shared/types.ts";
+import writeLogs from "../log/write.ts";
 
 const upsertLocalTrackStmt = db.prepare(`
   INSERT INTO tracks (
@@ -24,6 +25,7 @@ const insertArtistStmt = db.prepare(`
 
 const writeLocalFile = db.transaction((file: Track) => {
   if (file.source !== "local") {
+    writeLogs([{ type: "info", message: `Warning: Track ${file.name} passed to writeLocalFile but had source '${file.source}'. Overriding to 'local'.` }])
     console.warn(`Warning: Track ${file.name} passed to writeLocalFile but had source '${file.source}'. Overriding to 'local'.`);
   }
 
