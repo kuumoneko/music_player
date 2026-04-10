@@ -1,7 +1,7 @@
 import net from "node:net";
-import { getDataFromDatabase } from "../lib/database";
 import Player from "../music";
 import consolelog, { LogType } from "../lib/log.ts"
+import { getTrackByName } from "../db/index.ts";
 
 export default class DiscordRPC {
     private socket: net.Socket | null = null;
@@ -40,7 +40,7 @@ export default class DiscordRPC {
         });
     }
 
-    async setMusic(track: any, userData: string, player: Player, current: { time: number, duration: number }, isPlaying: boolean) {
+    async setMusic(track: any, player: Player, current: { time: number, duration: number }, isPlaying: boolean) {
         if (!this.isReady) {
             consolelog("Cannot set activity: Discord not ready yet.", LogType.Error);
             return;
@@ -48,16 +48,11 @@ export default class DiscordRPC {
 
         if (track.source === "local") {
             const { title } = track;
-            const ytb_tracks = await getDataFromDatabase(userData, "data", "tracks");
+            const ytb_tracks = getTrackByName(title, true)
 
             let result: any = null;
-            if (!ytb_tracks) return;
-
-            const isYoutube = Object.keys(ytb_tracks).find((key: string) => {
-                return ytb_tracks[key].name === title;
-            })
-            if (isYoutube) {
-                result = ytb_tracks[isYoutube];
+            if (!ytb_tracks) {
+                result = ytb_tracks[0]
             }
             else {
                 const ytb_search = await player.youtube.search(title, "video");
