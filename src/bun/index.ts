@@ -128,7 +128,7 @@ const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 const play = () => {
 	const user = getUserDatas(["currentPlaying", "current", "isPlaying"])
 	if (isDiscord) {
-		discordRPC?.setMusic(user.currentPlaying,  player, user.current, user.isPlaying);
+		discordRPC?.setMusic(user.currentPlaying, player, user.current, user.isPlaying);
 	}
 	if (!playWin) return;
 	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch(() => consoleLog("Error on sending rpc", LogType.Error))
@@ -469,7 +469,7 @@ const playRPC = BrowserView.defineRPC<PlayerRPCType>({
 				try {
 					await forward(player);
 					const user = getUserDatas(["currentPlaying", 'current', 'isPlaying'])
-					discordRPC?.setMusic(user.currentPlaying,  player, user.current, user.isPlaying);
+					discordRPC?.setMusic(user.currentPlaying, player, user.current, user.isPlaying);
 					return user.currentPlaying;
 				} catch (error) {
 					addLog(error);
@@ -673,7 +673,7 @@ setInterval(async () => {
 	if (isDiscord === true && discordRPC?.isReady === true) {
 		const user = getUserDatas(["current", 'currentPlaying', 'isPlaying'])
 		if (user.current.duration !== 0) {
-			discordRPC?.setMusic(user.currentPlaying,  player, user.current, user.isPlaying);
+			discordRPC?.setMusic(user.currentPlaying, player, user.current, user.isPlaying);
 		}
 		else {
 			discordRPC?.clearMusic();
