@@ -48,9 +48,7 @@ export default function List({
     }, [sight, list]);
 
     useEffect(() => {
-        window.api.rpc.request
-            .getProfileData("pin")
-            .then((data) => setPin(data));
+        window.api.rpc.request.getUserData("pin").then((data) => setPin(data));
     }, [list]);
 
     // remove  #hashtag from the title
@@ -95,16 +93,16 @@ export default function List({
                                 index + 1
                             } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
                             onClick={() => {
-                                if (type === "video") {
+                                if (type === "videos") {
                                     window.api.rpc.request.play({
                                         item: item,
                                         source: source as any,
                                         type: mode as any,
                                         id: item.id,
                                     });
-                                } else if (type === "playlist") {
+                                } else if (type === "playlists") {
                                     goto(`/playlists/${source}/${item.id}`);
-                                } else if (type === "artist") {
+                                } else if (type === "artists") {
                                     goto(`/artists/${source}/${item.id}`);
                                 }
                             }}
@@ -182,7 +180,7 @@ export default function List({
                                                         : ""
                                                 }`}
                                                 onClick={() => {
-                                                    download(item, source);
+                                                    download(item);
                                                 }}
                                             >
                                                 <FontAwesomeIcon
@@ -193,11 +191,8 @@ export default function List({
                                                 className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${
                                                     pin.filter(
                                                         (data) =>
-                                                            data.source ===
-                                                                source &&
-                                                            data.id ===
-                                                                item.id &&
-                                                            data.type === type,
+                                                            data ===
+                                                            `${source}:${type}:${item.id}`,
                                                     ).length > 0
                                                         ? "text-red-600"
                                                         : "text-slate-200"
@@ -206,28 +201,20 @@ export default function List({
                                                     const isPin =
                                                         pin.filter(
                                                             (data) =>
-                                                                data.source ===
-                                                                    source &&
-                                                                data.id ===
-                                                                    item.id &&
-                                                                data.type ===
-                                                                    type,
+                                                                data ===
+                                                                `${source}:${type}:${item.id}`,
                                                         ).length > 0;
                                                     if (isPin) {
                                                         const temp = pin.filter(
                                                             (item: any) => {
                                                                 return (
-                                                                    item.id !==
-                                                                        id &&
-                                                                    item.source !==
-                                                                        source &&
-                                                                    item.type !==
-                                                                        type
+                                                                    item !==
+                                                                    `${source}:${type}:${item.id}`
                                                                 );
                                                             },
                                                         );
                                                         setPin(temp);
-                                                        window.api.rpc.request.setProfileData(
+                                                        window.api.rpc.request.setUserData(
                                                             {
                                                                 key: "pin",
                                                                 data: temp,
@@ -235,26 +222,13 @@ export default function List({
                                                         );
                                                     } else {
                                                         const temp = [
-                                                            ...new Map(
-                                                                [
-                                                                    ...pin,
-                                                                    {
-                                                                        id: item.id,
-                                                                        source: source,
-                                                                        type: type,
-                                                                        thumbnail:
-                                                                            item.thumbnail,
-                                                                        name: item.name,
-                                                                    },
-                                                                ].map(
-                                                                    (item) => [
-                                                                        `${item.source}:${type}:${item.id}`,
-                                                                        item,
-                                                                    ],
-                                                                ),
-                                                            ).values(),
+                                                            ...new Set([
+                                                                ...pin,
+                                                                `${source}:${type}:${item.id}`,
+                                                            ]),
                                                         ];
-                                                        window.api.rpc.request.setProfileData(
+
+                                                        window.api.rpc.request.setUserData(
                                                             {
                                                                 key: "pin",
                                                                 data: temp,
