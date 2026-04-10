@@ -39,7 +39,7 @@ export default function Top({
             const pin = await window.api.rpc.request.getUserData("pin");
             if (
                 pin.findIndex(
-                    (item: any) => item !== `${source}:${mode}:${id}`,
+                    (item: any) => item === `${source}:${mode}:${id}`,
                 ) != -1
             ) {
                 setiSPin(true);
