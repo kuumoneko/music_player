@@ -1,5 +1,5 @@
 import Youtube from "./youtube.ts";
-import { Download_item, Status, System, Track, UserProfile } from "../../shared/types.ts";
+import { Download_item, Status, System, Track } from "../../shared/types.ts";
 import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
 import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
@@ -7,6 +7,7 @@ import areStringsSimilar from "../lib/comapre_string.ts";
 import { spawn } from "node:child_process";
 import { getDataFromDatabase } from "../lib/database.ts";
 import consolelog, { LogType } from "../lib/log.ts"
+import { getUserData } from "../db/index.ts";
 
 export enum Audio_format {
     aac = "aac",
@@ -31,11 +32,8 @@ export default class Player {
     constructor(
         userPath: string, appPath: string,
     ) {
-        this.youtube = new Youtube(appPath, userPath);
-
-        (getDataFromDatabase(userPath, 'data', 'profile') as Promise<UserProfile>).then(({ folder }) => {
-            this.download_folder = folder ?? resolve(appPath, "data", "download");
-        });
+        this.youtube = new Youtube(appPath);
+        this.download_folder = getUserData("folder");
         (getDataFromDatabase(appPath, 'data', 'system') as Promise<System>).then(({ isLocal }) => {
             if (isLocal) {
                 this.local = new Local(resolve(userPath, "data"), appPath);

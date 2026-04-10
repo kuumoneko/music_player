@@ -2,10 +2,7 @@ import { Playlist, Track, Artist, API_Key, System } from "../../shared/types.ts"
 import iso8601DurationToMilliseconds from "../lib/time.ts";
 import { getDataFromDatabase } from "../lib/database.ts";
 import consolelog, { LogType } from "../lib/log.ts"
-import { join } from "node:path";
-import { getTracks } from "../db/tracks/get.ts";
-import { writeManyTracks } from "../db/tracks/write.ts";
-import { getArtistById, getPlaylist, writeArtist, writePlaylist } from "../db/index.ts";
+import { getArtistById, getPlaylist, getTracks, writeArtist, writePlaylist, writeTracks } from "../db/index.ts";
 
 function getNextResetTimestamp() {
     const now = new Date();
@@ -84,12 +81,8 @@ export default class Youtube {
     private api_keys: API_Key[] = [];
     private maxResults = 50;
     private running: any[] = [];
-    private path: string = "";
-    public tracks: Object = {};
-    public playlists: Object = {};
-    public artists: Object = {};
 
-    constructor(appPath: string, userPath: string) {
+    constructor(appPath: string) {
         getDataFromDatabase(appPath, "data", "system").then((data: System) => {
             this.api_keys = data.youtubeApiKeys.map((key: string) => {
                 return {
@@ -99,16 +92,6 @@ export default class Youtube {
                 }
             });
         })
-        this.path = join(userPath, 'data');
-        getDataFromDatabase(this.path, "tracks").then((data) => {
-            this.tracks = data;
-        });
-        getDataFromDatabase(this.path, "playlists").then((data) => {
-            this.playlists = data;
-        });
-        getDataFromDatabase(this.path, "artists").then((data) => {
-            this.artists = data;
-        });
     }
 
     getRandomItem(list: any[]) {
@@ -282,9 +265,15 @@ export default class Youtube {
             }
             const res = [...tracks_in_database, ...temp_tracks]
             if (res.length > 0) {
-                writeManyTracks(res)
+                writeTracks(res)
             }
-            return res;
+            return res
+                .sort((a: Track, b: Track) => {
+                    return (
+                        new Date(b.releasedDate).getTime() -
+                        new Date(a.releasedDate).getTime()
+                    );
+                });
         }
         catch (e: any) {
             this.log(e)
@@ -645,24 +634,25 @@ export default class Youtube {
                     writePlaylist(this_playlist)
                 }
             }
-            return this_new_tracks.ids;
+            return this_playlist.ids;
         }
 
         try {
-            const new_tracks: string[] = []
+            const new_tracks: Track[] = []
             for (const id of ids) {
                 try {
                     const playlistId = await artist(id);
                     const ids = await playlist(playlistId);
-                    new_tracks.push(...ids);
+                    const temp = await this.fetch_track(ids);
+
+                    new_tracks.push(...temp.slice(0, 6));
                 }
                 catch (e) {
                     this.log(e);
                 }
             }
 
-            const tracks = await this.fetch_track(new_tracks);
-            return tracks;
+            return new_tracks;
         } catch (e) {
             this.log(e);
             return []

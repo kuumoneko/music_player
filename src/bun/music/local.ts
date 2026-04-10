@@ -4,7 +4,7 @@ import consolelog, { LogType } from "../lib/log.ts"
 import { spawn } from "node:child_process";
 import { Track } from "@/shared/types.ts";
 import { getAllLocalFiles } from "../db/index.ts";
-import { writeManyLocalFiles } from "../db/index.ts";
+import { writeLocalFiles } from "../db/index.ts";
 
 export class Local {
     public folder: string = "";
@@ -135,6 +135,6 @@ export class Local {
             }
         })
         await Promise.all(file);
-        writeManyLocalFiles(result)
+        writeLocalFiles(result)
     }
 }
