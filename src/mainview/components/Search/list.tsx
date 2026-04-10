@@ -147,8 +147,9 @@ export default function List({
                                         </div>
                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
-                                                className="mr-2.5"
-                                                onClick={() => {
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     if (source === "youtube") {
                                                         const url =
                                                             "https://www.youtube.com/watch?v=" +
@@ -164,8 +165,9 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className="mr-2.5"
-                                                onClick={() => {
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     Queue(item);
                                                 }}
                                             >
@@ -174,12 +176,13 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className={`mr-2.5 ${
+                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${
                                                     mode === "local"
                                                         ? "opacity-50 pointer-events-none"
                                                         : ""
                                                 }`}
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     download(item);
                                                 }}
                                             >
@@ -197,7 +200,8 @@ export default function List({
                                                         ? "text-red-600"
                                                         : "text-slate-200"
                                                 }`}
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     const isPin =
                                                         pin.filter(
                                                             (data) =>
