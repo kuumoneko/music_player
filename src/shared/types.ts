@@ -26,14 +26,6 @@ export type AppRPCType = {
                 params: keyof System,
                 response: any
             },
-            // getProfileData: {
-            //     params: keyof UserProfile,
-            //     response: any
-            // },
-            // setProfileData: {
-            //     params: { key: keyof UserProfile, data: any },
-            //     response: any
-            // },
             downloadMusic: {
                 params: null,
                 response: string
