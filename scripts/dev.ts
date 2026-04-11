@@ -36,7 +36,6 @@ console.info("\n\n");
 console.info("Starting...");
 
 const a = Bun.spawn(["bunx", "electrobun", "dev"], { stdout: "inherit", stderr: "inherit" })
-
 setTimeout(async () => {
     console.info("Restoring Electrobun config...");
     await Bun.write(
@@ -62,7 +61,8 @@ process.stdin.on("data", async (key) => {
     }
 });
 
-a.exited.then(() => {
+a.exited.then((code: number) => {
+    console.error(code)
     console.warn("\nExitting development turn.");
     process.exit(0);
 })
