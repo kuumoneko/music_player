@@ -56,17 +56,7 @@ declare global {
                     seekToPlayer: (time: number) => Promise<void>,
                     setVolume: (volume: number) => Promise<void>,
                     playTrack: (track: { source: string, id: string, title: string, thumbnail: string, artist: string }) => Promise<void>,
-                    togglePlayPause: () => Promise<void>,
-
-                    endTrack: () => Promise<{
-                        source: string, id: string, title: string, thumbnail: string, artist: string, index?: number, liveBroadcastContent: boolean
-                    }>,
-                    sleep: () => Promise<void>,
-                    setLoading: (isLoading: boolean) => Promise<void>
-                    setcurrentTime: (time: number) => Promise<void>
-                    setDuration: (time: number) => Promise<void>
-                    setIsPlaying: (isPlaying: boolean) => Promise<void>
-                    setIsLive: (isLive: boolean) => Promise<void>
+                    togglePlayPause: () => Promise<void>
                 }
             }
         }
