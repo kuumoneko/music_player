@@ -10,10 +10,7 @@ export default defineConfig({
 		outDir: "./dist",
 		emptyOutDir: true,
 		rollupOptions: {
-			input: {
-				mainview: resolve(__dirname, 'src/mainview/index.html'),
-				player: resolve(__dirname, 'src/player/index.html')
-			},
+			input: resolve(__dirname, 'src/mainview/index.html')
 		},
 	},
 	server: {
