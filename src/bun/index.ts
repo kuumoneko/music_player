@@ -484,7 +484,7 @@ if (!isLocal) {
 		downloadQueue: [],
 	})
 
-	for (const binFile of ["ffmpeg", "ffprobe", "yt-dlp"]) {
+	for (const binFile of ["ffmpeg", "ffprobe"]) {
 		const file = Bun.file(resolve(APP_ROOT, "bin", `${binFile}.exe`));
 		if (await file.exists()) {
 			file.delete();
