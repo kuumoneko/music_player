@@ -36,7 +36,6 @@ if (isLocal === null || isDiscord === null || appPort === null || playerPort ===
 }
 
 let appWin: BrowserWindow | null = null;
-// let playWin: BrowserWindow | null = null;
 let appTray: Tray | null = null;
 let discordRPC: Discord | null = null;
 
