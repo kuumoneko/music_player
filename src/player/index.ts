@@ -248,6 +248,7 @@ const onPlayerStateChange = (event: any) => {
         window.api.rpc.request.setIsPlaying(false);
     } else if (state === YoutubePlaybackState.Ended) {
         if (isRepeat) {
+            window.api.rpc.request.setcurrentTime(0);
             event.target.seekTo(0);
             event.target.playVideo();
             isPlayed = true;
