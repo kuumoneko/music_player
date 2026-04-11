@@ -234,15 +234,6 @@ export interface UserData {
     downloadQueue: string[]
 }
 
-// export interface UserProfile {
-//     play: string[],
-//     folder: string,
-//     pin: { id: string, source: string, type: string, thumbnail: string, name: string }[],
-//     download: {
-//         name: string, source: string, mode: string, id: string
-//     }[]
-// }
-
 export interface System {
     youtubeApiKeys: string[],
     isLocal: boolean,
