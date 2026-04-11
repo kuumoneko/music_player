@@ -23,10 +23,6 @@ import { Repeat, Shuffle, SleepMode, Track, UserData } from "../shared/types.ts"
 import type { AppRPCType, System } from "@/shared/types.ts";
 
 config();
-console.log({
-	heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
-	rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
-});
 
 // app variables
 const APP_ROOT = resolve("./", "..", "Resources", "app");
@@ -551,11 +547,3 @@ appTray?.on("tray-clicked", (e: any) => {
 });
 
 openAppUI();
-
-setInterval(() => {
-	console.log({
-		heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
-		rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
-	});
-	Bun.gc(true);
-}, 10 * 1000);
