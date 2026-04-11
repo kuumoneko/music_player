@@ -129,8 +129,8 @@ const play = () => {
 
 player = new Player(userData, APP_ROOT);
 player.player.on("ended", async () => {
-	const repeat = getUserData("repeat");
-	if (repeat !== Repeat.One) {
+	const user = getUserDatas(["repeat", "nextfrom"]);
+	if (user.repeat !== Repeat.One && user.nextfrom.next.length > 1) {
 		await forward(player);
 	}
 	play();
