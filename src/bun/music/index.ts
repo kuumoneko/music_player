@@ -7,6 +7,7 @@ import areStringsSimilar from "../lib/comapre_string.ts";
 import { spawn } from "node:child_process";
 import { getDataFromDatabase } from "../lib/database.ts";
 import { getUserData, writeLogs } from "../db/index.ts";
+import Play from "./play.ts";
 
 export enum Audio_format {
     aac = "aac",
@@ -22,6 +23,7 @@ export enum Audio_format {
 export default class Player {
     public youtube: Youtube;
     public local: Local;
+    public player: Play;
     public download_folder: string = "";
     public status: { data: string, track: string } = { data: Status.idle, track: "" };
     public download_queue: Download_item[] = [];
@@ -32,6 +34,7 @@ export default class Player {
         userPath: string, appPath: string,
     ) {
         this.youtube = new Youtube(appPath);
+        this.player = new Play(appPath)
         this.download_folder = getUserData("folder");
         (getDataFromDatabase(appPath, 'data', 'system') as Promise<System>).then(({ isLocal }) => {
             if (isLocal) {
