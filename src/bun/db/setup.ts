@@ -68,4 +68,6 @@ db.run(`
 `);
 
 db.run(`CREATE INDEX IF NOT EXISTS idx_log_date ON log(date);`);
+db.run(`PRAGMA cache_size = -2000;`);
+db.run("PRAGMA shrink_memory;");
 export default db;
