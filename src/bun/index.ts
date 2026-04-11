@@ -8,22 +8,25 @@ import { config } from "dotenv";
 import DownloadController from "./controllers/download.ts";
 import HomeController from "./controllers/home.ts";
 import MusicController from "./controllers/music.ts";
-import PlayController from "./controllers/play.ts";
 // lib
 import { getDataFromDatabase } from "./lib/database.ts";
 import forward from "./lib/forward.ts";
 import backward from "./lib/backward.ts";
 import getLocalIPv4 from "./lib/ipv4.ts";
 import CheckUserData from "./lib/env.ts"
-import { getAllLocalFiles, getLocalFileByIndex, getUserData, getUserDatas, writeLogs, writeUserData, writeUserDatas } from "./db/index.ts";
+import { getAllLocalFiles, getUserData, getUserDatas, writeLogs, writeUserData, writeUserDatas } from "./db/index.ts";
 // Features
 import Player from "./music/index.ts"
 import Discord from "./discord/index.ts";
 // types
 import { Repeat, Shuffle, SleepMode, Track, UserData } from "../shared/types.ts";
-import type { AppRPCType, PlayerRPCType, System } from "@/shared/types.ts";
+import type { AppRPCType, System } from "@/shared/types.ts";
 
 config();
+console.log({
+	heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
+	rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
+});
 
 // app variables
 const APP_ROOT = resolve("./", "..", "Resources", "app");
@@ -37,24 +40,29 @@ if (isLocal === null || isDiscord === null || appPort === null || playerPort ===
 }
 
 let appWin: BrowserWindow | null = null;
-let playWin: BrowserWindow | null = null;
+// let playWin: BrowserWindow | null = null;
 let appTray: Tray | null = null;
 let discordRPC: Discord | null = null;
 
 const userData = resolve(Utils.paths.userData, "..");
-const PlayerViewPort = playerPort;
 CheckUserData();
 
 let player: Player | null = null;
 
-() => {
-	const current = getUserData("current");
-	writeUserData("isPlaying", false);
+const current = {
+	time: 0,
+	duration: 0,
+	isLived: false
+};
 
-	writeUserData("current", {
-		time: 0, duration: current.duration,
-		isLived: current.isLived,
+() => {
+	const temp = getUserData("current");
+	writeUserDatas({
+		isPlaying: false,
+		isLoading: true
 	})
+	current.duration = temp.duration;
+	current.isLived = temp.isLived
 };
 
 process.on("uncaughtException", (error) => {
@@ -81,8 +89,12 @@ process.on('unhandledRejection', (reason, promise) => {
 	process.exit(1);
 });
 
-process.on("beforeExit", (code: number) => {
-	writeLogs([{ type: "error", message: `Exit with code ${code}` }])
+process.on('beforeExit', (code) => {
+	console.log(code)
+})
+
+process.on("exit", (code) => {
+	console.log(code)
 })
 
 const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
@@ -109,14 +121,59 @@ const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 ];
 
 const play = () => {
-	const user = getUserDatas(["currentPlaying", "current", "isPlaying"])
+	const user = getUserDatas(["currentPlaying", "isPlaying"]);
 	if (isDiscord) {
-		discordRPC?.setMusic(user.currentPlaying, player, user.current, user.isPlaying);
+		discordRPC?.setMusic(user.currentPlaying, player, current, user.isPlaying);
 	}
-	if (!playWin) return;
-	(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch()
+	if (user.currentPlaying.source === "local") {
+
+	}
+	player.player.play(`https://www.youtube.com/watch?v=${user.currentPlaying.id}`);
+	discordRPC?.setMusic(user.currentPlaying, player, current, user.isPlaying);
 }
+
 player = new Player(userData, APP_ROOT);
+player.player.on("ended", async () => {
+	const repeat = getUserData("repeat");
+	if (repeat !== Repeat.One) {
+		await forward(player);
+	}
+	play();
+});
+
+player.player.on("exit", () => {
+	appWin?.close();
+});
+
+player.player.on("time-update", (time) => {
+	current.time = time;
+});
+
+player.player.on("duration-update", (duration) => {
+	current.duration = duration * 1000;
+	const temp = getUserData("current");
+	if (temp.duration !== duration * 1000) {
+		temp.duration = duration * 1000;
+		writeUserData("current", temp);
+	}
+});
+
+player.player.on("is-live", (isLived) => {
+	current.isLived = isLived;
+	const temp = getUserData("current");
+	temp.isLived = isLived;
+	writeUserData("current", temp);
+});
+
+player.player.on("start-file", () => {
+	writeUserData("isLoading", true)
+});
+
+player.player.on("file-loaded", () => {
+	writeUserData("isLoading", false)
+});
+
+
 () => {
 	const folder = getUserData("folder");
 	if (folder.length > 0 && isLocal) {
@@ -199,22 +256,13 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				return !isLocal ? null : player.status;
 			},
 			close: async () => {
-				const QuitonClose = getUserData("QuitonClose")
-				if (QuitonClose) {
+				const QuitonClose = getUserData("QuitonClose");
+				if (QuitonClose === true) {
 					appWin?.close();
-					appWin = null;
-					playWin?.close();
-					Utils.quit();
-					process.exit(0)
 				}
 				else {
-					try {
-						appWin?.close();
-						appWin = null;
-					} catch (error) {
-						appWin?.hide();
-					}
-					appTray?.setMenu(getTrayMenu(false))
+					appWin?.hide();
+					appTray?.setMenu(getTrayMenu(false));
 				}
 			},
 			minimize: async () => {
@@ -228,8 +276,10 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				return QuitonClose;
 			},
 			togglePlayPause: async () => {
-				writeUserData("isPlaying", !getUserData("isPlaying"));
-				(playWin.webview.rpc as any).request.togglePlayPause().catch();
+				if (!player.player.isReady) return;
+				const isPlaying = getUserData("isPlaying")
+				writeUserData("isPlaying", !isPlaying);
+				player.player.togglePlayPause(!isPlaying);
 			},
 			getUserData: async (key: keyof UserData) => {
 				if (key === "folder" && !isLocal) {
@@ -259,12 +309,8 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					writeUserData(key, data)
 
 					if (key === "volume") {
-						(playWin.webview.rpc as any).request.setVolume(data).catch();
+						player.player.setVolume(data);
 					}
-					if (key === "repeat") {
-						(playWin.webview.rpc as any).request.setIsRepeat(data === Repeat.One).catch();
-					}
-
 				} catch (error) {
 					writeLogs([{ type: "error", message: `Error when writing user data with\nKey = ${key}\nValue = ${data}\n${error}` }]);
 					return null;
@@ -272,7 +318,10 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			},
 			getPlayingData: () => {
 				const result = getUserDatas(["shuffle", "repeat", "isPlaying", "isLoading", 'playedTrack', 'current']);
-				return result
+				return {
+					...result,
+					current
+				}
 			},
 			next: async () => {
 				try {
@@ -293,14 +342,14 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				}
 			},
 			play: async ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => {
-				const user = getUserDatas(["playQueue", "currentPlaying", "current", "shuffle", "repeat", "playedTrack", "nextfrom"])
+				const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"])
 				user.playQueue = [];
 				if (source === "youtube") {
 					const track = await player.youtube.fetch_track([item.id])
 					user.currentPlaying = {
 						source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", ")
 					}
-					user.current.duration = track[0].duration;
+					current.duration = track[0].duration;
 					if (type === "track") {
 						user.nextfrom = {
 							from: `youtube: track: ${id}`,
@@ -335,33 +384,25 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					user.currentPlaying = {
 						source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index
 					}
-					user.current.duration = track?.duration;
-					user.current.isLived = false;
+					current.duration = track?.duration;
+					current.isLived = false;
 					user.nextfrom = {
 						from: `local: local`,
 						next: localFiles.slice(0, 20)
 					}
 				}
-				user.current.time = 0;
+				current.time = 0;
 				user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
 
 				user.playedTrack = Array.from(new Set([...user.playedTrack, user.currentPlaying.id]));
-				(playWin.webview.rpc as any).request.playTrack(user.currentPlaying).catch();
-				if (user.nextfrom.next.length < 2) {
-					(playWin.webview.rpc as any).request.setIsRepeat(true).catch();
-				}
-				else {
-					(playWin.webview.rpc as any).request.setIsRepeat(user.repeat as any === Repeat.One).catch();
-				}
 				writeUserDatas(user);
+				play();
 				return user.currentPlaying
 			},
 			seekTo: async (time: number) => {
 				try {
-					const current = getUserData("current");
 					current.time = time;
-					writeUserData("current", current);
-					(playWin.webview.rpc as any).request.seekTo(time);
+					player.player.seekTo(time);
 				} catch (error) {
 					writeLogs([{ type: "error", message: `Error when changing time\n${error}` }]);
 					return null;
@@ -369,7 +410,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			},
 			setSleep: async (mode: SleepMode) => {
 				try {
-					(playWin.webview.rpc as any).request.setSleep(mode).catch();
+					player.player.setSleep(mode);
 				} catch (error) {
 					writeLogs([{ type: "error", message: `Error when setting Sleep mode\n${error}` }]);
 					return null;
@@ -425,88 +466,21 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 	}
 })
 
-// @ts-ignore
-const playRPC = BrowserView.defineRPC<PlayerRPCType>({
-	maxRequestTime: 60 * 1000,
-	handlers: {
-		requests: {
-			getTrack: async () => {
-				try {
-					const folder = getUserData("folder")
-					const result = await PlayController(folder);
-					return result
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when get track data from local file\n${error}` }]);
-					return null;
-				}
-			},
-			endTrack: async () => {
-				try {
-					await forward(player);
-					const user = getUserDatas(["currentPlaying", 'current', 'isPlaying'])
-					discordRPC?.setMusic(user.currentPlaying, player, user.current, user.isPlaying);
-					return user.currentPlaying;
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when sending endTrack\n${error}` }]);
-					return null;
-				}
-			},
-			sleep: async () => { appWin?.close(); },
-			setLoading: (isLoading: boolean) => {
-				writeUserData("isLoading", isLoading)
-			},
-			setcurrentTime: (time: number) => {
-				writeUserData("current", {
-					...getUserData("current"),
-					time: time
-				})
-			},
-			setDuration: (duration: number) => {
-				writeUserData("current", {
-					...getUserData("current"),
-					duration: duration
-				})
-			},
-			setIsPlaying: async (isPlaying: boolean) => {
-				if (discordRPC.isReady === true) {
-					await discordRPC.isDiscordRun();
-				}
-				if (isDiscord === true && discordRPC?.isReady === true) {
-					const user = getUserDatas(["current", 'currentPlaying'])
-					if (user.current.duration !== 0) {
-						discordRPC?.setMusic(user.currentPlaying, player, user.current, isPlaying);
-					}
-					else {
-						discordRPC?.clearMusic();
-					}
-				}
-
-				writeUserData("isPlaying", isPlaying);
-			},
-			setIsLive: (isLived: boolean) => {
-				writeUserData("current", {
-					...getUserData("current"),
-					isLived: isLived
-				})
-			}
-		}
-	}
-})
+let isFirstLoad = true;
 
 const openAppUI = () => {
-	if (appWin) {
-		appWin?.show();
-	}
-	else {
-		appWin = new BrowserWindow({
-			title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
-			preload: `window.addEventListener('contextmenu', (e) => { e.preventDefault(); }, false); `
-		})
-		appWin?.webview?.on("dom-ready", () => {
-			appWin?.maximize();
-			appWin?.focus();
-		})
-	}
+	appWin = new BrowserWindow({
+		title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
+		preload: `window.addEventListener('contextmenu', (e) => { e.preventDefault(); }, false); `
+	})
+	appWin?.webview?.on("dom-ready", () => {
+		appWin?.maximize();
+		if (isFirstLoad) {
+			isFirstLoad = false;
+			play();
+		}
+		writeUserData("isPlaying", false);
+	})
 }
 
 if (!isLocal) {
@@ -533,7 +507,7 @@ try {
 		writeLogs([{
 			type: "error", message: `Error on sending rpc`
 		}])
-		process.exit(0);
+		process.stdout.write("lmao\n"), () => { process.exit(0); };
 	}
 } catch (error: any) {
 	Bun.serve({
@@ -564,89 +538,24 @@ appTray?.on("tray-clicked", (e: any) => {
 	const action = e?.data?.action ?? "nothing";
 
 	if (action === "show") {
-		openAppUI();
+		appWin?.show();
 		appTray?.setMenu(getTrayMenu(true));
 	}
 	else if (action === "hide") {
-		try {
-			appWin?.close();
-			appWin = null;
-		} catch (error) {
-			appWin?.hide();
-		}
+		appWin?.hide();
 		appTray?.setMenu(getTrayMenu(false));
 	}
 	else if (action === "quit") {
 		appWin?.close();
-		playWin?.close();
-		Utils.quit();
-		process.exit(0);
 	}
 });
 
 openAppUI();
 
-// Create Player Windows
-Bun.serve({
-	port: PlayerViewPort,
-	async fetch(req) {
-		try {
-			const url = new URL(req.url);
-
-			if (url.pathname === "/music") {
-				const filePath = url.searchParams.get("path");
-
-				if (!filePath) {
-					return new Response("Missing path parameter", {
-						status: 400,
-						headers: { "Access-Control-Allow-Origin": "*" }
-					});
-				}
-				const fileName = getLocalFileByIndex(Number(filePath)).id
-				let file: any;
-				file = Bun.file(fileName);
-				const Firstexists = await file.exists();
-				if (!Firstexists) {
-					file = Bun.file(resolve(getUserData("folder"), fileName));
-					const Secexists = await file.exists();
-					if (!Secexists) {
-						return new Response("File not found on disk", {
-							status: 404,
-							headers: { "Access-Control-Allow-Origin": "*" }
-						});
-					}
-				}
-
-				return new Response(file, {
-					headers: {
-						"Access-Control-Allow-Origin": "*",
-						"Accept-Ranges": "bytes",
-						"Content-Length": file.size.toString(),
-						"Content-Type": file.type || "audio/mpeg",
-					}
-				});
-			}
-
-			if (url.pathname === "/") {
-				return new Response(Bun.file(join(APP_ROOT, "views", "src", "player", "index.html")));
-			}
-
-			const filePath = join(APP_ROOT, "views", url.pathname);
-			const file = Bun.file(filePath);
-
-			if (await file.exists()) {
-				return new Response(file);
-			}
-
-			return new Response("Not Found", { status: 404 });
-		} catch (error) {
-			writeLogs([{ type: "error", message: `Unexpected error: ${error}` }])
-		}
-	},
-});
-playWin = new BrowserWindow({
-	url: `http://localhost:${PlayerViewPort}`, hidden: true, rpc: playRPC
-})
-playWin?.webview?.on("dom-ready", () => {
-	playWin.hide();
-})
+setInterval(() => {
+	console.log({
+		heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + 'MB',
+		rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB',
+	});
+	Bun.gc(true);
+}, 10 * 1000);
