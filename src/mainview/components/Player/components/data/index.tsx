@@ -15,40 +15,6 @@ export default function DataUI() {
         setthumbnail(data.thumbnail);
         setid(data.id);
         setsource(data.source);
-
-        if ("mediaSession" in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: data.title,
-                artist: data.artist,
-                artwork: [
-                    {
-                        src: data.thumbnail,
-                        sizes: "512x512",
-                        type: "image/png",
-                    },
-                ],
-            });
-            navigator.mediaSession.setActionHandler("play", () =>
-                window.api.rpc.request.setUserData({
-                    key: "isPlaying",
-                    data: true,
-                }),
-            );
-            navigator.mediaSession.setActionHandler("pause", () =>
-                window.api.rpc.request.setUserData({
-                    key: "isPlaying",
-                    data: false,
-                }),
-            );
-            navigator.mediaSession.setActionHandler("nexttrack", () => {
-                console.log("next");
-                window.api.rpc.request.next();
-            });
-            navigator.mediaSession.setActionHandler("previoustrack", () => {
-                console.log("previous");
-                window.api.rpc.request.previous();
-            });
-        }
     };
 
     useEffect(() => {
