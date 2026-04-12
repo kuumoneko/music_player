@@ -18,11 +18,11 @@ export default function DataUI() {
 
         if ("mediaSession" in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({
-                title: name,
-                artist: artists,
+                title: data.title,
+                artist: data.artist,
                 artwork: [
                     {
-                        src: thumbnail,
+                        src: data.thumbnail,
                         sizes: "512x512",
                         type: "image/png",
                     },
@@ -40,12 +40,14 @@ export default function DataUI() {
                     data: false,
                 }),
             );
-            navigator.mediaSession.setActionHandler("nexttrack", () =>
-                window.api.rpc.request.next(),
-            );
-            navigator.mediaSession.setActionHandler("previoustrack", () =>
-                window.api.rpc.request.previous(),
-            );
+            navigator.mediaSession.setActionHandler("nexttrack", () => {
+                console.log("next");
+                window.api.rpc.request.next();
+            });
+            navigator.mediaSession.setActionHandler("previoustrack", () => {
+                console.log("previous");
+                window.api.rpc.request.previous();
+            });
         }
     };
 
