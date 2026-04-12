@@ -1,5 +1,5 @@
 import EventEmitter from "node:events";
-import { writeLogs } from "../db";
+import { writeLogs, writeUserData } from "../db";
 import { SleepMode } from "../../shared/types.ts";
 
 export default class Play extends EventEmitter {
@@ -52,6 +52,9 @@ export default class Play extends EventEmitter {
                                         const duration = response.data;
                                         this.emit("duration-update", duration);
                                     }
+                                    if (response.name === "pause") {
+                                        writeUserData("isPlaying", !response.data)
+                                    }
                                 }
 
                                 if (response.event === "start-file") {
@@ -85,11 +88,7 @@ export default class Play extends EventEmitter {
             });
             this.send(["observe_property", 1, "time-pos"]);
             this.send(["observe_property", 2, "duration"]);
-            setInterval(() => {
-                this.send(["observe_property", 1, "time-pos"]);
-                this.send(["observe_property", 2, "duration"]);
-                // this.send(["observe_property", 4, "media-title"]);
-            }, 1000);
+            this.send(["observe_property", 1, "pause"]);
         }, 1000);
     }
 
