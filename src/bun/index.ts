@@ -168,7 +168,6 @@ player.player.on("file-loaded", () => {
 	writeUserData("isLoading", false)
 });
 
-
 () => {
 	const folder = getUserData("folder");
 	if (folder.length > 0 && isLocal) {
@@ -272,8 +271,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			},
 			togglePlayPause: async () => {
 				if (!player.player.isReady) return;
-				const isPlaying = getUserData("isPlaying")
-				writeUserData("isPlaying", !isPlaying);
+				const isPlaying = getUserData("isPlaying");
 				player.player.togglePlayPause(!isPlaying);
 			},
 			getUserData: async (key: keyof UserData) => {
@@ -369,7 +367,9 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 						}
 						user.nextfrom = {
 							from: `youtube: ${type}: ${id}`,
-							next: otherTracks.slice(0, 20)
+							next: otherTracks.slice(0, 20).filter((track: Track) => {
+								return track.id !== item.id
+							})
 						}
 					}
 				}
