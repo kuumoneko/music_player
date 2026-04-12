@@ -111,7 +111,7 @@ export type AppRPCType = {
             setFolder: {
                 params: null,
                 response: string // folder full path
-            },
+            }
         },
         messages: {}
     }>,
