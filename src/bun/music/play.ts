@@ -25,8 +25,9 @@ export default class Play extends EventEmitter {
             "--idle",
             `--input-ipc-server=${this.pipePath}`,
             "--no-video",
-            "--pause",
-            "--ao=wasapi"
+            "--ao=wasapi",
+            "--media-controls=yes",
+            "--force-window=no"
         ], { stdout: "inherit" });
 
         setTimeout(async () => {
@@ -43,6 +44,11 @@ export default class Play extends EventEmitter {
                             if (!line.trim()) continue;
                             try {
                                 const response = JSON.parse(line);
+                                if (response.request_id === 999 && response.error === "success") {
+                                    const mpvQueue = response.data;
+                                    this.emit("queue", mpvQueue)
+                                }
+
                                 if (response.event === "property-change") {
                                     if (response.name === "time-pos") {
                                         const currentTime = response.data;
@@ -52,8 +58,12 @@ export default class Play extends EventEmitter {
                                         const duration = response.data;
                                         this.emit("duration-update", duration);
                                     }
+
                                     if (response.name === "pause") {
                                         this.emit("change-playState", !response.data)
+                                    }
+                                    if (response.name === "path") {
+                                        this.emit("playing", response.data)
                                     }
                                 }
 
@@ -89,24 +99,65 @@ export default class Play extends EventEmitter {
             this.send(["observe_property", 1, "time-pos"]);
             this.send(["observe_property", 2, "duration"]);
             this.send(["observe_property", 1, "pause"]);
+            this.send(["observe_property", 1, "path"]);
+            this.send(["observe_property", 1, "playlist-count"])
+
         }, 1000);
     }
 
-    private send(command: (string | number | boolean)[]) {
+    private send(command: (string | number | boolean | Object)[], id: number = 0) {
+        let realCmd: any = {}
+        if (id > 0) {
+            realCmd.request_id = id;
+        }
+        realCmd.command = command
         if (this.socket && typeof this.socket.write === "function") {
-            const msg = JSON.stringify({ command }) + "\n";
+            const msg = JSON.stringify(realCmd) + "\n";
             this.socket.write(msg);
         }
     }
 
     play(urlOrPath: string) {
         this.send(["stop"]);
+        this.send(["playlist-clear"]);
 
         this.send(["loadfile", urlOrPath, "replace"]);
-        if (this.isFirstLoad) {
-            this.isFirstLoad = false;
-            this.send(["set_property", "pause", true]);
+        setTimeout(() => {
+
+            if (this.isFirstLoad) {
+                this.isFirstLoad = false;
+                this.send(["set_property", "pause", true]);
+            }
+
+        }, 300);
+    }
+
+    getQueue() {
+        this.send(["get_property", "playlist"], 999)
+    }
+
+    setRepeat(isRepeat: boolean) {
+        this.send(["set_property", "loop-file", isRepeat ? "inf" : "no"])
+    }
+
+    addTracks(urls: string[]) {
+        for (const url of urls) {
+            this.send(["loadfile", url, "append"]);
         }
+    }
+
+    setVideoMetadata(thumbnailUrl: string, title: string, artist: string) {
+        this.send(["video-add", thumbnailUrl, "auto"]);
+
+        this.send(["set_property", "metadata/by-key/title", title + artist]);
+    }
+
+    next() {
+        this.send(["playlist-next"])
+    }
+
+    previous() {
+        this.send(["playlist-prev"])
     }
 
     togglePlayPause(isPlay: boolean) {
@@ -145,14 +196,11 @@ export default class Play extends EventEmitter {
 
     public async destroy() {
         console.log("Cleaning up Kuumo Player...");
-
-        // 1. Tell MPV to quit politely via IPC
         if (this.socket) {
             this.send(["quit"]);
-            this.socket.end(); // Close the socket
+            this.socket.end();
         }
 
-        // 2. Give it a tiny moment to exit, then force kill if it's still there
         setTimeout(() => {
             if (this.mpv && this.mpv.exitCode === null) {
                 this.mpv.kill();
