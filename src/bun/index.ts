@@ -130,13 +130,6 @@ const play = () => {
 }
 
 player = new Player(userData, APP_ROOT);
-// player.player.on("ended", async () => {
-// 	const user = getUserDatas(["repeat", "nextfrom"]);
-// 	if (user.repeat !== Repeat.One && user.nextfrom.next.length > 1) {
-// 		await forward(player);
-// 	}
-// 	play();
-// });
 
 player.player.on("exit", () => {
 	appWin?.close();
