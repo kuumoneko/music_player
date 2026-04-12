@@ -20,7 +20,9 @@ export default async function HomeController(player: Player, pin: string[]) {
     }
     const tracks = newPins.filter((item: any) => item.type.includes("track"));
 
+    const pinTracks = await player.youtube.fetch_track(tracks.map(item => item.id));
+
     const ytb_new_tracks = await player.youtube.get_new_tracks(artists.filter((item: Artist) => item.source === "youtube").map((item: Artist) => item.id))
 
-    return { artists: pinArtists, playlists: pinPlaylists, newTracks: ytb_new_tracks, tracks }
+    return { artists: pinArtists, playlists: pinPlaylists, newTracks: ytb_new_tracks, tracks: pinTracks }
 }
