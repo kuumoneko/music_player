@@ -10,8 +10,6 @@ import HomeController from "./controllers/home.ts";
 import MusicController from "./controllers/music.ts";
 // lib
 import { getDataFromDatabase } from "./lib/database.ts";
-import forward from "./lib/forward.ts";
-import backward from "./lib/backward.ts";
 import getLocalIPv4 from "./lib/ipv4.ts";
 import CheckUserData from "./lib/env.ts"
 import { getAllLocalFiles, getUserData, getUserDatas, writeLogs, writeUserData, writeUserDatas } from "./db/index.ts";
@@ -115,34 +113,137 @@ const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 	},
 ];
 
-const play = () => {
+const setDiscordRPC = () => {
 	const user = getUserDatas(["currentPlaying", "isPlaying"]);
 	if (isDiscord) {
 		discordRPC?.setMusic(user.currentPlaying, player, current, user.isPlaying);
 	}
-	if (user.currentPlaying.source === "local") {
+};
 
-	}
-	player.player.play(`https://www.youtube.com/watch?v=${user.currentPlaying.id}`);
-	discordRPC?.setMusic(user.currentPlaying, player, current, user.isPlaying);
+const ytbTrackStart = "https://www.youtube.com/watch?v="
+
+const play = () => {
+	const currentPlaying = getUserData("currentPlaying");
+
+	player.player.play(`${ytbTrackStart}${currentPlaying.id}`);
+	setDiscordRPC();
 }
 
 player = new Player(userData, APP_ROOT);
-player.player.on("ended", async () => {
-	const user = getUserDatas(["repeat", "nextfrom"]);
-	if (user.repeat !== Repeat.One && user.nextfrom.next.length > 1) {
-		await forward(player);
-	}
-	play();
-});
+// player.player.on("ended", async () => {
+// 	const user = getUserDatas(["repeat", "nextfrom"]);
+// 	if (user.repeat !== Repeat.One && user.nextfrom.next.length > 1) {
+// 		await forward(player);
+// 	}
+// 	play();
+// });
 
 player.player.on("exit", () => {
 	appWin?.close();
 });
 
+player.player.on("change-playState", (data) => {
+	writeUserData("isPlaying", data);
+	setDiscordRPC();
+})
+
 player.player.on("time-update", (time) => {
 	current.time = time;
 });
+
+player.player.on("playing", async (data) => {
+	if (!data) return;
+
+	if (data.includes(`${ytbTrackStart}`)) {
+		const id = data.split(`${ytbTrackStart}`)[1];
+		if (!id || id === "undefined") return;
+		const track = (await player.youtube.fetch_track([id]))[0] ?? null;
+		writeUserData("currentPlaying", {
+			source: "youtube",
+			title: track.name,
+			thumbnail: track.thumbnail,
+			artist: track.artist.map(item => item.name).join(", "),
+			duration: track.duration,
+			id: track.id
+		})
+		player.player.setVideoMetadata(track.thumbnail, track.name, track.artist.map(item => item.name).join(", "))
+	}
+
+	player.player.getQueue();
+})
+
+player.player.on("queue", async (data: { filename: string, playing: boolean }[]) => {
+	if (!data) return;
+	let isYTB = false;
+	if (data[0].filename.includes(ytbTrackStart)) {
+		isYTB = true;
+		data = data.filter(item => item.filename.includes(ytbTrackStart))
+	}
+	else {
+		data = data.filter(item => !item.filename.includes(ytbTrackStart))
+	}
+
+	const currentTrack = data.splice(0, 1)[0].filename;
+	const ids = data.map(item => isYTB ? item.filename.split(ytbTrackStart)[1] : item.filename);
+
+
+	const { nextfrom, playQueue, shuffle } = getUserDatas(["nextfrom", "playQueue", "shuffle"]);
+	const notinQueue = ids.filter(item => playQueue.includes(item));
+	let result = [];
+	playQueue.forEach(item => {
+		if (item.source === "youtube") {
+			result.push(`${ytbTrackStart}${item.id}`)
+		}
+		else {
+			result.push(item.id)
+		}
+	});
+	result.push(...notinQueue);
+	if (result.length < 25) {
+		const [source, mode, id] = nextfrom.from.split(":");
+		if (source === "youtube") {
+			if (nextfrom.next.length < 10) {
+				let data: any = null;
+				if (mode.includes("artist")) {
+					data = (await player.youtube.fetch_artist(id)).tracks;
+				}
+				else if (mode.includes("playlist")) {
+					data = (await player.youtube.fetch_playlist(id)).tracks;
+				}
+
+				if (shuffle === Shuffle.Enable) {
+					for (let i = data.length - 1; i > 0; i--) {
+						const j = Math.floor(Math.random() * (i + 1));
+						[data[i], data[j]] = [data[j], data[i]];
+					}
+					nextfrom.next.push(...data.slice(0, 25 - (nextfrom.next?.length ?? 0)))
+				}
+				else {
+					if (nextfrom?.next?.length > 1) {
+						const last = data.findIndex((item: Track) => item.id === nextfrom.next[nextfrom.next.length - 1].id);
+						nextfrom.next.push(...data.slice(last, last + (25 - (nextfrom.next?.length ?? 0))))
+					}
+					else {
+						nextfrom.next = data.slice(0, 25)
+					}
+				}
+
+				if (shuffle === Shuffle.Enable) {
+					for (let i = nextfrom.next.length - 1; i > 0; i--) {
+						const j = Math.floor(Math.random() * (i + 1));
+						[nextfrom.next[i], nextfrom.next[j]] = [nextfrom.next[j], nextfrom.next[i]];
+					}
+				}
+			}
+		}
+		writeUserData("nextfrom", nextfrom)
+	}
+	result.push(...nextfrom.next.slice(0, nextfrom.next.length - result.length).map(item =>
+		item.source === "youtube" ? `${ytbTrackStart}${item.id}` : item.id
+	));
+	result = result.filter(item => item !== currentTrack)
+	player.player.addTracks(result)
+})
 
 player.player.on("duration-update", (duration) => {
 	current.duration = duration * 1000;
@@ -304,12 +405,15 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					if (key === "volume") {
 						player.player.setVolume(data);
 					}
+					if (key === "repeat") {
+						player.player.setRepeat(data === Repeat.One);
+					}
 				} catch (error) {
 					writeLogs([{ type: "error", message: `Error when writing user data with\nKey = ${key}\nValue = ${data}\n${error}` }]);
 					return null;
 				}
 			},
-			getPlayingData: () => {
+			getPlayingData: async () => {
 				const result = getUserDatas(["shuffle", "repeat", "isPlaying", "isLoading", 'playedTrack', 'current']);
 				return {
 					...result,
@@ -318,8 +422,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			},
 			next: async () => {
 				try {
-					await forward(player);
-					play();
+					player.player.next();
 				} catch (error) {
 					writeLogs([{ type: "error", message: `Error when switching to next track\n${error}` }]);
 					return null;
@@ -327,8 +430,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 			},
 			previous: async () => {
 				try {
-					await backward(player);
-					play();
+					player.player.previous();
 				} catch (error) {
 					writeLogs([{ type: "error", message: `Error when switching to previous track\n${error}` }]);
 					return null;
@@ -345,7 +447,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					current.duration = track[0].duration;
 					if (type === "track") {
 						user.nextfrom = {
-							from: `youtube: track: ${id}`,
+							from: `youtube:track:${id}`,
 							next: [
 								track[0]
 							]
@@ -366,7 +468,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 							}
 						}
 						user.nextfrom = {
-							from: `youtube: ${type}: ${id}`,
+							from: `youtube:${type}:${id}`,
 							next: otherTracks.slice(0, 20).filter((track: Track) => {
 								return track.id !== item.id
 							})
@@ -456,7 +558,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					writeLogs([{ type: "error", message: `Error when connecting with Discord\n${error}` }]);
 					return null;
 				}
-			},
+			}
 		}
 	}
 })
@@ -508,7 +610,7 @@ try {
 	Bun.serve({
 		port: port,
 		hostname: host,
-		fetch(_req: any) {
+		async fetch(_req: any) {
 			openAppUI();
 			return new Response("OK");
 		}
