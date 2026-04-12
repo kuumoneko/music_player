@@ -25,26 +25,6 @@ export default function ControlUI() {
         isLived: false,
     });
 
-    const isPlayingRef = useRef(false);
-    const isLoadingRef = useRef(true);
-    const currentRef = useRef({
-        time: 0,
-        duration: 0,
-        isLived: false,
-    });
-
-    useEffect(() => {
-        isPlayingRef.current = played;
-    }, [played]);
-
-    useEffect(() => {
-        isLoadingRef.current = isloading;
-    }, [isloading]);
-
-    useEffect(() => {
-        currentRef.current = playing;
-    }, [playing]);
-
     useEffect(() => {
         let isMounted = true;
         let timerId: any;
@@ -66,18 +46,16 @@ export default function ControlUI() {
             } catch (err) {
                 console.error("RPC Error:", err);
             } finally {
-                // ONLY schedule the next update AFTER this one is totally done
                 if (isMounted) {
-                    timerId = setTimeout(safeUpdate, 200); // 200ms is safer than 100ms
+                    timerId = setTimeout(safeUpdate, 200);
                 }
             }
         };
 
-        // Initial calls
         window.api.rpc.request.getUserData("shuffle").then(setshuffle);
         window.api.rpc.request.getUserData("repeat").then(setrepeat);
 
-        safeUpdate(); // Start the loop
+        safeUpdate();
 
         return () => {
             isMounted = false;
