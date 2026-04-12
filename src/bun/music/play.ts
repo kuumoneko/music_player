@@ -1,5 +1,5 @@
 import EventEmitter from "node:events";
-import { writeLogs, writeUserData } from "../db";
+import { writeLogs } from "../db";
 import { SleepMode } from "../../shared/types.ts";
 
 export default class Play extends EventEmitter {
@@ -53,7 +53,7 @@ export default class Play extends EventEmitter {
                                         this.emit("duration-update", duration);
                                     }
                                     if (response.name === "pause") {
-                                        writeUserData("isPlaying", !response.data)
+                                        this.emit("change-playState", !response.data)
                                     }
                                 }
 
