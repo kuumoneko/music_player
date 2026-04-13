@@ -116,7 +116,7 @@ const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 const setDiscordRPC = () => {
 	const user = getUserDatas(["currentPlaying", "isPlaying"]);
 	if (isDiscord) {
-		discordRPC?.setMusic(user.currentPlaying, player, current, user.isPlaying);
+		discordRPC?.setMusic(user.currentPlaying, player, current, true);
 	}
 };
 
@@ -159,9 +159,18 @@ player.player.on("playing", async (data) => {
 			duration: track.duration,
 			id: track.id
 		})
+		if (isDiscord) {
+			discordRPC?.setMusic({
+				source: "youtube",
+				title: track.name,
+				thumbnail: track.thumbnail,
+				artist: track.artist.map(item => item.name).join(", "),
+				duration: track.duration,
+				id: track.id
+			}, player, { time: 0, duration: track.duration }, true);
+		}
 		player.player.setVideoMetadata(track.thumbnail, track.name, track.artist.map(item => item.name).join(", "))
 	}
-
 	player.player.getQueue();
 })
 
@@ -269,290 +278,323 @@ player.player.on("file-loaded", () => {
 	}
 }
 
+const withSafeEncoding = <T extends Record<string, any>>(handlers: T): T => {
+	const wrappedHandlers: any = {};
+
+	for (const [key, handler] of Object.entries(handlers)) {
+		if (typeof handler === "function") {
+			wrappedHandlers[key] = async (...args: any[]) => {
+				const result = await handler(...args);
+				if (result !== undefined) {
+					return encodeURIComponent(JSON.stringify(result));
+				}
+				return result;
+			};
+		} else {
+			wrappedHandlers[key] = handler;
+		}
+	}
+
+	return wrappedHandlers as T;
+};
+
 // @ts-ignore
 const appRPC = BrowserView.defineRPC<AppRPCType>({
 	maxRequestTime: 60 * 1000,
 	handlers: {
-		requests: {
-			getMusicData: async ({ source, type, id }: { source: "youtube" | "local", type: string, id: string }) => {
-				try {
-					const result = await MusicController(player, {
-						source: source,
-						type: type,
-						id: id,
-						query: "",
-						mode: ""
-					})
-					return result
-				} catch (error) {
-					writeLogs([{
-						type: "error", message: `Error when getting music data with:\nSource = ${source}\nMode = ${type}\nId = ${id}\n ${error}`
-					}]);
-					return null;
-				}
-			},
-			getLocalfile: async () => {
-				try {
-					const result = getAllLocalFiles();
-					return result;
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when getting Local files:\n${error}` }]);
-					return null;
-				}
-			},
-			searchMusic: async ({ type, query }: { type: "video" | "playlist" | "artist", query: string }) => {
-				try {
-					const result = await MusicController(player, {
-						source: "youtube",
-						id: "",
-						type: type,
-						query: query, mode: "search"
-					})
-					return result
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when searching music data with:\nType = ${type}\nQuery = ${query}\n${error}` }]);
-					return null;
-				}
-			},
-			getHomeData: async () => {
-				try {
-					const pin = getUserData("pin")
-					const result = await HomeController(player, pin);
-					return result;
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Unexpected error when getting home data:\n${error}` }]);
-					return null;
-				}
-			},
-			getSystem: (key: keyof System) => { return key === "youtubeApiKeys" ? null : key === "isDiscord" ? isDiscord : isLocal },
-			downloadMusic: async () => {
-				try {
-					const downloadQueue = getUserData("downloadQueue")
-					if (downloadQueue.length === 0) {
-						throw new Error("No download queue");
+		requests: withSafeEncoding(
+			{
+				getMusicData: async ({ source, type, id }: { source: "youtube" | "local", type: string, id: string }) => {
+					try {
+						const result = await MusicController(player, {
+							source: source,
+							type: type,
+							id: id,
+							query: "",
+							mode: ""
+						})
+						return result
+					} catch (error) {
+						writeLogs([{
+							type: "error", message: `Error when getting music data with:\nSource = ${source}\nMode = ${type}\nId = ${id}\n ${error}`
+						}]);
+						return null;
 					}
-					if (!isLocal) {
-						throw new Error("User dont set this app has local file")
+				},
+				getLocalfile: async () => {
+					try {
+						const result = getAllLocalFiles();
+						return result;
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when getting Local files:\n${error}` }]);
+						return null;
 					}
-					return await DownloadController(player);
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when preparing download music:\n${error}` }]);
-					return null;
-				}
-			},
-			getDownloadStatus: async () => {
-				return !isLocal ? null : player.status;
-			},
-			close: async () => {
-				const QuitonClose = getUserData("QuitonClose");
-				if (QuitonClose === true) {
-					appWin?.close();
-				}
-				else {
-					appWin?.hide();
-					appTray?.setMenu(getTrayMenu(false));
-				}
-			},
-			minimize: async () => {
-				appWin?.minimize();
-			},
-			toggleQuitonClose: async () => {
-				writeUserData("QuitonClose", !getUserData("QuitonClose"))
-			},
-			isQuitonClose: async () => {
-				const QuitonClose = getUserData("QuitonClose")
-				return QuitonClose;
-			},
-			togglePlayPause: async () => {
-				if (!player.player.isReady) return;
-				const isPlaying = getUserData("isPlaying");
-				player.player.togglePlayPause(!isPlaying);
-			},
-			getUserData: async (key: keyof UserData) => {
-				if (key === "folder" && !isLocal) {
-					return null;
-				}
-				return getUserData(key)
-			},
-			setUserData: async ({ key, data }: { key: keyof UserData, data: any }) => {
-				try {
+				},
+				searchMusic: async ({ type, query }: { type: "video" | "playlist" | "artist", query: string }) => {
+					try {
+						const result = await MusicController(player, {
+							source: "youtube",
+							id: "",
+							type: type,
+							query: query, mode: "search"
+						})
+						return result
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when searching music data with:\nType = ${type}\nQuery = ${query}\n${error}` }]);
+						return null;
+					}
+				},
+				getHomeData: async () => {
+					try {
+						const pin = getUserData("pin")
+						const result = await HomeController(player, pin);
+						return result;
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Unexpected error when getting home data:\n${error}` }]);
+						return null;
+					}
+				},
+				getSystem: (key: keyof System) => { return key === "youtubeApiKeys" ? null : key === "isDiscord" ? isDiscord : isLocal },
+				downloadMusic: async () => {
+					try {
+						const downloadQueue = getUserData("downloadQueue")
+						if (downloadQueue.length === 0) {
+							throw new Error("No download queue");
+						}
+						if (!isLocal) {
+							throw new Error("User dont set this app has local file")
+						}
+						return await DownloadController(player);
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when preparing download music:\n${error}` }]);
+						return null;
+					}
+				},
+				getDownloadStatus: async () => {
+					return !isLocal ? null : player.status;
+				},
+				close: async () => {
+					const QuitonClose = getUserData("QuitonClose");
+					if (QuitonClose === true) {
+						appWin?.close();
+					}
+					else {
+						appWin?.hide();
+						appTray?.setMenu(getTrayMenu(false));
+					}
+				},
+				minimize: async () => {
+					appWin?.minimize();
+				},
+				toggleQuitonClose: async () => {
+					writeUserData("QuitonClose", !getUserData("QuitonClose"))
+				},
+				isQuitonClose: async () => {
+					const QuitonClose = getUserData("QuitonClose")
+					return QuitonClose;
+				},
+				togglePlayPause: async () => {
+					if (!player.player.isReady) return;
+					const isPlaying = getUserData("isPlaying");
+					player.player.togglePlayPause(!isPlaying);
+				},
+				getUserData: async (key: keyof UserData) => {
 					if (key === "folder" && !isLocal) {
 						return null;
 					}
-					else if (key === "folder") {
-						const value = await Utils.openFileDialog({
-							canChooseDirectory: true,
-							canChooseFiles: false
-						});
-
-						if (!value || value.length === 0) {
-							return { ok: false, data: "No folder selected" };
+					return getUserData(key)
+				},
+				setUserData: async ({ key, data }: { key: keyof UserData, data: any }) => {
+					try {
+						if (key === "folder" && !isLocal) {
+							return null;
 						}
-						writeUserData("folder", value[0])
-						player.local.getfolder(value[0]);
-
-						return value[0];
-					}
-					writeUserData(key, data)
-
-					if (key === "volume") {
-						player.player.setVolume(data);
-					}
-					if (key === "repeat") {
-						player.player.setRepeat(data === Repeat.One);
-					}
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when writing user data with\nKey = ${key}\nValue = ${data}\n${error}` }]);
-					return null;
-				}
-			},
-			getPlayingData: async () => {
-				const result = getUserDatas(["shuffle", "repeat", "isPlaying", "isLoading", 'playedTrack', 'current']);
-				return {
-					...result,
-					current
-				}
-			},
-			next: async () => {
-				try {
-					player.player.next();
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when switching to next track\n${error}` }]);
-					return null;
-				}
-			},
-			previous: async () => {
-				try {
-					player.player.previous();
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when switching to previous track\n${error}` }]);
-					return null;
-				}
-			},
-			play: async ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => {
-				const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"])
-				user.playQueue = [];
-				if (source === "youtube") {
-					const track = await player.youtube.fetch_track([item.id])
-					user.currentPlaying = {
-						source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", ")
-					}
-					current.duration = track[0].duration;
-					if (type === "track") {
-						user.nextfrom = {
-							from: `youtube:track:${id}`,
-							next: [
-								track[0]
-							]
-						}
-					}
-					else {
-						let otherTracks = [];
-						if (type.includes("playlist")) {
-							otherTracks = (await player.youtube.fetch_playlist(id)).tracks;
-						}
-						else if (type.includes("artist")) {
-							otherTracks = (await player.youtube.fetch_artist(id)).tracks;
-						}
-						if (user.shuffle === Shuffle.Enable) {
-							for (let i = otherTracks.length - 1; i > 0; i--) {
-								const j = Math.floor(Math.random() * (i + 1));
-								[otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
-							}
-						}
-						user.nextfrom = {
-							from: `youtube:${type}:${id}`,
-							next: otherTracks.slice(0, 20).filter((track: Track) => {
-								return track.id !== item.id
-							})
-						}
-					}
-				}
-				else if (source === "local") {
-					const localFiles = getAllLocalFiles();
-					const track = localFiles.find((localItem) => localItem.id === item.id);
-					user.currentPlaying = {
-						source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index
-					}
-					current.duration = track?.duration;
-					current.isLived = false;
-					user.nextfrom = {
-						from: `local: local`,
-						next: localFiles.slice(0, 20)
-					}
-				}
-				current.time = 0;
-				user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
-
-				user.playedTrack = Array.from(new Set([...user.playedTrack, user.currentPlaying.id]));
-				writeUserDatas(user);
-				play();
-				return user.currentPlaying
-			},
-			seekTo: async (time: number) => {
-				try {
-					current.time = time;
-					player.player.seekTo(time);
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when changing time\n${error}` }]);
-					return null;
-				}
-			},
-			setSleep: async (mode: SleepMode) => {
-				try {
-					player.player.setSleep(mode);
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when setting Sleep mode\n${error}` }]);
-					return null;
-				}
-			},
-			checkUpdate: async () => {
-				try {
-					const { version } = await Updater.getLocallocalInfo();
-					const { updateAvailable } = await Updater.checkForUpdate();
-					return updateAvailable === true ? updateAvailable : version;
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when checking for update\n${error}` }]);
-					return null;
-				}
-			},
-			update: async () => { Updater.applyUpdate(); },
-			isHasDiscordRPC: async () => {
-				if (isDiscord) {
-					return discordRPC?.username ?? false;
-				}
-				else return null;
-			},
-			connectDiscordRPC: async () => {
-				try {
-					if (isDiscord) {
-						discordRPC = new Discord(DiscordClientId);
-						try {
-							await discordRPC.connect();
-							return discordRPC?.username ?? false;
-						} catch (error) {
-							Utils.showMessageBox({
-								type: "info",
-								title: "Discord Client is not running",
-								message: "Please open Discord Client then Connect again."
+						else if (key === "folder") {
+							const value = await Utils.openFileDialog({
+								canChooseDirectory: true,
+								canChooseFiles: false
 							});
-							return false;
+
+							if (!value || value.length === 0) {
+								return { ok: false, data: "No folder selected" };
+							}
+							writeUserData("folder", value[0])
+							player.local.getfolder(value[0]);
+
+							return value[0];
 						}
-					}
-					else {
-						Utils.showMessageBox({
-							type: "info",
-							title: "Discord RPC is not installed",
-							message: "Please reinstall and set isDiscord is true."
-						});
+						writeUserData(key, data)
+
+						if (key === "volume") {
+							player.player.setVolume(data);
+						}
+						if (key === "repeat") {
+							player.player.setRepeat(data === Repeat.One);
+						}
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when writing user data with\nKey = ${key}\nValue = ${data}\n${error}` }]);
 						return null;
 					}
-				} catch (error) {
-					writeLogs([{ type: "error", message: `Error when connecting with Discord\n${error}` }]);
-					return null;
+				},
+				getPlayingData: async () => {
+					const result = getUserDatas(["shuffle", "repeat", "isPlaying", "isLoading", 'playedTrack', 'current']);
+					return {
+						...result,
+						current
+					}
+				},
+				next: async () => {
+					try {
+						player.player.next();
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when switching to next track\n${error}` }]);
+						return null;
+					}
+				},
+				previous: async () => {
+					try {
+						player.player.previous();
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when switching to previous track\n${error}` }]);
+						return null;
+					}
+				},
+				play: async ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => {
+					const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"])
+					user.playQueue = [];
+					if (source === "youtube") {
+						const track = await player.youtube.fetch_track([item.id])
+						user.currentPlaying = {
+							source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", ")
+						}
+						current.duration = track[0].duration;
+						if (type === "track") {
+							user.nextfrom = {
+								from: `youtube:track:${id}`,
+								next: [
+									track[0]
+								]
+							}
+						}
+						else {
+							let otherTracks = [];
+							if (type.includes("playlist")) {
+								otherTracks = (await player.youtube.fetch_playlist(id)).tracks;
+							}
+							else if (type.includes("artist")) {
+								otherTracks = (await player.youtube.fetch_artist(id)).tracks;
+							}
+							if (user.shuffle === Shuffle.Enable) {
+								for (let i = otherTracks.length - 1; i > 0; i--) {
+									const j = Math.floor(Math.random() * (i + 1));
+									[otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
+								}
+							}
+							user.nextfrom = {
+								from: `youtube:${type}:${id}`,
+								next: otherTracks.slice(0, 20).filter((track: Track) => {
+									return track.id !== item.id
+								})
+							}
+						}
+					}
+					else if (source === "local") {
+						const localFiles = getAllLocalFiles();
+						const track = localFiles.find((localItem) => localItem.id === item.id);
+						user.currentPlaying = {
+							source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index
+						}
+						current.duration = track?.duration;
+						current.isLived = false;
+						user.nextfrom = {
+							from: `local: local`,
+							next: localFiles.slice(0, 20)
+						}
+					}
+					current.time = 0;
+					user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
+
+					user.playedTrack = Array.from(new Set([...user.playedTrack, user.currentPlaying.id]));
+					writeUserDatas(user);
+					play();
+					return user.currentPlaying
+				},
+				seekTo: async (time: number) => {
+					try {
+						current.time = time;
+						player.player.seekTo(time);
+						setInterval(() => {
+							setDiscordRPC();
+						}, 300);
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when changing time\n${error}` }]);
+						return null;
+					}
+				},
+				setSleep: async (mode: SleepMode) => {
+					try {
+						player.player.setSleep(mode);
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when setting Sleep mode\n${error}` }]);
+						return null;
+					}
+				},
+				checkUpdate: async () => {
+					try {
+						const { version } = await Updater.getLocallocalInfo();
+						const { updateAvailable } = await Updater.checkForUpdate();
+						return updateAvailable === true ? updateAvailable : version;
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when checking for update\n${error}` }]);
+						return null;
+					}
+				},
+				update: async () => { Updater.applyUpdate(); },
+				isHasDiscordRPC: async () => {
+					if (isDiscord) {
+						return discordRPC?.username ?? false;
+					}
+					else return null;
+				},
+				connectDiscordRPC: async () => {
+					try {
+						if (isDiscord) {
+							discordRPC = new Discord(DiscordClientId);
+							try {
+								await discordRPC.connect();
+								return discordRPC?.username ?? false;
+							} catch (error) {
+								Utils.showMessageBox({
+									type: "info",
+									title: "Discord Client is not running",
+									message: "Please open Discord Client then Connect again."
+								});
+								return false;
+							}
+						}
+						else {
+							Utils.showMessageBox({
+								type: "info",
+								title: "Discord RPC is not installed",
+								message: "Please reinstall and set isDiscord is true."
+							});
+							return null;
+						}
+					} catch (error) {
+						writeLogs([{ type: "error", message: `Error when connecting with Discord\n${error}` }]);
+						return null;
+					}
+				},
+				sendError: (error: Error) => {
+					writeLogs([
+						{ type: "error", message: error.name },
+						{ type: "error", message: error.message },
+						{ type: "error", message: error.stack ?? "" },
+
+					])
 				}
 			}
-		}
+		)
 	}
 })
 
@@ -570,6 +612,7 @@ const openAppUI = () => {
 			play();
 		}
 		writeUserData("isPlaying", false);
+		appWin.webview.openDevTools();
 	})
 }
 
