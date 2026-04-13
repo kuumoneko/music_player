@@ -56,7 +56,8 @@ declare global {
                     seekToPlayer: (time: number) => Promise<void>,
                     setVolume: (volume: number) => Promise<void>,
                     playTrack: (track: { source: string, id: string, title: string, thumbnail: string, artist: string }) => Promise<void>,
-                    togglePlayPause: () => Promise<void>
+                    togglePlayPause: () => Promise<void>,
+                    sendError: (error: Error) => Promise<void>,
                 }
             }
         }

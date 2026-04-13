@@ -111,6 +111,10 @@ export type AppRPCType = {
             setFolder: {
                 params: null,
                 response: string // folder full path
+            },
+            sendError: {
+                params: Error,
+                response: void
             }
         },
         messages: {}
