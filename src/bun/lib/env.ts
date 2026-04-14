@@ -19,13 +19,13 @@ export default function CheckUserData() {
         },
         {
             key: "nextfrom",
-            value: { from: "", next: [] }
+            value: ""
         },
         { key: "playedTrack", value: [] },
         { key: "QuitonClose", value: false },
         {
             key: "current",
-            value: { time: 0, duration: 0, isLived: false }
+            value: { duration: 0, isLived: false }
         },
         { key: "isPlaying", value: false },
         { key: "isLoading", value: false },
