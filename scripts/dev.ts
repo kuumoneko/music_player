@@ -1,19 +1,21 @@
 import { resolve } from "node:path";
 import { config } from "dotenv";
-import chose from "./lib/chose";
-import Build_Electrobun from "./lib/electrobun";
-import system from "./lib/system";
-import ElectroBunConfig from "./lib/config"
+// config
+import chose from "./config/chose";
+import ElectroBunConfig from "./config/config";
+import system from "./config/system";
+// build
+import Build_Front_End from "./build/client";
+import Build_Electrobun from "./build/electrobun";
+
 config();
 
-console.info("Building vite...");
 try {
-    Bun.spawnSync({ cmd: ["vite", "build"], stdout: "inherit" });
+    await Build_Front_End()
 } catch (error) {
     console.error(error);
     process.exit(0);
 }
-console.info("Done.");
 
 console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
 const isLocal: boolean = await chose("Is Local?", true);
