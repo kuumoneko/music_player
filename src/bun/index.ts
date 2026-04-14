@@ -561,6 +561,9 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 						{ type: "error", message: error.stack ?? "" },
 
 					])
+				},
+				openDevTools: () => {
+					appWin?.webview.openDevTools();
 				}
 			}
 		)
