@@ -88,7 +88,7 @@ export default class Play extends EventEmitter {
                                 if (response.event === "end-file" && response.reason !== "stop") {
                                     this.emit("ended");
                                 }
-                            } catch (e) { writeLogs([{ type: "error", message: e }]) }
+                            } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
                         }
                     },
                     error: (_socket: any, error: any) => {
