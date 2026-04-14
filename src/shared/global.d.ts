@@ -15,9 +15,9 @@ declare global {
                     getHomeData: () => Promise<{ artists: Artist[], playlists: Playlist[], tracks: Track[], newTracks: Track[] }>,
                     downloadMusic: () => Promise<string>,
                     getDownloadStatus: () => Promise<{ data: string, track: string }>,
+                    // action
                     close: () => Promise<void>,
                     minimize: () => Promise<void>,
-                    toggleMaximize: () => Promise<void>,
                     toggleQuitonClose: () => Promise<void>,
                     isQuitonClose: () => Promise<boolean>,
                     togglePlayPause: () => Promise<void>,
