@@ -11,8 +11,8 @@ export default async function config(thisWorkSpace: string, isDev: boolean) {
         .trim();
 
     const electrobunConfig = new Function(`return ${objectString}`)();
-    electrobunConfig.build.copy[`dist/src/`] = `views/src/`;
-    electrobunConfig.build.copy[`dist/assets`] = `views/src/assets`;
+
+    electrobunConfig.build.copy[`dist/`] = `views/src`;
     electrobunConfig.build.copy[`bin/`] = `bin/`;
     electrobunConfig.build.copy[`data/${!isDev ? "temp" : ""}system.json`] = `data/system.json`;
 
