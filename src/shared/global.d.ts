@@ -20,9 +20,11 @@ declare global {
                     minimize: () => Promise<void>,
                     toggleQuitonClose: () => Promise<void>,
                     isQuitonClose: () => Promise<boolean>,
-                    togglePlayPause: () => Promise<void>,
+
                     getSystem: <K extends keyof System> (key: K) => Promise<System[K]>,
+                    // User Data
                     getUserData: <K extends keyof UserData> (key: K) => Promise<UserData[K]>,
+                    setUserData: <K extends keyof UserData>({ key, data }: { key: K, data: UserData[K] }) => Promise<void | string>,
                     getPlayingData: () => Promise<{
                         shuffle: Shuffle,
                         repeat: Repeat,
@@ -33,7 +35,8 @@ declare global {
                             time: number, duration: number, isLived: boolean
                         }
                     }>,
-                    setUserData: <K extends keyof UserData>({ key, data }: { key: K, data: UserData[K] }) => Promise<void | string>,
+                    // player
+                    togglePlayPause: () => Promise<void>,
                     play: ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => Promise<{
                         source: "youtube" | "local",
                         id: string,
@@ -45,16 +48,13 @@ declare global {
                     previous: () => Promise<void>,
                     seekTo: (time: number) => Promise<void>,
                     setSleep: (mode: string) => Promise<void>,
+                    setVolume: (volume: number) => Promise<void>,
+                    sendError: (error: Error) => Promise<void>,
+
                     checkUpdate: () => Promise<boolean | string>,
                     update: () => Promise<void>,
                     isHasDiscordRPC: () => Promise<boolean | string>,
                     connectDiscordRPC: () => Promise<string>,
-                    // player
-                    seekToPlayer: (time: number) => Promise<void>,
-                    setVolume: (volume: number) => Promise<void>,
-                    playTrack: (track: { source: string, id: string, title: string, thumbnail: string, artist: string }) => Promise<void>,
-                    togglePlayPause: () => Promise<void>,
-                    sendError: (error: Error) => Promise<void>,
                 }
             }
         }
