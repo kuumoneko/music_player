@@ -5,7 +5,6 @@ export { };
 
 declare global {
     interface Window {
-        YT: any, // must be had for Youtube Iframe API
         api: {
             rpc: {
                 request: {
