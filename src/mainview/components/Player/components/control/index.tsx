@@ -81,11 +81,6 @@ export default function ControlUI() {
     const handleTimeSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTime = Number(e.target.value);
         window.api.rpc.request.seekTo(newTime);
-        setTimeout(() => {
-            window.api.rpc.request
-                .getUserData("current")
-                .then((data) => setPlaying(data));
-        }, 100);
     };
 
     return (
