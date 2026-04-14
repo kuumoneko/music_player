@@ -97,7 +97,7 @@ export default function List({
                                     window.api.rpc.request.play({
                                         item: item,
                                         source: source as any,
-                                        type: mode as any,
+                                        type: "track",
                                         id: item.id,
                                     });
                                 } else if (type === "playlists") {
