@@ -21,8 +21,23 @@ export default function Play_Queue() {
                 await window.api.rpc.request.getUserData("playQueue");
             const temp_nextfrom =
                 await window.api.rpc.request.getUserData("nextfrom");
-
-            setnextfrom(temp_nextfrom);
+            const [source, mode, id] = temp_nextfrom.split(":") as any;
+            const data = await window.api.rpc.request.getMusicData({
+                source: source,
+                type: mode,
+                id: id,
+            });
+            let track: any = null;
+            if (mode === "track") {
+                track = data;
+            } else {
+                // @ts-ignore - tracks exists on Album and Playlist types returned by getMusicData
+                track = data.tracks;
+            }
+            setnextfrom({
+                from: temp_nextfrom,
+                next: track,
+            });
             setqueue(temp_play_queue);
         }, 500);
         return () => clearInterval(run);
@@ -47,10 +62,7 @@ export default function Play_Queue() {
                 onClick={async () => {
                     window.api.rpc.request.setUserData({
                         key: "nextfrom",
-                        data: {
-                            from: "",
-                            next: [],
-                        },
+                        data: "",
                     });
                     setnextfrom({
                         from: "",
@@ -148,7 +160,7 @@ export default function Play_Queue() {
                                                 add_to_download(
                                                     item.source,
                                                     "track",
-                                                    item.id
+                                                    item.id,
                                                 );
                                             }}
                                         >
@@ -242,7 +254,7 @@ export default function Play_Queue() {
                                                 add_to_download(
                                                     item.source,
                                                     "track",
-                                                    item.id
+                                                    item.id,
                                                 );
                                             }}
                                         >
