@@ -115,6 +115,10 @@ export type AppRPCType = {
             sendError: {
                 params: Error,
                 response: void
+            },
+            openDevTools: {
+                params: null,
+                response: void
             }
         },
         messages: {}
@@ -224,15 +228,15 @@ export interface UserData {
     currentPlaying: {
         source: string, id: string, title: string, thumbnail: string, artist: string, index?: number
     },
-    nextfrom: { from: string, next: Track[] },
+    nextfrom: string,
     playedTrack: string[],
     QuitonClose: boolean,
     current: {
-        time: number, duration: number, isLived: boolean
+        duration: number, isLived: boolean
     },
     isPlaying: boolean,
     isLoading: boolean,
-    playQueue: { id: string, source: "youtube" | "local" }[],
+    playQueue: string[],
     folder: string,
     pin: string[],
     downloadQueue: string[]

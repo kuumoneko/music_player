@@ -18,10 +18,7 @@ declare global {
                     // action
                     close: () => Promise<void>,
                     minimize: () => Promise<void>,
-                    toggleQuitonClose: () => Promise<void>,
-                    isQuitonClose: () => Promise<boolean>,
-
-                    getSystem: <K extends keyof System> (key: K) => Promise<System[K]>,
+                    openDevTools: () => Promise<void>,
                     // User Data
                     getUserData: <K extends keyof UserData> (key: K) => Promise<UserData[K]>,
                     setUserData: <K extends keyof UserData>({ key, data }: { key: K, data: UserData[K] }) => Promise<void | string>,
@@ -49,12 +46,16 @@ declare global {
                     seekTo: (time: number) => Promise<void>,
                     setSleep: (mode: string) => Promise<void>,
                     setVolume: (volume: number) => Promise<void>,
-                    sendError: (error: Error) => Promise<void>,
-
+                    // settings
                     checkUpdate: () => Promise<boolean | string>,
                     update: () => Promise<void>,
                     isHasDiscordRPC: () => Promise<boolean | string>,
                     connectDiscordRPC: () => Promise<string>,
+                    toggleQuitonClose: () => Promise<void>,
+                    isQuitonClose: () => Promise<boolean>,
+                    getSystem: <K extends keyof System> (key: K) => Promise<System[K]>,
+                    // error
+                    sendError: (error: Error) => Promise<void>,
                 }
             }
         }
