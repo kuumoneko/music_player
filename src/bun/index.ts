@@ -189,61 +189,59 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 	const ids = data.map(item => isYTB ? item.filename.split(ytbTrackStart)[1] : item.filename);
 
 
-	const { nextfrom, playQueue, shuffle } = getUserDatas(["nextfrom", "playQueue", "shuffle"]);
+	const { nextfrom, playQueue, shuffle } = getUserDatas(["nextfrom", "playQueue", "shuffle"]) as UserData;
 	const notinQueue = ids.filter(item => playQueue.includes(item));
 	let result = [];
 	playQueue.forEach(item => {
-		if (item.source === "youtube") {
-			result.push(`${ytbTrackStart}${item.id}`)
+		const [source, id] = item.split(":")
+		if (source === "youtube") {
+			result.push(`${ytbTrackStart}${id}`)
 		}
 		else {
-			result.push(item.id)
+			result.push(id)
 		}
 	});
 	result.push(...notinQueue);
 	if (result.length < 25) {
-		const [source, mode, id] = nextfrom.from.split(":");
-		if (source === "youtube") {
-			if (nextfrom.next.length < 10) {
-				let data: any = null;
-				if (mode.includes("artist")) {
-					data = (await player.youtube.fetch_artist(id)).tracks;
-				}
-				else if (mode.includes("playlist")) {
-					data = (await player.youtube.fetch_playlist(id)).tracks;
-				}
-
+		const [source, mode, id] = nextfrom.split(":");
+		if (mode === "track") {
+			player.player.setRepeat(true);
+		}
+		else if (source === "youtube") {
+			let data: Track[] = null;
+			if (mode.includes("artist")) {
+				data = (await player.youtube.fetch_artist(id)).tracks;
+			}
+			else if (mode.includes("playlist")) {
+				data = (await player.youtube.fetch_playlist(id)).tracks;
+			}
+			if (data?.length > 0) {
 				if (shuffle === Shuffle.Enable) {
 					for (let i = data.length - 1; i > 0; i--) {
 						const j = Math.floor(Math.random() * (i + 1));
 						[data[i], data[j]] = [data[j], data[i]];
 					}
-					nextfrom.next.push(...data.slice(0, 25 - (nextfrom.next?.length ?? 0)))
+					result.push(...data.slice(0, 25 - result.length).map(item =>
+						item.source === "youtube" ? `${ytbTrackStart}${item.id}` : item.id
+					))
 				}
 				else {
-					if (nextfrom?.next?.length > 1) {
-						const last = data.findIndex((item: Track) => item.id === nextfrom.next[nextfrom.next.length - 1].id);
-						nextfrom.next.push(...data.slice(last, last + (25 - (nextfrom.next?.length ?? 0))))
+					let index = 0;
+					if (result.length > 0) {
+						index = data.findIndex(item => item.id === result[result.length - 1].split(ytbTrackStart)[1]);
 					}
 					else {
-						nextfrom.next = data.slice(0, 25)
+						index = data.findIndex(item => item.id === currentTrack.split(ytbTrackStart)[1]);
 					}
-				}
-
-				if (shuffle === Shuffle.Enable) {
-					for (let i = nextfrom.next.length - 1; i > 0; i--) {
-						const j = Math.floor(Math.random() * (i + 1));
-						[nextfrom.next[i], nextfrom.next[j]] = [nextfrom.next[j], nextfrom.next[i]];
-					}
+					result.push(...Array.from({ length: 25 - result.length + 1 }, (_, i) => data[(index + i) % data.length]).map(item =>
+						item.source === "youtube" ? `${ytbTrackStart}${item.id}` : item.id
+					))
 				}
 			}
 		}
 		writeUserData("nextfrom", nextfrom)
 	}
-	result.push(...nextfrom.next.slice(0, nextfrom.next.length - result.length).map(item =>
-		item.source === "youtube" ? `${ytbTrackStart}${item.id}` : item.id
-	));
-	result = result.filter(item => item !== currentTrack)
+	result = [...new Set(result.filter(item => item !== currentTrack))];
 	player.player.addTracks(result)
 })
 
@@ -354,7 +352,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 						return null;
 					}
 				},
-				getSystem: (key: keyof System) => { return key === "youtubeApiKeys" ? null : key === "isDiscord" ? isDiscord : isLocal },
+				getSystem: (key: keyof System) => { return key === "isDiscord" ? isDiscord : isLocal },
 				downloadMusic: async () => {
 					try {
 						const downloadQueue = getUserData("downloadQueue")
@@ -462,41 +460,15 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				play: async ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => {
 					const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"])
 					user.playQueue = [];
+					player.player.setRepeat(false);
+
 					if (source === "youtube") {
 						const track = await player.youtube.fetch_track([item.id])
 						user.currentPlaying = {
 							source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", ")
 						}
 						current.duration = track[0].duration;
-						if (type === "track") {
-							user.nextfrom = {
-								from: `youtube:track:${id}`,
-								next: [
-									track[0]
-								]
-							}
-						}
-						else {
-							let otherTracks = [];
-							if (type.includes("playlist")) {
-								otherTracks = (await player.youtube.fetch_playlist(id)).tracks;
-							}
-							else if (type.includes("artist")) {
-								otherTracks = (await player.youtube.fetch_artist(id)).tracks;
-							}
-							if (user.shuffle === Shuffle.Enable) {
-								for (let i = otherTracks.length - 1; i > 0; i--) {
-									const j = Math.floor(Math.random() * (i + 1));
-									[otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
-								}
-							}
-							user.nextfrom = {
-								from: `youtube:${type}:${id}`,
-								next: otherTracks.slice(0, 20).filter((track: Track) => {
-									return track.id !== item.id
-								})
-							}
-						}
+						user.nextfrom = `youtube:${type}:${id}`
 					}
 					else if (source === "local") {
 						const localFiles = getAllLocalFiles();
@@ -506,10 +478,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 						}
 						current.duration = track?.duration;
 						current.isLived = false;
-						user.nextfrom = {
-							from: `local: local`,
-							next: localFiles.slice(0, 20)
-						}
+						user.nextfrom = "local:local";
 					}
 					current.time = 0;
 					user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
@@ -587,8 +556,8 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				},
 				sendError: (error: Error) => {
 					writeLogs([
-						{ type: "error", message: error.name },
-						{ type: "error", message: error.message },
+						{ type: "error", message: error.name ?? "" },
+						{ type: "error", message: error.message ?? "" },
 						{ type: "error", message: error.stack ?? "" },
 
 					])
@@ -612,7 +581,6 @@ const openAppUI = () => {
 			play();
 		}
 		writeUserData("isPlaying", false);
-		appWin.webview.openDevTools();
 	})
 }
 
