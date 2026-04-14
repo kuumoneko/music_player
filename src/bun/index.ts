@@ -574,7 +574,7 @@ let isFirstLoad = true;
 
 const openAppUI = () => {
 	appWin = new BrowserWindow({
-		title: "Music app", url: "views://src/mainview/index.html", rpc: appRPC, titleBarStyle: "hidden",
+		title: "Music app", url: "views://src/index.html", rpc: appRPC, titleBarStyle: "hidden",
 		preload: `window.addEventListener('contextmenu', (e) => { e.preventDefault(); }, false); `
 	})
 	appWin?.webview?.on("dom-ready", () => {
