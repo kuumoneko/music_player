@@ -126,7 +126,7 @@ export class Local {
                 file.push(this.parseFile(filePath, index).then((data: any) => {
                     result.push(data);
                 }).catch((e: any) => {
-                    writeLogs([{ type: "error", message: e }])
+                    writeLogs([{ type: "error", message: e.message }])
                 }))
             }
             else {
