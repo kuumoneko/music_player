@@ -1,5 +1,5 @@
 // Electrobun
-import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils } from "electrobun/bun";
+import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils, Screen } from "electrobun/bun";
 // Node
 import { join, resolve } from "node:path";
 // env variables
@@ -58,38 +58,6 @@ const current = {
 	current.isLived = temp.isLived
 };
 
-process.on("uncaughtException", (error) => {
-	Utils.showMessageBox({
-		type: "error",
-		title: error.name,
-		message: error.message,
-		detail: error.cause as string + " " + error.stack
-	})
-	writeLogs([{
-		type: "error",
-		message: error.message
-	}])
-})
-
-process.on('unhandledRejection', (reason, promise) => {
-	writeLogs([{
-		type: "error",
-		message: `Unhandled Promise Rejection at: ${promise}`
-	}, {
-		type: "error",
-		message: `Reason: ${reason}`
-	}])
-	process.exit(1);
-});
-
-process.on('beforeExit', (code) => {
-	console.log(code)
-})
-
-process.on("exit", (code) => {
-	console.log(code)
-})
-
 const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 	{
 		type: "normal",
@@ -133,6 +101,7 @@ player = new Player(userData, APP_ROOT);
 
 player.player.on("exit", () => {
 	appWin?.close();
+	Utils.quit();
 });
 
 player.player.on("change-playState", (data) => {
@@ -375,9 +344,10 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					const QuitonClose = getUserData("QuitonClose");
 					if (QuitonClose === true) {
 						appWin?.close();
+						Utils.quit();
 					}
 					else {
-						appWin?.hide();
+						appWin?.close();
 						appTray?.setMenu(getTrayMenu(false));
 					}
 				},
@@ -573,18 +543,31 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 let isFirstLoad = true;
 
 const openAppUI = () => {
-	appWin = new BrowserWindow({
-		title: "Music app", url: "views://src/index.html", rpc: appRPC, titleBarStyle: "hidden",
-		preload: `window.addEventListener('contextmenu', (e) => { e.preventDefault(); }, false); `
-	})
-	appWin?.webview?.on("dom-ready", () => {
-		appWin?.maximize();
-		if (isFirstLoad) {
-			isFirstLoad = false;
-			play();
-		}
-		writeUserData("isPlaying", false);
-	})
+	if (appWin) {
+		appWin?.show();
+	}
+	else {
+		const { width, height } = Screen.getPrimaryDisplay().workArea;
+
+		appWin = new BrowserWindow({
+			title: "Kuumo app",
+			url: "views://src/index.html",
+			frame: { x: 0, y: 0, width, height },
+			rpc: appRPC,
+			titleBarStyle: "hidden",
+		})
+		appWin?.webview?.on("domReady", () => {
+			appWin?.maximize();
+			if (isFirstLoad) {
+				isFirstLoad = false;
+				writeUserData("isPlaying", false);
+				play();
+			}
+		})
+		appWin?.on("close", () => {
+			appWin = null;
+		})
+	}
 }
 
 if (!isLocal) {
@@ -642,15 +625,16 @@ appTray?.on("tray-clicked", (e: any) => {
 	const action = e?.data?.action ?? "nothing";
 
 	if (action === "show") {
-		appWin?.show();
+		openAppUI();
 		appTray?.setMenu(getTrayMenu(true));
 	}
 	else if (action === "hide") {
-		appWin?.hide();
+		appWin?.close();
 		appTray?.setMenu(getTrayMenu(false));
 	}
 	else if (action === "quit") {
 		appWin?.close();
+		Utils.quit();
 	}
 });
 
