@@ -51,11 +51,11 @@ export default class Play extends EventEmitter {
                                     this.emit("queue", mpvQueue)
                                 }
 
+                                if (response.request_id === 888 && response.error === "success") {
+                                    this.emit("time-update", response.data);
+                                }
+
                                 if (response.event === "property-change") {
-                                    if (response.name === "time-pos") {
-                                        const currentTime = response.data;
-                                        this.emit("time-update", currentTime);
-                                    }
                                     if (response.name === "duration") {
                                         const duration = response.data;
                                         this.emit("duration-update", duration);
@@ -107,7 +107,7 @@ export default class Play extends EventEmitter {
             this.send(["observe_property", 1, "path"]);
 
             setInterval(() => {
-                this.send(["get_property", 1, "time-pos"]);
+                this.send(["get_property", "time-pos"], 888);
             }, 1000);
 
         }, 1000);
