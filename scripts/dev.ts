@@ -11,23 +11,24 @@ import Build_Electrobun from "./build/electrobun";
 config();
 
 console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
-const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?", true);
-
+const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?", false);
 if (isBuildElectrobun) {
     await Build_Electrobun();
 }
 
-try {
-    await Build_Front_End()
-} catch (error) {
-    console.error(error);
-    process.exit(0);
+const isBuildClient = await chose("Do you want to build Client?", false);
+if (isBuildClient) {
+    try {
+        await Build_Front_End()
+    } catch (error) {
+        console.error(error);
+        process.exit(0);
+    }
 }
 
 console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
-const isLocal: boolean = await chose("Is Local?", true);
-const isDiscord: boolean = await chose("Is Discord?", true);
-
+const isLocal: boolean = await chose("Is Local?", false);
+const isDiscord: boolean = await chose("Is Discord?", false);
 
 const thisWorkSpace = resolve(import.meta.path.split(import.meta.file)[0], "..");
 await system(thisWorkSpace, isLocal, isDiscord, "system")
