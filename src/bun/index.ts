@@ -93,8 +93,9 @@ const ytbTrackStart = "https://www.youtube.com/watch?v="
 const play = () => {
 	const currentPlaying = getUserData("currentPlaying");
 
-	player.player.play(`${ytbTrackStart}${currentPlaying.id}`);
-	setDiscordRPC();
+	player.player.play(`${ytbTrackStart}${currentPlaying.id}`).then(
+		() => setDiscordRPC()
+	);
 }
 
 player = new Player(userData, APP_ROOT);
@@ -120,25 +121,19 @@ player.player.on("playing", async (data) => {
 		const id = data.split(`${ytbTrackStart}`)[1];
 		if (!id || id === "undefined") return;
 		const track = (await player.youtube.fetch_track([id]))[0] ?? null;
-		writeUserData("currentPlaying", {
+		const currentPlaying = {
 			source: "youtube",
 			title: track.name,
 			thumbnail: track.thumbnail,
 			artist: track.artist.map(item => item.name).join(", "),
 			duration: track.duration,
 			id: track.id
-		})
-		if (isDiscord) {
-			discordRPC?.setMusic({
-				source: "youtube",
-				title: track.name,
-				thumbnail: track.thumbnail,
-				artist: track.artist.map(item => item.name).join(", "),
-				duration: track.duration,
-				id: track.id
-			}, player, { time: 0, duration: track.duration }, true);
 		}
-		player.player.setVideoMetadata(track.thumbnail, track.name, track.artist.map(item => item.name).join(", "))
+		writeUserData("currentPlaying", currentPlaying)
+		if (isDiscord) {
+			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration }, true);
+		}
+		player.player.setVideoMetadata(track.thumbnail, track.name)
 	}
 	player.player.getQueue();
 })
@@ -211,7 +206,7 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 		writeUserData("nextfrom", nextfrom)
 	}
 	result = [...new Set(result.filter(item => item !== currentTrack))];
-	player.player.addTracks(result)
+	await player.player.addTracks(result)
 })
 
 player.player.on("duration-update", (duration) => {
@@ -230,11 +225,11 @@ player.player.on("is-live", (isLived) => {
 	writeUserData("current", temp);
 });
 
-player.player.on("start-file", () => {
-	writeUserData("isLoading", true)
+player.player.on("loading", (data) => {
+	writeUserData("isLoading", data)
 });
 
-player.player.on("file-loaded", () => {
+player.player.on("ready", () => {
 	writeUserData("isLoading", false)
 });
 
