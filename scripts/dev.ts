@@ -36,20 +36,12 @@ await system(thisWorkSpace, isLocal, isDiscord, "system")
 console.info(
     `This development turn will be started with settings:\n${isDiscord ? "Using" : "Not using"} discord RPC\n${isLocal ? "Using" : "Not using"} local file and download music`,
 );
-const electrobunConfigText = await ElectroBunConfig(thisWorkSpace, true)
+await ElectroBunConfig(thisWorkSpace, true)
 
 console.info("\n\n");
 console.info("Starting...");
 
-const a = Bun.spawn(["bunx", "electrobun", "dev"], { stdout: "inherit", stderr: "inherit" })
-setTimeout(async () => {
-    console.info("Restoring Electrobun config...");
-    await Bun.write(
-        resolve(thisWorkSpace, "electrobun.config.ts"),
-        electrobunConfigText,
-    );
-    console.info("Done.");
-}, 500);
+const a = Bun.spawn(["bunx", "electrobun", "dev", "--config=temp_electrobun.config.ts"], { stdout: "inherit", stderr: "inherit" })
 
 process.stdin.setRawMode(true);
 process.stdin.resume();
@@ -59,6 +51,10 @@ process.stdin.on("data", async (key) => {
     // Check for 'q' or Ctrl+C (\u0003)
     if (key === "q" || key === "\u0003") {
         console.warn("\nExitting development turn.");
+
+        console.log("\nDeleting temporary config...");
+        await Bun.file(resolve(thisWorkSpace, "temp_electrobun.config.ts")).delete();
+        console.log("Done.")
 
         console.info("\nKilling electrobun dev...");
         Bun.spawnSync(["taskkill", "/F", "/T", "/PID", a.pid.toString()]);
