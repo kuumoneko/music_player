@@ -27,7 +27,9 @@ export default class Play extends EventEmitter {
             "--no-video",
             "--ao=wasapi",
             "--media-controls=yes",
-            "--force-window=no"
+            "--force-window=no",
+            "--cache-pause=no",
+            "--profile=low-latency",
         ], { stdout: "inherit" });
 
         setTimeout(async () => {
@@ -68,11 +70,11 @@ export default class Play extends EventEmitter {
                                 }
 
                                 if (response.event === "start-file") {
-                                    this.emit("loading")
+                                    this.emit("loading", true)
                                 }
 
                                 if (response.event === "file-loaded") {
-                                    this.emit("ready")
+                                    this.emit("loading", false)
                                 }
 
                                 if (response.name === "duration") {
@@ -86,6 +88,10 @@ export default class Play extends EventEmitter {
                                 }
 
                                 if (response.event === "end-file" && response.reason !== "stop") {
+                                    if (this.sleep === SleepMode.eot) {
+                                        this.destroy();
+                                        this.emit("exit");
+                                    }
                                     this.emit("ended");
                                 }
                             } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
@@ -96,11 +102,13 @@ export default class Play extends EventEmitter {
                     }
                 }
             });
-            this.send(["observe_property", 1, "time-pos"]);
             this.send(["observe_property", 2, "duration"]);
             this.send(["observe_property", 1, "pause"]);
             this.send(["observe_property", 1, "path"]);
-            this.send(["observe_property", 1, "playlist-count"])
+
+            setInterval(() => {
+                this.send(["get_property", 1, "time-pos"]);
+            }, 1000);
 
         }, 1000);
     }
@@ -117,10 +125,9 @@ export default class Play extends EventEmitter {
         }
     }
 
-    play(urlOrPath: string) {
+    async play(urlOrPath: string) {
         this.send(["stop"]);
         this.send(["playlist-clear"]);
-
         this.send(["loadfile", urlOrPath, "replace"]);
         setTimeout(() => {
 
@@ -140,16 +147,16 @@ export default class Play extends EventEmitter {
         this.send(["set_property", "loop-file", isRepeat ? "inf" : "no"])
     }
 
-    addTracks(urls: string[]) {
+    async addTracks(urls: string[]) {
         for (const url of urls) {
             this.send(["loadfile", url, "append"]);
         }
     }
 
-    setVideoMetadata(thumbnailUrl: string, title: string, artist: string) {
+    setVideoMetadata(thumbnailUrl: string, title: string) {
         this.send(["video-add", thumbnailUrl, "auto"]);
 
-        this.send(["set_property", "metadata/by-key/title", title + artist]);
+        this.send(["set_property", "metadata/by-key/title", title]);
     }
 
     next() {
