@@ -27,14 +27,13 @@ try {
 
 const thisWorkSpace = resolve(import.meta.path.split(import.meta.file)[0], "..");
 await system(thisWorkSpace, true, true, "tempsystem")
-const electrobunConfigText = await ElectroBunConfig(thisWorkSpace, false)
+await ElectroBunConfig(thisWorkSpace, false)
 
 await Build_main_process();
 
 console.info("Deleting temporary files...")
-await Bun.write(resolve(thisWorkSpace, "electrobun.config.ts"), electrobunConfigText)
-await Bun.file(resolve(thisWorkSpace, "data", "tempsystem.json")).unlink()
+await Bun.file(resolve(thisWorkSpace, "data", "temp_electrobun.config.ts")).delete()
+await Bun.file(resolve(thisWorkSpace, "data", "tempsystem.json")).delete()
 console.info("Done.")
-
 
 process.exit(0)
