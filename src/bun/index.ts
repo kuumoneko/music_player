@@ -160,7 +160,7 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 	result.push(...notinQueue);
 	if (result.length < 25) {
 		const [source, mode, id] = nextfrom.split(":");
-		if (mode === "track") {
+		if (mode.includes("track")) {
 			player.player.setRepeat(true);
 		}
 		else if (source === "youtube") {
