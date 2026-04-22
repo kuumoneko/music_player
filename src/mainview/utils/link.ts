@@ -9,7 +9,7 @@ export default function convert_link(link: string) {
         }
         // long form
         else if (youtube_link.includes("youtube.com")) {
-            if (youtube_link.includes("watch?=")) {
+            if (youtube_link.includes("watch?v=")) {
                 temp = youtube_link.split("watch?v=")[1].split("&")[0]
             }
             else if (youtube_link.includes("?list=")) {
