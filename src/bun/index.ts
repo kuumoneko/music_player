@@ -2,8 +2,6 @@
 import { BrowserView, BrowserWindow, MenuItemConfig, Tray, Updater, Utils, Screen } from "electrobun/bun";
 // Node
 import { join, resolve } from "node:path";
-// env variables
-import { config } from "dotenv";
 // Controller
 import DownloadController from "./controllers/download.ts";
 import HomeController from "./controllers/home.ts";
@@ -13,19 +11,14 @@ import { getDataFromDatabase } from "./lib/database.ts";
 import getLocalIPv4 from "./lib/ipv4.ts";
 import CheckUserData from "./lib/env.ts"
 import { getAllLocalFiles, getUserData, getUserDatas, writeLogs, writeUserData, writeUserDatas } from "./db/index.ts";
-// Features
-import Player from "./music/index.ts"
-import Discord from "./discord/index.ts";
 // types
 import { Repeat, Shuffle, SleepMode, Track, UserData } from "../shared/types.ts";
 import type { AppRPCType, System } from "@/shared/types.ts";
 
-config();
-
 // app variables
 const APP_ROOT = resolve("./", "..", "Resources", "app");
 const { isLocal, isDiscord, appPort, playerPort, DiscordClientId } = await getDataFromDatabase(APP_ROOT, "data", "system");
-if (isLocal === null || isDiscord === null || appPort === null || playerPort === null) {
+if ([isLocal, isDiscord, appPort, playerPort].includes(null)) {
 	await Utils.showMessageBox({
 		type: "error",
 		message: "Null Object, please reinstall app."
@@ -33,14 +26,13 @@ if (isLocal === null || isDiscord === null || appPort === null || playerPort ===
 	process.exit(1);
 }
 
-let appWin: BrowserWindow | null = null;
-let appTray: Tray | null = null;
-let discordRPC: Discord | null = null;
-
 const userData = resolve(Utils.paths.userData, "..");
 CheckUserData();
 
-let player: Player | null = null;
+let appWin: BrowserWindow | null = null;
+let appTray: Tray | null = null;
+let discordRPC: any = null;
+let player: any = null;
 
 const current = {
 	time: 0,
@@ -97,8 +89,8 @@ const play = () => {
 		() => setDiscordRPC()
 	);
 }
-
-player = new Player(userData, APP_ROOT);
+const PlayerModule = await import("./music/index.ts");
+player = new PlayerModule.default(userData, APP_ROOT);
 
 player.player.on("exit", () => {
 	appWin?.close();
@@ -493,7 +485,8 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				connectDiscordRPC: async () => {
 					try {
 						if (isDiscord) {
-							discordRPC = new Discord(DiscordClientId);
+							const DiscordModule = await import("./discord/index.ts")
+							discordRPC = new DiscordModule.default(DiscordClientId);
 							try {
 								await discordRPC.connect();
 								return discordRPC?.username ?? false;
@@ -587,9 +580,9 @@ try {
 
 	if (response.ok) {
 		writeLogs([{
-			type: "error", message: `Error on sending rpc`
+			type: "error", message: `Error on sending tick to ${lockUrl}\n${response.statusText}`
 		}])
-		process.stdout.write("lmao\n"), () => { process.exit(0); };
+		process.stdout.write("Error on sending tick to ${lockUrl}\n"), () => { process.exit(0); };
 	}
 } catch (error: any) {
 	Bun.serve({
@@ -603,7 +596,8 @@ try {
 }
 
 if (isDiscord && DiscordClientId.length > 0) {
-	discordRPC = new Discord(DiscordClientId);
+	const DiscordModule = await import("./discord/index.ts")
+	discordRPC = new DiscordModule.default(DiscordClientId);
 	try {
 		await discordRPC.connect();
 	} catch { }
