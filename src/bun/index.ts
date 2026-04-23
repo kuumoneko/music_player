@@ -574,21 +574,27 @@ if (!isLocal) {
 
 const host = getLocalIPv4();
 const port = appPort;
-const lockUrl = `http://${host}:${port}`
+const lockUrl = `http://${host}:${port}`;
 try {
-	const response = await fetch(lockUrl);
+	const response = await fetch(lockUrl, {
+		signal: AbortSignal.timeout(100)
+	});
 
 	if (response.ok) {
 		writeLogs([{
-			type: "error", message: `Error on sending tick to ${lockUrl}\n${response.statusText}`
-		}])
-		process.stdout.write("Error on sending tick to ${lockUrl}\n"), () => { process.exit(0); };
+			type: "error",
+			message: `Error on sending tick to ${lockUrl}\n${response.statusText}`
+		}]);
+
+		process.stdout.write(`Error on sending tick to ${lockUrl}\n`, () => {
+			process.exit(0);
+		});
 	}
 } catch (error: any) {
 	Bun.serve({
 		port: port,
 		hostname: host,
-		async fetch(_req: any) {
+		fetch(_req: any) {
 			openAppUI();
 			return new Response("OK");
 		}
@@ -626,5 +632,4 @@ appTray?.on("tray-clicked", (e: any) => {
 		Utils.quit();
 	}
 });
-
 openAppUI();
