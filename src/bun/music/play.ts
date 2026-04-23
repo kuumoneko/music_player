@@ -30,7 +30,7 @@ export default class Play extends EventEmitter {
             "--force-window=no",
             "--cache-pause=no",
             "--profile=low-latency",
-        ], { stdout: "inherit" });
+        ]);
 
         setTimeout(async () => {
             this.socket = await Bun.connect({
@@ -110,7 +110,7 @@ export default class Play extends EventEmitter {
                 this.send(["get_property", "time-pos"], 888);
             }, 1000);
 
-        }, 1000);
+        }, 100);
     }
 
     private send(command: (string | number | boolean | Object)[], id: number = 0) {
