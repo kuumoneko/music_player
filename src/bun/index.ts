@@ -85,9 +85,7 @@ const ytbTrackStart = "https://www.youtube.com/watch?v="
 const play = () => {
 	const currentPlaying = getUserData("currentPlaying");
 
-	player.player.play(`${ytbTrackStart}${currentPlaying.id}`).then(
-		() => setDiscordRPC()
-	);
+	player.player.play(`${ytbTrackStart}${currentPlaying.id}`)
 }
 const PlayerModule = await import("./music/index.ts");
 player = new PlayerModule.default(userData, APP_ROOT);
@@ -108,7 +106,7 @@ player.player.on("time-update", (time) => {
 
 player.player.on("playing", async (data) => {
 	if (!data) return;
-
+	setDiscordRPC();
 	if (data.includes(`${ytbTrackStart}`)) {
 		const id = data.split(`${ytbTrackStart}`)[1];
 		if (!id || id === "undefined") return;
