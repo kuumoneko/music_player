@@ -526,15 +526,12 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 	}
 })
 
-let isFirstLoad = true;
-
 const openAppUI = () => {
 	if (appWin) {
 		appWin?.show();
 	}
 	else {
 		const { width, height } = Screen.getPrimaryDisplay().workArea;
-
 		appWin = new BrowserWindow({
 			title: "Kuumo app",
 			url: "views://src/index.html",
@@ -544,11 +541,6 @@ const openAppUI = () => {
 		})
 		appWin?.webview?.on("domReady", () => {
 			appWin?.maximize();
-			if (isFirstLoad) {
-				isFirstLoad = false;
-				writeUserData("isPlaying", false);
-				play();
-			}
 		})
 		appWin?.on("close", () => {
 			appWin = null;
