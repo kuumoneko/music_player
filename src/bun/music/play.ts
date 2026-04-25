@@ -30,6 +30,7 @@ export default class Play extends EventEmitter {
             "--force-window=no",
             "--cache-pause=no",
             "--profile=low-latency",
+            "--ytdl-format=bestaudio",
         ]);
 
         setTimeout(async () => {
