@@ -10,13 +10,12 @@
 
 ## VERSION
 
-> 5.1.0
+> 5.2.1
 
 ## ABOUT THIS VERSION
 
-- Using Bun:sqlite to store userdata
-- Make user to play live stream
-- Fix: crash after a time of playing or idling
+- Using mpv to play audio
+- Improve start up app
 
 ## NEWS
 
