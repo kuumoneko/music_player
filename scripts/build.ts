@@ -32,7 +32,7 @@ await ElectroBunConfig(thisWorkSpace, false)
 await Build_main_process();
 
 console.info("Deleting temporary files...")
-await Bun.file(resolve(thisWorkSpace, "data", "temp_electrobun.config.ts")).delete()
+await Bun.file(resolve(thisWorkSpace, "temp_electrobun.config.ts")).delete()
 await Bun.file(resolve(thisWorkSpace, "data", "tempsystem.json")).delete()
 console.info("Done.")
 
