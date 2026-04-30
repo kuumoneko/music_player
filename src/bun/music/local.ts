@@ -16,7 +16,7 @@ export class Local {
 
     get_Thumbnail(file: string): Promise<string> {
         return new Promise((resolve) => {
-            const ffmpeg = spawn(`${this.appPath}/bin/ffmpeg.exe`, [
+            const ffmpeg = spawn(`${this.appPath}/ffmpeg.exe`, [
                 '-i', `"${file}"`,
                 '-an',
                 '-vcodec', 'mjpeg',
@@ -50,7 +50,7 @@ export class Local {
     async parseFile(file: string, index: number): Promise<Track> {
         return new Promise((resolve, reject) => {
             try {
-                const ffprobe = spawn(`${this.appPath}/bin/ffprobe.exe`, [
+                const ffprobe = spawn(`${this.appPath}/ffprobe.exe`, [
                     '-v', 'quiet',
                     '-print_format', 'json',
                     '-show_format',

@@ -33,13 +33,20 @@ export default class Player {
     constructor(
         userPath: string, appPath: string,
     ) {
-        this.youtube = new Youtube(appPath);
+
         this.player = new Play(appPath)
         this.download_folder = getUserData("folder");
-        (getDataFromDatabase(appPath, 'data', 'system') as Promise<System>).then(({ isLocal }) => {
+        (getDataFromDatabase(appPath, "..", "Resources", "app", 'data', 'system') as Promise<System>).then(({ isLocal, youtubeApiKeys }) => {
             if (isLocal) {
                 this.local = new Local(resolve(userPath, "data"), appPath);
             }
+            this.youtube = new Youtube(youtubeApiKeys.map(key => {
+                return {
+                    ApiKey: key,
+                    isReached: false,
+                    when: 0
+                }
+            }));
         });
         this.folder = appPath;
     }

@@ -81,16 +81,8 @@ export default class Youtube {
     private maxResults = 50;
     private running: any[] = [];
 
-    constructor(appPath: string) {
-        getDataFromDatabase(appPath, "data", "system").then((data: System) => {
-            this.api_keys = data.youtubeApiKeys.map((key: string) => {
-                return {
-                    ApiKey: key,
-                    isReached: false,
-                    when: 0
-                }
-            });
-        })
+    constructor(apikeys: { ApiKey: string, isReached: boolean, when: number }[]) {
+        this.api_keys = apikeys;
     }
 
     getRandomItem(list: any[]) {

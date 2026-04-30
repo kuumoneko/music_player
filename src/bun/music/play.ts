@@ -20,8 +20,12 @@ export default class Play extends EventEmitter {
     }
 
     init() {
+        Bun.spawnSync([
+            `${this.appPath}/mpv.exe`,
+            "--register"
+        ])
         this.mpv = Bun.spawn([
-            `${this.appPath}/bin/mpv.exe`,
+            `${this.appPath}/mpv.exe`,
             "--idle",
             `--input-ipc-server=${this.pipePath}`,
             "--no-video",
@@ -38,8 +42,8 @@ export default class Play extends EventEmitter {
                 unix: this.pipePath,
                 socket: {
                     open: () => {
-                        console.log("Connected.")
-                        this.isReady = true
+                        console.log("Connected to MPV socket.")
+                        this.isReady = true;
                     },
                     data: (_socket: any, data: any) => {
                         const lines = data.toString().split("\n");
@@ -69,7 +73,6 @@ export default class Play extends EventEmitter {
                                         this.emit("playing", response.data)
                                     }
                                 }
-
                                 if (response.event === "start-file") {
                                     this.emit("loading", true)
                                 }
@@ -111,7 +114,7 @@ export default class Play extends EventEmitter {
                 this.send(["get_property", "time-pos"], 888);
             }, 1000);
 
-        }, 100);
+        }, 200);
     }
 
     private send(command: (string | number | boolean | Object)[], id: number = 0) {
@@ -131,7 +134,6 @@ export default class Play extends EventEmitter {
         this.send(["playlist-clear"]);
         this.send(["loadfile", urlOrPath, "replace"]);
         setTimeout(() => {
-
             if (this.isFirstLoad) {
                 this.isFirstLoad = false;
                 this.send(["set_property", "pause", true]);
