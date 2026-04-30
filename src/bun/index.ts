@@ -14,10 +14,13 @@ import { getAllLocalFiles, getUserData, getUserDatas, writeLogs, writeUserData, 
 // types
 import { Repeat, Shuffle, SleepMode, Track, UserData } from "../shared/types.ts";
 import type { AppRPCType, System } from "@/shared/types.ts";
+import Player from "./music/index.ts";
 
 // app variables
-const APP_ROOT = resolve("./", "..", "Resources", "app");
-const { isLocal, isDiscord, appPort, playerPort, DiscordClientId } = await getDataFromDatabase(APP_ROOT, "data", "system");
+const APP_ROOT = resolve("./");
+const APP_ASSETS = resolve(APP_ROOT, "..", "Resources", "app")
+console.log(APP_ASSETS)
+const { isLocal, isDiscord, appPort, playerPort, DiscordClientId } = await getDataFromDatabase(APP_ASSETS, "data", "system");
 if ([isLocal, isDiscord, appPort, playerPort].includes(null)) {
 	await Utils.showMessageBox({
 		type: "error",
@@ -32,7 +35,7 @@ CheckUserData();
 let appWin: BrowserWindow | null = null;
 let appTray: Tray | null = null;
 let discordRPC: any = null;
-let player: any = null;
+let player: Player | null = null;
 
 const current = {
 	time: 0,
@@ -84,7 +87,6 @@ const ytbTrackStart = "https://www.youtube.com/watch?v="
 
 const play = () => {
 	const currentPlaying = getUserData("currentPlaying");
-
 	player.player.play(`${ytbTrackStart}${currentPlaying.id}`)
 }
 const PlayerModule = await import("./music/index.ts");
@@ -526,6 +528,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 	}
 })
 
+let isFirstLoad = true;
 const openAppUI = () => {
 	if (appWin) {
 		appWin?.show();
@@ -541,6 +544,10 @@ const openAppUI = () => {
 		})
 		appWin?.webview?.on("domReady", () => {
 			appWin?.maximize();
+			if (isFirstLoad) {
+				play();
+				isFirstLoad = false;
+			}
 		})
 		appWin?.on("close", () => {
 			appWin = null;
@@ -555,7 +562,7 @@ if (!isLocal) {
 	})
 
 	for (const binFile of ["ffmpeg", "ffprobe"]) {
-		const file = Bun.file(resolve(APP_ROOT, "bin", `${binFile}.exe`));
+		const file = Bun.file(resolve(APP_ROOT, `${binFile}.exe`));
 		if (await file.exists()) {
 			file.delete();
 		}
@@ -602,7 +609,7 @@ if (isDiscord && DiscordClientId.length > 0) {
 // Create Tray Menu
 appTray = new Tray({
 	title: "Music app",
-	image: join(APP_ROOT, "assets", "trayicon.ico"),
+	image: join(APP_ASSETS, "assets", "trayicon.ico"),
 	template: true
 });
 appTray?.setMenu(getTrayMenu(true));
