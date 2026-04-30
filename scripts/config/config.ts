@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { config as envConfig } from "dotenv";
+import { ElectrobunConfig } from "electrobun";
 
 envConfig();
 
@@ -8,25 +9,28 @@ export default async function config(thisWorkSpace: string, isDev: boolean) {
         resolve(thisWorkSpace, "package.json")
     ).json();
 
-    const electrobunConfig: any = {}
+    const electrobunConfig: ElectrobunConfig = {
+        release: {
+            baseUrl: `https://github.com/${process.env["GHUSERNAME"]}/${process.env["REPO"]}/releases/download`,
+        },
+        build: {
+            bunVersion: packageJson.dependencies.bun.split("^")[1],
+            win: {
+                bundleCEF: false,
+                icon: "assets/favicon.ico"
+            },
+            copy: {}
+        },
+        app: {
+            name: packageJson.name,
+            identifier: process.env["IDENTIFIER"] ?? "local.build.dev",
+            version: packageJson.version
+        }
+    } satisfies ElectrobunConfig;
 
     // default config
-    electrobunConfig.app = {
-        name: packageJson.name,
-        identifier: process.env["IDENTIFIER"] ?? "local.build.dev",
-        version: packageJson.version
-    }
-    electrobunConfig.build = {
-        bunVersion: packageJson.dependencies.bun.split("^")[1],
-        win: {
-            bundleCEF: false,
-            icon: "assets/favicon.ico"
-        },
-        copy: {}
-    }
-
     electrobunConfig.build.copy[`dist/`] = `views/src`;
-    electrobunConfig.build.copy[`bin/`] = `bin/`;
+    electrobunConfig.build.copy[`bin/`] = `../../`;
     electrobunConfig.build.copy[`assets/`] = `assets/`;
     electrobunConfig.build.copy[`data/${!isDev ? "temp" : ""}system.json`] = `data/system.json`;
 
