@@ -26,10 +26,6 @@ export default function List({
     mode: string;
     type: string;
 }) {
-    if (list.length === 0) {
-        return <Loading mode={"Searching"} />;
-    }
-
     const max_items = 15; // 5 rows * 3 cols
 
     const [sight, set_sight] = useState({
@@ -59,6 +55,25 @@ export default function List({
         return temp.join(" ");
     };
 
+    if (list.length === 0) {
+        return <Loading mode={"Searching"} />;
+    }
+
+    const hanldeClick = (item: any, source: string, type: string) => {
+        if (type === "videos") {
+            window.api.rpc.request.play({
+                item: item,
+                source: source as any,
+                type: "track",
+                id: item.id,
+            });
+        } else if (type === "playlists") {
+            goto(`/playlists/${source}/${item.id}`);
+        } else if (type === "artists") {
+            goto(`/artists/${source}/${item.id}`);
+        }
+    };
+
     return (
         <div
             className="listitem flex flex-col h-[75%] w-full overflow-y-scroll [&::-webkit-scrollbar]:hidden"
@@ -86,26 +101,22 @@ export default function List({
                 {show_list.map((item: Track, index: number) => {
                     return (
                         <div
+                            tabIndex={index}
                             key={
                                 item.name ?? `${source} ${mode} ${id} ${index}`
                             }
                             className={`vid_${
                                 index + 1
-                            } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
+                            } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600 rounded-lg`}
                             onClick={() => {
-                                if (type === "videos") {
-                                    window.api.rpc.request.play({
-                                        item: item,
-                                        source: source as any,
-                                        type: "track",
-                                        id: item.id,
-                                    });
-                                } else if (type === "playlists") {
-                                    goto(`/playlists/${source}/${item.id}`);
-                                } else if (type === "artists") {
-                                    goto(`/artists/${source}/${item.id}`);
+                                hanldeClick(item, source, type);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    hanldeClick(item, source, type);
                                 }
                             }}
+                            role="option"
                         >
                             <div className="flex flex-row items-center ml-2.5 w-full">
                                 <span className="thumbnail cursor-default select-none w-[20%]">
@@ -147,7 +158,7 @@ export default function List({
                                         </div>
                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
-                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (source === "youtube") {
@@ -165,7 +176,7 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     Queue(item);
@@ -176,7 +187,7 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${
+                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer ${
                                                     mode === "local"
                                                         ? "opacity-50 pointer-events-none"
                                                         : ""
@@ -191,14 +202,14 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${
+                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer ${
                                                     pin.filter(
                                                         (data) =>
                                                             data ===
                                                             `${source}:${type}:${item.id}`,
                                                     ).length > 0
                                                         ? "text-red-600"
-                                                        : "text-slate-200"
+                                                        : "text-zinc-200"
                                                 }`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
