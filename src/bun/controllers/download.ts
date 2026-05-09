@@ -18,7 +18,7 @@ export default async function DownloadController(player: Player) {
         data: Status.prepare, track: ""
     }
     for (const item of downloadQueue) {
-        const { source, mode, id } = item;
+        const [source, mode, id] = item.split(":");
         player.status = {
             data: Status.prepare, track: `${source} - ${mode} - ${id}`
         }
