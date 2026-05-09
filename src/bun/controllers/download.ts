@@ -52,6 +52,22 @@ export default async function DownloadController(player: Player) {
                     })
                 })
             }
+            else if (mode.includes("artist")) {
+                const artist = await player.youtube.fetch_artist(id);
+                const playlist = await player.youtube.fetch_playlist(artist.playlistId);
+                playlist.tracks?.forEach((track: Track) => {
+                    track_to_download.push({
+                        id: [track.id],
+                        title: track.name,
+                        metadata: {
+                            artist: track.artist[0].name,
+                            year: track.releasedDate,
+                            thumbnail: track.thumbnail,
+                            source: "youtube"
+                        }
+                    })
+                })
+            }
         }
     }
 
