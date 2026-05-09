@@ -35,7 +35,7 @@ export default function ControlPanel() {
     return (
         <div className="controlpanel flex flex-row gap-2.5 w-1/5">
             <span
-                className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none ${
+                className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-zinc-500 flex items-center gap-1.25 text-white cursor-default select-none ${
                     backward.length === 0
                         ? "opacity-50 pointer-events-none"
                         : ""
@@ -48,7 +48,7 @@ export default function ControlPanel() {
                 <FontAwesomeIcon icon={faArrowLeft} />
             </span>
             <span
-                className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none`}
+                className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-zinc-500 flex items-center gap-1.25 text-white cursor-default select-none`}
                 onClick={() => {
                     window.location.reload();
                 }}
@@ -56,7 +56,7 @@ export default function ControlPanel() {
                 <FontAwesomeIcon icon={faArrowsRotate} />
             </span>
             <span
-                className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none ${
+                className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-zinc-500 flex items-center gap-1.25 text-white cursor-default select-none ${
                     forward.length === 0 ? "opacity-50 pointer-events-none" : ""
                 }`}
                 onClick={() => {
@@ -68,7 +68,7 @@ export default function ControlPanel() {
             </span>
             {isLocal && (
                 <span
-                    className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none`}
+                    className={`material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-zinc-500 flex items-center gap-1.25 text-white cursor-default select-none`}
                     onClick={() => {
                         goto("/local");
                     }}
@@ -77,7 +77,7 @@ export default function ControlPanel() {
                 </span>
             )}
             <span
-                className="material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none"
+                className="material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-zinc-500 flex items-center gap-1.25 text-white cursor-default select-none"
                 onClick={() => {
                     goto("/queue/play");
                 }}
@@ -86,7 +86,7 @@ export default function ControlPanel() {
             </span>
             {isLocal && (
                 <span
-                    className="material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-slate-500 flex items-center gap-1.25 text-white cursor-default select-none"
+                    className="material-icons rounded-full px-0.5 py-1 hover:cursor-pointer hover:bg-zinc-500 flex items-center gap-1.25 text-white cursor-default select-none"
                     onClick={() => {
                         goto("/queue/download");
                     }}

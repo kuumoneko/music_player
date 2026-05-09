@@ -110,7 +110,7 @@ export default function List({
                             }
                             className={`vid_${
                                 index + 1
-                            } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-lg`}
+                            } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600 rounded-lg`}
                             onClick={() => {
                                 window.api.rpc.request.play({
                                     item: item,
@@ -159,7 +159,7 @@ export default function List({
                                         </div>
                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
-                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (source === "youtube") {
@@ -177,7 +177,7 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     Queue(item);
@@ -188,7 +188,7 @@ export default function List({
                                                 />
                                             </span>
                                             <span
-                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer ${
+                                                className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer ${
                                                     mode === "local"
                                                         ? "opacity-50 pointer-events-none"
                                                         : ""

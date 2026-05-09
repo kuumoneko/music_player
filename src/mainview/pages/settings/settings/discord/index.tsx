@@ -22,7 +22,7 @@ export default function Discord() {
             <span className="flex flex-row justify-between items-center">
                 <span>
                     <FontAwesomeIcon icon={faDiscord} />
-                    <span className="text-lg font-semibold text-gray-200 ml-2">
+                    <span className="text-lg font-semibold text-zinc-200 ml-2">
                         Discord RPC:
                     </span>
                 </span>

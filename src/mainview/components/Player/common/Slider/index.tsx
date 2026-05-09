@@ -31,7 +31,7 @@ export default function Slider({
                         /* The '--value-percent' CSS variable is set by the useEffect hook. */
                         [&::-webkit-slider-runnable-track]:h-1 
                         [&::-webkit-slider-runnable-track]:rounded-full 
-                        [&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--color-red-500)_var(--value-percent),var(--color-slate-400)_var(--value-percent))]
+                        [&::-webkit-slider-runnable-track]:bg-[linear-gradient(to_right,var(--color-red-500)_var(--value-percent),var(--color-zinc-400)_var(--value-percent))]
 
                         /* Thumb: Webkit */
                         [&::-webkit-slider-thumb]:appearance-none 

@@ -56,7 +56,7 @@ function Index() {
             {pin?.map((playlist: any) => {
                 return (
                     <div
-                        className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
+                        className="flex flex-row items-center mr-4 my-3 bg-zinc-600 p-2 rounded-4xl hover:bg-zinc-500 hover:cursor-pointer"
                         onClick={() => {
                             goto(
                                 `/playlists/${playlist.source}/${playlist.id}`,

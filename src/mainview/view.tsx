@@ -16,10 +16,10 @@ function App() {
     }, []);
 
     return (
-        <div className="w-screen h-screen flex flex-col items-center justify-center bg-slate-900 cursor-default select-none">
+        <div className="w-screen h-screen flex flex-col items-center justify-center bg-zinc-900 cursor-default select-none">
             <Frame />
             <div className="w-full h-[85%]">
-                <div className="h-[5%] bg-slate-900"></div>
+                <div className="h-[5%] bg-zinc-900"></div>
                 <SearchBar />
                 <div className="h-[90%] flex flex-col items-center justify-center">
                     <Pages url={url} />

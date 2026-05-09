@@ -61,13 +61,13 @@ export default function Download() {
                     }
                 }}
             >
-                <span className="bg-slate-50 h-9 w-9 rounded-[50px] ml-1.5 flex flex-row items-center justify-center">
+                <span className="bg-zinc-50 h-9 w-9 rounded-[50px] ml-1.5 flex flex-row items-center justify-center">
                     <FontAwesomeIcon
                         icon={faDownload}
-                        className="text-slate-700 size-4"
+                        className="text-zinc-700 size-4"
                     />
                 </span>
-                <span className="mr-3.75 flex flex-col items-center justify-center mt-0.5 text-lg text-slate-600 transition-all">
+                <span className="mr-3.75 flex flex-col items-center justify-center mt-0.5 text-lg text-zinc-600 transition-all">
                     Download
                 </span>
             </span>

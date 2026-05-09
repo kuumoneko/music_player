@@ -73,7 +73,7 @@ export default function Top({
 
                         <div className="flex flex-col ml-5">
                             <span className="text-2xl font-bold">{name}</span>
-                            <span className="text-lg text-gray-500">
+                            <span className="text-lg text-zinc-500">
                                 {artists
                                     ?.map((artist: any) => artist.name)
                                     .join(", ")}
@@ -117,12 +117,12 @@ export default function Top({
                                             id: id,
                                         });
                                     }}
-                                    className="rounded-full px-1 py-0.5 hover:bg-slate-600 hover:cursor-pointer"
+                                    className="rounded-full px-1 py-0.5 hover:bg-zinc-600 hover:cursor-pointer"
                                 >
                                     <FontAwesomeIcon icon={faPlay} />
                                 </span>
                                 <span
-                                    className="ml-2.5 rounded-full px-1 py-0.5 hover:bg-slate-600 hover:cursor-pointer"
+                                    className="ml-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-600 hover:cursor-pointer"
                                     onClick={() => {
                                         if (mode == "track") {
                                             if (source === "youtube") {
@@ -152,7 +152,7 @@ export default function Top({
                                         source === "local"
                                             ? "opacity-50 pointer-events-none"
                                             : ""
-                                    } rounded-full px-1 py-0.5 hover:bg-slate-600 hover:cursor-pointer`}
+                                    } rounded-full px-1 py-0.5 hover:bg-zinc-600 hover:cursor-pointer`}
                                     onClick={() => {
                                         add_to_download(source, mode, id);
                                     }}
@@ -160,10 +160,8 @@ export default function Top({
                                     <FontAwesomeIcon icon={faDownload} />
                                 </span>
                                 <span
-                                    className={`pin ml-2.5 rounded-full px-1 py-0.5 hover:bg-slate-600 hover:cursor-pointer ${
-                                        isPin
-                                            ? "text-red-600"
-                                            : "text-slate-600"
+                                    className={`pin ml-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-600 hover:cursor-pointer ${
+                                        isPin ? "text-red-600" : "text-zinc-600"
                                     }`}
                                     onClick={() => {
                                         async function run() {

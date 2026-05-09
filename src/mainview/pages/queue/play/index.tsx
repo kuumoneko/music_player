@@ -83,7 +83,7 @@ export default function Play_Queue() {
                                     key={item.name}
                                     className={`queue ${
                                         index + 1
-                                    } flex h-25 w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
+                                    } flex h-25 w-full flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600`}
                                     onDoubleClick={async () => {
                                         window.api.rpc.request.play({
                                             item: item,
@@ -130,7 +130,7 @@ export default function Play_Queue() {
 
                                     <div className="action_button flex flex-row-reverse mr-2.5">
                                         <span
-                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 if (item.source === "youtube") {
                                                     const url =
@@ -145,7 +145,7 @@ export default function Play_Queue() {
                                             <FontAwesomeIcon icon={faShare} />
                                         </span>
                                         <span
-                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={async () => {
                                                 Queue(item);
                                             }}
@@ -155,7 +155,7 @@ export default function Play_Queue() {
                                             />
                                         </span>
                                         <span
-                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 add_to_download(
                                                     item.source,
@@ -182,7 +182,7 @@ export default function Play_Queue() {
                                     key={item.name}
                                     className={`nextfrom ${
                                         index + 1
-                                    } flex h-25 w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
+                                    } flex h-25 w-full flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600`}
                                     onDoubleClick={() => {
                                         window.api.rpc.request.play({
                                             item: item,
@@ -224,7 +224,7 @@ export default function Play_Queue() {
 
                                     <div className="action_button flex flex-row-reverse mr-2.5">
                                         <span
-                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 if (item.source === "youtube") {
                                                     const url =
@@ -239,7 +239,7 @@ export default function Play_Queue() {
                                             <FontAwesomeIcon icon={faShare} />
                                         </span>
                                         <span
-                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={async () => {
                                                 Queue(item);
                                             }}
@@ -249,7 +249,7 @@ export default function Play_Queue() {
                                             />
                                         </span>
                                         <span
-                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                            className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 add_to_download(
                                                     item.source,

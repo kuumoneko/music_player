@@ -54,7 +54,7 @@ export default function SleepUI() {
                 <Sleep_comp />
             </span>
             <span
-                className={`mr-2.5 px-1 py-0.5 ${!isHover ? "" : "rounded-full bg-slate-500 cursor-pointer"}`}
+                className={`mr-2.5 px-1 py-0.5 ${!isHover ? "" : "rounded-full bg-zinc-500 cursor-pointer"}`}
                 onClick={() => {
                     const index = sleep_type.indexOf(sleep);
                     const temp = sleep_type[

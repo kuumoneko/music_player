@@ -8,7 +8,7 @@ import ControlUI from "./components/control/index.tsx";
 
 export default function Player() {
     return (
-        <div className="player h-[5%] w-[90%] bg-slate-700 text-white mt-5 rounded-xl flex justify-between items-center px-1.25 m-0 select-none">
+        <div className="player h-[5%] w-[90%] bg-zinc-700 text-white mt-5 rounded-xl flex justify-between items-center px-1.25 m-0 select-none">
             <DataUI />
 
             <div className="flex flex-col items-center w-1/2">
@@ -18,7 +18,7 @@ export default function Player() {
                 <SleepUI />
 
                 <span
-                    className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                    className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                     onClick={() => {
                         goto("/queue/play");
                     }}

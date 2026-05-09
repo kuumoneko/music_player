@@ -41,7 +41,7 @@ export default function HomePage() {
                         {artists.map((artist: Artist) => {
                             return (
                                 <div
-                                    className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
+                                    className="flex flex-row items-center mr-4 my-3 bg-zinc-600 p-2 rounded-4xl hover:bg-zinc-500 hover:cursor-pointer"
                                     onClick={() => {
                                         goto(
                                             `/artists/${artist.source}/${artist.id}`,
@@ -71,7 +71,7 @@ export default function HomePage() {
                         {playlists.map((playlist: Playlist) => {
                             return (
                                 <div
-                                    className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
+                                    className="flex flex-row items-center mr-4 my-3 bg-zinc-600 p-2 rounded-4xl hover:bg-zinc-500 hover:cursor-pointer"
                                     onClick={() => {
                                         goto(
                                             `/playlists/${playlist.source}/${playlist.id}`,
@@ -99,7 +99,7 @@ export default function HomePage() {
                         {tracks.map((track: Track) => {
                             return (
                                 <div
-                                    className="flex flex-row items-center mr-4 my-3 bg-slate-600 p-2 rounded-4xl hover:bg-slate-500 hover:cursor-pointer"
+                                    className="flex flex-row items-center mr-4 my-3 bg-zinc-600 p-2 rounded-4xl hover:bg-zinc-500 hover:cursor-pointer"
                                     onClick={() => {
                                         window.api.rpc.request.play({
                                             item: track,
@@ -132,7 +132,7 @@ export default function HomePage() {
                     {new_tracks.map((track: Track) => {
                         return (
                             <div
-                                className="flex flex-row items-center rounded-2xl hover:cursor-pointer hover:bg-slate-600"
+                                className="flex flex-row items-center rounded-2xl hover:cursor-pointer hover:bg-zinc-600"
                                 onClick={() => {
                                     window.api.rpc.request.play({
                                         item: track,

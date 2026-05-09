@@ -8,7 +8,7 @@ export default function Update() {
         window.api.rpc.request.checkUpdate().then((data: string | boolean) => {
             setVersion(data);
         });
-        
+
         const interval = window.setInterval(() => {
             window.api.rpc.request
                 .checkUpdate()
@@ -24,7 +24,7 @@ export default function Update() {
             <span className="flex flex-row justify-between items-center">
                 <span>
                     <FontAwesomeIcon icon={faArrowsRotate} />
-                    <span className="text-lg font-semibold text-gray-200 ml-2">
+                    <span className="text-lg font-semibold text-zinc-200 ml-2">
                         Version:
                     </span>
                 </span>

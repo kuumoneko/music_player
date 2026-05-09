@@ -52,7 +52,7 @@ export default function ControlPages() {
         return <></>;
     }
     return (
-        <div className="relative flex items-center justify-center w-3/5 min-w-100 h-full bg-slate-700 rounded-lg">
+        <div className="relative flex items-center justify-center w-3/5 min-w-100 h-full bg-zinc-700 rounded-lg">
             <ul className="flex w-52.5">
                 {menuItems.map((item, index) => (
                     <li

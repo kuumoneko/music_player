@@ -119,8 +119,8 @@ export default function Download_Queue() {
                                 key={`big download ${key}`}
                                 className="download flex flex-col"
                             >
-                                <div className="flex flex-row bg-slate-800 mb-3">
-                                    <span className="w-12.5 flex flex-row items-center justify-center dot text-slate-300 hover:text-red-500 hover:cursor-pointer transition-all">
+                                <div className="flex flex-row bg-zinc-800 mb-3">
+                                    <span className="w-12.5 flex flex-row items-center justify-center dot text-zinc-300 hover:text-red-500 hover:cursor-pointer transition-all">
                                         <FontAwesomeIcon
                                             icon={faCircle}
                                             onClick={async () => {
@@ -197,7 +197,7 @@ export default function Download_Queue() {
                                 {mode === "track" ? (
                                     <div
                                         key={`download`}
-                                        className={`vid flex h-25 w-full flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600`}
+                                        className={`vid flex h-25 w-full flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600`}
                                     >
                                         <div className="flex flex-row items-center">
                                             <span className="thumbnail cursor-default select-none ml-2.5">
@@ -242,7 +242,7 @@ export default function Download_Queue() {
 
                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
-                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                                 onClick={() => {
                                                     if (
                                                         item.source ===
@@ -270,7 +270,7 @@ export default function Download_Queue() {
                                                 return (
                                                     <div
                                                         key={`download ${index}`}
-                                                        className={`vid flex h-25 w-[90%] flex-row items-center justify-between mb-5 bg-slate-700 hover:bg-slate-600 rounded-3xl`}
+                                                        className={`vid flex h-25 w-[90%] flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600 rounded-3xl`}
                                                     >
                                                         <div className="flex flex-row items-center">
                                                             <span className="thumbnail cursor-default select-none ml-2.5">
@@ -323,7 +323,7 @@ export default function Download_Queue() {
 
                                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                                             <span
-                                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-slate-500 hover:cursor-pointer"
+                                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                                                 onClick={() => {
                                                                     if (
                                                                         itemm.source ===

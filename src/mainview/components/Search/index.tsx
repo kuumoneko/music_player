@@ -52,7 +52,7 @@ export default function SearchBar() {
             <div className="w-full max-w-175 flex">
                 <input
                     type="text"
-                    className="grow px-5 py-3 rounded-l-full bg-slate-200 text-slate-700 text-base outline-none shadow-inner min-h-7.5"
+                    className="grow px-5 py-3 rounded-l-full bg-zinc-200 text-zinc-700 text-base outline-none shadow-inner min-h-7.5"
                     placeholder="Search here"
                     value={typing}
                     onChange={(e) => {
@@ -97,7 +97,7 @@ export default function SearchBar() {
                 />
                 {type !== "" && (
                     <div
-                        className="px-5 py-2 bg-slate-200 ml-1 text-slate-700 text-lg cursor-pointer flex items-center justify-center min-h-7.5 w-25"
+                        className="px-5 py-2 bg-zinc-200 ml-1 text-zinc-700 text-lg cursor-pointer flex items-center justify-center min-h-7.5 w-25"
                         onClick={() => {
                             settype(
                                 type === "artist"

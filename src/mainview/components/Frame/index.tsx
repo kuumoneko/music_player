@@ -1,7 +1,4 @@
-import {
-    faMinus,
-    faXmark,
-} from "@fortawesome/free-solid-svg-icons";
+import { faMinus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ControlPanel from "./Controls";
 import ControlPages from "./Pages";
@@ -25,7 +22,7 @@ export default function Frame() {
             <div className="w-full h-full flex flex-row items-center justify-between electrobun-webkit-app-region-drag">
                 <div className="w-1/10"></div>
 
-                <div className="w-8/10 h-full bg-slate-700 rounded-4xl flex flex-row items-center justify-between px-4 electrobun-webkit-app-region-no-drag">
+                <div className="w-8/10 h-full bg-zinc-700 rounded-4xl flex flex-row items-center justify-between px-4 electrobun-webkit-app-region-no-drag">
                     <ControlPanel />
                     <ControlPages />
                     <Settings />
@@ -34,13 +31,13 @@ export default function Frame() {
                 <div className="w-1/10 flex flex-row-reverse items-center px-4 electrobun-webkit-app-region-no-drag">
                     <div
                         onClick={close}
-                        className="cursor-default hover:cursor-pointer hover:bg-slate-500 hover:text-red-500 rounded-full px-0.5"
+                        className="cursor-default hover:cursor-pointer hover:bg-zinc-500 hover:text-red-500 rounded-full px-0.5"
                     >
                         <FontAwesomeIcon icon={faXmark} />
                     </div>
                     <div
                         onClick={minimize}
-                        className="cursor-default hover:cursor-pointer hover:bg-slate-500 rounded-full px-0.5"
+                        className="cursor-default hover:cursor-pointer hover:bg-zinc-500 rounded-full px-0.5"
                     >
                         <FontAwesomeIcon icon={faMinus} />
                     </div>
