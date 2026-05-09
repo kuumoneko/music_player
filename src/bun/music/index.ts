@@ -1,13 +1,12 @@
 import Youtube from "./youtube.ts";
-import { Download_item, Status, System, Track } from "../../shared/types.ts";
-import { mkdirSync, readdirSync, unlinkSync } from "node:fs";
+import { Download_item, Status, System } from "../../shared/types.ts";
 import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
 import areStringsSimilar from "../lib/comapre_string.ts";
-import { spawn } from "node:child_process";
 import { getDataFromDatabase } from "../lib/database.ts";
 import { getUserData, writeLogs } from "../db/index.ts";
 import Play from "./play.ts";
+import { mkdir } from "node:fs/promises";
 
 export enum Audio_format {
     aac = "aac",
@@ -30,10 +29,7 @@ export default class Player {
     public audio_format: string = Audio_format.m4a;
     public folder: string = "";
 
-    constructor(
-        userPath: string, appPath: string,
-    ) {
-
+    constructor(userPath: string, appPath: string) {
         this.player = new Play(appPath)
         this.download_folder = getUserData("folder");
         (getDataFromDatabase(appPath, "..", "Resources", "app", 'data', 'system') as Promise<System>).then(({ isLocal, youtubeApiKeys }) => {
@@ -70,103 +66,134 @@ export default class Player {
     }
 
     async checking(): Promise<void> {
-        writeLogs([{ type: "info", message: "Checking download folder before downloading" }])
-        const files = readdirSync(this.download_folder, {
-            withFileTypes: true
-        });
-        for (const file of files) {
-            if (!file.isFile()) {
-                continue;
-            }
-            const ext = extname(file.name)
-            const filename = basename(file.name, ext);
+        writeLogs([{ type: "info", message: "Checking download folder before downloading" }]);
 
-            const checked = this.download_queue.filter((item) => {
-                return areStringsSimilar(item.title, filename)
+        const glob = new Bun.Glob("*");
+        const files = await Array.fromAsync(
+            glob.scan({ cwd: this.download_folder, onlyFiles: true })
+        );
+
+        const deleteTasks: Promise<void>[] = [];
+
+        for (const file of files) {
+            const ext = extname(file);
+            const filename = basename(file, ext);
+
+            const isNeeded = this.download_queue.some((item) => {
+                return areStringsSimilar(item.title, filename);
             });
-            if (checked.length === 0) {
-                try {
-                    unlinkSync(`${this.download_folder}\\${filename}${ext}`);
-                    writeLogs([{ type: "info", message: `Delete unused file: ${filename}` }])
-                } catch { }
+
+            if (!isNeeded) {
+                const filePath = path.join(this.download_folder, file);
+                const task = Bun.file(filePath).delete()
+                    .then(() => {
+                        writeLogs([{ type: "info", message: `Delete unused file: ${filename}` }]);
+                    })
+                    .catch(() => { });
+
+                deleteTasks.push(task);
             }
         }
-        writeLogs([{ type: "info", message: "Done check download folder before downloading!" }])
+
+        if (deleteTasks.length > 0) {
+            await Promise.all(deleteTasks);
+        }
+
+        writeLogs([{ type: "info", message: "Done check download folder before downloading!" }]);
     }
 
-    converting(...args: string[]): Promise<any> {
-        return new Promise(async (resolve) => {
-            const [name, input, output] = args;
+    async converting(name: string, input: string, output: string): Promise<string | number> {
+        const inputPath = path.join(this.download_folder, `${name}.${input}`);
+        const outputPath = path.join(this.download_folder, `${name}.${output}`);
 
-            const process = spawn(`${this.folder}\\bin\\ffmpeg.exe`, ["-i", `"${this.download_folder}\\${name}.${input}"`, "-c:a", "aac", "-o", `"${this.download_folder}\\${name}.${output}"`], { shell: true, stdio: "inherit" });
+        const proc = Bun.spawn([
+            `${this.folder}\\ffmpeg.exe`,
+            "-y",
+            "-loglevel", "error",
+            "-threads", "0",
+            "-i", inputPath,
+            "-c:a", "aac",
+            outputPath
+        ], {
+            stdout: "ignore",
+            stderr: "inherit"
+        });
 
-            process.on("close", (code: number) => {
-                if (code === 0) {
-                    resolve("ok")
-                }
-                else {
-                    resolve(code)
-                }
-            })
-        })
+        const exitCode = await proc.exited;
+
+        if (exitCode === 0) {
+            writeLogs([{ type: "info", message: `Successfully converted ${name} to ${output}` }]);
+            return "ok";
+        }
+
+        writeLogs([{ type: "error", message: `Conversion failed for ${name}. Exit code: ${exitCode}` }]);
+        return exitCode;
     }
 
     async download_track(data: { id: string, title: string, metadata: { artist: string, year: string, thumbnail: string }, option: string[] }) {
-        return new Promise((resolve, _reject) => {
-            const { title, option } = data;
-            writeLogs([{ type: "info", message: `Downloading ${title}...` }])
-            this.status = {
-                data: Status.prepare, track: title
-            }
-            const process = spawn(`${path.resolve(this.folder, "bin", "yt-dlp.exe")}`, option, { shell: true });
+        const { title, option } = data;
+        writeLogs([{ type: "info", message: `Downloading ${title}...` }]);
 
-            process.stdout.on("data", (data) => {
-                const text = data.toString();
+        this.status = {
+            data: Status.prepare, track: title
+        };
+
+        const command = [`${path.resolve(this.folder, "yt-dlp.exe")}`, ...option];
+
+        const proc = Bun.spawn(command, {
+            stdout: "pipe",
+            stderr: "inherit"
+        });
+
+        if (proc.stdout) {
+            const reader = proc.stdout.getReader();
+            const decoder = new TextDecoder();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const text = decoder.decode(value);
                 const lines = text.split("\n");
 
-                lines.forEach((line: string) => {
+                for (const line of lines) {
                     if (line.includes("[download]") && line.includes("%")) {
                         const percentMatch = line.match(/(\d+\.\d+)%/);
 
                         if (percentMatch && percentMatch[1]) {
                             const percentage = percentMatch[1];
-                            console.log(`Progress: ${percentage}%`)
+
+                            console.log(`Progress [${title}]: ${percentage}%`);
 
                             this.status = {
                                 data: Status.downloading, track: `${percentage}%`
-                            }
+                            };
                         }
                     }
-                });
-            });
-
-            process.stderr.on('data', (data) => {
-                writeLogs([{ type: "error", message: data }])
-            })
-
-            process.on("close", (code: number) => {
-                if (code === 0) {
-                    this.status = {
-                        data: Status.done, track: title
-                    }
-                    writeLogs([{ type: "info", message: `Done download ${title}!` }])
-                    resolve(code)
                 }
-                else {
-                    resolve(code)
-                }
-            })
-        })
+            }
+        }
+
+        const exitCode = await proc.exited;
+
+        if (exitCode === 0) {
+            this.status = { data: Status.done, track: title };
+            writeLogs([{ type: "info", message: `Done download ${title}!` }]);
+        } else {
+            writeLogs([{ type: "error", message: `Failed to download ${title} (Exit code: ${exitCode})` }]);
+        }
+
+        return exitCode;
     }
 
     async download() {
-        mkdirSync(`${this.download_folder}`, { recursive: true });
+        await mkdir(`${this.download_folder}`, { recursive: true });
 
-        const downloade_data = [];
+        const download_data = [];
         const defaultDownloadOptions = [
             "-x",
             "--ffmpeg-location",
-            `${resolve(this.folder, "bin", "ffmpeg.exe")}`,
+            `${resolve(this.folder, "ffmpeg.exe")}`,
             "--audio-format",
             "m4a",
             "--audio-quality",
@@ -177,23 +204,23 @@ export default class Player {
             "--console-title",
             "-P",
             `${this.download_folder}`,
-            "--js-runtimes",
-            "node",
-        ]
+        ];
+
         for (const item of this.download_queue) {
             let temp = item;
             temp.title = this.format_title(temp.title);
             const metadata = []
+
             for (const [key, value] of Object.entries(item.metadata)) {
-                if (key === "source" || key === "thumbnail") { continue }
+                if (key === "source" || key === "thumbnail") { continue; }
                 metadata.push('--parse-metadata', `"${value}":%(${key})s`);
             }
 
-            downloade_data.push({
+            download_data.push({
                 ...temp,
                 option: [
                     ...defaultDownloadOptions,
-                    "-o", `"${temp.title}.%(ext)s"`,
+                    "-o", `${temp.title}.%(ext)s`,
                     '--add-metadata',
                     ...metadata,
                     `https://www.youtube.com/watch?v=${temp.id[0]}`,
@@ -201,118 +228,61 @@ export default class Player {
             });
         }
 
-        for (const data of downloade_data) {
-            const existingFiles = readdirSync(this.download_folder);
-            const matchingFile = existingFiles.find(file => {
-                const name = basename(file, extname(file));
-                return areStringsSimilar(name, data.title);
-            });
+        const glob = new Bun.Glob("*");
+        const existingFiles = await Array.fromAsync(
+            glob.scan({ cwd: this.download_folder, onlyFiles: true })
+        ).catch(() => []);
 
-            if (matchingFile) {
-                const currentExt = extname(matchingFile).replace(".", "");
-                if (currentExt !== "m4a" && Object.values(Audio_format).includes(currentExt as Audio_format)) {
-                    await this.converting(data.title, currentExt, "m4a");
-                    try {
-                        unlinkSync(path.join(this.download_folder, matchingFile));
-                    } catch { }
-                    continue;
-                } else if (currentExt === "m4a") {
-                    continue;
+        const processData = async (data: any) => {
+            if (existingFiles.length > 0) {
+                const matchingFile = existingFiles.find(file => {
+                    const name = basename(file, extname(file));
+                    return areStringsSimilar(name, data.title);
+                });
+
+                if (matchingFile) {
+                    const currentExt = extname(matchingFile).replace(".", "");
+
+                    if (currentExt !== "m4a" && Object.values(Audio_format).includes(currentExt as Audio_format)) {
+                        writeLogs([{ type: "info", message: `Converting ${data.title} from ${currentExt} to m4a...` }]);
+                        await this.converting(data.title, currentExt, "m4a");
+                        try {
+                            await Bun.file(path.join(this.download_folder, matchingFile)).delete();
+                        } catch { }
+                        return;
+                    } else if (currentExt === "m4a") {
+                        writeLogs([{ type: "info", message: `Skipping ${data.title}, already exists.` }]);
+                        return;
+                    }
                 }
             }
 
             await this.download_track(data);
-        }
+        };
 
-    }
+        const CONCURRENCY_LIMIT = 4;
+        const executing = new Set<Promise<void>>();
 
-    async findMatchingVideo(trackToMatch: Track, ids_dont_have: string[] = []): Promise<Track | null> {
-        const trackName = trackToMatch.name ?? "";
-        const artistName = (trackToMatch.artist as any)[0].name ?? "";
-        const trackDuration: number = trackToMatch.duration as number ?? 0; // in ms
+        writeLogs([{ type: "info", message: `Starting queue: ${download_data.length} items...` }]);
 
-        if (!trackName || !artistName) {
-            throw new Error("Track name or artist is missing.");
-        }
+        for (const data of download_data) {
+            const task = processData(data)
+                .then(() => {
+                    executing.delete(task);
+                })
+                .catch(err => {
+                    writeLogs([{ type: "error", message: `Error processing ${data.title}: ${err}` }]);
+                    executing.delete(task);
+                });
 
-        const searchQuery = `${trackName} ${artistName}`;
+            executing.add(task);
 
-        try {
-            let searchResults = (await this.youtube.search(searchQuery, "video")).tracks as Track[];
-            const ids: string[] = searchResults.map((track: Track) => {
-                return track.id || ""
-            }).filter((item: string) => {
-                return !ids_dont_have.includes(item) && item !== ""
-            })
-
-            const contentRating = await this.youtube.fetch_contentRating(ids);
-
-            const result_track = searchResults.map((item: Track) => {
-                return {
-                    type: "youtube:track",
-                    thumbnail: item.thumbnail,
-                    artists: item.artist,
-                    name: item.name,
-                    id: item.id,
-                    duration: item.duration, // in miliseconds
-                    releaseDate: item.releasedDate,
-                    contentRating: contentRating[item.id as any]
-                }
-            })
-
-            if (!searchResults || searchResults.length === 0) {
-                return null;
+            if (executing.size >= CONCURRENCY_LIMIT) {
+                await Promise.race(executing);
             }
-
-            let bestMatch: Track | null = null;
-            let bestScore = -1;
-
-            // 60 seconds
-            const DURATION_TOLERANCE_MS = 60 * 1000;
-
-            for (const ytVideo of result_track) {
-                const durationDifference = Math.abs(ytVideo.duration as number - trackDuration);
-
-                // ignore the video which has difference duration out 20 seconds
-                if (durationDifference > DURATION_TOLERANCE_MS) {
-                    continue;
-                }
-
-                // ignore the Age restricted video
-                if (ytVideo.contentRating?.ytRating === "ytAgeRestricted") {
-                    continue;
-                }
-
-                let score = 0;
-                const videoTitle: string = ytVideo.name?.toLowerCase() as string;
-                const channelTitle = (ytVideo.artists as any)[0]?.name.toLowerCase();
-                const lowerCaseArtistName = artistName.toLowerCase();
-
-                // Score based on title keywords and channel name
-                if (videoTitle.includes(trackName.toLowerCase())) score += 2;
-                if (channelTitle.includes(lowerCaseArtistName)) score += 3; // Strong indicator
-                else if (videoTitle.includes(lowerCaseArtistName)) score += 1;
-
-                if (videoTitle.includes("official audio") || videoTitle.includes("art track")) score += 5;
-                else if (videoTitle.includes("official video") || videoTitle.includes("official music video")) score += 3;
-                else if (videoTitle.includes("lyrics")) score += 2;
-
-                // Add score based on duration proximity
-                if (durationDifference < DURATION_TOLERANCE_MS) {
-                    score += (5 * (1 - (durationDifference / DURATION_TOLERANCE_MS)));
-                }
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMatch = ytVideo as any;
-                }
-            }
-
-            return bestMatch ?? null;
         }
-        catch (e) {
-            writeLogs([{ type: "error", message: e }])
-            return null
-        }
+
+        await Promise.all(executing);
+        writeLogs([{ type: "info", message: "All downloads finished successfully!" }]);
     }
 }
