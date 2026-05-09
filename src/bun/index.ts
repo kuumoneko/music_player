@@ -87,7 +87,13 @@ const ytbTrackStart = "https://www.youtube.com/watch?v="
 
 const play = () => {
 	const currentPlaying = getUserData("currentPlaying");
-	player.player.play(`${ytbTrackStart}${currentPlaying.id}`)
+	console.log(currentPlaying.source, ' ', currentPlaying.id)
+	if (currentPlaying.source === "youtube") {
+		player.player.play(`${ytbTrackStart}${currentPlaying.id}`)
+	}
+	else if (currentPlaying.source === "local") {
+		player.player.play(`${currentPlaying.id}`)
+	}
 }
 const PlayerModule = await import("./music/index.ts");
 player = new PlayerModule.default(userData, APP_ROOT);
@@ -108,6 +114,7 @@ player.player.on("time-update", (time) => {
 
 player.player.on("playing", async (data) => {
 	if (!data) return;
+	console.log(data, ' ', ytbTrackStart, ' ', data.includes(`${ytbTrackStart}`))
 	setDiscordRPC();
 	if (data.includes(`${ytbTrackStart}`)) {
 		const id = data.split(`${ytbTrackStart}`)[1];
@@ -127,6 +134,18 @@ player.player.on("playing", async (data) => {
 		}
 		player.player.setVideoMetadata(track.thumbnail, track.name)
 	}
+	else {
+		const localFiles = getAllLocalFiles();
+		const track = localFiles.find((localItem) => localItem.id === data);
+		const currentPlaying = {
+			source: "local", id: track.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", ")
+		}
+		writeUserData("currentPlaying", currentPlaying)
+		if (isDiscord) {
+			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration }, true);
+		}
+		player.player.setVideoMetadata(track.thumbnail, track.name);
+	}
 	player.player.getQueue();
 })
 
@@ -143,7 +162,6 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 
 	const currentTrack = data.splice(0, 1)[0].filename;
 	const ids = data.map(item => isYTB ? item.filename.split(ytbTrackStart)[1] : item.filename);
-
 
 	const { nextfrom, playQueue, shuffle } = getUserDatas(["nextfrom", "playQueue", "shuffle"]) as UserData;
 	const notinQueue = ids.filter(item => playQueue.includes(item));
@@ -193,6 +211,35 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 						item.source === "youtube" ? `${ytbTrackStart}${item.id}` : item.id
 					))
 				}
+			}
+		}
+		else if (source === "local") {
+			const localFiles = getAllLocalFiles();
+			const otherTracks = localFiles.filter((localItem) => localItem.id !== currentTrack);
+			if (otherTracks.length > 0) {
+				if (shuffle === Shuffle.Enable) {
+					for (let i = otherTracks.length - 1; i > 0; i--) {
+						const j = Math.floor(Math.random() * (i + 1));
+						[otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
+					}
+					result.push(...otherTracks.slice(0, 25 - result.length).map(item => item.id))
+				}
+				else {
+					let index = 0;
+					if (otherTracks.length > 0) {
+						index = otherTracks.findIndex(item => item.id === currentTrack);
+					}
+					else {
+						index = otherTracks.findIndex(item => item.id === currentTrack);
+					}
+
+					result.push(...Array.from({ length: 25 - result.length + 1 }, (_, i) => otherTracks[(index + i) % otherTracks.length]).map(item => item.id))
+				}
+
+			}
+
+			else {
+				player.player.setRepeat(true);
 			}
 		}
 		writeUserData("nextfrom", nextfrom)
@@ -418,7 +465,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"])
 					user.playQueue = [];
 					player.player.setRepeat(false);
-
+					console.log(source, item.id, item.name, type, id)
 					if (source === "youtube") {
 						const track = await player.youtube.fetch_track([item.id])
 						user.currentPlaying = {
@@ -431,7 +478,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 						const localFiles = getAllLocalFiles();
 						const track = localFiles.find((localItem) => localItem.id === item.id);
 						user.currentPlaying = {
-							source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", "), index: track?.index
+							source: track.source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", ")
 						}
 						current.duration = track?.duration;
 						current.isLived = false;
