@@ -87,7 +87,6 @@ const ytbTrackStart = "https://www.youtube.com/watch?v="
 
 const play = () => {
 	const currentPlaying = getUserData("currentPlaying");
-	console.log(currentPlaying.source, ' ', currentPlaying.id)
 	if (currentPlaying.source === "youtube") {
 		player.player.play(`${ytbTrackStart}${currentPlaying.id}`)
 	}
@@ -95,8 +94,7 @@ const play = () => {
 		player.player.play(`${currentPlaying.id}`)
 	}
 }
-const PlayerModule = await import("./music/index.ts");
-player = new PlayerModule.default(userData, APP_ROOT);
+player = new Player(userData, APP_ROOT);
 
 player.player.on("exit", () => {
 	appWin?.close();
@@ -114,7 +112,7 @@ player.player.on("time-update", (time) => {
 
 player.player.on("playing", async (data) => {
 	if (!data) return;
-	console.log(data, ' ', ytbTrackStart, ' ', data.includes(`${ytbTrackStart}`))
+
 	setDiscordRPC();
 	if (data.includes(`${ytbTrackStart}`)) {
 		const id = data.split(`${ytbTrackStart}`)[1];
@@ -465,7 +463,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"])
 					user.playQueue = [];
 					player.player.setRepeat(false);
-					console.log(source, item.id, item.name, type, id)
+
 					if (source === "youtube") {
 						const track = await player.youtube.fetch_track([item.id])
 						user.currentPlaying = {
