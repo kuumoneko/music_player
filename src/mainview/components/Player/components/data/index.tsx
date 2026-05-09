@@ -34,7 +34,7 @@ export default function DataUI() {
                 {thumbnail ? (
                     <img
                         src={thumbnail as string}
-                        alt=""
+                        alt={name}
                         height={50}
                         width={50}
                         className="rounded-lg"

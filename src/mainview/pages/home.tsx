@@ -54,6 +54,7 @@ export default function HomePage() {
                                             src={artist.thumbnail}
                                             height={50}
                                             width={50}
+                                            alt={artist.name}
                                         />
                                     </div>
                                     <div>{artist.name}</div>
@@ -82,6 +83,7 @@ export default function HomePage() {
                                         src={playlist.thumbnail}
                                         height="50"
                                         width="80"
+                                        alt={playlist.name}
                                     />
                                     <div>{playlist.name.slice(0, 25)}</div>
                                 </div>
@@ -112,6 +114,7 @@ export default function HomePage() {
                                         src={track.thumbnail}
                                         height="50"
                                         width="80"
+                                        alt={track.name}
                                     />
                                     <div>
                                         {remove_hashtag(
@@ -142,7 +145,7 @@ export default function HomePage() {
                                 <img
                                     className="mr-2 rounded-2xl"
                                     src={track.thumbnail}
-                                    alt=""
+                                    alt={track.name}
                                 />
                                 <div className="flex flex-col">
                                     <div>{remove_hashtag(track.name)}</div>
