@@ -50,6 +50,9 @@ export const getUserDatas = <K extends keyof UserData>(keys: K[]) => {
       else if (['QuitonClose', 'isPlaying', 'isLoading'].includes(row.key)) {
         result[row.key as keyof UserData] = row.value === '1' ? true : false
       }
+      else if (['folder'].includes(row.key)) {
+        result[row.key as keyof UserData] = row.value;
+      }
       else {
         result[row.key as keyof UserData] = JSON.parse(row.value)
       }
