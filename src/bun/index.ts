@@ -20,8 +20,8 @@ import Player from "./music/index.ts";
 const APP_ROOT = resolve("./");
 const APP_ASSETS = resolve(APP_ROOT, "..", "Resources", "app")
 
-const { isLocal, isDiscord, appPort, playerPort, DiscordClientId } = await getDataFromDatabase(APP_ASSETS, "data", "system");
-if ([isLocal, isDiscord, appPort, playerPort].includes(null)) {
+const { isLocal, isDiscord, appPort, DiscordClientId } = await getDataFromDatabase(APP_ASSETS, "data", "system");
+if ([isLocal, isDiscord, appPort].includes(null)) {
 	await Utils.showMessageBox({
 		type: "error",
 		message: "Null Object, please reinstall app."
