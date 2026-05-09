@@ -19,7 +19,7 @@ import Player from "./music/index.ts";
 // app variables
 const APP_ROOT = resolve("./");
 const APP_ASSETS = resolve(APP_ROOT, "..", "Resources", "app")
-console.log(APP_ASSETS)
+
 const { isLocal, isDiscord, appPort, playerPort, DiscordClientId } = await getDataFromDatabase(APP_ASSETS, "data", "system");
 if ([isLocal, isDiscord, appPort, playerPort].includes(null)) {
 	await Utils.showMessageBox({
