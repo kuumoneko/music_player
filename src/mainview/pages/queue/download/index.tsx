@@ -4,7 +4,7 @@ import { faCircle, faMinus, faShare } from "@fortawesome/free-solid-svg-icons";
 import { formatDuration } from "@/mainview/utils/format.ts";
 import { faYoutube } from "@fortawesome/free-brands-svg-icons";
 import Download from "./download.tsx";
-import { Playlist } from "@/shared/types.ts";
+import { Artist, Playlist } from "@/shared/types.ts";
 
 export default function Download_Queue() {
     const [queue, setqueue] = useState("[]");
@@ -22,12 +22,31 @@ export default function Download_Queue() {
                     id,
                 };
             });
+
+            const artists = data.filter((item: any) =>
+                item.mode.includes("artist"),
+            );
             const playlists = data.filter((item: any) =>
                 item.mode.includes("playlist"),
             );
+
+            for (const item of artists) {
+                const data = await window.api.rpc.request.getMusicData({
+                    source: item.source as any,
+                    type: "artists",
+                    id: item.id,
+                });
+                playlists.push({
+                    source: item.source,
+                    mode: "playlist",
+                    id: (data as Artist).playlistId,
+                });
+            }
+
             let tracks = data.filter((item: any) =>
                 item.mode.includes("track"),
             );
+
             const temp: any = {};
 
             for (const item of playlists) {
