@@ -59,21 +59,6 @@ export default function List({
         return <Loading mode={"Searching"} />;
     }
 
-    const hanldeClick = (item: any, source: string, type: string) => {
-        if (type === "videos") {
-            window.api.rpc.request.play({
-                item: item,
-                source: source as any,
-                type: "track",
-                id: item.id,
-            });
-        } else if (type === "playlists") {
-            goto(`/playlists/${source}/${item.id}`);
-        } else if (type === "artists") {
-            goto(`/artists/${source}/${item.id}`);
-        }
-    };
-
     return (
         <div
             className="listitem flex flex-col h-[75%] w-full overflow-y-scroll [&::-webkit-scrollbar]:hidden"
@@ -101,7 +86,6 @@ export default function List({
                 {show_list.map((item: Track, index: number) => {
                     return (
                         <div
-                            tabIndex={index}
                             key={
                                 item.name ?? `${source} ${mode} ${id} ${index}`
                             }
@@ -109,14 +93,19 @@ export default function List({
                                 index + 1
                             } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600 rounded-lg`}
                             onClick={() => {
-                                hanldeClick(item, source, type);
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    hanldeClick(item, source, type);
+                                if (type === "videos") {
+                                    window.api.rpc.request.play({
+                                        item: item,
+                                        source: source as any,
+                                        type: "track",
+                                        id: item.id,
+                                    });
+                                } else if (type === "playlists") {
+                                    goto(`/playlists/${source}/${item.id}`);
+                                } else if (type === "artists") {
+                                    goto(`/artists/${source}/${item.id}`);
                                 }
                             }}
-                            role="option"
                         >
                             <div className="flex flex-row items-center ml-2.5 w-full">
                                 <span className="thumbnail cursor-default select-none w-[20%]">
