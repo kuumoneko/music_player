@@ -178,7 +178,7 @@ export default function Download_Queue() {
                                             height={100}
                                             width={100}
                                             className="rounded-3xl"
-                                            alt={item.name}
+                                            alt=""
                                         />
                                     </span>
                                     <span className="flex flex-row items-center justify-center ml-2.5">
@@ -203,7 +203,7 @@ export default function Download_Queue() {
                                             <span className="thumbnail cursor-default select-none ml-2.5">
                                                 <img
                                                     src={item.thumbnail}
-                                                    alt={item.name}
+                                                    alt=""
                                                     height={50}
                                                     width={50}
                                                 />

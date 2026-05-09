@@ -111,7 +111,7 @@ export default function List({
                                 <span className="thumbnail cursor-default select-none w-[20%]">
                                     <img
                                         src={item.thumbnail}
-                                        alt={item.name}
+                                        alt=""
                                         height={90}
                                         width={90}
                                         className="rounded-lg"

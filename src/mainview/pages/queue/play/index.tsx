@@ -97,7 +97,7 @@ export default function Play_Queue() {
                                         <span className="thumbnail cursor-default select-none">
                                             <img
                                                 src={item.thumbnail}
-                                                alt={item.name}
+                                                alt=""
                                                 height={100}
                                                 width={100}
                                             />
@@ -196,7 +196,7 @@ export default function Play_Queue() {
                                         <span className="thumbnail cursor-default select-none">
                                             <img
                                                 src={item.thumbnail}
-                                                alt={item.name}
+                                                alt=""
                                                 height={100}
                                                 width={100}
                                             />

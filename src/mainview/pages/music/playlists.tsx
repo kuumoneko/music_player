@@ -68,7 +68,7 @@ function Index() {
                             src={playlist.thumbnail}
                             height="50"
                             width="80"
-                            alt={playlist.name}
+                            alt=""
                         />
                         <div>{playlist.name.slice(0, 25)}</div>
                     </div>

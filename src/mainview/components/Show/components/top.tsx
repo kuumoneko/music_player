@@ -58,7 +58,7 @@ export default function Top({
                             {thumbnail ? (
                                 <img
                                     src={thumbnail as string}
-                                    alt={name}
+                                    alt=""
                                     height={150}
                                     width={150}
                                     className="rounded-lg"

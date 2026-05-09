@@ -68,7 +68,7 @@ function Index() {
                                 src={artist.thumbnail}
                                 height={50}
                                 width={50}
-                                alt={artist.name}
+                                alt=""
                             />
                         </div>
                         <div>{artist.name}</div>
