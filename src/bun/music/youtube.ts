@@ -1,6 +1,5 @@
-import { Playlist, Track, Artist, API_Key, System } from "../../shared/types.ts";
+import { Playlist, Track, Artist, API_Key } from "../../shared/types.ts";
 import iso8601DurationToMilliseconds from "../lib/time.ts";
-import { getDataFromDatabase } from "../lib/database.ts";
 import { getArtistById, getPlaylist, getTracks, writeArtist, writeLogs, writePlaylist, writeTracks } from "../db/index.ts";
 
 function getNextResetTimestamp() {
