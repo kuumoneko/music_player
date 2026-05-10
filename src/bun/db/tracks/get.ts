@@ -80,3 +80,39 @@ export function getTrackByName(name: string, exact: boolean = false): Track[] {
     };
   });
 }
+
+const getAllTracksStmt = db.prepare(`
+  SELECT 
+    t.id, t.etag, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate, t.track_index,
+    json_group_array(
+      json_object('id', ta.artist_id, 'name', ta.artist_name)
+    ) as artists_json
+  FROM tracks t
+  LEFT JOIN track_artists ta ON t.id = ta.track_id 
+  GROUP BY t.id;
+`);
+
+export function getAllTracks(): Track[] {
+  const results = getAllTracksStmt.all() as any[];
+
+  return results.map((row) => {
+    let parsedArtists = JSON.parse(row.artists_json);
+
+    if (parsedArtists.length === 1 && parsedArtists[0].id === null) {
+      parsedArtists = [];
+    }
+
+    return {
+      id: row.id,
+      etag: row.etag || undefined,
+      name: row.name,
+      source: row.source,
+      thumbnail: row.thumbnail,
+      duration: row.duration,
+      releasedDate: row.releasedDate,
+      index: row.track_index || undefined,
+      artist: parsedArtists
+    };
+  });
+}
