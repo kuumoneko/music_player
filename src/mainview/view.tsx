@@ -9,6 +9,9 @@ import Frame from "./components/Frame/index.tsx";
 function App() {
     const [url, seturl] = useState(localstorage("get", "url", "/"));
     useEffect(() => {
+        localstorage("set", "backward", "[]");
+        localstorage("set", "forward", "[]");
+        localstorage("set", "search", "");
         const run = setInterval(() => {
             seturl(localstorage("get", "url", "/"));
         }, 50);
