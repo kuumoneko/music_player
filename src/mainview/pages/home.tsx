@@ -41,6 +41,7 @@ export default function HomePage() {
                         {artists.map((artist: Artist) => {
                             return (
                                 <div
+                                    key={artist.id}
                                     className="flex flex-row items-center mr-4 my-3 bg-zinc-600 p-2 rounded-4xl hover:bg-zinc-500 hover:cursor-pointer"
                                     onClick={() => {
                                         goto(
@@ -71,6 +72,7 @@ export default function HomePage() {
                         {playlists.map((playlist: Playlist) => {
                             return (
                                 <div
+                                    key={playlist.id}
                                     className="flex flex-row items-center mr-4 my-3 bg-zinc-600 p-2 rounded-4xl hover:bg-zinc-500 hover:cursor-pointer"
                                     onClick={() => {
                                         goto(
@@ -99,6 +101,7 @@ export default function HomePage() {
                         {tracks.map((track: Track) => {
                             return (
                                 <div
+                                    key={track.id}
                                     className="flex flex-row items-center mr-4 my-3 bg-zinc-600 p-2 rounded-4xl hover:bg-zinc-500 hover:cursor-pointer"
                                     onClick={() => {
                                         window.api.rpc.request.play({
@@ -132,6 +135,7 @@ export default function HomePage() {
                     {new_tracks.map((track: Track) => {
                         return (
                             <div
+                                key={track.id}
                                 className="flex flex-row items-center rounded-2xl hover:cursor-pointer hover:bg-zinc-600"
                                 onClick={() => {
                                     window.api.rpc.request.play({
