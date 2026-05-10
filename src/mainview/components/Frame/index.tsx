@@ -20,12 +20,21 @@ const close = () => {
     }
 };
 
+const openDevTools = () => {
+    if (window.api) {
+        window.api.rpc.request.openDevTools();
+    }
+};
+
 export default function Frame() {
     return (
         <div className="w-full h-[5%] pt-1 px-1">
             <div className="w-full h-full flex flex-row items-center justify-between electrobun-webkit-app-region-drag">
                 <div className="w-1/10 flex flex-row items-center px-4 electrobun-webkit-app-region-no-drag">
-                    <div className="cursor-default hover:cursor-pointer hover:bg-zinc-500 rounded-full px-0.5">
+                    <div
+                        onClick={openDevTools}
+                        className="cursor-default hover:cursor-pointer hover:bg-zinc-500 rounded-full px-0.5"
+                    >
                         <FontAwesomeIcon icon={faEllipsis} />
                     </div>
                 </div>
