@@ -1,6 +1,7 @@
 import { Playlist, Track, Artist, API_Key } from "../../shared/types.ts";
 import iso8601DurationToMilliseconds from "../lib/time.ts";
 import { getArtistById, getPlaylist, getTracks, writeArtist, writeLogs, writePlaylist, writeTracks } from "../db/index.ts";
+import deleteTracks from "../db/tracks/delete.ts";
 
 function getNextResetTimestamp() {
     const now = new Date();
@@ -79,6 +80,7 @@ export default class Youtube {
     private api_keys: API_Key[] = [];
     private maxResults = 50;
     private running: any[] = [];
+    public ids: string[] = [];
 
     constructor(apikeys: { ApiKey: string, isReached: boolean, when: number }[]) {
         this.api_keys = apikeys;
@@ -125,6 +127,45 @@ export default class Youtube {
             this.log(error);
             return undefined
         }
+    }
+
+    async checkYoutubeTracks() {
+        let videoIds = this.ids;
+        if (videoIds.length === 0) return;
+        console.log(this.running.filter((item: any) => { item.name === "checkAvailable" }).length);
+        if (this.running.filter((item: any) => { item.name === "checkAvailable" }).length > 0) return;
+        this.running.push({
+            name: "checkAvailable"
+        });
+        this.ids = [];
+        videoIds = Array.from(new Set([...videoIds]))
+        const unavailableTracks: string[] = [];
+        const isTrackAvailable = async (id: string) => {
+            const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`;
+            const response = await fetch(url);
+            return response.ok;
+        }
+
+        const CONCURRENCY_LIMIT = 10;
+
+        for (let i = 0; i < videoIds.length; i += CONCURRENCY_LIMIT) {
+            const chunk = videoIds.slice(i, i + CONCURRENCY_LIMIT);
+
+            const chunkResults = await Promise.all(
+                chunk.map(async (id) => ({
+                    id,
+                    available: await isTrackAvailable(id)
+                }))
+            );
+
+            chunkResults.forEach(res => {
+                if (!res.available) unavailableTracks.push(res.id);
+            });
+
+            console.log(`Progress: ${i}/${videoIds.length}`);
+        }
+        deleteTracks(unavailableTracks)
+        this.running = this.running.filter((item: any) => { return item.name !== "checkAvailable" })
     }
 
     async fetch_data(
@@ -209,66 +250,68 @@ export default class Youtube {
     }
 
     async fetch_track(ids: string[]): Promise<Track[]> {
-        try {
-            ids = Array.from(new Set([...ids]));
-            const tracks = getTracks(ids) ?? [];
-            const tracks_in_database: Track[] = tracks.filter((track: Track) => {
-                return ids.findIndex(id => id === track.id) !== -1
-            })
+        return new Promise(async (resolve) => {
+            try {
+                ids = Array.from(new Set([...ids]));
+                const tracks = getTracks(ids) ?? [];
+                const tracks_in_database: Track[] = tracks.filter((track: Track) => {
+                    return ids.findIndex(id => id === track.id) !== -1
+                })
 
-            const tracks_out_database = ids.filter(track => tracks_in_database.findIndex(trackk => trackk.id === track) === -1);
-            const temp_tracks: Track[] = []
-            if (tracks_out_database.length > 0) {
-                let st = 0, ed = 49;
-                if (ed > tracks_out_database.length - 1) {
-                    ed = tracks_out_database.length - 1;
-                }
-
-                const url = `${this.create_end_point(endpoints[EndPoints.Videos])}`;
-
-                while (st <= tracks_out_database.length - 1) {
-                    const endpoint = url + `&id=${tracks_out_database.map((item: any) => item).slice(st, ed + 1).join("%2C")}`
-                    const data: any = await this.fetch_data(endpoint);
-                    for (const item of data.items) {
-                        temp_tracks.push({
-                            etag: "",
-                            source: "youtube",
-                            thumbnail: item.snippet.thumbnails.default.url as string ?? "",
-                            artist: [
-                                {
-                                    name: item.snippet.channelTitle as string,
-                                    id: item.snippet.channelId as string
-                                }
-                            ],
-                            name: item.snippet.title as string,
-                            id: item.id as string,
-                            duration: item.snippet.liveBroadcastContent === "none" ? iso8601DurationToMilliseconds(item.contentDetails.duration) : 0, // in miliseconds
-                            releasedDate: item.snippet.publishedAt.split("T")[0] as unknown as string ?? "",
-                        })
-                    }
-                    st = ed + 1;
-                    ed = st + 49;
+                const tracks_out_database = ids.filter(track => tracks_in_database.findIndex(trackk => trackk.id === track) === -1);
+                const temp_tracks: Track[] = []
+                if (tracks_out_database.length > 0) {
+                    let st = 0, ed = 49;
                     if (ed > tracks_out_database.length - 1) {
                         ed = tracks_out_database.length - 1;
                     }
+
+                    const url = `${this.create_end_point(endpoints[EndPoints.Videos])}`;
+
+                    while (st <= tracks_out_database.length - 1) {
+                        const endpoint = url + `&id=${tracks_out_database.map((item: any) => item).slice(st, ed + 1).join("%2C")}`
+                        const data: any = await this.fetch_data(endpoint);
+                        for (const item of data.items) {
+                            temp_tracks.push({
+                                etag: "",
+                                source: "youtube",
+                                thumbnail: item.snippet.thumbnails.default.url as string ?? "",
+                                artist: [
+                                    {
+                                        name: item.snippet.channelTitle as string,
+                                        id: item.snippet.channelId as string
+                                    }
+                                ],
+                                name: item.snippet.title as string,
+                                id: item.id as string,
+                                duration: item.snippet.liveBroadcastContent === "none" ? iso8601DurationToMilliseconds(item.contentDetails.duration) : 0, // in miliseconds
+                                releasedDate: item.snippet.publishedAt.split("T")[0] as unknown as string ?? "",
+                            })
+                        }
+                        st = ed + 1;
+                        ed = st + 49;
+                        if (ed > tracks_out_database.length - 1) {
+                            ed = tracks_out_database.length - 1;
+                        }
+                    }
                 }
-            }
-            const res = [...tracks_in_database, ...temp_tracks]
-            if (res.length > 0) {
-                writeTracks(res)
-            }
-            return res
-                .sort((a: Track, b: Track) => {
+                const res = [...tracks_in_database, ...temp_tracks]
+
+                resolve(res.sort((a: Track, b: Track) => {
                     return (
                         new Date(b.releasedDate).getTime() -
                         new Date(a.releasedDate).getTime()
                     );
-                });
-        }
-        catch (e: any) {
-            this.log(e)
-            throw new Error(e.message);
-        }
+                }));
+                if (res.length > 0) {
+                    this.ids.push(...res.map((item: Track) => item.id))
+                    writeTracks(res)
+                }
+            } catch (e) {
+                this.log(e)
+                throw new Error(e.message);
+            }
+        })
     }
 
     fetch_playlist(id: string, pagetoken: string = ""): Promise<Playlist> {

@@ -311,7 +311,8 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 							id: id,
 							query: "",
 							mode: ""
-						})
+						});
+						player.youtube.checkYoutubeTracks()
 						return result
 					} catch (error) {
 						writeLogs([{
@@ -347,6 +348,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					try {
 						const pin = getUserData("pin")
 						const result = await HomeController(player, pin);
+						player.youtube.checkYoutubeTracks()
 						return result;
 					} catch (error) {
 						writeLogs([{ type: "error", message: `Unexpected error when getting home data:\n${error}` }]);
