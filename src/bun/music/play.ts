@@ -23,7 +23,7 @@ export default class Play extends EventEmitter {
         Bun.spawnSync([
             `${this.appPath}/mpv.exe`,
             "--register"
-        ])
+        ]);
         this.mpv = Bun.spawn([
             `${this.appPath}/mpv.exe`,
             "--idle",
