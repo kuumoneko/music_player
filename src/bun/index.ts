@@ -15,6 +15,7 @@ import { getAllLocalFiles, getUserData, getUserDatas, writeLogs, writeUserData, 
 import { Repeat, Shuffle, SleepMode, Track, UserData } from "../shared/types.ts";
 import type { AppRPCType, System } from "@/shared/types.ts";
 import Player from "./music/index.ts";
+import DiscordRPC from "./discord/index.ts";
 
 // app variables
 const APP_ROOT = resolve("./");
@@ -34,23 +35,21 @@ CheckUserData();
 
 let appWin: BrowserWindow | null = null;
 let appTray: Tray | null = null;
-let discordRPC: any = null;
+let discordRPC: DiscordRPC | null = null;
 let player: Player | null = null;
 
 const current = {
 	time: 0,
 	duration: 0,
-	isLived: false
+	isLived: false,
+	isPlaying: false,
 };
 
 () => {
 	const temp = getUserData("current");
-	writeUserDatas({
-		isPlaying: false,
-		isLoading: true
-	})
+	writeUserData("isLoading", true);
 	current.duration = temp.duration;
-	current.isLived = temp.isLived
+	current.isLived = temp.isLived;
 };
 
 const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
@@ -77,9 +76,9 @@ const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 ];
 
 const setDiscordRPC = () => {
-	const user = getUserDatas(["currentPlaying", "isPlaying"]);
+	const currentPlaying = getUserData("currentPlaying")
 	if (isDiscord) {
-		discordRPC?.setMusic(user.currentPlaying, player, current, true);
+		discordRPC?.setMusic(currentPlaying, player, current, true);
 	}
 };
 
@@ -101,14 +100,15 @@ player.player.on("exit", () => {
 	Utils.quit();
 });
 
-player.player.on("change-playState", (data) => {
-	writeUserData("isPlaying", data);
+player.player.on("change-playState", (data: { isPlaying: boolean, time: number }) => {
+	if (data.isPlaying !== undefined && data.isPlaying !== null) {
+		current.isPlaying = data.isPlaying;
+	}
+	if (data.time !== undefined && data.time !== null) {
+		current.time = data.time;
+	}
 	setDiscordRPC();
 })
-
-player.player.on("time-update", (time) => {
-	current.time = time;
-});
 
 player.player.on("playing", async (data) => {
 	if (!data) return;
@@ -388,8 +388,8 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 				},
 				togglePlayPause: async () => {
 					if (!player.player.isReady) return;
-					const isPlaying = getUserData("isPlaying");
-					player.player.togglePlayPause(!isPlaying);
+					player.player.togglePlayPause(!current.isPlaying);
+					current.isPlaying = !current.isPlaying;
 				},
 				getUserData: async (key: keyof UserData) => {
 					if (key === "folder" && !isLocal) {
@@ -430,10 +430,11 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					}
 				},
 				getPlayingData: async () => {
-					const result = getUserDatas(["shuffle", "repeat", "isPlaying", "isLoading", 'playedTrack', 'current']);
+					const result = getUserDatas(["shuffle", "repeat", "isLoading", 'playedTrack', 'current']);
 					return {
 						...result,
-						current
+						current,
+						isPlaying: current.isPlaying
 					}
 				},
 				next: async () => {

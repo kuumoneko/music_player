@@ -11,6 +11,7 @@ export default class Play extends EventEmitter {
     private timer: NodeJS.Timeout;
     private isFirstLoad: boolean = true;
     public isReady: boolean = false;
+    private isRepeat: boolean = false;
 
     constructor(appPath: string) {
         super()
@@ -57,7 +58,7 @@ export default class Play extends EventEmitter {
                                 }
 
                                 if (response.request_id === 888 && response.error === "success") {
-                                    this.emit("time-update", response.data);
+                                    this.emit("change-playState", { time: response.data });
                                 }
 
                                 if (response.event === "property-change") {
@@ -67,7 +68,7 @@ export default class Play extends EventEmitter {
                                     }
 
                                     if (response.name === "pause") {
-                                        this.emit("change-playState", !response.data)
+                                        this.emit("change-playState", { isPlaying: !response.data })
                                     }
                                     if (response.name === "path") {
                                         this.emit("playing", response.data)
@@ -90,8 +91,10 @@ export default class Play extends EventEmitter {
                                         this.emit("is-live", false);
                                     }
                                 }
-
-                                if (response.event === "end-file" && response.reason !== "stop") {
+                                if (response.event === "playback-restart" && this.isRepeat) {
+                                    this.emit("change-playState", { time: 0 });
+                                }
+                                if (response.event === "end-file") {
                                     if (this.sleep === SleepMode.eot) {
                                         this.destroy();
                                         this.emit("exit");
@@ -129,6 +132,8 @@ export default class Play extends EventEmitter {
         }
     }
 
+    // async getAudioUrl(videoId: string) { }
+
     async play(urlOrPath: string) {
         this.send(["stop"]);
         this.send(["playlist-clear"]);
@@ -150,6 +155,7 @@ export default class Play extends EventEmitter {
     }
 
     setRepeat(isRepeat: boolean) {
+        this.isRepeat = isRepeat;
         this.send(["set_property", "loop-file", isRepeat ? "inf" : "no"])
     }
 
