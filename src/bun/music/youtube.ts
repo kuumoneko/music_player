@@ -462,7 +462,7 @@ export default class Youtube {
                     const mf = data.microformat?.playerMicroformatRenderer ?? {};
                     console.log(mf.publishDate, vd.lengthSeconds)
                     temp_tracks.push({
-                        etag: "",
+                        // etag: "",
                         source: "youtube",
                         thumbnail: `https://i.ytimg.com/vi/${vd.videoId}/default.jpg`,
                         artist: [{ name: vd.author ?? "", id: vd.channelId ?? "" }],
@@ -503,7 +503,7 @@ export default class Youtube {
                         source: "youtube",
                         name: this_playlist.name,
                         id: this_playlist.id,
-                        etag: this_playlist.etag,
+                        // etag: this_playlist.etag,
                         thumbnail: this_playlist.thumbnail,
                         duration: tracks.reduce((item: number, b: Track) => item + (b.duration as number), 0),
                         tracks: tracks
@@ -558,7 +558,7 @@ export default class Youtube {
                 }
 
                 this_playlist = {
-                    etag: "",
+                    // etag: "",
                     thumbnail: thumbnail,
                     name: this_playlist?.name ?? plTitle,
                     ids: Array.from(new Set([...tracks, ...this_playlist?.ids as [] ?? []])),
@@ -606,7 +606,7 @@ export default class Youtube {
             for (const item of result.items) {
                 if (item.type === "video") {
                     tracks.push({
-                        etag: "",
+                        // etag: "",
                         source: "youtube",
                         thumbnail: item.thumbnails?.[0]?.url ?? "",
                         artist: [{ name: item.artist ?? "", id: "" }],
@@ -741,7 +741,7 @@ export default class Youtube {
 
             this_artist = {
                 source: "youtube",
-                etag: "",
+                // etag: "",
                 id: id,
                 name: artName,
                 thumbnail: artThumbnails?.[0]?.url ?? "",
