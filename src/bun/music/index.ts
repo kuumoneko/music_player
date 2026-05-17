@@ -285,5 +285,6 @@ export default class Player {
 
         await Promise.all(executing);
         writeLogs([{ type: "info", message: "All downloads finished successfully!" }]);
+        console.log("---------------------- FINISH DOWNLOADING ----------------------")
     }
 }
