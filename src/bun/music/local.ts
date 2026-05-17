@@ -45,7 +45,7 @@ export class Local {
         }
     }
 
-    async parseFile(file: string, index: number): Promise<Track> {
+    async parseFile(file: string): Promise<Track> {
         return new Promise((resolve, reject) => {
             try {
                 const ffprobe = spawn(`${this.appPath}/ffprobe.exe`, [
@@ -82,8 +82,7 @@ export class Local {
                                         id: "", name: metadata.format.tags.artist
                                     }
                                 ],
-                                thumbnail: await this.getThumbnail(file),
-                                index: index,
+                                thumbnail: await this.getThumbnail(file)
                             });
                         } catch (e) {
                             reject(new Error("Failed to parse ffprobe output."));
@@ -106,7 +105,6 @@ export class Local {
 
         const dirents = await readdir(folder, { withFileTypes: true });
 
-        let index = 0;
         const processingPromises = [];
 
         for (let i = 0; i < dirents.length; i++) {
@@ -127,17 +125,15 @@ export class Local {
                     const get_data = localFilesMap.get(filePath);
 
                     if (!get_data || !get_data.thumbnail || get_data.thumbnail.length === 0) {
-                        const currentIndex = index++;
 
                         processingPromises.push(
-                            this.parseFile(filePath, currentIndex)
+                            this.parseFile(filePath)
                                 .catch((e: any) => {
                                     writeLogs([{ type: "error", message: e.message }]);
                                     return null;
                                 })
                         );
                     } else {
-                        index++;
                         processingPromises.push(Promise.resolve(get_data));
                     }
                 }
