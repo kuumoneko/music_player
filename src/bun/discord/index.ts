@@ -127,14 +127,7 @@ export default class DiscordRPC {
             cmd: 'SET_ACTIVITY',
             args: {
                 pid: process.pid,
-                activity: {
-                    type: 0,
-                    details: "Idling....",
-                    state: "Finding a song...",
-                    timestamps: {
-                        start: Date.now()
-                    }
-                }
+                activity: null
             },
             nonce: crypto.randomUUID()
         };
