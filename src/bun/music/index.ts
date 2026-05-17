@@ -194,6 +194,7 @@ export default class Player {
             "-x",
             "--ffmpeg-location",
             `${resolve(this.folder, "ffmpeg.exe")}`,
+            "--js-runtimes", `bun:/bun.exe`,
             "--audio-format",
             "m4a",
             "--audio-quality",
