@@ -1,9 +1,9 @@
-import { readdirSync } from "node:fs";
-import { extname, join } from "node:path";
+import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { Track } from "@/shared/types.ts";
 import { getAllLocalFiles, writeLogs } from "../db/index.ts";
 import { writeLocalFiles } from "../db/index.ts";
+import { readdir } from "node:fs/promises";
 
 export class Local {
     public folder: string = "";
@@ -14,37 +14,35 @@ export class Local {
         this.appPath = appPath;
     }
 
-    get_Thumbnail(file: string): Promise<string> {
-        return new Promise((resolve) => {
-            const ffmpeg = spawn(`${this.appPath}/ffmpeg.exe`, [
-                '-i', `"${file}"`,
+    async getThumbnail(file: string): Promise<string> {
+        try {
+            const ffmpeg = Bun.spawn([
+                `${this.appPath}/ffmpeg.exe`,
+                '-i', file,
                 '-an',
+                '-vframes', '1',
                 '-vcodec', 'mjpeg',
                 '-f', 'image2pipe',
                 '-'
-            ], { shell: true });
-
-            let chunks = [];
-            let errorOutput = '';
-
-            ffmpeg.stdout.on('data', (chunk) => {
-                chunks.push(chunk);
+            ], {
+                stdout: "pipe",
+                stderr: "ignore",
             });
 
-            ffmpeg.stderr.on('data', (data) => {
-                errorOutput += data.toString();
-            });
+            const buffer = await new Response(ffmpeg.stdout).arrayBuffer();
 
-            ffmpeg.on('close', (code) => {
-                if (code === 0 && chunks.length > 0) {
-                    const buffer = Buffer.concat(chunks);
-                    const base64Image = buffer.toString('base64');
-                    resolve(`data:image/jpeg;base64,${base64Image}`);
-                } else {
-                    resolve("");
-                }
-            });
-        });
+            const exitCode = await ffmpeg.exited;
+
+            if (exitCode === 0 && buffer.byteLength > 0) {
+                const base64Image = Buffer.from(buffer).toString('base64');
+                return `data:image/jpeg;base64,${base64Image}`;
+            }
+
+            return "";
+        } catch (error) {
+            console.error("FFmpeg extraction failed:", error);
+            return "";
+        }
     }
 
     async parseFile(file: string, index: number): Promise<Track> {
@@ -84,7 +82,7 @@ export class Local {
                                         id: "", name: metadata.format.tags.artist
                                     }
                                 ],
-                                thumbnail: await this.get_Thumbnail(file),
+                                thumbnail: await this.getThumbnail(file),
                                 index: index,
                             });
                         } catch (e) {
@@ -102,38 +100,55 @@ export class Local {
     }
 
     async getfolder(folder: string) {
-        if (folder.length === 0) return []
-        const dirents = readdirSync(folder, {
-            withFileTypes: true,
-        });
-        const local_files = getAllLocalFiles(); //await getDataFromDatabase(this.folder, "local");
+        if (folder.length === 0) return [];
+        const local_files = getAllLocalFiles();
+        const localFilesMap = new Map(local_files.map((item: any) => [item.path, item]));
 
-        const audioExtensions = [".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"];
-        const result: Track[] = []
-        const audiofiles = dirents.filter(
-            (dirent) =>
-                dirent.isFile() &&
-                audioExtensions.includes(extname(dirent.name).toLowerCase())
-        );
-        const file: any[] = [];
-        audiofiles.forEach((dirent: any, index: number) => {
-            const filePath = join(folder, dirent.name);
-            const get_data = local_files.find((item: any) => {
-                return item.path === filePath
-            })
+        const dirents = await readdir(folder, { withFileTypes: true });
 
-            if (!get_data || get_data.thumbnail.length === 0) {
-                file.push(this.parseFile(filePath, index).then((data: any) => {
-                    result.push(data);
-                }).catch((e: any) => {
-                    writeLogs([{ type: "error", message: e.message }])
-                }))
+        let index = 0;
+        const processingPromises = [];
+
+        for (let i = 0; i < dirents.length; i++) {
+            const dirent = dirents[i];
+
+            if (dirent.isFile()) {
+                const name = dirent.name.toLowerCase();
+
+                if (
+                    name.endsWith(".mp3") ||
+                    name.endsWith(".m4a") ||
+                    name.endsWith(".flac") ||
+                    name.endsWith(".wav") ||
+                    name.endsWith(".ogg") ||
+                    name.endsWith(".aac")
+                ) {
+                    const filePath = join(folder, dirent.name);
+                    const get_data = localFilesMap.get(filePath);
+
+                    if (!get_data || !get_data.thumbnail || get_data.thumbnail.length === 0) {
+                        const currentIndex = index++;
+
+                        processingPromises.push(
+                            this.parseFile(filePath, currentIndex)
+                                .catch((e: any) => {
+                                    writeLogs([{ type: "error", message: e.message }]);
+                                    return null;
+                                })
+                        );
+                    } else {
+                        index++;
+                        processingPromises.push(Promise.resolve(get_data));
+                    }
+                }
             }
-            else {
-                result.push(get_data)
-            }
-        })
-        await Promise.all(file);
-        writeLocalFiles(result)
+        }
+        const rawResults = await Promise.all(processingPromises);
+
+        const result: Track[] = rawResults.filter((item) => item !== null);
+
+        writeLocalFiles(result);
+
+        return result;
     }
 }
