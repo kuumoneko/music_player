@@ -64,10 +64,12 @@ db.run(`
 `);
 
 db.run(`CREATE INDEX IF NOT EXISTS idx_log_date ON log(date);`);
-db.run(`ALTER TABLE tracks DROP COLUMN etag;`);
-db.run(`ALTER TABLE playlists DROP COLUMN etag;`);
-db.run(`ALTER TABLE artists DROP COLUMN etag;`);
-db.run(`ALTER TABLE tracks DROP COLUMN track_index;`);
+try {
+  db.run(`ALTER TABLE tracks DROP COLUMN etag;`);
+  db.run(`ALTER TABLE playlists DROP COLUMN etag;`);
+  db.run(`ALTER TABLE artists DROP COLUMN etag;`);
+  db.run(`ALTER TABLE tracks DROP COLUMN track_index;`);
+} catch { }
 db.run(`PRAGMA cache_size = -2000;`);
 db.run("PRAGMA shrink_memory;");
 export default db;
