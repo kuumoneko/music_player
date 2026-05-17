@@ -27,7 +27,7 @@ function levenshteinDistance(str1: string, str2: string): number {
 }
 
 
-function areStringsSimilar(str1: string, str2: string, similarityThreshold = 0.7): boolean {
+function areStringsSimilar(str1: string, str2: string, similarityThreshold = 0.99): boolean {
     if (str1 === str2) return true;
     if (!str1.length || !str2.length) return false;
 
