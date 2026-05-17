@@ -57,7 +57,7 @@ export default class DiscordRPC {
         });
     }
 
-    async setMusic(track: any, player: Player, current: { time: number, duration: number }, isPlaying: boolean) {
+    async setMusic(track: any, player: Player, current: { time: number, duration: number }) {
         if (!this.isReady) {
             return;
         }
@@ -108,13 +108,11 @@ export default class DiscordRPC {
             nonce: crypto.randomUUID()
         };
 
-        if (isPlaying) {
-            const now = new Date().getTime();
-            const start = (now - current.time * 1000);
-            payload.args.activity.timestamps = {
-                start: start,
-                end: start + current.duration
-            }
+        const now = new Date().getTime();
+        const start = (now - current.time * 1000);
+        payload.args.activity.timestamps = {
+            start: start,
+            end: start + current.duration
         }
 
         this.send(1, payload);

@@ -78,7 +78,12 @@ const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 const setDiscordRPC = () => {
 	const currentPlaying = getUserData("currentPlaying")
 	if (isDiscord) {
-		discordRPC?.setMusic(currentPlaying, player, current, true);
+		if (current.isPlaying) {
+			discordRPC?.setMusic(currentPlaying, player, current);
+		}
+		else {
+			discordRPC?.clearMusic();
+		}
 	}
 };
 
@@ -128,7 +133,7 @@ player.player.on("playing", async (data) => {
 		}
 		writeUserData("currentPlaying", currentPlaying)
 		if (isDiscord) {
-			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration }, true);
+			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
 		}
 		player.player.setVideoMetadata(track.thumbnail, track.name)
 	}
@@ -140,7 +145,7 @@ player.player.on("playing", async (data) => {
 		}
 		writeUserData("currentPlaying", currentPlaying)
 		if (isDiscord) {
-			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration }, true);
+			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
 		}
 		player.player.setVideoMetadata(track.thumbnail, track.name);
 	}
