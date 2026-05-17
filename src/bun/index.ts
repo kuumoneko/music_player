@@ -270,13 +270,6 @@ player.player.on("ready", () => {
 	writeUserData("isLoading", false)
 });
 
-() => {
-	const folder = getUserData("folder");
-	if (folder.length > 0 && isLocal) {
-		player.local.getfolder(folder);
-	}
-}
-
 const withSafeEncoding = <T extends Record<string, any>>(handlers: T): T => {
 	const wrappedHandlers: any = {};
 
@@ -675,5 +668,9 @@ appTray?.on("tray-clicked", (e: any) => {
 	}
 });
 openAppUI();
-const now = Date.now()
-player.youtube.checkYoutubeTracks().then(() => { console.log(Date.now() - now) })
+const folder = getUserData("folder");
+if (folder.length > 0 && isLocal && player.local !== undefined) {
+	player.local.getfolder(folder);
+}
+// const now = Date.now()
+// player.youtube.checkYoutubeTracks().then(() => { console.log(Date.now() - now) })
