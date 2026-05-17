@@ -3,8 +3,8 @@ import db from "../setup.ts"
 
 const getMultipleTracksStmt = db.prepare(`
   SELECT 
-    t.id, t.etag, t.name, t.source, t.thumbnail, 
-    t.duration, t.releasedDate, t.track_index,
+    t.id, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate,
     json_group_array(
       json_object('id', ta.artist_id, 'name', ta.artist_name)
     ) as artists_json
@@ -30,13 +30,13 @@ export default function getTracks(ids: string[]): Track[] {
 
     return {
       id: row.id,
-      etag: row.etag || undefined,
+      // etag: row.etag || undefined,
       name: row.name,
       source: row.source,
       thumbnail: row.thumbnail,
       duration: row.duration,
       releasedDate: row.releasedDate,
-      index: row.track_index || undefined,
+      // index: row.track_index || undefined,
       artist: parsedArtists
     };
   });
@@ -45,8 +45,8 @@ export default function getTracks(ids: string[]): Track[] {
 export function getTrackByName(name: string, exact: boolean = false): Track[] {
   const getTracksByNameStmt = db.prepare(`
   SELECT 
-    t.id, t.etag, t.name, t.source, t.thumbnail, 
-    t.duration, t.releasedDate, t.track_index,
+    t.id, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate,
     json_group_array(
       json_object('id', ta.artist_id, 'name', ta.artist_name)
     ) as artists_json
@@ -68,13 +68,13 @@ export function getTrackByName(name: string, exact: boolean = false): Track[] {
 
     return {
       id: row.id,
-      etag: row.etag || undefined,
+      // etag: row.etag || undefined,
       name: row.name,
       source: row.source,
       thumbnail: row.thumbnail,
       duration: row.duration,
       releasedDate: row.releasedDate,
-      index: row.track_index || undefined,
+      // index: row.track_index || undefined,
       artist: parsedArtists
     };
   });
@@ -82,8 +82,8 @@ export function getTrackByName(name: string, exact: boolean = false): Track[] {
 
 const getAllTracksStmt = db.prepare(`
   SELECT 
-    t.id, t.etag, t.name, t.source, t.thumbnail, 
-    t.duration, t.releasedDate, t.track_index,
+    t.id, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate,
     json_group_array(
       json_object('id', ta.artist_id, 'name', ta.artist_name)
     ) as artists_json
@@ -104,13 +104,13 @@ export function getAllTracks(): Track[] {
 
     return {
       id: row.id,
-      etag: row.etag || undefined,
+      // etag: row.etag || undefined,
       name: row.name,
       source: row.source,
       thumbnail: row.thumbnail,
       duration: row.duration,
       releasedDate: row.releasedDate,
-      index: row.track_index || undefined,
+      // index: row.track_index || undefined,
       artist: parsedArtists
     };
   });

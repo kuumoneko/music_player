@@ -3,10 +3,9 @@ import type { Playlist } from "../../../shared/types.ts";
 import writeTracks from "../tracks/write.ts";
 
 const upsertPlaylistStmt = db.prepare(`
-  INSERT INTO playlists (id, etag, name, source, thumbnail, duration)
-  VALUES ($id, $etag, $name, $source, $thumbnail, $duration)
-  ON CONFLICT(id) DO UPDATE SET 
-    etag = excluded.etag,
+  INSERT INTO playlists (id,name, source, thumbnail, duration)
+  VALUES ($id, $name, $source, $thumbnail, $duration)
+  ON CONFLICT(id) DO UPDATE SET
     name = excluded.name,
     thumbnail = excluded.thumbnail,
     duration = excluded.duration;
@@ -26,7 +25,7 @@ const writePlaylist = db.transaction((playlist: Playlist) => {
 
     upsertPlaylistStmt.run({
         $id: playlist.id,
-        $etag: playlist.etag || null,
+        // $etag: playlist.etag || null,
         $name: playlist.name,
         $source: playlist.source,
         $thumbnail: playlist.thumbnail,

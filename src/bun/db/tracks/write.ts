@@ -3,12 +3,12 @@ import type { Track } from "../../../shared/types.ts";
 
 const upsertTrackStmt = db.prepare(`
   INSERT INTO tracks (
-    id, etag, name, source, thumbnail, duration, 
-    releasedDate,  track_index
+    id,  name, source, thumbnail, duration, 
+    releasedDate
   )
   VALUES (
-    $id, $etag, $name, $source, $thumbnail, $duration, 
-    $releasedDate,  $index
+    $id, $name, $source, $thumbnail, $duration, 
+    $releasedDate
   )
   ON CONFLICT(id) DO NOTHING
 `);
@@ -19,13 +19,13 @@ const insertArtistStmt = db.prepare(`INSERT INTO track_artists (track_id, artist
 const writeTrack = db.transaction((track: Track) => {
   upsertTrackStmt.run({
     $id: track.id,
-    $etag: track.etag || null,
+    // $etag: track.etag || null,
     $name: track.name,
     $source: track.source,
     $thumbnail: track.thumbnail,
     $duration: track.duration,
     $releasedDate: track.releasedDate,
-    $index: track.index || null,
+    // $index: track.index || null,
   });
 
   deleteArtistsStmt.run(track.id);

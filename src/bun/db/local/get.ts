@@ -10,21 +10,21 @@ function mapRowToTrack(row: any): Track {
 
   return {
     id: row.id,
-    etag: row.etag || undefined,
+    // etag: row.etag || undefined,
     name: row.name,
     source: row.source as "local",
     thumbnail: row.thumbnail,
     duration: row.duration,
     releasedDate: row.releasedDate,
-    index: row.track_index || undefined,
+    // index: row.track_index || undefined,
     artist: parsedArtists
   };
 }
 
 const baseSelect = `
   SELECT 
-    t.id, t.etag, t.name, t.source, t.thumbnail, 
-    t.duration, t.releasedDate, t.track_index, 
+    t.id, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate,
     json_group_array(
       json_object('id', ta.artist_id, 'name', ta.artist_name)
     ) as artists_json
@@ -44,11 +44,11 @@ const getLocalByIdStmt = db.prepare(`
   GROUP BY t.id;
 `);
 
-const getLocalByIndexStmt = db.prepare(`
-  ${baseSelect}
-  WHERE t.source = 'local' AND t.track_index = $index
-  GROUP BY t.id;
-`);
+// const getLocalByIndexStmt = db.prepare(`
+//   ${baseSelect}
+//   WHERE t.source = 'local' AND t.track_index = $index
+//   GROUP BY t.id;
+// `);
 
 
 export function getAllLocalFiles(): Track[] {
@@ -62,8 +62,8 @@ export function getLocalFileById(id: string): Track | null {
   return mapRowToTrack(row);
 }
 
-export function getLocalFileByIndex(index: number): Track | null {
-  const row = getLocalByIndexStmt.get({ $index: index }) as any;
-  if (!row) return null;
-  return mapRowToTrack(row);
-}
+// export function getLocalFileByIndex(index: number): Track | null {
+//   const row = getLocalByIndexStmt.get({ $index: index }) as any;
+//   if (!row) return null;
+//   return mapRowToTrack(row);
+// }
