@@ -2,6 +2,95 @@ import EventEmitter from "node:events";
 import { writeLogs } from "../db";
 import { SleepMode } from "../../shared/types.ts";
 
+const YT_API_BASE = "https://www.youtube.com/youtubei/v1";
+
+class DirectYT {
+    private visitorData = "";
+    private signatureTimestamp = 20584;
+    private ready = false;
+
+    async ensureSession() {
+        if (this.ready) return;
+        try {
+            const res = await fetch(`${YT_API_BASE}/config?prettyPrint=false`, {
+                method: "POST",
+                body: JSON.stringify({
+                    context: { client: { clientName: "WEB", clientVersion: "2.20260515.01.00", hl: "en", gl: "US" } },
+                }),
+                headers: { "Content-Type": "application/json" },
+            });
+            const data = await res.json();
+            this.visitorData = data?.responseContext?.visitorData || "";
+            this.signatureTimestamp = data?.responseContext?.signatureTimestamp || 20584;
+            this.ready = true;
+        } catch (e) {
+            writeLogs([{ type: "error", message: `DirectYT session failed: ${e.message}` }]);
+        }
+    }
+
+    async resolve(videoId: string): Promise<string | null> {
+        try {
+            await this.ensureSession();
+            if (!this.visitorData) return null;
+
+            const res = await fetch(`${YT_API_BASE}/player?prettyPrint=false&alt=json`, {
+                method: "POST",
+                body: JSON.stringify({
+                    videoId,
+                    racyCheckOk: true,
+                    contentCheckOk: true,
+                    playbackContext: {
+                        contentPlaybackContext: {
+                            vis: 0,
+                            splay: false,
+                            lactMilliseconds: "-1",
+                            signatureTimestamp: this.signatureTimestamp,
+                        },
+                    },
+                    context: {
+                        client: {
+                            hl: "en",
+                            gl: "US",
+                            visitorData: this.visitorData,
+                            clientName: "ANDROID_VR",
+                            clientVersion: "0.1",
+                            osName: "Android",
+                            osVersion: "14",
+                            platform: "MOBILE",
+                        },
+                        user: { enableSafetyMode: false, lockedSafetyMode: false },
+                        request: { useSsl: true, internalExperimentFlags: [] },
+                    },
+                }),
+                headers: { "Content-Type": "application/json" },
+            });
+            const data = await res.json();
+            const sd = data?.streamingData;
+            if (!sd) return null;
+
+            const all = [...(sd.formats || []), ...(sd.adaptiveFormats || [])];
+            const best = all
+                .filter((f: any) => f.audioChannels > 0 && !f.width)
+                .sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+            if (!best) return null;
+
+            if (best.url) return best.url;
+            const cipher = best.cipher || best.signatureCipher;
+            if (cipher) {
+                const p = new URLSearchParams(cipher);
+                const baseUrl = p.get("url");
+                const sp = p.get("sp") || "signature";
+                const sig = p.get("s");
+                if (baseUrl && sig) return `${baseUrl}&${sp}=${sig}`;
+            }
+            return null;
+        } catch (e) {
+            writeLogs([{ type: "error", message: `DirectYT resolve failed: ${e.message}` }]);
+            return null;
+        }
+    }
+}
+
 export default class Play extends EventEmitter {
     private mpv: any;
     private socket: Bun.Socket;
@@ -12,6 +101,10 @@ export default class Play extends EventEmitter {
     private isFirstLoad: boolean = true;
     public isReady: boolean = false;
     private isRepeat: boolean = false;
+    private directYT = new DirectYT();
+    private playlistOriginalUrls: string[] = [];
+    private playlistIndex: number = 0;
+    private manualStop: boolean = false;
 
     constructor(appPath: string) {
         super()
@@ -34,8 +127,9 @@ export default class Play extends EventEmitter {
             "--media-controls=yes",
             "--force-window=no",
             "--cache-pause=no",
+            "--demuxer-readahead-secs=20",
             "--profile=low-latency",
-            "--ytdl-format=bestaudio",
+            "--ytdl=no",
         ]);
 
         setTimeout(async () => {
@@ -43,7 +137,6 @@ export default class Play extends EventEmitter {
                 unix: this.pipePath,
                 socket: {
                     open: () => {
-                        console.log("Connected to MPV socket.")
                         this.isReady = true;
                     },
                     data: (_socket: any, data: any) => {
@@ -71,9 +164,11 @@ export default class Play extends EventEmitter {
                                         this.emit("change-playState", { isPlaying: !response.data })
                                     }
                                     if (response.name === "path") {
-                                        this.emit("playing", response.data)
+                                        const original = this.playlistOriginalUrls[this.playlistIndex];
+                                        this.emit("playing", original || response.data)
                                     }
                                 }
+
                                 if (response.event === "start-file") {
                                     this.emit("loading", true)
                                 }
@@ -95,6 +190,10 @@ export default class Play extends EventEmitter {
                                     this.emit("change-playState", { time: 0 });
                                 }
                                 if (response.event === "end-file") {
+                                    if (!this.manualStop) {
+                                        this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistOriginalUrls.length - 1);
+                                    }
+                                    this.manualStop = false;
                                     if (this.sleep === SleepMode.eot) {
                                         this.destroy();
                                         this.emit("exit");
@@ -132,9 +231,29 @@ export default class Play extends EventEmitter {
         }
     }
 
-    // async getAudioUrl(videoId: string) { }
+    private isYouTubeUrl(url: string): string | null {
+        try {
+            const parsed = new URL(url);
+            const isYT = parsed.hostname.includes("youtube.com") || parsed.hostname.includes("youtu.be");
+            if (!isYT) return null;
+            return parsed.searchParams.get("v") || parsed.pathname.split("/").pop() || null;
+        } catch {
+            return null;
+        }
+    }
 
     async play(urlOrPath: string) {
+        this.playlistOriginalUrls = [urlOrPath];
+        this.playlistIndex = 0;
+        const videoId = this.isYouTubeUrl(urlOrPath);
+        if (videoId) {
+            const directUrl = await this.directYT.resolve(videoId);
+            if (directUrl) {
+                urlOrPath = directUrl;
+            }
+        }
+
+        this.manualStop = true;
         this.send(["stop"]);
         this.send(["playlist-clear"]);
         this.send(["loadfile", urlOrPath, "replace"]);
@@ -161,7 +280,16 @@ export default class Play extends EventEmitter {
 
     async addTracks(urls: string[]) {
         for (const url of urls) {
-            this.send(["loadfile", url, "append"]);
+            this.playlistOriginalUrls.push(url);
+            const videoId = this.isYouTubeUrl(url);
+            let resolved = url;
+            if (videoId) {
+                const directUrl = await this.directYT.resolve(videoId);
+                if (directUrl) {
+                    resolved = directUrl;
+                }
+            }
+            this.send(["loadfile", resolved, "append"]);
         }
     }
 
@@ -172,10 +300,12 @@ export default class Play extends EventEmitter {
     }
 
     next() {
+        this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistOriginalUrls.length - 1);
         this.send(["playlist-next"])
     }
 
     previous() {
+        this.playlistIndex = Math.max(this.playlistIndex - 1, 0);
         this.send(["playlist-prev"])
     }
 
