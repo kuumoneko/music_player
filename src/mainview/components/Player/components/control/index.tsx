@@ -18,7 +18,7 @@ export default function ControlUI() {
     const [shuffle, setshuffle] = useState(Shuffle.Disable);
     const [repeat, setrepeat] = useState(Repeat.Disable);
     const [isloading, setisloading] = useState(true);
-    const [playedTrack, setPlayedTrack] = useState(false);
+    const [playedTrack, setPlayedTrack] = useState<string[]>([]);
     const [playing, setPlaying] = useState({
         time: 0,
         duration: 0,
@@ -114,7 +114,7 @@ export default function ControlUI() {
 
                 {/* Backward */}
                 <button
-                    className={`mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer ${!playedTrack ? "opacity-50 pointer-events-none" : ""}`}
+                    className={`mx-0.5 p-0.5 cursor-default select-none rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer ${playedTrack.length === 0 ? "opacity-50 pointer-events-none" : ""}`}
                     onClick={() => window.api.rpc.request.previous()}
                 >
                     <FontAwesomeIcon icon={faStepBackward} />
