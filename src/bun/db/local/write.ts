@@ -4,11 +4,11 @@ import writeLogs from "../log/write.ts";
 
 const upsertLocalTrackStmt = db.prepare(`
   INSERT INTO tracks (
-    id, name, source, thumbnail, duration, 
+    id, etag, name, source, thumbnail, duration, 
     releasedDate
   )
   VALUES (
-    $id, $name, 'local', $thumbnail, $duration,
+    $id, $etag, $name, 'local', $thumbnail, $duration,
     $releasedDate
   )
   ON CONFLICT(id) DO UPDATE SET 
@@ -30,12 +30,11 @@ const writeLocalFile = db.transaction((file: Track) => {
 
   const result = upsertLocalTrackStmt.run({
     $id: file.id,
-    // $etag: file.etag || null,
+    $etag: file.etag || null,
     $name: file.name,
     $thumbnail: file.thumbnail,
     $duration: file.duration,
     $releasedDate: file.releasedDate,
-    // $index: file.index || null,
   });
 
   if (result.changes > 0) {

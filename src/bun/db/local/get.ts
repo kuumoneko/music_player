@@ -10,21 +10,20 @@ function mapRowToTrack(row: any): Track {
 
   return {
     id: row.id,
-    // etag: row.etag || undefined,
+    etag: row.etag || undefined,
     name: row.name,
     source: row.source as "local",
     thumbnail: row.thumbnail,
     duration: row.duration,
     releasedDate: row.releasedDate,
-    // index: row.track_index || undefined,
     artist: parsedArtists
   };
 }
 
 const baseSelect = `
   SELECT 
-    t.id, t.name, t.source, t.thumbnail, 
-    t.duration, t.releasedDate,
+    t.id, t.etag, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate, 
     json_group_array(
       json_object('id', ta.artist_id, 'name', ta.artist_name)
     ) as artists_json

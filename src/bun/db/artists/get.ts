@@ -4,7 +4,7 @@ import getTracks from "../tracks/get.ts";
 
 const getArtistByIdStmt = db.prepare(`
   SELECT 
-    a.id, a.name, a.source, a.thumbnail, a.playlistId,
+    a.id, a.etag, a.name, a.source, a.thumbnail, a.playlistId,
     -- Group all track IDs associated with this artist into a JSON array
     json_group_array(ta.track_id) as track_ids_json
   FROM artists a
@@ -25,7 +25,7 @@ export default function getArtistById(id: string, includeTracks: boolean = true)
 
   const artist: Artist = {
     id: row.id,
-    // etag: row.etag || undefined,
+    etag: row.etag || undefined,
     name: row.name,
     source: row.source,
     thumbnail: row.thumbnail,
