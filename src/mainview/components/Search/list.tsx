@@ -27,6 +27,7 @@ export default function List({
     type: string;
 }) {
     const max_items = 15; // 5 rows * 3 cols
+    type = type.includes("video") ? "tracks" : type;
 
     const [sight, set_sight] = useState({
         head: 0,
@@ -44,7 +45,10 @@ export default function List({
     }, [sight, list]);
 
     useEffect(() => {
-        window.api.rpc.request.getUserData("pin").then((data) => setPin(data));
+        window.api.rpc.request.getUserData("pin").then((data) => {
+            console.log(data);
+            setPin(data);
+        });
     }, [list]);
 
     // remove  #hashtag from the title
