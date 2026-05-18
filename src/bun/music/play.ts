@@ -339,7 +339,7 @@ export default class Play extends EventEmitter {
             const time = Number(sleep.split("after ")[1].split(" minutes")[0]);
             this.timer = setTimeout(() => {
                 this.emit("exit")
-            }, time * 60 * 60 * 1000);
+            }, time * 60 * 1000);
         }
     }
 
