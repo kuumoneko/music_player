@@ -2,7 +2,7 @@ import Youtube from "./youtube.ts";
 import { Download_item, Status, System } from "../../shared/types.ts";
 import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
-import areStringsSimilar from "../lib/comapre_string.ts";
+import areStringsSimilar from "../lib/compare_string.ts";
 import { getDataFromDatabase } from "../lib/database.ts";
 import { getUserData, writeLogs } from "../db/index.ts";
 import Play from "./play.ts";
