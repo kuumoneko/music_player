@@ -156,16 +156,16 @@ player.player.on("playing", async (data) => {
 player.player.on("queue", async (data: { filename: string, playing: boolean }[]) => {
 	if (!data) return;
 	let isYTB = false;
-	if (data[0].filename.includes(ytbTrackStart)) {
+	if (data[0].filename.includes("http")) {
 		isYTB = true;
-		data = data.filter(item => item.filename.includes(ytbTrackStart))
+		data = data.filter(item => item.filename.includes("http"))
 	}
 	else {
-		data = data.filter(item => !item.filename.includes(ytbTrackStart))
+		data = data.filter(item => !item.filename.includes("http"))
 	}
 
 	const currentTrack = data.splice(0, 1)[0].filename;
-	const ids = data.map(item => isYTB ? item.filename.split(ytbTrackStart)[1] : item.filename);
+	const ids = data.map(item => isYTB ? item.filename.split("http")[1] : item.filename);
 
 	const { nextfrom, playQueue, shuffle } = getUserDatas(["nextfrom", "playQueue", "shuffle"]) as UserData;
 	const notinQueue = ids.filter(item => playQueue.includes(item));
@@ -173,7 +173,7 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 	playQueue.forEach(item => {
 		const [source, id] = item.split(":")
 		if (source === "youtube") {
-			result.push(`${ytbTrackStart}${id}`)
+			result.push(`${"http"}${id}`)
 		}
 		else {
 			result.push(id)
