@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { spawn } from "node:child_process";
 import { Track } from "@/shared/types.ts";
 import { getAllLocalFiles, writeLogs } from "../db/index.ts";
 import { writeLocalFiles } from "../db/index.ts";
@@ -46,62 +45,49 @@ export class Local {
     }
 
     async parseFile(file: string): Promise<Track> {
-        return new Promise((resolve, reject) => {
-            try {
-                const ffprobe = spawn(`${this.appPath}/ffprobe.exe`, [
-                    '-v', 'quiet',
-                    '-print_format', 'json',
-                    '-show_format',
-                    '-show_streams',
-                    `"${file}"`
-                ], { shell: true });
+        try {
+            const ffprobe = Bun.spawn([
+                `${this.appPath}/ffprobe.exe`,
+                '-v', 'quiet',
+                '-print_format', 'json',
+                '-show_format',
+                '-show_streams',
+                file,
+            ]);
 
-                let output = '';
-                let errorOutput = '';
+            const output = await new Response(ffprobe.stdout).text();
+            const exitCode = await ffprobe.exited;
 
-                ffprobe.stdout.on('data', (data) => {
-                    output += data.toString();
-                });
+            if (exitCode !== 0) {
+                throw new Error(`ffprobe exited with code ${exitCode}`);
+            }
 
-                ffprobe.stderr.on('data', (data) => {
-                    errorOutput += data.toString();
-                });
+            const metadata = JSON.parse(output);
+            const tags = metadata.format?.tags ?? {};
 
-                ffprobe.on('close', async (code) => {
-                    if (code === 0) {
-                        try {
-                            const metadata = JSON.parse(output);
-                            resolve({
-                                source: "local",
-                                name: metadata.format.tags.title,
-                                id: metadata.format.filename,
-                                duration: Math.floor(metadata.format.duration) * 1000,
-                                releasedDate: "",
-                                artist: [
-                                    {
-                                        id: "", name: metadata.format.tags.artist
-                                    }
-                                ],
-                                thumbnail: await this.getThumbnail(file)
-                            });
-                        } catch (e) {
-                            reject(new Error("Failed to parse ffprobe output."));
-                        }
-                    } else {
-                        reject(new Error(`ffprobe exited with code ${code}: ${errorOutput}`));
+            return {
+                source: "local",
+                name: tags.title ?? "",
+                id: metadata.format?.filename ?? file,
+                duration: Math.floor(metadata.format?.duration ?? 0) * 1000,
+                releasedDate: "",
+                artist: [
+                    {
+                        id: "", name: tags.artist ?? "Unknown Artist"
                     }
-                });
-            }
-            catch (e) {
-                reject(e)
-            }
-        })
+                ],
+                thumbnail: await this.getThumbnail(file)
+            };
+        } catch (e) {
+            writeLogs([{ type: "error", message: `Failed to parse file ${file}: ${e}` }]);
+            throw e;
+        }
     }
 
     async getfolder(folder: string) {
         if (folder.length === 0) return [];
         const local_files = getAllLocalFiles();
-        const localFilesMap = new Map(local_files.map((item: any) => [item.path, item]));
+        const localFilesMap = new Map(local_files.map((item: any) => [item.id, item]));
 
         const dirents = await readdir(folder, { withFileTypes: true });
 
