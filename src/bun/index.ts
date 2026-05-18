@@ -98,7 +98,7 @@ const play = () => {
 		player.player.play(`${currentPlaying.id}`)
 	}
 }
-player = new Player(APP_ROOT);
+player = new Player(userData, APP_ROOT);
 
 player.player.on("exit", () => {
 	appWin?.close();
@@ -589,6 +589,7 @@ const openAppUI = () => {
 			if (isFirstLoad) {
 				play();
 				isFirstLoad = false;
+				appWin.webview.openDevTools();
 			}
 		})
 		appWin?.on("close", () => {
