@@ -104,7 +104,6 @@ export default class Play extends EventEmitter {
     private directYT = new DirectYT();
     private playlistOriginalUrls: string[] = [];
     private playlistIndex: number = 0;
-    private manualStop: boolean = false;
 
     constructor(appPath: string) {
         super()
@@ -147,6 +146,7 @@ export default class Play extends EventEmitter {
                                 const response = JSON.parse(line);
                                 if (response.request_id === 999 && response.error === "success") {
                                     const mpvQueue = response.data;
+                                    mpvQueue[0].filename = this.playlistOriginalUrls[this.playlistIndex]
                                     this.emit("queue", mpvQueue)
                                 }
 
@@ -190,10 +190,9 @@ export default class Play extends EventEmitter {
                                     this.emit("change-playState", { time: 0 });
                                 }
                                 if (response.event === "end-file") {
-                                    if (!this.manualStop) {
+                                    if (!this.isRepeat) {
                                         this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistOriginalUrls.length - 1);
                                     }
-                                    this.manualStop = false;
                                     if (this.sleep === SleepMode.eot) {
                                         this.destroy();
                                         this.emit("exit");
@@ -253,7 +252,6 @@ export default class Play extends EventEmitter {
             }
         }
 
-        this.manualStop = true;
         this.send(["stop"]);
         this.send(["playlist-clear"]);
         this.send(["loadfile", urlOrPath, "replace"]);
