@@ -3,10 +3,10 @@ export default function localstorage(mode: "get" | "set", key: string, defaultVa
         const value = localStorage.getItem(key);
         if (typeof defaultValue === "string" || typeof defaultValue === "number") {
             if (typeof defaultValue === "string") {
-                return String(value) ?? defaultValue
+                return value != null ? String(value) : defaultValue
             }
             else {
-                return Number(value) ?? defaultValue
+                return value != null ? Number(value) : defaultValue
             }
         }
         else if (typeof defaultValue === "boolean") {
