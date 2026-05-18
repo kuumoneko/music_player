@@ -16,31 +16,6 @@ const rpc = Electroview.defineRPC({
 
 window.api = new Electroview({ rpc: rpc }) as any;
 
-const originalRequestObj = window.api.rpc.request;
-
-window.api.rpc.request = new Proxy(originalRequestObj, {
-    get(target, prop) {
-        const originalMethod = target[prop];
-
-        if (typeof originalMethod === "function") {
-            return async (...args: any[]) => {
-                const rawResponse = await originalMethod.apply(target, args);
-
-                try {
-                    if (typeof rawResponse === "string") {
-                        return JSON.parse(decodeURIComponent(rawResponse));
-                    }
-                    return rawResponse;
-                } catch (error) {
-                    return rawResponse;
-                }
-            };
-        }
-
-        return originalMethod;
-    },
-});
-
 class ErrorBoundary extends Component<{ children: ReactNode }> {
     componentDidCatch(error: Error) {
         window.api.rpc.request.sendError(error);

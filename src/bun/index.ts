@@ -276,32 +276,11 @@ player.player.on("ready", () => {
 	writeUserData("isLoading", false)
 });
 
-const withSafeEncoding = <T extends Record<string, any>>(handlers: T): T => {
-	const wrappedHandlers: any = {};
-
-	for (const [key, handler] of Object.entries(handlers)) {
-		if (typeof handler === "function") {
-			wrappedHandlers[key] = async (...args: any[]) => {
-				const result = await handler(...args);
-				if (result !== undefined) {
-					return encodeURIComponent(JSON.stringify(result));
-				}
-				return result;
-			};
-		} else {
-			wrappedHandlers[key] = handler;
-		}
-	}
-
-	return wrappedHandlers as T;
-};
-
 // @ts-ignore
 const appRPC = BrowserView.defineRPC<AppRPCType>({
 	maxRequestTime: 60 * 1000,
 	handlers: {
-		requests: withSafeEncoding(
-			{
+		requests: {
 				getMusicData: async ({ source, type, id }: { source: "youtube" | "local", type: string, id: string }) => {
 					try {
 						const result = await MusicController(player, {
@@ -566,7 +545,6 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					appWin?.webview.openDevTools();
 				}
 			}
-		)
 	}
 })
 
