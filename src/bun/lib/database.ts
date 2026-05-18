@@ -20,6 +20,7 @@ export async function getDataFromDatabase(...args: string[]): Promise<any> {
             throw new Error(`Database file not found at: ${filePath}`);
         }
     } catch (error) {
+        writeLogs([{ type: "error", message: `Failed to read database file: ${filePath} \n Error: ${error}` }]);
         return null
     }
 }
