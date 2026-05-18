@@ -643,7 +643,7 @@ export default class Youtube {
     }
 
     async fetch_artist(id: string): Promise<Artist> {
-        if (this.running.filter((item: any) => { item.name === `artist:${id}` }).length === 0) {
+        if (this.running.filter((item: any) => item.name === `artist:${id}`).length === 0) {
             this.running.push({
                 name: `artist:${id}`
             })

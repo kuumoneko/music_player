@@ -37,7 +37,7 @@ export default function CheckUserData() {
 
     for (const item of defaultUserData) {
         const checking = getUserData(item.key as keyof UserData);
-        if (checking === null || checking === undefined || typeof item.value !== typeof checking) {
+        if (checking === null || checking === undefined) {
             writeUserData(item.key as keyof UserData, item.value);
         }
     }
