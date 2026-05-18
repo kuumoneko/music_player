@@ -5,8 +5,8 @@ export default async function add_to_download(source: string, mode: string, id: 
         res.findIndex((itemm: string) => {
             const [sourcee, modee, idd] = itemm.split(":")
             return (
-                sourcee == source &&
-                modee == mode &&
+                sourcee === source &&
+                modee === mode &&
                 idd === id
             );
         }) != -1
