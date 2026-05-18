@@ -12,8 +12,7 @@ export function formatDuration(duration: number | string) {
 }
 
 export const remove_hashtag = (title: string): string => {
-    const temp = title.split(" ").filter((item: string) => {
+    return title.split(" ").filter((item: string) => {
         return !item.startsWith("#");
-    });
-    return temp.join(" ");
+    }).join(" ").trim();
 };
