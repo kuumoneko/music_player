@@ -491,94 +491,84 @@ export default class Youtube {
         });
     }
 
-    fetch_playlist(id: string): Promise<Playlist> {
-        return new Promise(async (resolve) => {
+    async fetch_playlist(id: string): Promise<Playlist> {
+        if (this.running.some((item: any) => item.name === `playlist:${id}`)) {
+            return null as unknown as Playlist;
+        }
+        this.running.push({ name: `playlist:${id}` });
+        try {
+            const cached = getPlaylist(id);
+            if (cached?.ids?.length > 0) {
+                const tracks = await this.fetch_track(cached.ids as string[]);
+                this.running = this.running.filter((item: { name: string }) => item.name !== `playlist:${id}`);
+                return {
+                    source: "youtube",
+                    name: cached.name,
+                    id: cached.id,
+                    thumbnail: cached.thumbnail,
+                    duration: tracks.reduce((sum: number, b: Track) => sum + (b.duration as number), 0),
+                    tracks: tracks
+                };
+            }
+
+            const browseId = id.startsWith("VL") ? id : `VL${id}`;
+            const data = await this.innertubeRequest<any>("browse", { browseId });
+
+            let plTitle = "";
+            let plThumbnails: Thumbnail[] = [];
+            let thumbnail = "";
+            const oldHeader = data?.header?.playlistHeaderRenderer;
+            if (oldHeader) {
+                plTitle = oldHeader?.title?.simpleText ?? "";
+                plThumbnails = oldHeader?.thumbnail?.thumbnails ?? oldHeader?.ogPhoto?.thumbnails ?? [];
+            } else {
+                const ph = data?.header?.pageHeaderRenderer;
+                const vm = ph?.content?.pageHeaderViewModel;
+                plTitle = vm?.title?.dynamicTextViewModel?.text?.content ?? ph?.pageTitle ?? "";
+                const mth = data?.microformat?.microformatDataRenderer?.thumbnail;
+                plThumbnails = mth?.thumbnails ?? [];
+            }
+
+            thumbnail = plThumbnails?.[0]?.url ?? "";
+
             const tracks: string[] = [];
-            let this_playlist = getPlaylist(id)
-            try {
-                let thumbnail: string = "";
-                if (this_playlist !== null && this_playlist !== undefined && ((this_playlist?.ids as string[] ?? []).length) > 0) {
-                    const tracks = await this.fetch_track(this_playlist?.ids as string[]);
-                    resolve({
-                        source: "youtube",
-                        name: this_playlist.name,
-                        id: this_playlist.id,
-                        // etag: this_playlist.etag,
-                        thumbnail: this_playlist.thumbnail,
-                        duration: tracks.reduce((item: number, b: Track) => item + (b.duration as number), 0),
-                        tracks: tracks
-                    })
-                }
-                if (this.running.filter((item: any) => { item.name === `playlist:${id}` }).length === 0) {
-                    this.running.push({
-                        name: `playlist:${id}`
-                    })
-                } else {
-                    return;
-                }
-                resolve({} as any)
+            const contents = this.extractPlaylistContents(data);
+            for (let pos = 0; pos < contents.length; pos++) {
+                const item = this.parsePlaylistItem(contents[pos], pos + 1);
+                if (item) tracks.push(item.id);
+            }
 
-                const browseId = id.startsWith("VL") ? id : `VL${id}`;
-                const data = await this.innertubeRequest<any>("browse", { browseId });
-
-                let plTitle = "";
-                let plThumbnails: Thumbnail[] = [];
-                const oldHeader = data?.header?.playlistHeaderRenderer;
-                if (oldHeader) {
-                    plTitle = oldHeader?.title?.simpleText ?? "";
-                    plThumbnails = oldHeader?.thumbnail?.thumbnails ?? oldHeader?.ogPhoto?.thumbnails ?? [];
-                } else {
-                    const ph = data?.header?.pageHeaderRenderer;
-                    const vm = ph?.content?.pageHeaderViewModel;
-                    plTitle = vm?.title?.dynamicTextViewModel?.text?.content ?? ph?.pageTitle ?? "";
-                    const mth = data?.microformat?.microformatDataRenderer?.thumbnail;
-                    plThumbnails = mth?.thumbnails ?? [];
-                }
-
-                if (plTitle && thumbnail === "") {
-                    thumbnail = plThumbnails?.[0]?.url ?? "";
-                }
-
-                const contents = this.extractPlaylistContents(data);
-                for (let pos = 0; pos < contents.length; pos++) {
-                    const item = this.parsePlaylistItem(contents[pos], pos + 1);
+            let continuation = this.extractContinuationToken(contents);
+            while (tracks.length < MAX_RESULTS && continuation) {
+                const nextData = await this.innertubeRequest<any>("browse", { continuation });
+                const nextContents = this.extractContinuationContents(nextData);
+                if (!nextContents?.length) break;
+                for (let pos = 0; pos < nextContents.length; pos++) {
+                    const item = this.parsePlaylistItem(nextContents[pos], tracks.length + pos + 1);
                     if (item) tracks.push(item.id);
                 }
-
-                let continuation = this.extractContinuationToken(contents);
-                while (tracks.length < MAX_RESULTS && continuation) {
-                    const nextData = await this.innertubeRequest<any>("browse", { continuation });
-                    const nextContents = this.extractContinuationContents(nextData);
-                    if (!nextContents?.length) break;
-                    for (let pos = 0; pos < nextContents.length; pos++) {
-                        const item = this.parsePlaylistItem(nextContents[pos], tracks.length + pos + 1);
-                        if (item) tracks.push(item.id);
-                    }
-                    continuation = this.extractContinuationToken(nextContents);
-                }
-
-                this_playlist = {
-                    // etag: "",
-                    thumbnail: thumbnail,
-                    name: this_playlist?.name ?? plTitle,
-                    ids: Array.from(new Set([...tracks, ...this_playlist?.ids as [] ?? []])),
-                    id: id,
-                    source: "youtube",
-                    duration: 0
-                }
-
-                this.running = this.running.filter((item: { name: string }) => { return item.name !== `playlist:${id}` });
-                const Realtracks = await this.fetch_track(this_playlist.ids);
-                writePlaylist({
-                    ...this_playlist,
-                    tracks: Realtracks
-                });
+                continuation = this.extractContinuationToken(nextContents);
             }
-            catch (e) {
-                this.running = this.running.filter((item: { name: string }) => { return item.name !== `playlist:${id}` })
-                this.log(`Fetch playlist id=${id}, ${e}`)
-            }
-        })
+
+            const playlist: Playlist = {
+                thumbnail: thumbnail,
+                name: plTitle,
+                ids: Array.from(new Set(tracks)),
+                id: id,
+                source: "youtube",
+                duration: 0
+            };
+
+            const Realtracks = await this.fetch_track(playlist.ids);
+            writePlaylist({ ...playlist, tracks: Realtracks });
+
+            this.running = this.running.filter((item: { name: string }) => item.name !== `playlist:${id}`);
+            return { ...playlist, tracks: Realtracks };
+        } catch (e) {
+            this.running = this.running.filter((item: { name: string }) => item.name !== `playlist:${id}`);
+            this.log(`Fetch playlist id=${id}, ${e}`);
+            return null as unknown as Playlist;
+        }
     }
 
     async fetch_contentRating(ids: string[]): Promise<Record<string, any>> {
@@ -653,7 +643,7 @@ export default class Youtube {
     }
 
     async fetch_artist(id: string): Promise<Artist> {
-        if (this.running.filter((item: any) => { item.name === `artist:${id}` }).length === 0) {
+        if (this.running.filter((item: any) => item.name === `artist:${id}`).length === 0) {
             this.running.push({
                 name: `artist:${id}`
             })
@@ -769,8 +759,7 @@ export default class Youtube {
 
     async get_new_tracks(ids: string[]) {
         try {
-            const new_tracks: Track[] = []
-            for (const id of ids) {
+            const results = await Promise.all(ids.map(async (id) => {
                 try {
                     const data = await this.innertubeRequest<any>("browse", { browseId: id });
                     const videoIds: string[] = [];
@@ -832,27 +821,14 @@ export default class Youtube {
                         }
                     }
 
-                    new_tracks.push(...(await this.fetch_track(videoIds.slice(0, 6))));
-                    // for (const videoId of videoIds.slice(0, 6)) {
-                    //     const video = await this.fetch_track([videoId])
-                    //     new_tracks.push({
-                    //         etag: "",
-                    //         source: "youtube",
-                    //         thumbnail: video.thumbnails?.[0]?.url ?? "",
-                    //         artist: [{ name: video.artist ?? "", id: video.channelId ?? "" }],
-                    //         name: video.title ?? "",
-                    //         id: video.id,
-                    //         duration: (video.duration ?? 0) * 1000,
-                    //         releasedDate: video.publishedAt ?? "",
-                    //     });
-                    // }
-                }
-                catch (e) {
+                    return await this.fetch_track(videoIds.slice(0, 6));
+                } catch (e) {
                     this.log(e);
+                    return [] as Track[];
                 }
-            }
+            }));
 
-            return new_tracks;
+            return results.flat();
         } catch (e) {
             this.log(e);
             return []

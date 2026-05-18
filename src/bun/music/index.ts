@@ -2,7 +2,7 @@ import Youtube from "./youtube.ts";
 import { Download_item, Status, System } from "../../shared/types.ts";
 import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
-import areStringsSimilar from "../lib/comapre_string.ts";
+import areStringsSimilar from "../lib/compare_string.ts";
 import { getDataFromDatabase } from "../lib/database.ts";
 import { getUserData, writeLogs } from "../db/index.ts";
 import Play from "./play.ts";
@@ -29,16 +29,19 @@ export default class Player {
     public audio_format: string = Audio_format.m4a;
     public folder: string = "";
 
-    constructor(userPath: string, appPath: string) {
+    constructor(appPath: string) {
         this.player = new Play(appPath)
         this.download_folder = getUserData("folder");
-        (getDataFromDatabase(appPath, "..", "Resources", "app", 'data', 'system') as Promise<System>).then(({ isLocal }) => {
-            if (isLocal) {
-                this.local = new Local(resolve(userPath, "data"), appPath);
-            }
-            this.youtube = new Youtube();
-        });
+        this.youtube = new Youtube();
         this.folder = appPath;
+    }
+
+    async initLocal(userPath: string, appPath: string) {
+        const { isLocal } = await getDataFromDatabase(appPath, "..", "Resources", "app", 'data', 'system') as System;
+        if (isLocal) {
+            this.local = new Local(resolve(userPath, "data"), appPath);
+        }
+        return isLocal;
     }
 
     format_title(title: string): string {

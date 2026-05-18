@@ -27,7 +27,7 @@ declare global {
                         repeat: Repeat,
                         isPlaying: boolean,
                         isLoading: boolean,
-                        playedTrack: boolean,
+                        playedTrack: string[],
                         current: {
                             time: number, duration: number, isLived: boolean
                         }

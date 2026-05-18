@@ -67,8 +67,8 @@ export default class DiscordRPC {
             const ytb_tracks = getTrackByName(title, true)
 
             let result: any = null;
-            if (!ytb_tracks) {
-                result = ytb_tracks[0]
+            if (ytb_tracks && ytb_tracks.length > 0) {
+                result = ytb_tracks[0];
             }
             else {
                 const ytb_search = await player.youtube.search(title, "video");

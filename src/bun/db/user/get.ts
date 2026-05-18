@@ -11,22 +11,9 @@ const getData = db.prepare(`
 const getUserData = <K extends keyof UserData>(key: K) => {
   if (!key) return null;
 
-  let result: any = null;
   const value = getData.get(key) as any;
   if (value === null || value === undefined) return null;
-  if (['repeat', 'shuffle', 'volume'].includes(key)) {
-    result = Number(value.value)
-  }
-  else if (['QuitonClose', 'isPlaying', 'isLoading'].includes(key)) {
-    result = value.value === '1' ? true : false
-  }
-  else if (['folder'].includes(key)) {
-    result = value.value;
-  }
-  else {
-    result = JSON.parse(value.value)
-  }
-  return result as UserData[K]
+  return decodeValue(key, value.value) as UserData[K];
 }
 
 export const getUserDatas = <K extends keyof UserData>(keys: K[]) => {
@@ -44,22 +31,26 @@ export const getUserDatas = <K extends keyof UserData>(keys: K[]) => {
 
   for (const row of rows) {
     try {
-      if (['repeat', 'shuffle', 'volume'].includes(row.key)) {
-        result[row.key as keyof UserData] = Number(row.value)
-      }
-      else if (['QuitonClose', 'isPlaying', 'isLoading'].includes(row.key)) {
-        result[row.key as keyof UserData] = row.value === '1' ? true : false
-      }
-      else if (['folder'].includes(row.key)) {
-        result[row.key as keyof UserData] = row.value;
-      }
-      else {
-        result[row.key as keyof UserData] = JSON.parse(row.value)
-      }
-    } catch { }
+      result[row.key as keyof UserData] = decodeValue(row.key, row.value);
+    } catch (e) {
+      console.error(`Failed to parse user data for key=${row.key}:`, e);
+    }
   }
 
   return result;
+}
+
+export function decodeValue(key: string, value: string): any {
+  if (['repeat', 'shuffle', 'volume'].includes(key)) {
+    return Number(value);
+  }
+  if (['QuitonClose', 'isPlaying', 'isLoading'].includes(key)) {
+    return value === '1';
+  }
+  if (['folder'].includes(key)) {
+    return value;
+  }
+  return JSON.parse(value);
 }
 
 export default getUserData

@@ -16,3 +16,4 @@ assets
 electrobun
 release
 .zigversion
+tsconfig.tsbuildinfo

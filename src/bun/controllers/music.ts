@@ -14,7 +14,7 @@ export default async function MusicController(player: Player, data: { source, mo
         if (!query || !type || !source) {
             throw new Error("Missing query, type or source");
         }
-        if (query.length < 0 || type.length < 0 || source.length < 0) {
+        if (query.length < 1 || type.length < 1 || source.length < 1) {
             throw new Error("Invalid query, type or source");
         }
         else if (source === "youtube") {

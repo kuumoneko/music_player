@@ -98,7 +98,7 @@ const play = () => {
 		player.player.play(`${currentPlaying.id}`)
 	}
 }
-player = new Player(userData, APP_ROOT);
+player = new Player( APP_ROOT);
 
 player.player.on("exit", () => {
 	appWin?.close();
@@ -276,32 +276,11 @@ player.player.on("ready", () => {
 	writeUserData("isLoading", false)
 });
 
-const withSafeEncoding = <T extends Record<string, any>>(handlers: T): T => {
-	const wrappedHandlers: any = {};
-
-	for (const [key, handler] of Object.entries(handlers)) {
-		if (typeof handler === "function") {
-			wrappedHandlers[key] = async (...args: any[]) => {
-				const result = await handler(...args);
-				if (result !== undefined) {
-					return encodeURIComponent(JSON.stringify(result));
-				}
-				return result;
-			};
-		} else {
-			wrappedHandlers[key] = handler;
-		}
-	}
-
-	return wrappedHandlers as T;
-};
-
 // @ts-ignore
 const appRPC = BrowserView.defineRPC<AppRPCType>({
 	maxRequestTime: 60 * 1000,
 	handlers: {
-		requests: withSafeEncoding(
-			{
+		requests: {
 				getMusicData: async ({ source, type, id }: { source: "youtube" | "local", type: string, id: string }) => {
 					try {
 						const result = await MusicController(player, {
@@ -494,9 +473,6 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					try {
 						current.time = time;
 						player.player.seekTo(time);
-						setInterval(() => {
-							setDiscordRPC();
-						}, 300);
 					} catch (error) {
 						writeLogs([{ type: "error", message: `Error when changing time\n${error}` }]);
 						return null;
@@ -569,7 +545,6 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					appWin?.webview.openDevTools();
 				}
 			}
-		)
 	}
 })
 
@@ -676,8 +651,9 @@ appTray?.on("tray-clicked", (e: any) => {
 });
 openAppUI();
 const folder = getUserData("folder");
-if (folder.length > 0 && isLocal && player.local !== undefined) {
-	player.local.getfolder(folder);
+if (folder.length > 0 && isLocal) {
+	await player.initLocal(userData, APP_ROOT);
+	player.local?.getfolder(folder);
 }
 // const now = Date.now()
 // player.youtube.checkYoutubeTracks().then(() => { console.log(Date.now() - now) })
