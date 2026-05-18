@@ -1,7 +1,6 @@
 import { resolve } from "node:path";
 import { config } from "dotenv";
 // config
-import chose from "./config/chose";
 import ElectroBunConfig from "./config/config";
 import system from "./config/system";
 // build
@@ -10,8 +9,7 @@ import Build_Electrobun from "./build/electrobun";
 import Build_main_process from "./build/main";
 config();
 
-console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
-const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?", true);
+let isBuildElectrobun: boolean = process.argv.includes("-be") || process.argv.includes("--build-electrobun");
 
 if (isBuildElectrobun) {
     await Build_Electrobun();

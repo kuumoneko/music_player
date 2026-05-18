@@ -1,7 +1,6 @@
 import { resolve } from "node:path";
 import { config } from "dotenv";
 // config
-import chose from "./config/chose";
 import ElectroBunConfig from "./config/config";
 import system from "./config/system";
 // build
@@ -10,13 +9,15 @@ import Build_Electrobun from "./build/electrobun";
 
 config();
 
-console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
-const isBuildElectrobun = await chose("Do you want to build Local Electrobun first?", true);
+let isBuildElectrobun: boolean = process.argv.includes("-be") || process.argv.includes("--build-electrobun");
+let isBuildClient: boolean = process.argv.includes("-bc") || process.argv.includes("--build-client");
+let isLocal: boolean = process.argv.includes("-ul") || process.argv.includes("--use-local");
+let isDiscord: boolean = process.argv.includes("-ud") || process.argv.includes("--use-discord");
+
 if (isBuildElectrobun) {
     await Build_Electrobun();
 }
 
-const isBuildClient = await chose("Do you want to build Client?", true);
 if (isBuildClient) {
     try {
         await Build_Front_End()
@@ -25,10 +26,6 @@ if (isBuildClient) {
         process.exit(0);
     }
 }
-
-console.log("\nUse ↑/↓ to select, Enter to confirm:\n");
-const isLocal: boolean = await chose("Is Local?", true);
-const isDiscord: boolean = await chose("Is Discord?", true);
 
 const thisWorkSpace = resolve(import.meta.path.split(import.meta.file)[0], "..");
 await system(thisWorkSpace, isLocal, isDiscord, "system")
