@@ -9,23 +9,9 @@ const writeData = db.prepare(`
 
 const writeUserData = <K extends keyof UserData>(key: K, data: any) => {
   if (!key) return null;
-
-  let result: any = null;
-  if (['repeat', 'shuffle', 'volume'].includes(key)) {
-    result = Number(data)
-  }
-  else if (['QuitonClose', 'isPlaying', 'isLoading'].includes(key)) {
-    result = data ? "1" : "0"
-  }
-  else if (['folder'].includes(key)) {
-    result = data;
-  }
-  else {
-    result = JSON.stringify(data)
-  }
   writeData.run({
     $key: key,
-    $value: result
+    $value: encodeValue(key, data)
   });
 }
 
@@ -33,9 +19,22 @@ export const writeUserDatas = db.transaction((data: Partial<UserData>) => {
   for (const [key, value] of Object.entries(data)) {
     writeData.run({
       $key: key,
-      $value: JSON.stringify(value)
+      $value: encodeValue(key, value)
     });
   }
 });
+
+function encodeValue(key: string, data: any): string {
+  if (['repeat', 'shuffle', 'volume'].includes(key)) {
+    return String(Number(data));
+  }
+  if (['QuitonClose', 'isPlaying', 'isLoading'].includes(key)) {
+    return data ? "1" : "0";
+  }
+  if (['folder'].includes(key)) {
+    return String(data);
+  }
+  return JSON.stringify(data);
+}
 
 export default writeUserData
