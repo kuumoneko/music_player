@@ -29,10 +29,21 @@ export default class Player {
     public audio_format: string = Audio_format.m4a;
     public folder: string = "";
 
-    constructor(appPath: string) {
+    constructor(userPath: string, appPath: string) {
         this.player = new Play(appPath)
         this.download_folder = getUserData("folder");
-        this.youtube = new Youtube();
+        (getDataFromDatabase(appPath, "..", "Resources", "app", 'data', 'system') as Promise<System>).then(({ isLocal, youtubeApiKeys }) => {
+            if (isLocal) {
+                this.local = new Local(resolve(userPath, "data"), appPath);
+            }
+            this.youtube = new Youtube(youtubeApiKeys.map(key => {
+                return {
+                    ApiKey: key,
+                    isReached: false,
+                    when: 0
+                }
+            }));
+        });
         this.folder = appPath;
     }
 
