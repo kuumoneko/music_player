@@ -151,8 +151,9 @@ export enum SleepMode {
     eot = "end of this track"
 }
 
+
 export interface Artist {
-    // etag?: string,
+    etag?: string,
     name: string,
     id: string,
     source: "youtube" | "local",
@@ -162,7 +163,7 @@ export interface Artist {
 }
 
 export interface Playlist {
-    // etag?: string,
+    etag?: string,
     name: string,
     id: string,
     source: "youtube" | "local",
@@ -172,20 +173,8 @@ export interface Playlist {
     duration: number
 }
 
-// export interface Album {
-//     // etag?: string,
-//     name: string,
-//     id: string,
-//     source: "youtube" | "local",
-//     tracks: Track[],
-//     thumbnail: string,
-//     duration: number,
-//     releaseDate: string,
-//     artists: { id: string, name: string }[]
-// }
-
 export interface Track {
-    // etag?: string,
+    etag?: string,
     name: string,
     id: string,
     artist: { id: string, name: string }[],
