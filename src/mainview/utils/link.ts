@@ -1,43 +1,35 @@
-
 export default function convert_link(link: string) {
-    if (link.includes("youtu")) {
-        const youtube_link = link.split(link.includes("?si=") ? "?si=" : "&si=")[0];
-        // short form
-        let temp: string = "";
-        if (youtube_link.includes("youtu.be")) {
-            temp = youtube_link.split("youtu.be/")[1].split("&")[0];
-        }
-        // long form
-        else if (youtube_link.includes("youtube.com")) {
-            if (youtube_link.includes("watch?v=")) {
-                temp = youtube_link.split("watch?v=")[1].split("&")[0]
+    try {
+        const url = new URL(link.startsWith("http") ? link : `https://${link}`);
+        const host = url.hostname;
+
+        if (host.includes("youtube.com") || host.includes("youtu.be")) {
+            if (host === "youtu.be") {
+                const id = url.pathname.slice(1).split("/")[0];
+                return { source: "youtube", mode: id.length > 20 ? "playlists" : "tracks", id };
             }
-            else if (youtube_link.includes("?list=")) {
-                temp = youtube_link.split("?list=")[1].split("&")[0]
+
+            if (url.pathname.includes("/live/")) {
+                const id = url.pathname.split("/live/")[1]?.split("/")[0] ?? "";
+                return { source: "youtube", mode: "tracks", id };
             }
-            else if (youtube_link.includes("/live/")) {
-                temp = youtube_link.split("/live/")[1].split("&")[0]
+
+            const v = url.searchParams.get("v");
+            if (v) {
+                return { source: "youtube", mode: "tracks", id: v };
+            }
+
+            const list = url.searchParams.get("list");
+            if (list) {
+                return { source: "youtube", mode: "playlists", id: list };
+            }
+
+            if (url.pathname.startsWith("/@")) {
+                const channel = url.pathname.split("/@")[1]?.split("/")[0] ?? "";
+                return { source: "youtube", mode: "artists", id: channel };
             }
         }
-        else if (youtube_link.includes("@")) {
-            temp = youtube_link.split("@")[1].split("&")[0]
-            return {
-                source: "youtube",
-                mode: "artists",
-                id: temp
-            }
-        }
-        return {
-            source: "youtube",
-            mode: temp.length > 20 ? "playlists" : "tracks",
-            id: temp
-        }
-    }
-    else {
-        return {
-            source: undefined,
-            mode: undefined,
-            id: undefined
-        };
-    }
+    } catch {}
+
+    return { source: undefined, mode: undefined, id: undefined };
 }
