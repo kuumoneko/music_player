@@ -140,8 +140,9 @@ player.player.on("playing", async (data) => {
 	else {
 		const localFiles = getAllLocalFiles();
 		const track = localFiles.find((localItem) => localItem.id === data);
+		if (!track) return;
 		const currentPlaying = {
-			source: "local", id: track.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", ")
+			source: "local", id: track.id, title: track.name, thumbnail: track.thumbnail, artist: track.artist.map((item: any) => item.name).join(", ")
 		}
 		writeUserData("currentPlaying", currentPlaying)
 		if (isDiscord) {
