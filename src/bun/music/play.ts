@@ -132,99 +132,91 @@ export default class Play extends EventEmitter {
             "--ytdl=no",
         ]);
 
-        this.connectSocket();
-    }
+        setTimeout(async () => {
+            this.socket = await Bun.connect({
+                unix: this.pipePath,
+                socket: {
+                    open: () => {
+                        this.isReady = true;
+                    },
+                    data: (_socket: any, data: any) => {
+                        const lines = data.toString().split("\n");
+                        for (const line of lines) {
+                            if (!line.trim()) continue;
+                            try {
+                                const response = JSON.parse(line);
+                                if (response.request_id === 999 && response.error === "success") {
+                                    const mpvQueue = response.data;
+                                    this.emit("queue", mpvQueue)
+                                }
 
-    private async connectSocket(retries = 10, delay = 200) {
-        for (let attempt = 0; attempt < retries; attempt++) {
-            try {
-                this.socket = await Bun.connect({
-                    unix: this.pipePath,
-                    socket: {
-                        open: () => {
-                            this.isReady = true;
-                            this.send(["observe_property", 2, "duration"]);
-                            this.send(["observe_property", 1, "pause"]);
-                            this.send(["observe_property", 1, "path"]);
-                            setInterval(() => {
-                                this.send(["get_property", "time-pos"], 888);
-                            }, 1000);
-                        },
-                        data: (_socket: any, data: any) => {
-                            const lines = data.toString().split("\n");
-                            for (const line of lines) {
-                                if (!line.trim()) continue;
-                                try {
-                                    const response = JSON.parse(line);
-                                    if (response.request_id === 999 && response.error === "success") {
-                                        const mpvQueue = response.data;
-                                        this.emit("queue", mpvQueue)
+                                if (response.request_id === 888 && response.error === "success") {
+                                    this.emit("change-playState", { time: response.data });
+                                }
+
+                                if (response.event === "property-change") {
+                                    if (response.name === "duration") {
+                                        const duration = response.data;
+                                        this.emit("duration-update", duration);
                                     }
 
-                                    if (response.request_id === 888 && response.error === "success") {
-                                        this.emit("change-playState", { time: response.data });
+                                    if (response.name === "pause") {
+                                        this.emit("change-playState", { isPlaying: !response.data })
                                     }
+                                    if (response.name === "path") {
+                                        const original = this.playlistOriginalUrls[this.playlistIndex];
+                                        this.emit("playing", original || response.data)
+                                    }
+                                }
 
-                                    if (response.event === "property-change") {
-                                        if (response.name === "duration") {
-                                            const duration = response.data;
-                                            this.emit("duration-update", duration);
+                                if (response.event === "start-file") {
+                                    this.emit("loading", true)
+                                }
 
-                                            if (duration === 0) {
-                                                this.emit("is-live", true);
-                                            } else {
-                                                this.emit("is-live", false);
-                                            }
-                                        }
+                                if (response.event === "file-loaded") {
+                                    this.emit("loading", false)
+                                }
 
-                                        if (response.name === "pause") {
-                                            this.emit("change-playState", { isPlaying: !response.data })
-                                        }
-                                        if (response.name === "path") {
-                                            const original = this.playlistOriginalUrls[this.playlistIndex];
-                                            this.emit("playing", original || response.data)
-                                        }
-                                    }
+                                if (response.name === "duration") {
+                                    const duration = response.data || 0;
 
-                                    if (response.event === "start-file") {
-                                        this.emit("loading", true)
+                                    if (duration === 0) {
+                                        this.emit("is-live", true);
+                                    } else {
+                                        this.emit("is-live", false);
                                     }
-
-                                    if (response.event === "file-loaded") {
-                                        this.emit("loading", false)
-                                        this.emit("file-loaded")
+                                }
+                                if (response.event === "playback-restart" && this.isRepeat) {
+                                    this.emit("change-playState", { time: 0 });
+                                }
+                                if (response.event === "end-file") {
+                                    if (!this.manualStop) {
+                                        this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistOriginalUrls.length - 1);
                                     }
-                                    if (response.event === "playback-restart" && this.isRepeat) {
-                                        this.emit("change-playState", { time: 0 });
+                                    this.manualStop = false;
+                                    if (this.sleep === SleepMode.eot) {
+                                        this.destroy();
+                                        this.emit("exit");
                                     }
-                                    if (response.event === "end-file") {
-                                        if (!this.manualStop) {
-                                            this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistOriginalUrls.length - 1);
-                                        }
-                                        this.manualStop = false;
-                                        if (this.sleep === SleepMode.eot) {
-                                            this.destroy();
-                                            this.emit("exit");
-                                        }
-                                        this.emit("ended");
-                                    }
-                                } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
-                            }
-                        },
-                        error: (_socket: any, error: any) => {
-                            console.error("IPC Socket Error:", error);
+                                    this.emit("ended");
+                                }
+                            } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
                         }
+                    },
+                    error: (_socket: any, error: any) => {
+                        console.error("IPC Socket Error:", error);
                     }
-                });
-                return;
-            } catch {
-                if (attempt < retries - 1) {
-                    await new Promise(r => setTimeout(r, delay * (attempt + 1)));
-                } else {
-                    writeLogs([{ type: "error", message: `Failed to connect to mpv IPC after ${retries} attempts` }]);
                 }
-            }
-        }
+            });
+            this.send(["observe_property", 2, "duration"]);
+            this.send(["observe_property", 1, "pause"]);
+            this.send(["observe_property", 1, "path"]);
+
+            setInterval(() => {
+                this.send(["get_property", "time-pos"], 888);
+            }, 1000);
+
+        }, 200);
     }
 
     private send(command: (string | number | boolean | Object)[], id: number = 0) {
@@ -265,8 +257,7 @@ export default class Play extends EventEmitter {
         this.send(["stop"]);
         this.send(["playlist-clear"]);
         this.send(["loadfile", urlOrPath, "replace"]);
-
-        this.once("file-loaded", () => {
+        setTimeout(() => {
             if (this.isFirstLoad) {
                 this.isFirstLoad = false;
                 this.send(["set_property", "pause", true]);
@@ -274,7 +265,8 @@ export default class Play extends EventEmitter {
             else {
                 this.send(["set_property", "pause", false]);
             }
-        });
+
+        }, 300);
     }
 
     getQueue() {
