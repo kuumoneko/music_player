@@ -98,7 +98,7 @@ const play = () => {
 		player.player.play(`${currentPlaying.id}`)
 	}
 }
-player = new Player(userData, APP_ROOT);
+player = new Player( APP_ROOT);
 
 player.player.on("exit", () => {
 	appWin?.close();
@@ -494,9 +494,6 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					try {
 						current.time = time;
 						player.player.seekTo(time);
-						setInterval(() => {
-							setDiscordRPC();
-						}, 300);
 					} catch (error) {
 						writeLogs([{ type: "error", message: `Error when changing time\n${error}` }]);
 						return null;
@@ -676,8 +673,9 @@ appTray?.on("tray-clicked", (e: any) => {
 });
 openAppUI();
 const folder = getUserData("folder");
-if (folder.length > 0 && isLocal && player.local !== undefined) {
-	player.local.getfolder(folder);
+if (folder.length > 0 && isLocal) {
+	await player.initLocal(userData, APP_ROOT);
+	player.local?.getfolder(folder);
 }
 // const now = Date.now()
 // player.youtube.checkYoutubeTracks().then(() => { console.log(Date.now() - now) })
