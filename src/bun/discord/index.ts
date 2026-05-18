@@ -94,7 +94,7 @@ export default class DiscordRPC {
                 activity: {
                     type: 2,
                     details: track.title,
-                    state: track.arist,
+                    state: track.artist,
                     assets: {
                         large_image: track.thumbnail,
                         large_text: track.title
