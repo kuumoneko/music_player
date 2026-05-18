@@ -12,10 +12,9 @@ function App() {
         localstorage("set", "backward", "[]");
         localstorage("set", "forward", "[]");
         localstorage("set", "search", "");
-        const run = setInterval(() => {
-            seturl(localstorage("get", "url", "/"));
-        }, 50);
-        return () => clearInterval(run);
+        const onUrlChange = (e: Event) => seturl((e as CustomEvent).detail);
+        window.addEventListener("urlchange", onUrlChange);
+        return () => window.removeEventListener("urlchange", onUrlChange);
     }, []);
 
     return (

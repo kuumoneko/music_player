@@ -25,10 +25,9 @@ export default function Albums() {
 
     useEffect(() => {
         run();
-        const running = setInterval(() => {
-            run();
-        }, 1000);
-        return () => clearInterval(running);
+        const onUrlChange = () => run();
+        window.addEventListener("urlchange", onUrlChange);
+        return () => window.removeEventListener("urlchange", onUrlChange);
     }, []);
 
     return <>{dom}</>;

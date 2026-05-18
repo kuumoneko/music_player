@@ -13,16 +13,15 @@ export default function SearchBar() {
         if (window.location.href.includes("auth")) {
             setAuth(true);
         }
-        const run = setInterval(() => {
-            const url = localstorage("get", "search", "");
-            if (url === "") {
+        const onSearchChange = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (detail === "") {
                 settyping("");
                 settype("");
             }
-        }, 100);
-        return () => {
-            clearInterval(run);
         };
+        window.addEventListener("searchchange", onSearchChange);
+        return () => window.removeEventListener("searchchange", onSearchChange);
     }, []);
 
     const search = () => {

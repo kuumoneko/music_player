@@ -33,8 +33,10 @@ export function goto(url: string, isForce: Force = Force.False) {
         localstorage('set', 'forward', forw ?? []);
     }
     localstorage('set', 'url', next);
+    window.dispatchEvent(new CustomEvent('urlchange', { detail: next }));
     if (!url.includes("search/")) {
         localstorage("set", "search", "");
+        window.dispatchEvent(new CustomEvent('searchchange', { detail: "" }));
     }
     return next
 }
