@@ -66,40 +66,41 @@ export default function List({
         run();
     }, [sight, list]);
 
+    const scroll = (direction: string) => {
+        const temp = sight;
+        if (direction === "down") {
+            let head = temp.head + 3;
+            let tail = temp.tail + 3;
+            if (tail >= list.length) {
+                tail = list.length - 1;
+                head = tail - max_items + 1;
+                if (head < 0) {
+                    head = 0;
+                }
+            }
+
+            set_sight({
+                head,
+                tail,
+            });
+        } else {
+            let head = temp.head - 3;
+            let tail = temp.tail - 3;
+            if (head < 0) {
+                head = 0;
+                tail = max_items - 1;
+                if (tail > list.length) {
+                    tail = list.length - 1;
+                }
+            }
+            set_sight({ head, tail });
+        }
+    };
+
     return (
         <div
             className="listitem flex flex-col max-h-[75%] w-full overflow-y-scroll [&::-webkit-scrollbar]:hidden"
-            onWheel={(e) => {
-                const direction = e.deltaY > 0 ? "down" : "up";
-                const temp = sight;
-                if (direction === "down") {
-                    let head = temp.head + 3;
-                    let tail = temp.tail + 3;
-                    if (tail >= list.length) {
-                        tail = list.length - 1;
-                        head = tail - max_items + 1;
-                        if (head < 0) {
-                            head = 0;
-                        }
-                    }
-
-                    set_sight({
-                        head,
-                        tail,
-                    });
-                } else {
-                    let head = temp.head - 3;
-                    let tail = temp.tail - 3;
-                    if (head < 0) {
-                        head = 0;
-                        tail = max_items - 1;
-                        if (tail > list.length) {
-                            tail = list.length - 1;
-                        }
-                    }
-                    set_sight({ head, tail });
-                }
-            }}
+            onWheel={(e) => scroll(e.deltaY > 0 ? "down" : "up")}
         >
             <div className="item h-full grid grid-cols-3">
                 {show_list.map((item: Track, index: number) => {
