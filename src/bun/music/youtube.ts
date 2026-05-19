@@ -1,5 +1,5 @@
 import { Playlist, Track, Artist } from "../../shared/types.ts";
-import { getArtistById, getPlaylist, getTracks, writeArtist, writeLogs, writePlaylist, writeTracks } from "../db/index.ts";
+import { getPlaylist, getTracks, writeArtist, writeLogs, writePlaylist, writeTracks } from "../db/index.ts";
 import deleteTracks from "../db/tracks/delete.ts";
 import { getAllTracks } from "../db/index.ts";
 
@@ -43,7 +43,7 @@ interface InnerSearchResult {
 export default class Youtube {
     private api_key: string | null = null;
     private clientVersion = "2.20250401.00.00";
-    private running: { name: string }[] = [];
+    private inflight = new Map<string, Promise<any>>();
 
     constructor() { }
 
@@ -455,49 +455,38 @@ export default class Youtube {
     }
 
     fetch_playlist(id: string, isHomeData: boolean = false): Promise<Playlist> {
-        return new Promise(async (resolve) => {
-            let this_playlist = getPlaylist(id)
-            try {
-                if (this_playlist !== null && this_playlist !== undefined && ((this_playlist?.ids as string[] ?? []).length) > 0) {
-                    let tracks: Track[] = [];
-                    if (isHomeData === false) {
-                        tracks = await this.fetch_track(this_playlist?.ids as string[]);
-                    }
-                    resolve({
-                        source: "youtube",
-                        name: this_playlist.name,
-                        id: this_playlist.id,
-                        thumbnail: this_playlist.thumbnail,
-                        duration: tracks.reduce((item: number, b: Track) => item + (b.duration as number), 0),
-                        tracks: tracks
-                    })
-                }
-                if (this.running.filter((item: { name: string }) => { return item.name === `playlist:${id}` }).length === 0) {
-                    this.running.push({
-                        name: `playlist:${id}`
-                    })
-                } else {
-                    return;
-                }
-                const playlist = await this.fetch_playlist_data(id);
-                this.running = this.running.filter((item: { name: string }) => { return item.name !== `playlist:${id}` });
-                resolve(playlist);
+        const key = `playlist:${id}`;
+        if (this.inflight.has(key)) return this.inflight.get(key)!;
+
+        const promise = (async () => {
+            const cached = getPlaylist(id);
+            if (cached && cached.ids?.length) {
+                const tracks = isHomeData ? [] : await this.fetch_track(cached.ids);
+                return {
+                    source: "youtube",
+                    name: cached.name,
+                    id: cached.id,
+                    thumbnail: cached.thumbnail,
+                    duration: tracks.reduce((sum, t) => sum + (t.duration ?? 0), 0),
+                    tracks,
+                } as Playlist
             }
-            catch (e) {
-                this.running = this.running.filter((item: { name: string }) => { return item.name !== `playlist:${id}` })
-                this.log(`Fetch playlist id=${id}, ${e}`)
-            }
-        })
+            return await this.fetch_playlist_data(id);
+        })()
+            .catch((e) => { this.log(`Fetch playlist id=${id}, ${e}`); throw e; })
+            .finally(() => this.inflight.delete(key));
+
+        this.inflight.set(key, promise);
+        return promise;
     }
 
     async checkYoutubeTracks() {
-        try {
+        const key = "checkAvailable";
+        if (this.inflight.has(key)) return;
+
+        const promise = (async () => {
             let videoIds = getAllTracks().map((item: Track) => item.id);
             if (videoIds.length === 0) return;
-            if (this.running.some(item => item.name === "checkAvailable")) return;
-            this.running.push({
-                name: "checkAvailable"
-            });
             videoIds = Array.from(new Set([...videoIds]))
             const unavailableTracks: string[] = [];
             const isTrackAvailable = async (id: string) => {
@@ -534,11 +523,12 @@ export default class Youtube {
                 console.log(`Progress: ${Math.min(i + CONCURRENCY_LIMIT, videoIds.length)}/${videoIds.length}`);
             }
             deleteTracks(unavailableTracks)
-            this.running = this.running.filter((item: { name: string }) => { return item.name !== "checkAvailable" })
-        } catch (error) {
-            this.log(error.message);
-            this.running = this.running.filter((item: { name: string }) => { return item.name !== "checkAvailable" })
-        }
+        })()
+            .catch((error) => { this.log(error.message); throw error; })
+            .finally(() => this.inflight.delete(key));
+
+        this.inflight.set(key, promise);
+        await promise;
     }
 
     async fetch_contentRating(ids: string[]): Promise<Record<string, any>> {
@@ -613,15 +603,10 @@ export default class Youtube {
     }
 
     async fetch_artist(id: string, isHomeData: boolean = false): Promise<Artist> {
-        if (this.running.filter((item: { name: string }) => { return item.name === `artist:${id}` }).length === 0) {
-            this.running.push({
-                name: `artist:${id}`
-            })
-        } else {
-            return null as unknown as Artist;
-        }
-        let this_artist = getArtistById(id);
-        try {
+        const key = `artist:${id}`;
+        if (this.inflight.has(key)) return this.inflight.get(key)!;
+
+        const promise = (async () => {
             const data = await this.innertubeRequest<any>("browse", { browseId: id });
 
             let artName = "";
@@ -651,7 +636,7 @@ export default class Youtube {
 
             const artThumbnail = artThumbnails?.[0]?.url ? this.ensureHttps(artThumbnails[0].url) : "";
 
-            this_artist = {
+            const this_artist: Artist = {
                 source: "youtube",
                 id: id,
                 name: artName,
@@ -660,7 +645,6 @@ export default class Youtube {
                 tracks: []
             }
             writeArtist(this_artist)
-            this.running = this.running.filter((item: { name: string }) => { return item.name !== `artist:${id}` })
 
             return {
                 source: "youtube",
@@ -669,13 +653,13 @@ export default class Youtube {
                 tracks: artist_tracks,
                 thumbnail: artThumbnail,
                 playlistId: uploadsPlaylistId,
-            }
-        }
-        catch (e) {
-            this.running = this.running.filter((item: { name: string }) => { return item.name !== `artist:${id}` })
-            this.log(e);
-            return null as unknown as Artist;
-        }
+            } as Artist;
+        })()
+            .catch((e) => { this.log(e); throw e; })
+            .finally(() => this.inflight.delete(key));
+
+        this.inflight.set(key, promise);
+        return promise;
     }
 
     private async fetch_recent_tracks(channelId: string, count: number): Promise<Track[]> {
