@@ -2,6 +2,7 @@ import net from "node:net";
 import Player from "../music";
 import { getTrackByName } from "../db/index.ts";
 import os from "node:os"
+import { Track } from "@/shared/types.ts";
 
 const pipePath = os.platform() === 'win32'
     ? '\\\\.\\pipe\\discord-ipc-0'
@@ -57,7 +58,7 @@ export default class DiscordRPC {
         });
     }
 
-    async setMusic(track: any, player: Player, current: { time: number, duration: number }) {
+    async setMusic(track: { source: string, id: string, title: string, thumbnail: string, artist: string }, player: Player, current: { time: number, duration: number }) {
         if (!this.isReady) {
             return;
         }
@@ -66,7 +67,7 @@ export default class DiscordRPC {
             const { title } = track;
             const ytb_tracks = getTrackByName(title, true)
 
-            let result: any = null;
+            let result: Track | null = null;
             if (ytb_tracks && ytb_tracks.length > 0) {
                 result = ytb_tracks[0];
             }
@@ -81,7 +82,7 @@ export default class DiscordRPC {
                 }
             }
 
-            track.thumbnail = result ? result.thumbnail : "default";
+            track.thumbnail = result ? result?.thumbnail : "default";
         }
         else {
             track.thumbnail = `https://i.ytimg.com/vi/${track.id}/default.jpg`;
