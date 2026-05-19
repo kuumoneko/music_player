@@ -57,6 +57,8 @@ declare global {
                     // error
                     sendError: (error: Error) => Promise<void>,
                 }
+                addMessageListener: (name: string, handler: (payload: any) => void) => void;
+                removeMessageListener: (name: string, handler: (payload: any) => void) => void;
             }
         }
     }

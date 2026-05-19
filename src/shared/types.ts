@@ -121,7 +121,13 @@ export type AppRPCType = {
                 response: void
             }
         },
-        messages: {}
+        messages: {
+            timeUpdate: { time: number; isPlaying: boolean }
+            playerStateChange: { isPlaying: boolean; isLoading: boolean; duration: number; isLived: boolean }
+            currentTrackChanged: { source: string; id: string; title: string; thumbnail: string; artist: string }
+            settingsChanged: { shuffle: Shuffle; repeat: Repeat; volume: number }
+            queueChanged: { playQueue: string[]; nextfrom: string; playedTrack: string[] }
+        }
     }>,
     webview: RPCSchema<{
         requests: {},

@@ -5,6 +5,7 @@ import SearchBar from "@/mainview/components/Search/index.tsx";
 import Settings from "./pages/settings/index.tsx";
 import localstorage from "./utils/localStorage.ts";
 import Frame from "./components/Frame/index.tsx";
+import { PlayerProvider } from "./context/PlayerContext.tsx";
 
 function App() {
     const [url, seturl] = useState(localstorage("get", "url", "/"));
@@ -18,18 +19,20 @@ function App() {
     }, []);
 
     return (
-        <div className="w-screen h-screen flex flex-col items-center justify-center bg-zinc-900 cursor-default select-none">
-            <Frame />
-            <div className="w-full h-[85%]">
-                <div className="h-[5%] bg-zinc-900"></div>
-                <SearchBar />
-                <div className="h-[90%] flex flex-col items-center justify-center">
-                    <Pages url={url} />
-                    <Settings isOpen={url.includes("settings")} />
+        <PlayerProvider>
+            <div className="w-screen h-screen flex flex-col items-center justify-center bg-zinc-900 cursor-default select-none">
+                <Frame />
+                <div className="w-full h-[85%]">
+                    <div className="h-[5%] bg-zinc-900"></div>
+                    <SearchBar />
+                    <div className="h-[90%] flex flex-col items-center justify-center">
+                        <Pages url={url} />
+                        <Settings isOpen={url.includes("settings")} />
+                    </div>
                 </div>
+                <Player />
             </div>
-            <Player />
-        </div>
+        </PlayerProvider>
     );
 }
 

@@ -87,6 +87,12 @@ const setDiscordRPC = () => {
 	}
 };
 
+const emitToFrontend = (message: string, payload: any) => {
+	try {
+		(appRPC as any)?.send(message, payload);
+	} catch {}
+};
+
 const ytbTrackStart = "https://www.youtube.com/watch?v="
 
 const play = () => {
@@ -112,6 +118,7 @@ player.player.on("change-playState", (data: { isPlaying: boolean, time: number }
 	if (data.time !== undefined && data.time !== null) {
 		current.time = data.time;
 	}
+	emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
 	setDiscordRPC();
 })
 
@@ -132,6 +139,7 @@ player.player.on("playing", async (data) => {
 			id: track.id
 		}
 		writeUserData("currentPlaying", currentPlaying)
+		emitToFrontend("currentTrackChanged", { source: currentPlaying.source, id: currentPlaying.id, title: currentPlaying.title, thumbnail: currentPlaying.thumbnail, artist: currentPlaying.artist });
 		if (isDiscord) {
 			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
 		}
@@ -145,6 +153,7 @@ player.player.on("playing", async (data) => {
 			source: "local", id: track.id, title: track.name, thumbnail: track.thumbnail, artist: track.artist.map((item: any) => item.name).join(", ")
 		}
 		writeUserData("currentPlaying", currentPlaying)
+		emitToFrontend("currentTrackChanged", { source: currentPlaying.source, id: currentPlaying.id, title: currentPlaying.title, thumbnail: currentPlaying.thumbnail, artist: currentPlaying.artist });
 		if (isDiscord) {
 			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
 		}
@@ -250,6 +259,8 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 	}
 	result = [...new Set(result.filter(item => item !== currentTrack))];
 	await player.player.addTracks(result)
+	const queueState = getUserDatas(["playQueue", "nextfrom", "playedTrack"]) as UserData;
+	emitToFrontend("queueChanged", { playQueue: queueState.playQueue, nextfrom: queueState.nextfrom, playedTrack: queueState.playedTrack });
 })
 
 player.player.on("duration-update", (duration) => {
@@ -259,6 +270,7 @@ player.player.on("duration-update", (duration) => {
 		temp.duration = duration * 1000;
 		writeUserData("current", temp);
 	}
+	emitToFrontend("playerStateChange", { isPlaying: current.isPlaying, isLoading: false, duration: current.duration, isLived: current.isLived });
 });
 
 player.player.on("is-live", (isLived) => {
@@ -266,14 +278,17 @@ player.player.on("is-live", (isLived) => {
 	const temp = getUserData("current");
 	temp.isLived = isLived;
 	writeUserData("current", temp);
+	emitToFrontend("playerStateChange", { isPlaying: current.isPlaying, isLoading: false, duration: current.duration, isLived: current.isLived });
 });
 
 player.player.on("loading", (data) => {
 	writeUserData("isLoading", data)
+	emitToFrontend("playerStateChange", { isPlaying: current.isPlaying, isLoading: data, duration: current.duration, isLived: current.isLived });
 });
 
 player.player.on("ready", () => {
 	writeUserData("isLoading", false)
+	emitToFrontend("playerStateChange", { isPlaying: current.isPlaying, isLoading: false, duration: current.duration, isLived: current.isLived });
 });
 
 const withSafeEncoding = <T extends Record<string, any>>(handlers: T): T => {
@@ -300,6 +315,7 @@ const withSafeEncoding = <T extends Record<string, any>>(handlers: T): T => {
 const appRPC = BrowserView.defineRPC<AppRPCType>({
 	maxRequestTime: 60 * 1000,
 	handlers: {
+		messages: {},
 		requests: withSafeEncoding(
 			{
 				getMusicData: async ({ source, type, id }: { source: "youtube" | "local", type: string, id: string }) => {
@@ -396,6 +412,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					if (!player.player.isReady) return;
 					player.player.togglePlayPause(!current.isPlaying);
 					current.isPlaying = !current.isPlaying;
+					emitToFrontend("playerStateChange", { isPlaying: current.isPlaying, isLoading: false, duration: current.duration, isLived: current.isLived });
 				},
 				getUserData: async (key: keyof UserData) => {
 					if (key === "folder" && !isLocal) {
@@ -426,9 +443,14 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 
 						if (key === "volume") {
 							player.player.setVolume(data);
+							emitToFrontend("settingsChanged", { shuffle: getUserData("shuffle"), repeat: getUserData("repeat"), volume: data });
 						}
 						if (key === "repeat") {
 							player.player.setRepeat(data === Repeat.One);
+							emitToFrontend("settingsChanged", { shuffle: getUserData("shuffle"), repeat: data, volume: getUserData("volume") });
+						}
+						if (key === "shuffle") {
+							emitToFrontend("settingsChanged", { shuffle: data, repeat: getUserData("repeat"), volume: getUserData("volume") });
 						}
 					} catch (error) {
 						writeLogs([{ type: "error", message: `Error when writing user data with\nKey = ${key}\nValue = ${data}\n${error}` }]);
@@ -487,6 +509,9 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 
 					user.playedTrack = Array.from(new Set([...user.playedTrack, user.currentPlaying.id]));
 					writeUserDatas(user);
+					emitToFrontend("currentTrackChanged", { source: user.currentPlaying.source, id: user.currentPlaying.id, title: user.currentPlaying.title, thumbnail: user.currentPlaying.thumbnail, artist: user.currentPlaying.artist });
+					emitToFrontend("queueChanged", { playQueue: user.playQueue, nextfrom: user.nextfrom, playedTrack: user.playedTrack });
+					emitToFrontend("settingsChanged", { shuffle: user.shuffle, repeat: user.repeat, volume: getUserData("volume") });
 					play();
 					return user.currentPlaying
 				},
@@ -494,6 +519,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					try {
 						current.time = time;
 						player.player.seekTo(time);
+						emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
 					} catch (error) {
 						writeLogs([{ type: "error", message: `Error when changing time\n${error}` }]);
 						return null;

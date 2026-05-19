@@ -1,31 +1,23 @@
-import { useState, useRef, useEffect, RefObject } from "react";
+import { useRef, useEffect, RefObject } from "react";
 import Slider from "@/mainview/components/Player/common/Slider";
+import { usePlayerState } from "@/mainview/context/PlayerContext.tsx";
 
 export default function VolumeUI() {
-    const [volume, setvolume] = useState(50);
+    const { volume } = usePlayerState();
     const volumeSliderRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        window.api.rpc.request.getUserData("volume").then((data) => {
-            setvolume(data);
-        });
-    }, []);
 
     useEffect(() => {
         if (volumeSliderRef.current) {
             const min = Number(volumeSliderRef.current.min);
             const max = Number(volumeSliderRef.current.max);
             const percent = ((volume - min) / (max - min)) * 100;
-            volumeSliderRef.current.style.setProperty(
-                "--value-percent",
-                `${percent}%`,
-            );
-            window.api.rpc.request.setUserData({
-                key: "volume",
-                data: volume,
-            });
+            volumeSliderRef.current.style.setProperty("--value-percent", `${percent}%`);
         }
     }, [volume]);
+
+    const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        window.api.rpc.request.setUserData({ key: "volume", data: Number(e.target.value) });
+    };
 
     return (
         <div className="volume group flex flex-col items-center mr-2.5 cursor-pointer select-none">
@@ -33,10 +25,7 @@ export default function VolumeUI() {
                 name={"volume"}
                 reff={volumeSliderRef as RefObject<HTMLInputElement>}
                 value={volume}
-                Change={(e) => {
-                    const newVolume = Number(e.target.value);
-                    setvolume(newVolume);
-                }}
+                Change={handleVolumeChange}
                 max={100}
             />
             <span className="cursor-default">{volume}</span>
