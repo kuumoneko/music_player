@@ -4,7 +4,7 @@ import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
 import areStringsSimilar from "../utils/compare_string.ts";
 import { getDataFromDatabase } from "../lib/database.ts";
-import { getUserData, writeLogs } from "../db/index.ts";
+import { writeLogs } from "../db/index.ts";
 import Play from "./play.ts";
 import { mkdir } from "node:fs/promises";
 
@@ -28,23 +28,20 @@ export default class Player {
     public download_queue: Download_item[] = [];
     public audio_format: string = Audio_format.m4a;
     public folder: string = "";
+    public userPath: string = "";
 
-    constructor(userPath: string, appPath: string) {
-        this.player = new Play(appPath)
-        this.download_folder = getUserData("folder");
-        (getDataFromDatabase(appPath, "..", "Resources", "app", 'data', 'system') as Promise<System>).then(({ isLocal }) => {
-            if (isLocal) {
-                this.local = new Local(resolve(userPath, "data"), appPath);
-            }
-            this.youtube = new Youtube();
-        });
+    constructor(userPath: string, appPath: string, folder: string) {
         this.folder = appPath;
+        this.userPath = userPath;
+        this.download_folder = folder;
     }
 
-    async initLocal(userPath: string, appPath: string) {
-        const { isLocal } = await getDataFromDatabase(appPath, "..", "Resources", "app", 'data', 'system') as System;
+    async init() {
+        this.player = new Play(this.folder)
+        this.youtube = new Youtube();
+        const { isLocal } = await getDataFromDatabase(this.folder, "..", "Resources", "app", 'data', 'system') as System;
         if (isLocal) {
-            this.local = new Local(resolve(userPath, "data"), appPath);
+            this.local = new Local(resolve(this.userPath, "data"), this.folder);
         }
         return isLocal;
     }

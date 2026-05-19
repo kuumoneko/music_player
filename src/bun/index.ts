@@ -100,7 +100,14 @@ const play = () => {
 		player.player.play(`${currentPlaying.id}`)
 	}
 }
-player = new Player(userData, APP_ROOT);
+const folder = getUserData("folder");
+
+player = new Player(userData, APP_ROOT, folder);
+await player.init();
+
+if (folder.length > 0 && isLocal) {
+	player.local?.getfolder(folder);
+}
 
 player.player.on("exit", () => {
 	appWin?.close();
@@ -277,12 +284,10 @@ player.player.on("is-live", (isLived) => {
 });
 
 player.player.on("loading", (data) => {
-	writeUserData("isLoading", data)
 	emitToFrontend("playerStateChange", { isPlaying: current.isPlaying, isLoading: data, duration: current.duration, isLived: current.isLived });
 });
 
 player.player.on("ready", () => {
-	writeUserData("isLoading", false)
 	emitToFrontend("playerStateChange", { isPlaying: current.isPlaying, isLoading: false, duration: current.duration, isLived: current.isLived });
 });
 
@@ -692,10 +697,5 @@ appTray?.on("tray-clicked", (e: any) => {
 	}
 });
 openAppUI();
-const folder = getUserData("folder");
-if (folder.length > 0 && isLocal) {
-	await player.initLocal(userData, APP_ROOT);
-	player.local?.getfolder(folder);
-}
 // const now = Date.now()
 // player.youtube.checkYoutubeTracks().then(() => { console.log(Date.now() - now) })
