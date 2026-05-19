@@ -19,11 +19,18 @@ export default function ControlPanel() {
     const [isLocal, setIsLocal] = useState(true);
 
     useEffect(() => {
-        const run = setInterval(() => {
-            setbackward(localstorage("get", "backward", []));
-            setforward(localstorage("get", "forward", []));
-        }, 100);
-        return () => clearInterval(run);
+        const onForwardChange = (e: Event) => {
+            setforward((e as CustomEvent).detail);
+        };
+        const onBackwardChange = (e: Event) => {
+            setbackward((e as CustomEvent).detail);
+        };
+        window.addEventListener("forwardchange", onForwardChange);
+        window.addEventListener("backwardchange", onBackwardChange);
+        return () => {
+            window.removeEventListener("forwardchange", onForwardChange);
+            window.removeEventListener("backwardchange", onBackwardChange);
+        };
     }, []);
 
     useEffect(() => {
