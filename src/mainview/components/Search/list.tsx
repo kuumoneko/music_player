@@ -46,7 +46,6 @@ export default function List({
 
     useEffect(() => {
         window.api.rpc.request.getUserData("pin").then((data) => {
-            console.log(data);
             setPin(data);
         });
     }, [list]);
@@ -90,9 +89,7 @@ export default function List({
                 {show_list.map((item: Track, index: number) => {
                     return (
                         <div
-                            key={
-                                item.name ?? `${source} ${mode} ${id} ${index}`
-                            }
+                            key={`${item.name ? item.name + index : `${source} ${mode} ${id} ${index}`}`}
                             className={`vid_${
                                 index + 1
                             } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600 rounded-lg`}
