@@ -454,12 +454,15 @@ export default class Youtube {
         return playlist;
     }
 
-    fetch_playlist(id: string): Promise<Playlist> {
+    fetch_playlist(id: string, isHomeData: boolean = false): Promise<Playlist> {
         return new Promise(async (resolve) => {
             let this_playlist = getPlaylist(id)
             try {
                 if (this_playlist !== null && this_playlist !== undefined && ((this_playlist?.ids as string[] ?? []).length) > 0) {
-                    const tracks = await this.fetch_track(this_playlist?.ids as string[]);
+                    let tracks: Track[] = [];
+                    if (isHomeData === false) {
+                        tracks = await this.fetch_track(this_playlist?.ids as string[]);
+                    }
                     resolve({
                         source: "youtube",
                         name: this_playlist.name,
@@ -604,7 +607,7 @@ export default class Youtube {
         }
     }
 
-    async fetch_artist(id: string): Promise<Artist> {
+    async fetch_artist(id: string, isHomeData: boolean = false): Promise<Artist> {
         if (this.running.filter((item: any) => { return item.name === `artist:${id}` }).length === 0) {
             this.running.push({
                 name: `artist:${id}`
@@ -631,7 +634,15 @@ export default class Youtube {
             }
 
             const uploadsPlaylistId = "UU" + id.slice(2);
-            const artist_tracks = await this.fetch_recent_tracks(id, 10);
+            let artist_tracks: Track[] = [];
+            if (isHomeData === false) {
+                try {
+                    const artist_playlist = await this.fetch_playlist_data(uploadsPlaylistId);
+                    artist_tracks = artist_playlist.tracks ?? [];
+                } catch {
+                    artist_tracks = await this.fetch_recent_tracks(id, 10);
+                }
+            }
 
             const artThumbnail = artThumbnails?.[0]?.url ? this.ensureHttps(artThumbnails[0].url) : "";
 
@@ -684,15 +695,11 @@ export default class Youtube {
     async get_new_tracks(ids: string[]) {
         try {
             const new_tracks: Track[] = []
-            for (const id of ids) {
-                try {
-                    new_tracks.push(...(await this.fetch_recent_tracks(id, 6)));
-                }
-                catch (e) {
-                    this.log(e);
-                }
-            }
-            return new_tracks;
+            const results = await Promise.all(ids.map(id => this.fetch_recent_tracks(id, 10)));
+            results.forEach(tracks => new_tracks.push(...tracks));
+            return new_tracks.sort((a: Track, b: Track) => {
+                return new Date(a.releasedDate).getTime() - new Date(b.releasedDate).getTime();
+            });
         } catch (e) {
             this.log(e);
             return []
