@@ -1,5 +1,4 @@
 import Home from "./home.tsx";
-import Albums from "@/mainview/pages/music/albums.tsx";
 import Artists from "@/mainview/pages/music/artists.tsx";
 import Playlists from "@/mainview/pages/music/playlists.tsx";
 import Search from "@/mainview/pages/music/search.tsx";
@@ -17,9 +16,6 @@ function Pages({ url }: { url: string }) {
     }
     if (url.startsWith("/artists")) {
         return <Artists />;
-    }
-    if (url.startsWith("/album")) {
-        return <Albums />;
     }
     if (url.startsWith("/search")) {
         return <Search url={url} />;
