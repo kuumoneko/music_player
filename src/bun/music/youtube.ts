@@ -43,7 +43,7 @@ interface InnerSearchResult {
 export default class Youtube {
     private api_key: string | null = null;
     private clientVersion = "2.20250401.00.00";
-    private running: any[] = [];
+    private running: { name: string }[] = [];
 
     constructor() { }
 
@@ -472,7 +472,7 @@ export default class Youtube {
                         tracks: tracks
                     })
                 }
-                if (this.running.filter((item: any) => { return item.name === `playlist:${id}` }).length === 0) {
+                if (this.running.filter((item: { name: string }) => { return item.name === `playlist:${id}` }).length === 0) {
                     this.running.push({
                         name: `playlist:${id}`
                     })
@@ -534,10 +534,10 @@ export default class Youtube {
                 console.log(`Progress: ${Math.min(i + CONCURRENCY_LIMIT, videoIds.length)}/${videoIds.length}`);
             }
             deleteTracks(unavailableTracks)
-            this.running = this.running.filter((item: any) => { return item.name !== "checkAvailable" })
+            this.running = this.running.filter((item: { name: string }) => { return item.name !== "checkAvailable" })
         } catch (error) {
             this.log(error.message);
-            this.running = this.running.filter((item: any) => { return item.name !== "checkAvailable" })
+            this.running = this.running.filter((item: { name: string }) => { return item.name !== "checkAvailable" })
         }
     }
 
@@ -606,14 +606,14 @@ export default class Youtube {
                 artists: artist_ids,
             }
         }
-        catch (e: any) {
+        catch (e) {
             this.log(e)
             throw new Error(e);
         }
     }
 
     async fetch_artist(id: string, isHomeData: boolean = false): Promise<Artist> {
-        if (this.running.filter((item: any) => { return item.name === `artist:${id}` }).length === 0) {
+        if (this.running.filter((item: { name: string }) => { return item.name === `artist:${id}` }).length === 0) {
             this.running.push({
                 name: `artist:${id}`
             })
