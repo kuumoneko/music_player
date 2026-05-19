@@ -1,5 +1,25 @@
 import { build } from "bun";
 
+async function buildHtml() {
+    const htmlSource = "./src/mainview/index.html";
+    const htmlFile = Bun.file(htmlSource);
+
+    const body = `
+    <body>
+        <div id="root"></div>
+    </body>
+    `
+    const html = await htmlFile.text();
+    const mainJs = `<script type="module" src="./index.js"></script>`;
+    const mainCss = `<link rel="stylesheet" href="./index.css">`;
+
+    const [head, tail] = html.split("<body>");
+    const [_, end] = tail.split("</body>");
+
+    const newHtml = `${head}${mainCss}\n${mainJs}\n${body}\n${end}`;
+    await Bun.write("./dist/index.html", newHtml);
+}
+
 export default async function Build_Front_End() {
     console.log("Building client for production environment...");
     const start = Date.now();
@@ -17,6 +37,8 @@ export default async function Build_Front_End() {
         "-o", "./dist/index.css",
         "--minify"
     ]).exited;
+
+    await buildHtml();
 
     const [jsResult, tailwindExitCode] = await Promise.all([
         jsBuildPromise,
