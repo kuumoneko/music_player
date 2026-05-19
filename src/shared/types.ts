@@ -230,7 +230,8 @@ export interface UserData {
     playQueue: string[],
     folder: string,
     pin: string[],
-    downloadQueue: string[]
+    downloadQueue: string[],
+    ytSignatureTimestamp: number
 }
 
 export interface System {

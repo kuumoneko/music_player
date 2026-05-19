@@ -1,13 +1,18 @@
 import EventEmitter from "node:events";
-import { writeLogs } from "../db";
+import { writeLogs, getUserData, writeUserData } from "../db";
 import { SleepMode } from "../../shared/types.ts";
 
 const YT_API_BASE = "https://www.youtube.com/youtubei/v1";
 
 class DirectYT {
     private visitorData = "";
-    private signatureTimestamp = 20584;
+    private signatureTimestamp: number;
     private ready = false;
+    private persisted = false;
+
+    constructor() {
+        this.signatureTimestamp = getUserData("ytSignatureTimestamp") ?? 20584;
+    }
 
     async ensureSession() {
         if (this.ready) return;
@@ -21,7 +26,14 @@ class DirectYT {
             });
             const data = await res.json();
             this.visitorData = data?.responseContext?.visitorData || "";
-            this.signatureTimestamp = data?.responseContext?.signatureTimestamp || 20584;
+            const fetched = data?.responseContext?.signatureTimestamp;
+            if (fetched) {
+                this.signatureTimestamp = fetched;
+                if (!this.persisted) {
+                    writeUserData("ytSignatureTimestamp", fetched);
+                    this.persisted = true;
+                }
+            }
             this.ready = true;
         } catch (e) {
             writeLogs([{ type: "error", message: `DirectYT session failed: ${e.message}` }]);
@@ -33,61 +45,70 @@ class DirectYT {
             await this.ensureSession();
             if (!this.visitorData) return null;
 
-            const res = await fetch(`${YT_API_BASE}/player?prettyPrint=false&alt=json`, {
-                method: "POST",
-                body: JSON.stringify({
-                    videoId,
-                    racyCheckOk: true,
-                    contentCheckOk: true,
-                    playbackContext: {
-                        contentPlaybackContext: {
-                            vis: 0,
-                            splay: false,
-                            lactMilliseconds: "-1",
-                            signatureTimestamp: this.signatureTimestamp,
-                        },
-                    },
-                    context: {
-                        client: {
-                            hl: "en",
-                            gl: "US",
-                            visitorData: this.visitorData,
-                            clientName: "ANDROID_VR",
-                            clientVersion: "0.1",
-                            osName: "Android",
-                            osVersion: "14",
-                            platform: "MOBILE",
-                        },
-                        user: { enableSafetyMode: false, lockedSafetyMode: false },
-                        request: { useSsl: true, internalExperimentFlags: [] },
-                    },
-                }),
-                headers: { "Content-Type": "application/json" },
-            });
-            const data = await res.json();
-            const sd = data?.streamingData;
-            if (!sd) return null;
+            const result = await this.resolveOnce(videoId);
+            if (result) return result;
 
-            const all = [...(sd.formats || []), ...(sd.adaptiveFormats || [])];
-            const best = all
-                .filter((f: any) => f.audioChannels > 0 && !f.width)
-                .sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-            if (!best) return null;
-
-            if (best.url) return best.url;
-            const cipher = best.cipher || best.signatureCipher;
-            if (cipher) {
-                const p = new URLSearchParams(cipher);
-                const baseUrl = p.get("url");
-                const sp = p.get("sp") || "signature";
-                const sig = p.get("s");
-                if (baseUrl && sig) return `${baseUrl}&${sp}=${sig}`;
-            }
-            return null;
+            this.ready = false;
+            await this.ensureSession();
+            return this.resolveOnce(videoId);
         } catch (e) {
             writeLogs([{ type: "error", message: `DirectYT resolve failed: ${e.message}` }]);
             return null;
         }
+    }
+
+    private async resolveOnce(videoId: string): Promise<string | null> {
+        const res = await fetch(`${YT_API_BASE}/player?prettyPrint=false&alt=json`, {
+            method: "POST",
+            body: JSON.stringify({
+                videoId,
+                racyCheckOk: true,
+                contentCheckOk: true,
+                playbackContext: {
+                    contentPlaybackContext: {
+                        vis: 0,
+                        splay: false,
+                        lactMilliseconds: "-1",
+                        signatureTimestamp: this.signatureTimestamp,
+                    },
+                },
+                context: {
+                    client: {
+                        hl: "en",
+                        gl: "US",
+                        visitorData: this.visitorData,
+                        clientName: "ANDROID_VR",
+                        clientVersion: "0.1",
+                        osName: "Android",
+                        osVersion: "14",
+                        platform: "MOBILE",
+                    },
+                    user: { enableSafetyMode: false, lockedSafetyMode: false },
+                    request: { useSsl: true, internalExperimentFlags: [] },
+                },
+            }),
+            headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        const sd = data?.streamingData;
+        if (!sd) return null;
+
+        const all = [...(sd.formats || []), ...(sd.adaptiveFormats || [])];
+        const best = all
+            .filter((f: any) => f.audioChannels > 0 && !f.width)
+            .sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+        if (!best) return null;
+
+        if (best.url) return best.url;
+        const cipher = best.cipher || best.signatureCipher;
+        if (cipher) {
+            const p = new URLSearchParams(cipher);
+            const baseUrl = p.get("url");
+            const sp = p.get("sp") || "signature";
+            const sig = p.get("s");
+            if (baseUrl && sig) return `${baseUrl}&${sp}=${sig}`;
+        }
+        return null;
     }
 }
 
