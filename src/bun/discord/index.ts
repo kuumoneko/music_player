@@ -1,8 +1,8 @@
 import net from "node:net";
-import Player from "../music";
+import Player from "../music/index.ts";
 import { getTrackByName } from "../db/index.ts";
 import os from "node:os"
-import { Track } from "@/shared/types.ts";
+import { Track } from "../../shared/types.ts";
 
 const pipePath = os.platform() === 'win32'
     ? '\\\\.\\pipe\\discord-ipc-0'
