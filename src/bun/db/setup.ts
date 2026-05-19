@@ -11,7 +11,6 @@ db.run("PRAGMA foreign_keys = ON;");
 db.run(`
   CREATE TABLE IF NOT EXISTS artists (
     id TEXT PRIMARY KEY,
-    etag TEXT,
     name TEXT NOT NULL,
     source TEXT CHECK(source IN ('youtube', 'local')),
     thumbnail TEXT,
@@ -20,7 +19,6 @@ db.run(`
 
   CREATE TABLE IF NOT EXISTS playlists (
     id TEXT PRIMARY KEY,
-    etag TEXT,
     name TEXT NOT NULL,
     source TEXT CHECK(source IN ('youtube', 'local')),
     thumbnail TEXT,
@@ -29,7 +27,6 @@ db.run(`
 
   CREATE TABLE IF NOT EXISTS tracks (
     id TEXT PRIMARY KEY,
-    etag TEXT,
     name TEXT NOT NULL,
     source TEXT CHECK(source IN ('youtube', 'local')),
     thumbnail TEXT,
@@ -66,9 +63,14 @@ db.run(`
   );
 `);
 db.run(`CREATE INDEX IF NOT EXISTS idx_log_date ON log(date);`);
-try {
-  db.run(`ALTER TABLE tracks DROP COLUMN track_index;`);
-} catch { }
+
+const commands = [
+  `ALTER TABLE tracks DROP COLUMN etag;`,
+  `ALTER TABLE playlists DROP COLUMN etag;`,
+  `ALTER TABLE artists DROP COLUMN etag;`,
+  `ALTER TABLE tracks DROP COLUMN track_index;`
+];
+for (const sql of commands) { try { db.run(sql); } catch { } }
 db.run(`PRAGMA cache_size = -2000;`);
 db.run("PRAGMA shrink_memory;");
 export default db;
