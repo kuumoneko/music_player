@@ -589,7 +589,6 @@ const openAppUI = () => {
 			if (isFirstLoad) {
 				play();
 				isFirstLoad = false;
-				appWin.webview.openDevTools();
 			}
 		})
 		appWin?.on("close", () => {
