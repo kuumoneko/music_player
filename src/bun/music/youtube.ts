@@ -491,49 +491,54 @@ export default class Youtube {
     }
 
     async checkYoutubeTracks() {
-        let videoIds = getAllTracks().map((item: Track) => item.id);
-        if (videoIds.length === 0) return;
-        if (this.running.some(item => item.name === "checkAvailable")) return;
-        this.running.push({
-            name: "checkAvailable"
-        });
-        videoIds = Array.from(new Set([...videoIds]))
-        const unavailableTracks: string[] = [];
-        const isTrackAvailable = async (id: string) => {
-            try {
-                const url = `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
-                const response = await Bun.fetch(url, { method: "HEAD", signal: AbortSignal.timeout(2000) });
-                if (!response.ok) return false;
-                const contentLength = response.headers.get("content-length");
-                if (contentLength === "1110") {
-                    return false;
-                }
-                return true;
-            } catch (error) {
-                return true;
-            }
-        }
-
-        const CONCURRENCY_LIMIT = 10;
-
-        for (let i = 0; i < videoIds.length; i += CONCURRENCY_LIMIT) {
-            const chunk = videoIds.slice(i, i + CONCURRENCY_LIMIT);
-
-            const chunkResults = await Promise.all(
-                chunk.map(async (id) => ({
-                    id,
-                    available: await isTrackAvailable(id)
-                }))
-            );
-
-            chunkResults.forEach(res => {
-                if (!res.available) unavailableTracks.push(res.id);
+        try {
+            let videoIds = getAllTracks().map((item: Track) => item.id);
+            if (videoIds.length === 0) return;
+            if (this.running.some(item => item.name === "checkAvailable")) return;
+            this.running.push({
+                name: "checkAvailable"
             });
+            videoIds = Array.from(new Set([...videoIds]))
+            const unavailableTracks: string[] = [];
+            const isTrackAvailable = async (id: string) => {
+                try {
+                    const url = `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
+                    const response = await Bun.fetch(url, { method: "HEAD", signal: AbortSignal.timeout(2000) });
+                    if (!response.ok) return false;
+                    const contentLength = response.headers.get("content-length");
+                    if (contentLength === "1110") {
+                        return false;
+                    }
+                    return true;
+                } catch (error) {
+                    return true;
+                }
+            }
 
-            console.log(`Progress: ${Math.min(i + CONCURRENCY_LIMIT, videoIds.length)}/${videoIds.length}`);
+            const CONCURRENCY_LIMIT = 10;
+
+            for (let i = 0; i < videoIds.length; i += CONCURRENCY_LIMIT) {
+                const chunk = videoIds.slice(i, i + CONCURRENCY_LIMIT);
+
+                const chunkResults = await Promise.all(
+                    chunk.map(async (id) => ({
+                        id,
+                        available: await isTrackAvailable(id)
+                    }))
+                );
+
+                chunkResults.forEach(res => {
+                    if (!res.available) unavailableTracks.push(res.id);
+                });
+
+                console.log(`Progress: ${Math.min(i + CONCURRENCY_LIMIT, videoIds.length)}/${videoIds.length}`);
+            }
+            deleteTracks(unavailableTracks)
+            this.running = this.running.filter((item: any) => { return item.name !== "checkAvailable" })
+        } catch (error) {
+            this.log(error.message);
+            this.running = this.running.filter((item: any) => { return item.name !== "checkAvailable" })
         }
-        deleteTracks(unavailableTracks)
-        this.running = this.running.filter((item: any) => { return item.name !== "checkAvailable" })
     }
 
     async fetch_contentRating(ids: string[]): Promise<Record<string, any>> {
