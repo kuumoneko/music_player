@@ -8,8 +8,7 @@ const db = new Database(resolve(userData, "app_data.sqlite"), { create: true });
 
 db.run("PRAGMA foreign_keys = ON;");
 
-try {
-  db.run(`
+db.run(`
   CREATE TABLE IF NOT EXISTS artists (
     id TEXT PRIMARY KEY,
     etag TEXT,
@@ -35,8 +34,8 @@ try {
     source TEXT CHECK(source IN ('youtube', 'local')),
     thumbnail TEXT,
     duration INTEGER,
-    releasedDate TEXT,
-=  );
+    releasedDate TEXT
+  );
 
   CREATE TABLE IF NOT EXISTS track_artists (
     track_id TEXT,
@@ -66,10 +65,6 @@ try {
   message TEXT
   );
 `);
-} catch (error) {
-  console.log(error);
-}
-
 db.run(`CREATE INDEX IF NOT EXISTS idx_log_date ON log(date);`);
 try {
   db.run(`ALTER TABLE tracks DROP COLUMN track_index;`);
