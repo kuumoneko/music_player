@@ -1,7 +1,5 @@
-import Loading from "@/mainview/components/Loading";
 import Music from "@/mainview/components/Music/index.tsx";
 import localstorage from "@/mainview/utils/localStorage.ts";
-import { goto } from "@/mainview/utils/url";
 import { useEffect, useState } from "react";
 
 export default function Playlists() {
@@ -15,10 +13,6 @@ export default function Playlists() {
         const [source, id] = localstorage("get", "url", "/")
             .split("/")
             .slice(2);
-        if (source === undefined || id === undefined) {
-            setdom(<Index />);
-            return;
-        }
         if (source !== data.source || id !== data.id) {
             setdata({
                 source,
@@ -36,43 +30,4 @@ export default function Playlists() {
     }, []);
 
     return <>{dom}</>;
-}
-
-function Index() {
-    const [pin, setpin] = useState<any>(null);
-    useEffect(() => {
-        async function run() {
-            const pin: any[] = await window.api.rpc.request.getUserData("pin");
-            const playlists = pin.filter((item: any) =>
-                item.mode.includes("playlist"),
-            );
-            setpin(playlists);
-        }
-        run();
-    }, []);
-    return (
-        <div className="grid grid-cols-7 items-center">
-            {pin?.map((playlist: any) => {
-                return (
-                    <div
-                        className="flex flex-row items-center mr-4 my-3 bg-zinc-600 p-2 rounded-4xl hover:bg-zinc-500 hover:cursor-pointer"
-                        onClick={() => {
-                            goto(
-                                `/playlists/${playlist.source}/${playlist.id}`,
-                            );
-                        }}
-                    >
-                        <img
-                            className="mr-2 rounded-2xl"
-                            src={playlist.thumbnail}
-                            height="50"
-                            width="80"
-                            alt=""
-                        />
-                        <div>{playlist.name.slice(0, 25)}</div>
-                    </div>
-                );
-            }) ?? <Loading mode="artists" />}
-        </div>
-    );
 }
