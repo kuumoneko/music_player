@@ -38,19 +38,15 @@ let appTray: Tray | null = null;
 let discordRPC: DiscordRPC | null = null;
 let player: Player | null = null;
 
+const firstLoadCurrent = getUserData("current");
 const current = {
 	time: 0,
-	duration: 0,
-	isLived: false,
+	duration: firstLoadCurrent.duration,
+	isLived: firstLoadCurrent.isLived,
 	isPlaying: false,
 };
 
-() => {
-	const temp = getUserData("current");
-	writeUserData("isLoading", true);
-	current.duration = temp.duration;
-	current.isLived = temp.isLived;
-};
+writeUserData("isLoading", true);
 
 const getTrayMenu = (isShown: boolean): MenuItemConfig[] => [
 	{
