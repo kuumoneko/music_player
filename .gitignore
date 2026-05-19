@@ -17,3 +17,4 @@ electrobun
 release
 .zigversion
 tsconfig.tsbuildinfo
+temp_electrobun.config.ts
