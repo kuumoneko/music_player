@@ -16,8 +16,8 @@ export default function ControlPages() {
     const [activeIndex, setActiveIndex] = useState(1);
 
     useEffect(() => {
-        const run = setInterval(() => {
-            const url = localstorage("get", "url", "/");
+        const onUrlChange = (e: Event) => {
+            const url = (e as CustomEvent).detail;
             if (url === "/") {
                 setActiveIndex(1);
             } else if (url.includes("/playlists")) {
@@ -27,8 +27,9 @@ export default function ControlPages() {
             } else {
                 setActiveIndex(-1);
             }
-        }, 1);
-        return () => clearInterval(run);
+        };
+        window.addEventListener("urlchange", onUrlChange);
+        return () => window.removeEventListener("urlchange", onUrlChange);
     }, []);
 
     const menuItems = [
