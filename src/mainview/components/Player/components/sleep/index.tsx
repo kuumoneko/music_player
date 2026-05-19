@@ -31,7 +31,7 @@ export default function SleepUI() {
                 return <span className="w-full flex flex-row-reverse">15</span>;
             case SleepMode.thirty:
                 return <span className="w-full flex flex-row-reverse">30</span>;
-            case SleepMode.fourtyfive:
+            case SleepMode.fortyfive:
                 return <span className="w-full flex flex-row-reverse">45</span>;
             case SleepMode.hour:
                 return (
