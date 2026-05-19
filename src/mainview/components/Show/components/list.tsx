@@ -35,7 +35,8 @@ export default function List({
     const [show_list, setlist] = useState<any[]>([]);
 
     useEffect(() => {
-        async function run() {
+        let cancelled = false;
+        (async () => {
             if (
                 mode.includes("artist") &&
                 mode.split(":")[1] !== undefined &&
@@ -46,6 +47,7 @@ export default function List({
                     type: "playlists",
                     id,
                 });
+                if (cancelled) return;
                 list.push(...(data as Playlist).tracks);
                 list = [
                     ...new Map(
@@ -61,9 +63,10 @@ export default function List({
                 ];
             }
             const temp: any[] = list.slice(sight.head, sight.tail + 1) as any[];
+            if (cancelled) return;
             setlist(temp);
-        }
-        run();
+        })();
+        return () => { cancelled = true; };
     }, [sight, list]);
 
     const scroll = (direction: string) => {

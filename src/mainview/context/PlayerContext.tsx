@@ -37,7 +37,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const [state, setState] = useState<PlayerState>(defaultState);
 
     useEffect(() => {
-        async function init() {
+        let cancelled = false;
+        (async () => {
             try {
                 const [playingData, currentPlaying, volume, playQueue, nextfrom] = await Promise.all([
                     window.api.rpc.request.getPlayingData(),
@@ -47,6 +48,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                     window.api.rpc.request.getUserData("nextfrom"),
                 ]);
 
+                if (cancelled) return;
                 setState({
                     isPlaying: playingData.isPlaying,
                     time: playingData.current.time,
@@ -64,8 +66,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             } catch (err) {
                 console.error("PlayerContext init error:", err);
             }
-        }
-        init();
+        })();
 
         const handlers: Record<string, (payload: any) => void> = {
             timeUpdate: (payload) => {
@@ -90,6 +91,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         }
 
         return () => {
+            cancelled = true;
             for (const [name, handler] of Object.entries(handlers)) {
                 window.api.rpc.removeMessageListener(name, handler);
             }

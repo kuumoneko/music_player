@@ -16,16 +16,18 @@ export default function Music({
     const [data, setData] = useState<any>({});
 
     useEffect(() => {
-        const getdata = async () => {
+        let cancelled = false;
+        (async () => {
             const result = await window.api.rpc.request.getMusicData({
                 source: source as any,
                 type: type as any,
                 id: id,
             });
+            if (cancelled) return;
             setTracks(result.tracks || (type === "tracks" ? [result] : []));
             setData(result ?? {});
-        };
-        getdata();
+        })();
+        return () => { cancelled = true; };
     }, [source, type, id]);
 
     return (

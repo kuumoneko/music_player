@@ -17,7 +17,8 @@ export default function Play_Queue() {
     const [nextfromData, setNextfromData] = useState<{ from: string; next: Track[] }>({ from: "", next: [] });
 
     useEffect(() => {
-        async function fetchNextFrom() {
+        let cancelled = false;
+        (async () => {
             if (!nextfromStr) {
                 setNextfromData({ from: "", next: [] });
                 return;
@@ -28,6 +29,7 @@ export default function Play_Queue() {
                 type: mode as "tracks" | "playlists" | "artists",
                 id: id,
             });
+            if (cancelled) return;
             let track: Track[] = [];
             if (mode === "track") {
                 track = data ? [data] : [];
@@ -35,8 +37,8 @@ export default function Play_Queue() {
                 track = data.tracks;
             }
             setNextfromData({ from: nextfromStr, next: track });
-        }
-        fetchNextFrom();
+        })();
+        return () => { cancelled = true; };
     }, [nextfromStr]);
 
     return (

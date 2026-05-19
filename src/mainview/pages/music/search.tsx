@@ -15,20 +15,22 @@ export default function Search({ url }: { url: string }) {
     });
 
     useEffect(() => {
-        async function run() {
+        let cancelled = false;
+        (async () => {
             const [source, type, query] = url.split("/").slice(2);
             const res = await window.api.rpc.request.searchMusic({
                 type: type as any,
                 query: query,
             });
+            if (cancelled) return;
             setsearch({
                 query,
                 source,
                 type,
                 result: res as any,
             });
-        }
-        run();
+        })();
+        return () => { cancelled = true; };
     }, [url]);
     return (
         <>

@@ -11,9 +11,11 @@ export default function Download_Queue() {
     const [list, setlist] = useState("{}");
 
     useEffect(() => {
-        async function run() {
+        let cancelled = false;
+        (async () => {
             const res =
                 await window.api.rpc.request.getUserData("downloadQueue");
+            if (cancelled) return;
             const data = res.map((item) => {
                 const [source, mode, id] = item.split(":");
                 return {
@@ -36,6 +38,7 @@ export default function Download_Queue() {
                     type: "artists",
                     id: item.id,
                 });
+                if (cancelled) return;
                 playlists.push({
                     source: item.source,
                     mode: "playlist",
@@ -55,6 +58,7 @@ export default function Download_Queue() {
                     type: "playlists",
                     id: item.id,
                 });
+                if (cancelled) return;
 
                 const tracks_in_playlist = tracks.filter((track: any) => {
                     return ((data as Playlist).tracks as any[]).find(
@@ -83,6 +87,7 @@ export default function Download_Queue() {
                     type: "tracks",
                     id: item.id,
                 });
+                if (cancelled) return;
 
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
@@ -101,8 +106,8 @@ export default function Download_Queue() {
             });
             setlist(JSON.stringify(temp));
             setqueue(JSON.stringify(hehe));
-        }
-        run();
+        })();
+        return () => { cancelled = true; };
     }, []);
 
     return (

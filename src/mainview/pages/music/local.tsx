@@ -9,22 +9,22 @@ export default function Local() {
     const [localfile, setlocalfile] = useState(check ? check : []);
     const [duration, setduration] = useState(0);
     useEffect(() => {
-        async function run() {
-            const data = await window.api.rpc.request.getLocalfile();
-            setlocalfile(data);
-            setduration(
-                data.reduce((a: number, b: Track) => a + b.duration, 0),
-            );
-        }
-        run();
-        let running = setInterval(() => {
-            run();
-            if (localfile.length > 0) {
-                clearInterval(running);
-                running = setInterval(run, 60 * 1000);
-            }
-        }, 1000);
-        return () => clearInterval(running);
+        let cancelled = false;
+        (async () => {
+            const fetchData = async () => {
+                const data = await window.api.rpc.request.getLocalfile();
+                if (cancelled) return;
+                setlocalfile(data);
+                setduration(
+                    data.reduce((a: number, b: Track) => a + b.duration, 0),
+                );
+            };
+            await fetchData();
+            const running = setInterval(async () => {
+                await fetchData();
+            }, 1000);
+            return () => { cancelled = true; clearInterval(running); };
+        })();
     }, []);
     return (
         <>

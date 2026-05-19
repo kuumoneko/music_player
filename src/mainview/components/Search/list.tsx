@@ -45,9 +45,11 @@ export default function List({
     }, [sight, list]);
 
     useEffect(() => {
+        let cancelled = false;
         window.api.rpc.request.getUserData("pin").then((data) => {
-            setPin(data);
+            if (!cancelled) setPin(data);
         });
+        return () => { cancelled = true; };
     }, [list]);
 
     // remove  #hashtag from the title

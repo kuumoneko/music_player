@@ -10,8 +10,10 @@ export default function HomePage() {
     const [new_tracks, setnew_tracks] = useState([]);
 
     useEffect(() => {
-        async function run() {
+        let cancelled = false;
+        (async () => {
             const temp = await window.api.rpc.request.getHomeData();
+            if (cancelled) return;
             setartists(temp.artists ?? []);
             setplaylists(temp.playlists ?? []);
             settracks(temp.tracks ?? []);
@@ -29,8 +31,8 @@ export default function HomePage() {
                 return dateB.getTime() - dateA.getTime();
             });
             setnew_tracks(tempp);
-        }
-        run();
+        })();
+        return () => { cancelled = true; };
     }, []);
     return (
         <div className="flex flex-col items-center justify-start h-full w-full">

@@ -5,18 +5,19 @@ import { useEffect, useState } from "react";
 export default function Update() {
     const [version, setVersion] = useState<string | boolean>("");
     useEffect(() => {
+        let cancelled = false;
         window.api.rpc.request.checkUpdate().then((data: string | boolean) => {
-            setVersion(data);
+            if (!cancelled) setVersion(data);
         });
 
         const interval = window.setInterval(() => {
             window.api.rpc.request
                 .checkUpdate()
                 .then((data: string | boolean) => {
-                    setVersion(data);
+                    if (!cancelled) setVersion(data);
                 });
         }, 1000);
-        return () => clearInterval(interval);
+        return () => { cancelled = true; clearInterval(interval); };
     }, []);
 
     return (

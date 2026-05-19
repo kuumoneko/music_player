@@ -35,8 +35,10 @@ export default function Top({
 }) {
     const [isPin, setiSPin] = useState(false);
     useEffect(() => {
-        async function run() {
+        let cancelled = false;
+        (async () => {
             const pin = await window.api.rpc.request.getUserData("pin");
+            if (cancelled) return;
             if (
                 pin.findIndex(
                     (item: any) => item === `${source}:${mode}:${id}`,
@@ -46,8 +48,8 @@ export default function Top({
             } else {
                 setiSPin(false);
             }
-        }
-        run();
+        })();
+        return () => { cancelled = true; };
     }, [name]);
     return (
         <>

@@ -14,13 +14,15 @@ export default function Download() {
     const [data, setdata] = useState<string>("");
 
     useEffect(() => {
+        let cancelled = false;
         const intervalId = window.setInterval(() => {
             try {
                 if (status !== "done") {
                     (async () => {
-                        if (!status) return;
+                        if (!status || cancelled) return;
                         const { data, track } =
                             await window.api.rpc.request.getDownloadStatus();
+                        if (cancelled) return;
                         if (data == Status.done) {
                             setstatus(Status.done);
                             setdownload(false);
@@ -36,17 +38,19 @@ export default function Download() {
                 }
             } catch {}
         }, 500);
-        return () => window.clearInterval(intervalId);
+        return () => { cancelled = true; window.clearInterval(intervalId); };
     }, []);
 
     useEffect(() => {
+        let cancelled = false;
         if (download && status === Status.idle) {
             window.api.rpc.request.downloadMusic().then((res) => {
-                if (res == "ok") {
+                if (!cancelled && res == "ok") {
                     setstatus(Status.downloading);
                 }
             });
         }
+        return () => { cancelled = true; };
     }, [download]);
 
     return (

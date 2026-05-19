@@ -6,11 +6,13 @@ export default function Discord() {
     const [username, setUsername] = useState<string | boolean | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
         window.api.rpc.request
             .isHasDiscordRPC()
             .then((data: string | boolean) => {
-                setUsername(data);
+                if (!cancelled) setUsername(data);
             });
+        return () => { cancelled = true; };
     }, []);
 
     if (username === null) {
