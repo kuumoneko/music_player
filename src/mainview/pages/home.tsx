@@ -4,10 +4,10 @@ import { formatDuration, remove_hashtag } from "@/mainview/utils/format.ts";
 import { goto } from "@/mainview/utils/url.ts";
 
 export default function HomePage() {
-    const [artists, setartists] = useState([]);
-    const [playlists, setplaylists] = useState([]);
-    const [tracks, settracks] = useState([]);
-    const [new_tracks, setnew_tracks] = useState([]);
+    const [artists, setartists] = useState<Artist[]>([]);
+    const [playlists, setplaylists] = useState<Playlist[]>([]);
+    const [tracks, settracks] = useState<Track[]>([]);
+    const [new_tracks, setnew_tracks] = useState<Track[]>([]);
 
     useEffect(() => {
         let cancelled = false;
@@ -32,7 +32,9 @@ export default function HomePage() {
             });
             setnew_tracks(tempp);
         })();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, []);
     return (
         <div className="flex flex-col items-center justify-start h-full w-full">
@@ -108,8 +110,8 @@ export default function HomePage() {
                                     onClick={() => {
                                         window.api.rpc.request.play({
                                             item: track,
-                                            source: track.source as any,
-                                            type: "track",
+                                            source: track.source,
+                                            type: "tracks",
                                             id: track.id,
                                         });
                                     }}
@@ -142,8 +144,8 @@ export default function HomePage() {
                                 onClick={() => {
                                     window.api.rpc.request.play({
                                         item: track,
-                                        source: track.source as any,
-                                        type: "track",
+                                        source: track.source,
+                                        type: "tracks",
                                         id: track.id,
                                     });
                                 }}

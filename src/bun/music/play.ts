@@ -4,6 +4,28 @@ import { SleepMode } from "../../shared/types.ts";
 
 const YT_API_BASE = "https://www.youtube.com/youtubei/v1";
 
+interface YTFormat {
+    url?: string;
+    bitrate?: number;
+    audioChannels?: number;
+    width?: number;
+    cipher?: string;
+    signatureCipher?: string;
+}
+
+interface YTStreamingData {
+    formats?: YTFormat[];
+    adaptiveFormats?: YTFormat[];
+}
+
+interface MPVResponse {
+    request_id?: number;
+    error?: string;
+    data?: any;
+    event?: string;
+    name?: string;
+}
+
 class DirectYT {
     private visitorData = "";
     private signatureTimestamp: number;
@@ -90,13 +112,13 @@ class DirectYT {
             headers: { "Content-Type": "application/json" },
         });
         const data = await res.json();
-        const sd = data?.streamingData;
+        const sd = data?.streamingData as YTStreamingData | undefined;
         if (!sd) return null;
 
         const all = [...(sd.formats || []), ...(sd.adaptiveFormats || [])];
         const best = all
-            .filter((f: any) => f.audioChannels > 0 && !f.width)
-            .sort((a: any, b: any) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+            .filter((f: YTFormat) => (f.audioChannels ?? 0) > 0 && !f.width)
+            .sort((a: YTFormat, b: YTFormat) => (b.bitrate ?? 0) - (a.bitrate ?? 0))[0];
         if (!best) return null;
 
         if (best.url) return best.url;
@@ -113,7 +135,7 @@ class DirectYT {
 }
 
 export default class Play extends EventEmitter {
-    private mpv: any;
+    private mpv: Bun.Subprocess;
     private socket: Bun.Socket;
     private pipePath = "\\\\.\\pipe\\kuumo-ipc";
     private appPath: string;
@@ -159,12 +181,12 @@ export default class Play extends EventEmitter {
                     open: () => {
                         this.isReady = true;
                     },
-                    data: (_socket: any, data: any) => {
+                    data: (_socket: Bun.Socket, data: Buffer) => {
                         const lines = data.toString().split("\n");
                         for (const line of lines) {
                             if (!line.trim()) continue;
                             try {
-                                const response = JSON.parse(line);
+                                const response = JSON.parse(line) as MPVResponse;
                                 if (response.request_id === 999 && response.error === "success") {
                                     const mpvQueue = response.data;
                                     mpvQueue[0].filename = this.playlistOriginalUrls[this.playlistIndex]
@@ -231,7 +253,7 @@ export default class Play extends EventEmitter {
                             } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
                         }
                     },
-                    error: (_socket: any, error: any) => {
+                    error: (_socket: Bun.Socket, error: Error) => {
                         console.error("IPC Socket Error:", error);
                     }
                 }
@@ -248,7 +270,7 @@ export default class Play extends EventEmitter {
     }
 
     private send(command: (string | number | boolean | Object)[], id: number = 0) {
-        let realCmd: any = {}
+        const realCmd: { request_id?: number; command?: (string | number | boolean | Object)[] } = {}
         if (id > 0) {
             realCmd.request_id = id;
         }

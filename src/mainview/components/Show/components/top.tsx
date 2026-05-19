@@ -10,7 +10,7 @@ import { formatDuration } from "@/mainview/utils/format.ts";
 import Loading from "@/mainview/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
 import add_to_download from "@/mainview/utils/add_download.ts";
-import { Shuffle } from "@/shared/types";
+import { Artist, Shuffle, Track } from "@/shared/types";
 
 export default function Top({
     name,
@@ -27,11 +27,11 @@ export default function Top({
     thumbnail: string | null;
     duration: number | null;
     releaseDate?: string;
-    artists?: any[];
-    source: string;
+    artists?: Artist[];
+    source: "youtube" | "local";
     id: string;
-    mode: string;
-    list: any[];
+    mode: "tracks" | "playlists" | "artists";
+    list: Track[];
 }) {
     const [isPin, setiSPin] = useState(false);
     useEffect(() => {
@@ -41,7 +41,7 @@ export default function Top({
             if (cancelled) return;
             if (
                 pin.findIndex(
-                    (item: any) => item === `${source}:${mode}:${id}`,
+                    (item: string) => item === `${source}:${mode}:${id}`,
                 ) != -1
             ) {
                 setiSPin(true);
@@ -49,7 +49,9 @@ export default function Top({
                 setiSPin(false);
             }
         })();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [name]);
     return (
         <>
@@ -77,7 +79,7 @@ export default function Top({
                             <span className="text-2xl font-bold">{name}</span>
                             <span className="text-lg text-zinc-500">
                                 {artists
-                                    ?.map((artist: any) => artist.name)
+                                    ?.map((artist: Artist) => artist.name)
                                     .join(", ")}
                             </span>
                             <div className="flex flex-row items-center">
@@ -102,7 +104,7 @@ export default function Top({
                                                 "shuffle",
                                             );
 
-                                        const randomlist = (list: any[]) => {
+                                        const randomlist = (list: Track[]) => {
                                             const randomIndex = Math.floor(
                                                 Math.random() * list.length,
                                             );
@@ -114,8 +116,8 @@ export default function Top({
                                                 shuffle === Shuffle.Enable
                                                     ? randomlist(list)
                                                     : list[0],
-                                            source: source as any,
-                                            type: mode as any,
+                                            source: source,
+                                            type: mode,
                                             id: id,
                                         });
                                     }}
@@ -126,7 +128,7 @@ export default function Top({
                                 <span
                                     className="ml-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-600 hover:cursor-pointer"
                                     onClick={() => {
-                                        if (mode == "track") {
+                                        if (mode.includes("track")) {
                                             if (source === "youtube") {
                                                 const url =
                                                     "https://www.youtube.com/watch?v=" +
@@ -135,7 +137,7 @@ export default function Top({
                                                     url,
                                                 );
                                             }
-                                        } else if (mode === "playlist") {
+                                        } else if (mode.includes("playlist")) {
                                             if (source === "youtube") {
                                                 const url =
                                                     "https://www.youtube.com/playlist?list=" +
@@ -173,7 +175,7 @@ export default function Top({
                                                 );
                                             if (isPin) {
                                                 pin = pin.filter(
-                                                    (item: any) => {
+                                                    (item: string) => {
                                                         return (
                                                             item !==
                                                             `${source}:${mode}:${id}`

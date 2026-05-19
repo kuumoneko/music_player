@@ -17,10 +17,10 @@ export default function List({
     id,
     mode,
 }: {
-    list: any[];
-    source: string;
+    list: Track[];
+    source: "youtube" | "local";
     id: string;
-    mode: string;
+    mode: "tracks" | "playlists" | "artists" | "local";
 }) {
     if (!list || list.length === 0) {
         return <Loading mode={"data"} />;
@@ -32,7 +32,7 @@ export default function List({
         head: 0,
         tail: Math.min(max_items - 1, list.length - 1),
     });
-    const [show_list, setlist] = useState<any[]>([]);
+    const [show_list, setlist] = useState<Track[]>([]);
 
     useEffect(() => {
         let cancelled = false;
@@ -43,7 +43,7 @@ export default function List({
                 sight.tail > list.length
             ) {
                 const data = await window.api.rpc.request.getMusicData({
-                    source: source as any,
+                    source: source,
                     type: "playlists",
                     id,
                 });
@@ -62,11 +62,13 @@ export default function List({
                     ).values(),
                 ];
             }
-            const temp: any[] = list.slice(sight.head, sight.tail + 1) as any[];
+            const temp = list.slice(sight.head, sight.tail + 1);
             if (cancelled) return;
             setlist(temp);
         })();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [sight, list]);
 
     const scroll = (direction: string) => {
@@ -118,8 +120,8 @@ export default function List({
                             onClick={() => {
                                 window.api.rpc.request.play({
                                     item: item,
-                                    source: source as any,
-                                    type: mode as any,
+                                    source: source,
+                                    type: mode,
                                     id: id,
                                 });
                             }}
@@ -145,7 +147,10 @@ export default function List({
                                     </span>
                                     <span className="artists cursor-default select-none">
                                         {item.artist
-                                            ?.map((artist: any) => artist.name)
+                                            ?.map(
+                                                (artist: { name: string }) =>
+                                                    artist.name,
+                                            )
                                             .join(", ")}
                                     </span>
                                     <div className="flex flex-row items-center justify-between">

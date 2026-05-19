@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useState,
+    ReactNode,
+} from "react";
 import { Shuffle, Repeat } from "@/shared/types.ts";
 
 export interface PlayerState {
@@ -7,11 +13,17 @@ export interface PlayerState {
     duration: number;
     isLived: boolean;
     isLoading: boolean;
-    currentTrack: { source: string; id: string; title: string; thumbnail: string; artist: string } | null;
+    currentTrack: {
+        source: string;
+        id: string;
+        title: string;
+        thumbnail: string;
+        artist: string;
+    } | null;
     shuffle: Shuffle;
     repeat: Repeat;
     volume: number;
-    playQueue: any[];
+    playQueue: string[];
     nextfrom: string;
     playedTrack: string[];
 }
@@ -40,7 +52,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         let cancelled = false;
         (async () => {
             try {
-                const [playingData, currentPlaying, volume, playQueue, nextfrom] = await Promise.all([
+                const [
+                    playingData,
+                    currentPlaying,
+                    volume,
+                    playQueue,
+                    nextfrom,
+                ] = await Promise.all([
                     window.api.rpc.request.getPlayingData(),
                     window.api.rpc.request.getUserData("currentPlaying"),
                     window.api.rpc.request.getUserData("volume"),
@@ -70,19 +88,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
         const handlers: Record<string, (payload: any) => void> = {
             timeUpdate: (payload) => {
-                setState(prev => ({ ...prev, time: payload.time, isPlaying: payload.isPlaying }));
+                setState((prev) => ({
+                    ...prev,
+                    time: payload.time,
+                    isPlaying: payload.isPlaying,
+                }));
             },
             playerStateChange: (payload) => {
-                setState(prev => ({ ...prev, ...payload }));
+                setState((prev) => ({ ...prev, ...payload }));
             },
             currentTrackChanged: (payload) => {
-                setState(prev => ({ ...prev, currentTrack: payload }));
+                setState((prev) => ({ ...prev, currentTrack: payload }));
             },
             settingsChanged: (payload) => {
-                setState(prev => ({ ...prev, ...payload }));
+                setState((prev) => ({ ...prev, ...payload }));
             },
             queueChanged: (payload) => {
-                setState(prev => ({ ...prev, playQueue: payload.playQueue, nextfrom: payload.nextfrom, playedTrack: payload.playedTrack }));
+                setState((prev) => ({
+                    ...prev,
+                    playQueue: payload.playQueue,
+                    nextfrom: payload.nextfrom,
+                    playedTrack: payload.playedTrack,
+                }));
             },
         };
 

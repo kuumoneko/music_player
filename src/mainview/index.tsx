@@ -23,7 +23,7 @@ window.api.rpc.request = new Proxy(originalRequestObj, {
         const originalMethod = target[prop];
 
         if (typeof originalMethod === "function") {
-            return async (...args: any[]) => {
+            return async (...args: unknown[]) => {
                 const rawResponse = await originalMethod.apply(target, args);
 
                 try {

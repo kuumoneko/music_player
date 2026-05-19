@@ -19,7 +19,15 @@ export default function getTracks(ids: string[]): Track[] {
 
   const results = getMultipleTracksStmt.all({
     $ids: JSON.stringify(ids)
-  }) as any[];
+  }) as {
+    id: string,
+    name: string,
+    source: string,
+    thumbnail: string,
+    duration: number,
+    releasedDate: string,
+    artists_json: string,
+  }[]
 
   return results.map((row) => {
     let parsedArtists = JSON.parse(row.artists_json);
@@ -36,7 +44,7 @@ export default function getTracks(ids: string[]): Track[] {
       duration: row.duration,
       releasedDate: row.releasedDate,
       artist: parsedArtists
-    };
+    } as Track;
   });
 }
 
@@ -55,7 +63,15 @@ export function getTrackByName(name: string, exact: boolean = false): Track[] {
 `);
   const query = exact ? name : `%${name}%`;
 
-  const results = getTracksByNameStmt.all({ $query: query }) as any[];
+  const results = getTracksByNameStmt.all({ $query: query }) as {
+    id: string,
+    name: string,
+    source: string,
+    thumbnail: string,
+    duration: number,
+    releasedDate: string,
+    artists_json: string,
+  }[];
 
   return results.map((row) => {
     let parsedArtists = JSON.parse(row.artists_json);
@@ -72,7 +88,7 @@ export function getTrackByName(name: string, exact: boolean = false): Track[] {
       duration: row.duration,
       releasedDate: row.releasedDate,
       artist: parsedArtists
-    };
+    } as Track
   });
 }
 

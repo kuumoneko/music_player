@@ -7,7 +7,6 @@ export default function Search({ url }: { url: string }) {
         source: "",
         type: "",
         result: {
-            type: "",
             tracks: [],
             playlists: [],
             artists: [],
@@ -19,7 +18,7 @@ export default function Search({ url }: { url: string }) {
         (async () => {
             const [source, type, query] = url.split("/").slice(2);
             const res = await window.api.rpc.request.searchMusic({
-                type: type as any,
+                type: type as "video" | "playlist" | "artist",
                 query: query,
             });
             if (cancelled) return;
@@ -27,10 +26,12 @@ export default function Search({ url }: { url: string }) {
                 query,
                 source,
                 type,
-                result: res as any,
+                result: res,
             });
         })();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [url]);
     return (
         <>
@@ -47,7 +48,7 @@ export default function Search({ url }: { url: string }) {
                               ? searchh.result.playlists
                               : (searchh.result.artists ?? [])
                     }
-                    source={url.split("/").slice(2)[0]}
+                    source={url.split("/").slice(2)[0] as "youtube" | "local"}
                     type={url.split("/").slice(2)[1] + "s"}
                     id=""
                     mode="search"

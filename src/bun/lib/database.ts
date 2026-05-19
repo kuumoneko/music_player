@@ -30,7 +30,7 @@ export async function getDataFromDatabase(...args: string[]): Promise<any> {
      * args[-1] is data
      * args[-2] is filename
 */
-export async function writeDataToDatabase(...args: any[]) {
+export async function writeDataToDatabase(...args: string[]) {
     const filename = args[args.length - 2];
     const data = args[args.length - 1];
 

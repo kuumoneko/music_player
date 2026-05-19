@@ -34,7 +34,7 @@ declare global {
                     }>,
                     // player
                     togglePlayPause: () => Promise<void>,
-                    play: ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => Promise<{
+                    play: ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "tracks" | "playlists" | "artists" | "local", id: string }) => Promise<{
                         source: "youtube" | "local",
                         id: string,
                         title: string,

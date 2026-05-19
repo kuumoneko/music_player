@@ -14,7 +14,14 @@ const getArtistByIdStmt = db.prepare(`
 `);
 
 export default function getArtistById(id: string, includeTracks: boolean = true): Artist | null {
-  const row = getArtistByIdStmt.get({ $id: id }) as any;
+  const row = getArtistByIdStmt.get({ $id: id }) as {
+    id: string,
+    name: string,
+    source: "local" | "youtube",
+    playlistId: string,
+    thumbnail: string,
+    track_ids_json: string,
+  };
   if (!row) return null;
 
   let trackIds: string[] = JSON.parse(row.track_ids_json);

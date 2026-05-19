@@ -15,7 +15,11 @@ const getPlaylistStmt = db.prepare(`
 
 
 export default function getPlaylist(id: string, includeTracks: boolean = true): Playlist | null {
-    const row = getPlaylistStmt.get({ $id: id }) as any;
+    interface PlaylistRow {
+        id: string; name: string; source: "youtube" | "local";
+        thumbnail: string; duration: number; track_ids_json: string;
+    }
+    const row = getPlaylistStmt.get({ $id: id }) as PlaylistRow;
     if (!row) return null;
 
     let trackIds: string[] = JSON.parse(row.track_ids_json);

@@ -14,7 +14,10 @@ import { usePlayerState } from "@/mainview/context/PlayerContext.tsx";
 
 export default function Play_Queue() {
     const { playQueue, nextfrom: nextfromStr } = usePlayerState();
-    const [nextfromData, setNextfromData] = useState<{ from: string; next: Track[] }>({ from: "", next: [] });
+    const [nextfromData, setNextfromData] = useState<{
+        from: string;
+        next: Track[];
+    }>({ from: "", next: [] });
 
     useEffect(() => {
         let cancelled = false;
@@ -38,20 +41,32 @@ export default function Play_Queue() {
             }
             setNextfromData({ from: nextfromStr, next: track });
         })();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [nextfromStr]);
 
     return (
         <>
             <div
-                onClick={() => window.api.rpc.request.setUserData({ key: "playQueue", data: [] })}
+                onClick={() =>
+                    window.api.rpc.request.setUserData({
+                        key: "playQueue",
+                        data: [],
+                    })
+                }
                 className="hover:text-red-500 hover:cursor-pointer"
             >
                 <FontAwesomeIcon icon={faMinus} />
                 Clear queue
             </div>
             <div
-                onClick={() => window.api.rpc.request.setUserData({ key: "nextfrom", data: "" })}
+                onClick={() =>
+                    window.api.rpc.request.setUserData({
+                        key: "nextfrom",
+                        data: "",
+                    })
+                }
                 className="hover:text-red-500 hover:cursor-pointer"
             >
                 <FontAwesomeIcon icon={faMinus} />
@@ -60,26 +75,51 @@ export default function Play_Queue() {
             <div className="liked_songs flex flex-col max-h-max w-full overflow-y-scroll [&::-webkit-scrollbar]:hidden">
                 {playQueue.length > 0 && (
                     <>
-                        {(playQueue as any[]).map((item: Track, index: number) => {
+                        {playQueue.map((item: Track, index: number) => {
                             return (
                                 <div
                                     key={item.name}
                                     className={`queue ${index + 1} flex h-25 w-full flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600`}
-                                    onDoubleClick={() => window.api.rpc.request.play({ item, source: item.source as any, type: "track", id: item.id })}
+                                    onDoubleClick={() =>
+                                        window.api.rpc.request.play({
+                                            item,
+                                            source: item.source,
+                                            type: "tracks",
+                                            id: item.id,
+                                        })
+                                    }
                                 >
                                     <div className="flex flex-row items-center ml-2.5">
                                         <span className="thumbnail cursor-default select-none">
-                                            <img src={item.thumbnail} alt="" height={100} width={100} />
+                                            <img
+                                                src={item.thumbnail}
+                                                alt=""
+                                                height={100}
+                                                width={100}
+                                            />
                                         </span>
                                         <div className="flex flex-col ml-2.5">
-                                            <span className="title cursor-default select-none">{item.name}</span>
+                                            <span className="title cursor-default select-none">
+                                                {item.name}
+                                            </span>
                                             <span className="artists cursor-default select-none">
-                                                {item.artist.map((artist: any) => artist.name).join(", ")}
+                                                {item.artist
+                                                    .map(
+                                                        (artist: {
+                                                            name: string;
+                                                        }) => artist.name,
+                                                    )
+                                                    .join(", ")}
                                             </span>
                                             <div className="flex flex-row items-center">
-                                                <span className="releaseDate cursor-default select-none">{item.releasedDate}</span>
+                                                <span className="releaseDate cursor-default select-none">
+                                                    {item.releasedDate}
+                                                </span>
                                                 <span className="duration cursor-default select-none ml-3.75">
-                                                    {formatDuration((item.duration as number) / 1000)}
+                                                    {formatDuration(
+                                                        (item.duration as number) /
+                                                            1000,
+                                                    )}
                                                 </span>
                                             </div>
                                         </div>
@@ -89,7 +129,10 @@ export default function Play_Queue() {
                                             className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 if (item.source === "youtube") {
-                                                    navigator.clipboard.writeText("https://www.youtube.com/watch?v=" + item.id);
+                                                    navigator.clipboard.writeText(
+                                                        "https://www.youtube.com/watch?v=" +
+                                                            item.id,
+                                                    );
                                                 }
                                             }}
                                         >
@@ -99,13 +142,23 @@ export default function Play_Queue() {
                                             className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={() => Queue(item)}
                                         >
-                                            <FontAwesomeIcon icon={faListDots} />
+                                            <FontAwesomeIcon
+                                                icon={faListDots}
+                                            />
                                         </span>
                                         <span
                                             className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
-                                            onClick={() => add_to_download(item.source, "track", item.id)}
+                                            onClick={() =>
+                                                add_to_download(
+                                                    item.source,
+                                                    "track",
+                                                    item.id,
+                                                )
+                                            }
                                         >
-                                            <FontAwesomeIcon icon={faDownload} />
+                                            <FontAwesomeIcon
+                                                icon={faDownload}
+                                            />
                                         </span>
                                     </div>
                                 </div>
@@ -115,24 +168,51 @@ export default function Play_Queue() {
                 )}
                 {nextfromData.from !== "" && nextfromData.next.length > 0 && (
                     <>
-                        {nextfromData.next.map((item: any, index: number) => {
+                        {nextfromData.next.map((item: Track, index: number) => {
                             return (
                                 <div
                                     key={item.name}
                                     className={`nextfrom ${index + 1} flex h-25 w-full flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600`}
-                                    onDoubleClick={() => window.api.rpc.request.play({ item, source: item.source as any, type: "track", id: item.id })}
+                                    onDoubleClick={() =>
+                                        window.api.rpc.request.play({
+                                            item,
+                                            source: item.source,
+                                            type: "tracks",
+                                            id: item.id,
+                                        })
+                                    }
                                 >
                                     <div className="flex flex-row items-center ml-2.5">
                                         <span className="thumbnail cursor-default select-none">
-                                            <img src={item.thumbnail} alt="" height={100} width={100} />
+                                            <img
+                                                src={item.thumbnail}
+                                                alt=""
+                                                height={100}
+                                                width={100}
+                                            />
                                         </span>
                                         <div className="flex flex-col ml-2.5">
-                                            <span className="title cursor-default select-none">{item.name}</span>
-                                            <span className="artists cursor-default select-none">{item.artists}</span>
+                                            <span className="title cursor-default select-none">
+                                                {item.name}
+                                            </span>
+                                            <span className="artists cursor-default select-none">
+                                                {item.artist
+                                                    .map(
+                                                        (artist: {
+                                                            name: string;
+                                                        }) => artist.name,
+                                                    )
+                                                    .join(", ")}
+                                            </span>
                                             <div className="flex flex-row items-center">
-                                                <span className="releaseDate cursor-default select-none">{item.releaseDate}</span>
+                                                <span className="releaseDate cursor-default select-none">
+                                                    {item.releasedDate}
+                                                </span>
                                                 <span className="duration cursor-default select-none ml-3.75">
-                                                    {formatDuration((item.duration as number) / 1000)}
+                                                    {formatDuration(
+                                                        (item.duration as number) /
+                                                            1000,
+                                                    )}
                                                 </span>
                                             </div>
                                         </div>
@@ -142,7 +222,10 @@ export default function Play_Queue() {
                                             className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={() => {
                                                 if (item.source === "youtube") {
-                                                    navigator.clipboard.writeText("https://www.youtube.com/watch?v=" + item.id);
+                                                    navigator.clipboard.writeText(
+                                                        "https://www.youtube.com/watch?v=" +
+                                                            item.id,
+                                                    );
                                                 }
                                             }}
                                         >
@@ -152,13 +235,23 @@ export default function Play_Queue() {
                                             className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
                                             onClick={() => Queue(item)}
                                         >
-                                            <FontAwesomeIcon icon={faListDots} />
+                                            <FontAwesomeIcon
+                                                icon={faListDots}
+                                            />
                                         </span>
                                         <span
                                             className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
-                                            onClick={() => add_to_download(item.source, "track", item.id)}
+                                            onClick={() =>
+                                                add_to_download(
+                                                    item.source,
+                                                    "track",
+                                                    item.id,
+                                                )
+                                            }
                                         >
-                                            <FontAwesomeIcon icon={faDownload} />
+                                            <FontAwesomeIcon
+                                                icon={faDownload}
+                                            />
                                         </span>
                                     </div>
                                 </div>

@@ -4,11 +4,16 @@ import { faCircle, faMinus, faShare } from "@fortawesome/free-solid-svg-icons";
 import { formatDuration } from "@/mainview/utils/format.ts";
 import { faYoutube } from "@fortawesome/free-brands-svg-icons";
 import Download from "./download.tsx";
-import { Artist, Playlist } from "@/shared/types.ts";
+import { Artist, Playlist, Track } from "@/shared/types.ts";
 
 export default function Download_Queue() {
-    const [queue, setqueue] = useState("[]");
-    const [list, setlist] = useState("{}");
+    const [queue, setqueue] = useState<string[]>([]);
+    const [list, setlist] = useState<{}>({});
+    interface Data {
+        source: "youtube" | "local";
+        mode: string;
+        id: string;
+    }
 
     useEffect(() => {
         let cancelled = false;
@@ -16,25 +21,26 @@ export default function Download_Queue() {
             const res =
                 await window.api.rpc.request.getUserData("downloadQueue");
             if (cancelled) return;
-            const data = res.map((item) => {
+
+            const data: Data[] = res.map((item) => {
                 const [source, mode, id] = item.split(":");
                 return {
-                    source,
+                    source: source as unknown as "youtube" | "local",
                     mode,
                     id,
                 };
             });
 
-            const artists = data.filter((item: any) =>
+            const artists = data.filter((item: Data) =>
                 item.mode.includes("artist"),
             );
-            const playlists = data.filter((item: any) =>
+            const playlists = data.filter((item: Data) =>
                 item.mode.includes("playlist"),
             );
 
             for (const item of artists) {
                 const data = await window.api.rpc.request.getMusicData({
-                    source: item.source as any,
+                    source: item.source,
                     type: "artists",
                     id: item.id,
                 });
@@ -46,32 +52,31 @@ export default function Download_Queue() {
                 });
             }
 
-            let tracks = data.filter((item: any) =>
+            let tracks = data.filter((item: Data) =>
                 item.mode.includes("track"),
             );
 
-            const temp: any = {};
+            const temp = {};
 
             for (const item of playlists) {
-                const data = await window.api.rpc.request.getMusicData({
-                    source: item.source as any,
-                    type: "playlists",
-                    id: item.id,
-                });
+                const data: Playlist =
+                    await window.api.rpc.request.getMusicData({
+                        source: item.source,
+                        type: "playlists",
+                        id: item.id,
+                    });
                 if (cancelled) return;
 
-                const tracks_in_playlist = tracks.filter((track: any) => {
-                    return ((data as Playlist).tracks as any[]).find(
-                        (trackk: any) => {
-                            return trackk.track.id === track.id;
-                        },
-                    );
+                const tracks_in_playlist = tracks.filter((track: Data) => {
+                    return data.tracks.find((trackk: Track) => {
+                        return trackk.id === track.id;
+                    });
                 });
 
                 if (tracks_in_playlist.length > 0) {
-                    const minusTracks = tracks.filter((trackItem: any) => {
+                    const minusTracks = tracks.filter((trackItem: Data) => {
                         return !tracks_in_playlist.some(
-                            (tempItem: any) =>
+                            (tempItem: Data) =>
                                 tempItem.id === trackItem.id &&
                                 tempItem.mode === trackItem.mode,
                         );
@@ -82,8 +87,8 @@ export default function Download_Queue() {
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
             for (const item of tracks) {
-                const data = await window.api.rpc.request.getMusicData({
-                    source: item.source as any,
+                const data: Track = await window.api.rpc.request.getMusicData({
+                    source: item.source,
                     type: "tracks",
                     id: item.id,
                 });
@@ -92,7 +97,7 @@ export default function Download_Queue() {
                 temp[`${item.source}:${item.mode}:${item.id}`] = data;
             }
 
-            const hehe = [
+            const downloadQueue = [
                 ...playlists.map(
                     (item) => `${item.source}:${item.mode}:${item.id}`,
                 ),
@@ -102,20 +107,22 @@ export default function Download_Queue() {
             ];
             window.api.rpc.request.setUserData({
                 key: "downloadQueue",
-                data: hehe,
+                data: downloadQueue,
             });
-            setlist(JSON.stringify(temp));
-            setqueue(JSON.stringify(hehe));
+            setlist(temp);
+            setqueue(downloadQueue);
         })();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return (
         <>
             <div
                 onClick={async () => {
-                    setlist("{}");
-                    setqueue("[]");
+                    setlist({});
+                    setqueue([]);
                     window.api.rpc.request.setUserData({
                         key: "downloadQueue",
                         data: [],
@@ -132,9 +139,8 @@ export default function Download_Queue() {
                     <Download />
                 </div>
                 <div className="content w-full flex flex-col max-h-[75%] overflow-y-scroll [&::-webkit-scrollbar]:hidden mt-12.5">
-                    {Object.keys(JSON.parse(list)).map((key: string) => {
-                        const data = JSON.parse(list);
-                        const item = data[key];
+                    {Object.keys(list).map((key: string) => {
+                        const item = list[key];
                         const [source, mode] = key.split(":");
                         const id = item.id;
 
@@ -149,12 +155,18 @@ export default function Download_Queue() {
                                             icon={faCircle}
                                             onClick={async () => {
                                                 const temp_map = new Map(
-                                                    Object.entries(data),
+                                                    Object.entries(list),
                                                 );
                                                 temp_map.delete(key);
                                                 const temp_obj = {};
                                                 temp_map.forEach(
-                                                    (value: any, key: any) => {
+                                                    (
+                                                        value:
+                                                            | Track
+                                                            | Playlist
+                                                            | Artist,
+                                                        key: string,
+                                                    ) => {
                                                         temp_obj[key] = value;
                                                     },
                                                 );
@@ -163,19 +175,25 @@ export default function Download_Queue() {
                                                     JSON.stringify(temp_obj),
                                                 );
 
-                                                const queue_list: any[] =
-                                                    JSON.parse(queue);
+                                                const queue_list = queue;
 
                                                 const deletedItem =
                                                     queue_list.findIndex(
-                                                        (list_item: any) => {
+                                                        (list_item: string) => {
+                                                            const [
+                                                                sourcee,
+                                                                modee,
+                                                                idd,
+                                                            ] =
+                                                                list_item.split(
+                                                                    ":",
+                                                                );
                                                             return (
-                                                                list_item.source ===
+                                                                sourcee ===
                                                                     source &&
-                                                                list_item.mode ===
+                                                                modee ===
                                                                     mode &&
-                                                                list_item.id ===
-                                                                    id
+                                                                idd === id
                                                             );
                                                         },
                                                     );
@@ -184,9 +202,7 @@ export default function Download_Queue() {
                                                     deletedItem,
                                                     1,
                                                 );
-                                                setqueue(
-                                                    JSON.stringify(queue_list),
-                                                );
+                                                setqueue(queue_list);
                                                 window.api.rpc.request.setUserData(
                                                     {
                                                         key: "downloadQueue",
@@ -242,9 +258,9 @@ export default function Download_Queue() {
                                                         ? item.artist
                                                         : item.artist
                                                               .map(
-                                                                  (
-                                                                      artist: any,
-                                                                  ) =>
+                                                                  (artist: {
+                                                                      name: string;
+                                                                  }) =>
                                                                       artist.name,
                                                               )
                                                               .join(", ")}
@@ -290,7 +306,7 @@ export default function Download_Queue() {
                                 ) : (
                                     <div className="flex flex-col items-center justify-center">
                                         {item.tracks.map(
-                                            (itemm: any, index: number) => {
+                                            (itemm: Track, index: number) => {
                                                 return (
                                                     <div
                                                         key={`download ${index}`}
@@ -320,9 +336,9 @@ export default function Download_Queue() {
                                                                         ? itemm.artist
                                                                         : itemm.artist
                                                                               .map(
-                                                                                  (
-                                                                                      artist: any,
-                                                                                  ) =>
+                                                                                  (artist: {
+                                                                                      name: string;
+                                                                                  }) =>
                                                                                       artist.name,
                                                                               )
                                                                               .join(

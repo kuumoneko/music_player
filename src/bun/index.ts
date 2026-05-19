@@ -152,7 +152,7 @@ player.player.on("playing", async (data) => {
 		const track = getLocalFileById(data)
 		if (!track) return;
 		const currentPlaying = {
-			source: "local", id: track.id, title: track.name, thumbnail: track.thumbnail, artist: track.artist.map((item: any) => item.name).join(", ")
+			source: "local", id: track.id, title: track.name, thumbnail: track.thumbnail, artist: track.artist.map((item: { name: string }) => item.name).join(", ")
 		}
 		writeUserData("currentPlaying", currentPlaying)
 		emitToFrontend("currentTrackChanged", { source: currentPlaying.source, id: currentPlaying.id, title: currentPlaying.title, thumbnail: currentPlaying.thumbnail, artist: currentPlaying.artist });
@@ -291,12 +291,12 @@ player.player.on("ready", () => {
 	emitToFrontend("playerStateChange", { isPlaying: current.isPlaying, isLoading: false, duration: current.duration, isLived: current.isLived });
 });
 
-const withSafeEncoding = <T extends Record<string, any>>(handlers: T): T => {
-	const wrappedHandlers: any = {};
+const withSafeEncoding = <T extends Record<string, (...args: unknown[]) => unknown>>(handlers: T): T => {
+	const wrappedHandlers: Partial<Record<keyof T, (...args: unknown[]) => unknown>> = {};
 
 	for (const [key, handler] of Object.entries(handlers)) {
 		if (typeof handler === "function") {
-			wrappedHandlers[key] = async (...args: any[]) => {
+			wrappedHandlers[key as keyof T] = async (...args: unknown[]) => {
 				const result = await handler(...args);
 				if (result !== undefined) {
 					return encodeURIComponent(JSON.stringify(result));
@@ -304,7 +304,7 @@ const withSafeEncoding = <T extends Record<string, any>>(handlers: T): T => {
 				return result;
 			};
 		} else {
-			wrappedHandlers[key] = handler;
+			wrappedHandlers[key as keyof T] = handler;
 		}
 	}
 
@@ -482,14 +482,14 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					}
 				},
 				play: async ({ item, source, type, id }: { item: Track, source: "youtube" | "local", type: "track" | "playlist" | "artist", id: string }) => {
-					const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"])
+					const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"]) as UserData;
 					user.playQueue = [];
 					player.player.setRepeat(false);
 
 					if (source === "youtube") {
 						const track = await player.youtube.fetch_track([item.id])
 						user.currentPlaying = {
-							source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item) => item.name).join(", ")
+							source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item: { name: string }) => item.name).join(", ")
 						}
 						current.duration = track[0].duration;
 						user.nextfrom = `youtube:${type}:${id}`
@@ -497,7 +497,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					else if (source === "local") {
 						const track = getLocalFileById(item.id)
 						user.currentPlaying = {
-							source: track.source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", ")
+							source: track.source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: { name: string }) => item.name).join(", ")
 						}
 						current.duration = track?.duration;
 						current.isLived = false;
@@ -654,11 +654,11 @@ try {
 			process.exit(0);
 		});
 	}
-} catch (error: any) {
+} catch (error) {
 	Bun.serve({
 		port: port,
 		hostname: host,
-		fetch(_req: any) {
+		fetch(_req) {
 			openAppUI();
 			return new Response("OK");
 		}
@@ -680,7 +680,7 @@ appTray = new Tray({
 	template: true
 });
 appTray?.setMenu(getTrayMenu(true));
-appTray?.on("tray-clicked", (e: any) => {
+appTray?.on("tray-clicked", (e: { data: { action: string } }) => {
 	const action = e?.data?.action ?? "nothing";
 
 	if (action === "show") {

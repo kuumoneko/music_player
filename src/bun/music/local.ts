@@ -87,7 +87,7 @@ export class Local {
     async getfolder(folder: string) {
         if (folder.length === 0) return [];
         const local_files = getAllLocalFiles();
-        const localFilesMap = new Map(local_files.map((item: any) => [item.id, item]));
+        const localFilesMap = new Map(local_files.map((item: Track) => [item.id, item]));
 
         const dirents = await readdir(folder, { withFileTypes: true });
 
@@ -114,7 +114,7 @@ export class Local {
 
                         processingPromises.push(
                             this.parseFile(filePath)
-                                .catch((e: any) => {
+                                .catch((e) => {
                                     writeLogs([{ type: "error", message: e.message }]);
                                     return null;
                                 })

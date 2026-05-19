@@ -550,8 +550,8 @@ export default class Youtube {
             const result = await this.fetchInnerSearch(query, innerType || null);
 
             const tracks: Track[] = [];
-            const playlist_ids: any[] = [];
-            const artist_ids: any[] = [];
+            const playlist_ids: string[] = [];
+            const artist_ids: string[] = [];
 
             for (const item of result.items) {
                 const thumbUrl = item.thumbnails?.[0]?.url ? this.ensureHttps(item.thumbnails[0].url) : "";

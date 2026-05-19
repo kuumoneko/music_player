@@ -20,8 +20,8 @@ export default function List({
     mode,
     type,
 }: {
-    list: any[];
-    source: string;
+    list: Track[];
+    source: "youtube" | "local";
     id: string;
     mode: string;
     type: string;
@@ -33,12 +33,12 @@ export default function List({
         head: 0,
         tail: Math.min(max_items, list.length),
     });
-    const [show_list, setlist] = useState<any[]>([]);
-    const [pin, setPin] = useState<any[]>([]);
+    const [show_list, setlist] = useState<Track[]>([]);
+    const [pin, setPin] = useState<string[]>([]);
 
     useEffect(() => {
         async function run() {
-            const temp: any[] = list.slice(sight.head, sight.tail) as any[];
+            const temp = list.slice(sight.head, sight.tail);
             setlist(temp);
         }
         run();
@@ -49,7 +49,9 @@ export default function List({
         window.api.rpc.request.getUserData("pin").then((data) => {
             if (!cancelled) setPin(data);
         });
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [list]);
 
     // remove  #hashtag from the title
@@ -99,8 +101,8 @@ export default function List({
                                 if (type === "videos") {
                                     window.api.rpc.request.play({
                                         item: item,
-                                        source: source as any,
-                                        type: "track",
+                                        source: source,
+                                        type: "tracks",
                                         id: item.id,
                                     });
                                 } else if (type === "playlists") {
@@ -133,7 +135,10 @@ export default function List({
                                     </span>
                                     <span className="artists cursor-default select-none">
                                         {item.artist
-                                            ?.map((artist: any) => artist.name)
+                                            ?.map(
+                                                (artist: { name: string }) =>
+                                                    artist.name,
+                                            )
                                             .join(", ")}
                                     </span>
                                     <div className="flex flex-row items-center justify-between">
@@ -213,9 +218,9 @@ export default function List({
                                                         ).length > 0;
                                                     if (isPin) {
                                                         const temp = pin.filter(
-                                                            (item: any) => {
+                                                            (itemm: string) => {
                                                                 return (
-                                                                    item !==
+                                                                    itemm !==
                                                                     `${source}:${type}:${item.id}`
                                                                 );
                                                             },

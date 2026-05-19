@@ -7,7 +7,7 @@ const writeData = db.prepare(`
   ON CONFLICT(key) DO UPDATE SET value = excluded.value;
 `);
 
-const writeUserData = <K extends keyof UserData>(key: K, data: any) => {
+const writeUserData = <K extends keyof UserData>(key: K, data: UserData[K]) => {
   if (!key) return null;
   writeData.run({
     $key: key,
@@ -19,12 +19,12 @@ export const writeUserDatas = db.transaction((data: Partial<UserData>) => {
   for (const [key, value] of Object.entries(data)) {
     writeData.run({
       $key: key,
-      $value: encodeValue(key, value)
+      $value: encodeValue(key, value as UserData[keyof UserData])
     });
   }
 });
 
-function encodeValue(key: string, data: any): string {
+function encodeValue(key: string, data: unknown): string {
   if (['repeat', 'shuffle', 'volume'].includes(key)) {
     return String(Number(data));
   }

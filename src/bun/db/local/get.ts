@@ -1,7 +1,17 @@
 import db from "../setup.ts"
 import type { Track } from "../../../shared/types.ts";
 
-function mapRowToTrack(row: any): Track {
+interface LocalFileRow {
+    id: string;
+    name: string;
+    source: string;
+    thumbnail: string;
+    duration: number;
+    releasedDate: string;
+    artists_json: string;
+}
+
+function mapRowToTrack(row: LocalFileRow): Track {
   let parsedArtists = JSON.parse(row.artists_json);
 
   if (parsedArtists.length === 1 && parsedArtists[0].id === null) {
@@ -43,12 +53,12 @@ const getLocalByIdStmt = db.prepare(`
 `);
 
 export function getAllLocalFiles(): Track[] {
-  const results = getAllLocalStmt.all() as any[];
+  const results = getAllLocalStmt.all();
   return results.map(mapRowToTrack);
 }
 
 export function getLocalFileById(id: string): Track | null {
-  const row = getLocalByIdStmt.get({ $id: id }) as any;
+  const row = getLocalByIdStmt.get({ $id: id }) as LocalFileRow | null;
   if (!row) return null;
   return mapRowToTrack(row);
 }

@@ -4,12 +4,12 @@ export default async function MusicController(player: Player, data: { source, mo
     const { source, mode, type, id, query }: {
         source: string,
         mode: string,
-        type: string,
+        type: "" | "video" | "playlist" | "artist",
         id: string,
         query: string
     } = data;
     if (!player) throw new Error("Player is null.")
-    let result: any = null;
+    let result = null;
     if (mode === "search") {
         if (!query || !type || !source) {
             throw new Error("Missing query, type or source");
@@ -18,7 +18,7 @@ export default async function MusicController(player: Player, data: { source, mo
             throw new Error("Invalid query, type or source");
         }
         else if (source === "youtube") {
-            result = await player.youtube.search(query as string, type as any);
+            result = await player.youtube.search(query as string, type);
         }
     }
     else {
@@ -32,17 +32,17 @@ export default async function MusicController(player: Player, data: { source, mo
             throw new Error("Invalid type");
         }
         else if (source === "youtube") {
-            if (type === "tracks") {
+            if (type === "video") {
                 const temp = await player.youtube.fetch_track(typeof id === "string" ? [id] : id)
                 result = {
                     tracks: temp,
                     ...temp[0]
                 }
             }
-            else if (type === "playlists") {
+            else if (type.includes("playlist")) {
                 result = await player.youtube.fetch_playlist(id);
             }
-            else if (type === "artists") {
+            else if (type.includes('artist')) {
                 result = await player.youtube.fetch_artist(id);
             }
         }
@@ -54,7 +54,7 @@ export default async function MusicController(player: Player, data: { source, mo
                 result = {
                     tracks: localFiles
                 };
-            } catch (error: any) {
+            } catch (error) {
                 if (error.code === "ENOENT") {
                     throw new Error("Folder not found");
                 }

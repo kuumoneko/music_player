@@ -11,7 +11,7 @@ const getData = db.prepare(`
 const getUserData = <K extends keyof UserData>(key: K) => {
   if (!key) return null;
 
-  const value = getData.get(key) as any;
+  const value = getData.get(key) as { key: string; value: string };
   if (value === null || value === undefined) return null;
   return decodeValue(key, value.value) as UserData[K];
 }
@@ -27,7 +27,7 @@ export const getUserDatas = <K extends keyof UserData>(keys: K[]) => {
 
   const rows = getMultiStmt.all({ $keys: JSON.stringify(keys) }) as { key: string; value: string }[];
 
-  const result: any = {};
+  const result = {};
 
   for (const row of rows) {
     try {
@@ -40,7 +40,7 @@ export const getUserDatas = <K extends keyof UserData>(keys: K[]) => {
   return result;
 }
 
-export function decodeValue(key: string, value: string): any {
+export function decodeValue(key: string, value: string) {
   if (['repeat', 'shuffle', 'volume'].includes(key)) {
     return Number(value);
   }

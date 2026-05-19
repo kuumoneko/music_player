@@ -1,4 +1,4 @@
-export default function localstorage(mode: "get" | "set", key: string, defaultValue?: any): any {
+export default function localstorage(mode: "get" | "set", key: string, defaultValue?: string | number | boolean | object): string | number | boolean | object | null | void {
     if (mode === "get") {
         const value = localStorage.getItem(key);
         if (typeof defaultValue === "string" || typeof defaultValue === "number") {
