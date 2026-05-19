@@ -1,9 +1,9 @@
 import Player, { Audio_format } from "../music/index.ts";
-import { Download_item, Status, Track } from "../../shared/types.ts";
+import { Download_item, Status, Track, UserData } from "../../shared/types.ts";
 import { getUserDatas } from "../db/index.ts";
 
 export default async function DownloadController(player: Player) {
-    const { downloadQueue, folder: download_folder } = getUserDatas(["downloadQueue", "folder"])
+    const { downloadQueue, folder: download_folder } = getUserDatas(["downloadQueue", "folder"]) as UserData
 
     player.status = {
         data: Status.idle, track: ""

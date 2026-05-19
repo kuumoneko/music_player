@@ -5,7 +5,7 @@ import {
     useState,
     ReactNode,
 } from "react";
-import { Shuffle, Repeat } from "@/shared/types.ts";
+import { Shuffle, Repeat, Track } from "@/shared/types.ts";
 
 export interface PlayerState {
     isPlaying: boolean;
@@ -23,7 +23,7 @@ export interface PlayerState {
     shuffle: Shuffle;
     repeat: Repeat;
     volume: number;
-    playQueue: string[];
+    playQueue: Track[];
     nextfrom: string;
     playedTrack: string[];
 }
@@ -66,6 +66,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                     window.api.rpc.request.getUserData("nextfrom"),
                 ]);
 
+                const queue = [];
+                for (const item of playQueue) {
+                    const [source, mode, id] = item.split(":");
+                    const data = await window.api.rpc.request.getMusicData({
+                        source: source as "youtube" | "local",
+                        type: mode as "tracks" | "playlists" | "artists",
+                        id: id,
+                    });
+                    queue.push(data);
+                }
+
                 if (cancelled) return;
                 setState({
                     isPlaying: playingData.isPlaying,
@@ -78,7 +89,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                     playedTrack: playingData.playedTrack,
                     currentTrack: currentPlaying || null,
                     volume: volume ?? 50,
-                    playQueue: playQueue ?? [],
+                    playQueue: queue ?? [],
                     nextfrom: nextfrom ?? "",
                 });
             } catch (err) {

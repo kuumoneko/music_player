@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
 import Top from "@/mainview/components/Show/components/top.tsx";
 import List from "@/mainview/components/Show/components/list.tsx";
-import localstorage from "@/mainview/utils/localStorage.ts";
 import { Track } from "@/shared/types.ts";
 
 export default function Local() {
-    const check = localstorage("get", "localfile", false);
-    const [localfile, setlocalfile] = useState(check ? check : []);
+    const [localfile, setlocalfile] = useState([]);
     const [duration, setduration] = useState(0);
     useEffect(() => {
         let cancelled = false;
@@ -23,7 +21,10 @@ export default function Local() {
             const running = setInterval(async () => {
                 await fetchData();
             }, 1000);
-            return () => { cancelled = true; clearInterval(running); };
+            return () => {
+                cancelled = true;
+                clearInterval(running);
+            };
         })();
     }, []);
     return (
@@ -36,7 +37,7 @@ export default function Local() {
                 artists={[]}
                 source="local"
                 id=""
-                mode="playlist"
+                mode="playlists"
                 list={localfile}
             />
             <List list={localfile} source="local" id="local" mode="local" />
