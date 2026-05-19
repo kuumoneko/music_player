@@ -566,19 +566,9 @@ export default class Youtube {
                         releasedDate: "",
                     } as Track);
                 } else if (item.type === "playlist") {
-                    playlist_ids.push({
-                        type: "youtube:playlist",
-                        id: item.id,
-                        name: item.title,
-                        thumbnail: thumbUrl,
-                    });
+                    playlist_ids.push(item.id);
                 } else if (item.type === "channel") {
-                    artist_ids.push({
-                        type: "youtube:artist",
-                        id: item.id,
-                        name: item.title ?? item.name,
-                        thumbnail: thumbUrl,
-                    });
+                    artist_ids.push(item.id);
                 }
             }
 
