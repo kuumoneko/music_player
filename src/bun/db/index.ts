@@ -1,6 +1,6 @@
 import getPlaylist from "./playlists/get.ts";
 import setupSQLite from "./setup.ts";
-import getTracks, { getTrackByName } from "./tracks/get.ts";
+import getTracks, { getTrackByName, getAllTracks } from "./tracks/get.ts";
 import writeTracks from "./tracks/write.ts";
 import writePlaylist from './playlists/write.ts';
 import { getLocalFileById, getAllLocalFiles } from './local/get.ts';
@@ -29,6 +29,7 @@ export {
     getUserDatas,
     writeUserDatas,
     getTrackByName,
+    getAllTracks,
     getAllLogs,
     writeLogs,
     deleteLogs

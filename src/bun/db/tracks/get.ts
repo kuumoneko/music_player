@@ -79,3 +79,11 @@ export function getTrackByName(name: string, exact: boolean = false): Track[] {
     };
   });
 }
+
+export function getAllTracks() {
+  try {
+    const rows = db.prepare("SELECT id FROM tracks").all() as { id: string }[];
+    db.close();
+    return rows.map(r => ({ id: r.id }));
+  } catch { return []; }
+}
