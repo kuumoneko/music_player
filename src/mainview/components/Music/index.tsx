@@ -15,32 +15,18 @@ export default function Music({
     const [tracks, setTracks] = useState<Track[]>([]);
     const [data, setData] = useState<any>({});
 
-    const getdata = async () => {
-        const result = await window.api.rpc.request.getMusicData({
-            source: source as any,
-            type: type as any,
-            id: id,
-        });
-        console.log(result);
-        setTracks(result.tracks || (type === "tracks" ? [result] : []));
-        setData(result ?? {});
-    };
-
     useEffect(() => {
-        let run = setInterval(() => {
-            getdata();
-            if (tracks?.length > 0) {
-                clearInterval(run);
-                run = setInterval(() => {
-                    getdata();
-                }, 60 * 1000);
-            }
-        }, 1000);
-
-        return () => {
-            clearInterval(run);
+        const getdata = async () => {
+            const result = await window.api.rpc.request.getMusicData({
+                source: source as any,
+                type: type as any,
+                id: id,
+            });
+            setTracks(result.tracks || (type === "tracks" ? [result] : []));
+            setData(result ?? {});
         };
-    }, []);
+        getdata();
+    }, [source, type, id]);
 
     return (
         <>
