@@ -170,11 +170,19 @@ export default class Play extends EventEmitter {
                                 }
 
                                 if (response.event === "start-file") {
-                                    this.emit("loading", true)
+                                    this.emit("loading", true);
                                 }
 
                                 if (response.event === "file-loaded") {
-                                    this.emit("loading", false)
+                                    this.emit("loading", false);
+                                    if (this.isFirstLoad) {
+                                        this.isFirstLoad = false;
+                                        this.send(["set_property", "pause", true]);
+                                        this.send(["seek", 0, "absolute"]);
+                                    }
+                                    else {
+                                        this.send(["set_property", "pause", false]);
+                                    }
                                 }
 
                                 if (response.name === "duration") {
@@ -255,17 +263,6 @@ export default class Play extends EventEmitter {
         this.send(["stop"]);
         this.send(["playlist-clear"]);
         this.send(["loadfile", urlOrPath, "replace"]);
-        setTimeout(() => {
-            if (this.isFirstLoad) {
-                this.isFirstLoad = false;
-                this.send(["set_property", "pause", true]);
-                this.send(["seek", 0, "absolute"]);
-            }
-            else {
-                this.send(["set_property", "pause", false]);
-            }
-
-        }, 300);
     }
 
     getQueue() {
