@@ -259,6 +259,7 @@ export default class Play extends EventEmitter {
             if (this.isFirstLoad) {
                 this.isFirstLoad = false;
                 this.send(["set_property", "pause", true]);
+                this.send(["seek", 0, "absolute"]);
             }
             else {
                 this.send(["set_property", "pause", false]);
