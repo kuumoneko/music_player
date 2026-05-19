@@ -469,7 +469,7 @@ export default class Youtube {
                         tracks: tracks
                     })
                 }
-                if (this.running.filter((item: any) => { item.name === `playlist:${id}` }).length === 0) {
+                if (this.running.filter((item: any) => { return item.name === `playlist:${id}` }).length === 0) {
                     this.running.push({
                         name: `playlist:${id}`
                     })
@@ -605,7 +605,7 @@ export default class Youtube {
     }
 
     async fetch_artist(id: string): Promise<Artist> {
-        if (this.running.filter((item: any) => { item.name === `artist:${id}` }).length === 0) {
+        if (this.running.filter((item: any) => { return item.name === `artist:${id}` }).length === 0) {
             this.running.push({
                 name: `artist:${id}`
             })
