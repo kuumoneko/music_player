@@ -142,8 +142,7 @@ player.player.on("playing", async (data) => {
 		player.player.setVideoMetadata(track.thumbnail, track.name)
 	}
 	else {
-		// const localFiles = getAllLocalFiles();
-		const track = getLocalFileById(data)// localFiles.find((localItem) => localItem.id === data);
+		const track = getLocalFileById(data)
 		if (!track) return;
 		const currentPlaying = {
 			source: "local", id: track.id, title: track.name, thumbnail: track.thumbnail, artist: track.artist.map((item: any) => item.name).join(", ")
@@ -491,8 +490,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 						user.nextfrom = `youtube:${type}:${id}`
 					}
 					else if (source === "local") {
-						// const localFiles = getAllLocalFiles();
-						const track = getLocalFileById(item.id) // localFiles.find((localItem) => localItem.id === item.id);
+						const track = getLocalFileById(item.id)
 						user.currentPlaying = {
 							source: track.source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: any) => item.name).join(", ")
 						}
