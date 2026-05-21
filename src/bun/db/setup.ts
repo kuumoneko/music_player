@@ -70,7 +70,7 @@ const commands = [
   `ALTER TABLE artists DROP COLUMN etag;`,
   `ALTER TABLE tracks DROP COLUMN track_index;`
 ];
-for (const sql of commands) { try { db.run(sql); } catch { } }
+for (const sql of commands) { try { db.run(sql); } catch (e) { console.error(e.message) } }
 db.run(`PRAGMA cache_size = -2000;`);
 db.run("PRAGMA shrink_memory;");
 export default db;

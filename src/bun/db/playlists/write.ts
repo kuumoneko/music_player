@@ -1,6 +1,7 @@
 import db from "../setup.ts"
 import type { Playlist } from "../../../shared/types.ts";
 import writeTracks from "../tracks/write.ts";
+import writeLogs from "../log/write.ts";
 
 const upsertPlaylistStmt = db.prepare(`
   INSERT INTO playlists (id, name, source, thumbnail, duration)
@@ -41,7 +42,7 @@ const writePlaylist = db.transaction((playlist: Playlist) => {
                 insertPlaylistTrackStmt.run(playlist.id, trackId);
             }
         }
-    } catch { }
+    } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
 });
 
 export default writePlaylist

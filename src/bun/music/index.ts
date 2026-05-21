@@ -248,7 +248,7 @@ export default class Player {
                         await this.converting(data.title, currentExt, "m4a");
                         try {
                             await Bun.file(path.join(this.download_folder, matchingFile)).delete();
-                        } catch { }
+                        } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
                         return;
                     } else if (currentExt === "m4a") {
                         writeLogs([{ type: "info", message: `Skipping ${data.title}, already exists.` }]);

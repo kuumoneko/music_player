@@ -68,7 +68,7 @@ export default class Youtube {
                 try {
                     const cfg = JSON.parse(cfgMatch[1]);
                     if (typeof cfg.INNERTUBE_API_KEY === "string") this.api_key = cfg.INNERTUBE_API_KEY;
-                } catch { }
+                } catch (e) { this.log(e.message) }
             }
         }
 
@@ -611,7 +611,7 @@ export default class Youtube {
                 const status = data?.playabilityStatus?.status ?? "UNKNOWN";
                 const ytRating = status === "OK" ? "ytUnspecified" : "ytAgeRestricted";
                 ratings[id] = { ytRating };
-            } catch { }
+            } catch (e) { this.log(e.message) }
         }
         return ratings;
     }

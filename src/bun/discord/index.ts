@@ -1,6 +1,6 @@
 import net from "node:net";
 import Player from "../music/index.ts";
-import { getTrackByName } from "../db/index.ts";
+import { getTrackByName, writeLogs } from "../db/index.ts";
 import os from "node:os"
 import { Track } from "../../shared/types.ts";
 
@@ -50,7 +50,7 @@ export default class DiscordRPC {
                         this.username = fetchedData.a.user.username ?? null;
                         resolve(true);
                     }
-                } catch { }
+                } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
             });
             this.socket.on('error', (err) => reject(err));
             this.socket.on("close", (isError) => {

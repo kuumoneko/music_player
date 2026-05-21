@@ -97,7 +97,7 @@ const setDiscordRPC = () => {
 const emitToFrontend = (message: string, payload: any) => {
 	try {
 		(appRPC as any)?.send(message, payload);
-	} catch { }
+	} catch (e) { writeLogs([{ type: "error", message: e.message }]) }
 };
 
 const ytbTrackStart = "https://www.youtube.com/watch?v="
@@ -674,7 +674,7 @@ if (isDiscord && DiscordClientId.length > 0) {
 	discordRPC = new DiscordModule.default(DiscordClientId);
 	try {
 		await discordRPC.connect();
-	} catch { }
+	} catch (e) { writeLogs([{ type: "error", message: e.message }]) }
 }
 
 // Create Tray Menu
