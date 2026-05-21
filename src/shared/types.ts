@@ -24,7 +24,7 @@ export type AppRPCType = {
             },
             getSystem: {
                 params: keyof System,
-                response: any
+                response: System[keyof System]
             },
             downloadMusic: {
                 params: null,
@@ -56,7 +56,7 @@ export type AppRPCType = {
             },
             getUserData: {
                 params: keyof UserData,
-                response: any
+                response: UserData[keyof UserData]
             },
             setUserData: {
                 params: { key: keyof UserData, data: string },
