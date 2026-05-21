@@ -13,9 +13,11 @@ import { useEffect, useState } from "react";
 
 export default function ControlPanel() {
     const [backward, setbackward] = useState(
-        localstorage("get", "backward", []),
+        localstorage("get", "backward", []) as string[],
     );
-    const [forward, setforward] = useState(localstorage("get", "forward", []));
+    const [forward, setforward] = useState(
+        localstorage("get", "forward", []) as string[],
+    );
     const [isLocal, setIsLocal] = useState(true);
 
     useEffect(() => {
@@ -35,10 +37,12 @@ export default function ControlPanel() {
 
     useEffect(() => {
         let cancelled = false;
-        window.api.rpc.request
-            .getSystem("isLocal")
-            .then((data) => { if (!cancelled) setIsLocal(data); });
-        return () => { cancelled = true; };
+        window.api.rpc.request.getSystem("isLocal").then((data) => {
+            if (!cancelled) setIsLocal(data);
+        });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return (
