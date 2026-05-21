@@ -213,7 +213,7 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 					else {
 						let index = 0;
 						if (resultIds.length > 0) {
-							index = data.findIndex(item => item.id === resultIds[result.length - 1]);
+							index = data.findIndex(item => item.id === resultIds[resultIds.length - 1]);
 						}
 						else {
 							index = data.findIndex(item => item.id === currentTrack.split(ytbTrackStart)[1]);
