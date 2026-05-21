@@ -260,7 +260,7 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 
 			result = [...new Set(result.filter(item => item.url !== currentTrack))];
 
-			await player.player.addTracks_test(result)
+			await player.player.addTracks(result)
 			const queueState = getUserDatas(["playQueue", "nextfrom", "playedTrack"]) as UserData;
 			emitToFrontend("queueChanged", { playQueue: queueState.playQueue, nextfrom: queueState.nextfrom, playedTrack: queueState.playedTrack });
 		}

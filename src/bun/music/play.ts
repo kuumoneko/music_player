@@ -337,22 +337,7 @@ export default class Play extends EventEmitter {
         this.send(["set_property", "loop-file", isRepeat ? "inf" : "no"])
     }
 
-    async addTracks(datas: string[]) {
-        for (const data of datas) {
-            this.playlistOriginalUrls.push(data);
-            const videoId = this.isYouTubeUrl(data);
-            let resolved = data;
-            if (videoId) {
-                const directUrl = await this.directYT.resolve(videoId);
-                if (directUrl) {
-                    resolved = directUrl;
-                }
-            }
-            this.send(["loadfile", resolved, "append"]);
-        }
-    }
-
-    async addTracks_test(datas: { url: string, title: string, thumbnail: string }[]) {
+    async addTracks(datas: { url: string, title: string, thumbnail: string }[]) {
         for (const data of datas) {
             this.playlistOriginalUrls.push(data.url);
             const videoId = this.isYouTubeUrl(data.url);
