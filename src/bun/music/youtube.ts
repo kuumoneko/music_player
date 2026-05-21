@@ -365,15 +365,18 @@ export default class Youtube {
         })
 
         if (res.length > 0) {
-            writeTracks(res)
+            const unavailableIds = await this.checkYoutubeTracks(res.map(t => t.id));
+            const filtered = res.filter(t => !unavailableIds.includes(t.id));
+            if (filtered.length > 0) {
+                writeTracks(filtered)
+            }
+            return filtered.sort((a: Track, b: Track) => {
+                return (
+                    new Date(b.releasedDate).getTime() -
+                    new Date(a.releasedDate).getTime()
+                );
+            });
         }
-
-        return res.sort((a: Track, b: Track) => {
-            return (
-                new Date(b.releasedDate).getTime() -
-                new Date(a.releasedDate).getTime()
-            );
-        });
     }
 
     private ensureHttps(url: string): string {
@@ -437,18 +440,33 @@ export default class Youtube {
             }
             continuation = this.extractContinuationToken(nextContents);
         }
-
         if (tracks.length > 0) {
-            writeTracks(tracks);
+            const unavailableIds = await this.checkYoutubeTracks(tracks.map(t => t.id));
+            const filteredTracks = tracks.filter(t => !unavailableIds.includes(t.id));
+            const filteredTrackIds = trackIds.filter(id => !unavailableIds.includes(id));
+            if (filteredTracks.length > 0) {
+                writeTracks(filteredTracks);
+            }
+            const playlist: Playlist = {
+                thumbnail: thumbnail,
+                name: plTitle,
+                ids: filteredTrackIds,
+                id: id,
+                source: "youtube",
+                duration: 0,
+                tracks: filteredTracks,
+            }
+            writePlaylist(playlist);
+            return playlist;
         }
         const playlist: Playlist = {
             thumbnail: thumbnail,
             name: plTitle,
-            ids: trackIds,
+            ids: [],
             id: id,
             source: "youtube",
             duration: 0,
-            tracks: tracks,
+            tracks: [],
         }
         writePlaylist(playlist);
         return playlist;
@@ -480,14 +498,19 @@ export default class Youtube {
         return promise;
     }
 
-    async checkYoutubeTracks() {
-        const key = "checkAvailable";
-        if (this.inflight.has(key)) return;
+    async checkYoutubeTracks(ids?: string[]): Promise<string[]> {
+        const key = ids?.length ? `checkAvailable:${ids.slice().sort().join(',')}` : "checkAvailable";
+        if (this.inflight.has(key)) return this.inflight.get(key)!;
 
         const promise = (async () => {
-            let videoIds = getAllTracks().map((item: Track) => item.id);
-            if (videoIds.length === 0) return;
-            videoIds = Array.from(new Set([...videoIds]))
+            let videoIds: string[];
+            if (ids && ids.length > 0) {
+                videoIds = Array.from(new Set([...ids]));
+            } else {
+                videoIds = getAllTracks().map((item: Track) => item.id);
+            }
+            if (videoIds.length === 0) return [];
+
             const unavailableTracks: string[] = [];
             const isTrackAvailable = async (id: string) => {
                 try {
@@ -522,13 +545,17 @@ export default class Youtube {
 
                 console.log(`Progress: ${Math.min(i + CONCURRENCY_LIMIT, videoIds.length)}/${videoIds.length}`);
             }
-            deleteTracks(unavailableTracks)
+
+            if (!ids) {
+                deleteTracks(unavailableTracks);
+            }
+            return unavailableTracks;
         })()
-            .catch((error) => { this.log(error.message); throw error; })
+            .catch((error) => { this.log(error.message); return []; })
             .finally(() => this.inflight.delete(key));
 
         this.inflight.set(key, promise);
-        await promise;
+        return promise;
     }
 
     async fetch_contentRating(ids: string[]): Promise<Record<string, any>> {
