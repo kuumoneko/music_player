@@ -8,7 +8,9 @@ import Frame from "./components/Frame/index.tsx";
 import { PlayerProvider } from "./context/PlayerContext.tsx";
 
 function App() {
-    const [url, seturl] = useState(localstorage("get", "url", "/"));
+    const [url, seturl] = useState<string>(
+        localstorage("get", "url", "/") as string,
+    );
     useEffect(() => {
         localstorage("set", "backward", "[]");
         localstorage("set", "forward", "[]");
