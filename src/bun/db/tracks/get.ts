@@ -52,7 +52,7 @@ export function getTrackByName(name: string, exact: boolean = false): Track[] {
   const getTracksByNameStmt = db.prepare(`
   SELECT 
     t.id, t.name, t.source, t.thumbnail, 
-    t.duration, t.releasedDate, t.liveBroadcastContent,
+    t.duration, t.releasedDate,
     json_group_array(
       json_object('id', ta.artist_id, 'name', ta.artist_name)
     ) as artists_json
