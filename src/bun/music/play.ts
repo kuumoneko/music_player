@@ -189,8 +189,25 @@ export default class Play extends EventEmitter {
                                 const response = JSON.parse(line) as MPVResponse;
                                 if (response.request_id === 999 && response.error === "success") {
                                     const mpvQueue = response.data;
-                                    mpvQueue[0].filename = this.playlistOriginalUrls[this.playlistIndex]
-                                    this.emit("queue", mpvQueue)
+
+                                    const result = [];
+                                    result.push({
+                                        filename: this.playlistOriginalUrls[this.playlistIndex]
+                                    })
+
+                                    result.push(
+                                        ...this.playlistOriginalUrls
+                                            .slice(
+                                                this.playlistIndex,
+                                                Math.max(
+                                                    this.playlistOriginalUrls.length - 1,
+                                                    this.playlistIndex + mpvQueue.length - 1))
+                                            .map(item => {
+                                                return {
+                                                    filename: item
+                                                }
+                                            }))
+                                    this.emit("queue", result)
                                 }
 
                                 if (response.request_id === 888 && response.error === "success") {
@@ -339,7 +356,6 @@ export default class Play extends EventEmitter {
     }
 
     next() {
-        this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistOriginalUrls.length - 1);
         this.send(["playlist-next"])
     }
 

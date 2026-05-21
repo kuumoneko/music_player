@@ -191,7 +191,8 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 		}
 	});
 	result.push(...notinQueue);
-	if (result.length < 25) {
+	result.push(...ids.map(item => `${ytbTrackStart}${item}`))
+	if (result.length < 20) {
 		const [source, mode, id] = nextfrom.split(":");
 		if (mode.includes("track")) {
 			player.player.setRepeat(true);
@@ -257,12 +258,12 @@ player.player.on("queue", async (data: { filename: string, playing: boolean }[])
 				player.player.setRepeat(true);
 			}
 		}
-		writeUserData("nextfrom", nextfrom)
+		writeUserData("nextfrom", nextfrom);
+		result = [...new Set(result.filter(item => item !== currentTrack))];
+		await player.player.addTracks(result)
+		const queueState = getUserDatas(["playQueue", "nextfrom", "playedTrack"]) as UserData;
+		emitToFrontend("queueChanged", { playQueue: queueState.playQueue, nextfrom: queueState.nextfrom, playedTrack: queueState.playedTrack });
 	}
-	result = [...new Set(result.filter(item => item !== currentTrack))];
-	await player.player.addTracks(result)
-	const queueState = getUserDatas(["playQueue", "nextfrom", "playedTrack"]) as UserData;
-	emitToFrontend("queueChanged", { playQueue: queueState.playQueue, nextfrom: queueState.nextfrom, playedTrack: queueState.playedTrack });
 })
 
 player.player.on("duration-update", (duration) => {
