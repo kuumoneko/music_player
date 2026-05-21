@@ -5,6 +5,7 @@ import { formatDuration } from "@/mainview/utils/format.ts";
 import { faYoutube } from "@fortawesome/free-brands-svg-icons";
 import Download from "./download.tsx";
 import { Artist, Playlist, Track } from "@/shared/types.ts";
+import formatArtists from "@/shared/utils/formatArtist.ts";
 
 export default function Download_Queue() {
     const [queue, setqueue] = useState<string[]>([]);
@@ -254,14 +255,9 @@ export default function Download_Queue() {
                                                     {typeof item.artist ===
                                                     "string"
                                                         ? item.artist
-                                                        : item.artist
-                                                              .map(
-                                                                  (artist: {
-                                                                      name: string;
-                                                                  }) =>
-                                                                      artist.name,
-                                                              )
-                                                              .join(", ")}
+                                                        : formatArtists(
+                                                              item.artist,
+                                                          )}
                                                 </span>
                                                 <div className="flex flex-row items-center">
                                                     <span className="releaseDate cursor-default select-none">

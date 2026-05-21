@@ -11,6 +11,7 @@ import Loading from "@/mainview/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
 import add_to_download from "@/mainview/utils/add_download.ts";
 import { Artist, Shuffle, Track } from "@/shared/types";
+import formatArtists from "@/shared/utils/formatArtist";
 
 export default function Top({
     name,
@@ -78,9 +79,7 @@ export default function Top({
                         <div className="flex flex-col ml-5">
                             <span className="text-2xl font-bold">{name}</span>
                             <span className="text-lg text-zinc-500">
-                                {artists
-                                    ?.map((artist: Artist) => artist.name)
-                                    .join(", ")}
+                                {formatArtists(artists)}
                             </span>
                             <div className="flex flex-row items-center">
                                 <span className="releaseDate cursor-default select-none">

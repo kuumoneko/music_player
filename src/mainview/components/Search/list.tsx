@@ -12,6 +12,7 @@ import { goto } from "@/mainview/utils/url.ts";
 import { Track } from "@/shared/types.ts";
 import Queue from "@/mainview/components/Show/common/queue.ts";
 import download from "../Show/common/download";
+import formatArtists from "@/shared/utils/formatArtist";
 
 export default function List({
     list,
@@ -134,12 +135,7 @@ export default function List({
                                         )}
                                     </span>
                                     <span className="artists cursor-default select-none">
-                                        {item.artist
-                                            ?.map(
-                                                (artist: { name: string }) =>
-                                                    artist.name,
-                                            )
-                                            .join(", ")}
+                                        {formatArtists(item.artist)}
                                     </span>
                                     <div className="flex flex-row items-center justify-between">
                                         <div>

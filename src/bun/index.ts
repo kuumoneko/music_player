@@ -26,6 +26,7 @@ import { Repeat, Shuffle, SleepMode, Track, UserData } from "../shared/types.ts"
 import type { AppRPCType, System } from "@/shared/types.ts";
 import Player from "./music/index.ts";
 import DiscordRPC from "./discord/index.ts";
+import formatArtists from "../shared/utils/formatArtist.ts";
 
 // app variables
 const APP_ROOT = resolve("./");
@@ -155,7 +156,7 @@ player.player.on("playing", async (data) => {
 		source: isYoutube ? "youtube" : "local",
 		title: track.name,
 		thumbnail: temp_thumbnail,
-		artist: track.artist.map(item => item.name).join(", "),
+		artist: formatArtists(track.artist),
 		duration: track.duration,
 		id: track.id
 	}
@@ -492,7 +493,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					if (source === "youtube") {
 						const track = await player.youtube.fetch_track([item.id])
 						user.currentPlaying = {
-							source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: track[0].artist.map((item: { name: string }) => item.name).join(", ")
+							source, id: item.id, title: track[0].name, thumbnail: track[0].thumbnail, artist: formatArtists(track[0].artist)
 						}
 						current.duration = track[0].duration;
 						user.nextfrom = `youtube:${type}:${id}`
@@ -500,7 +501,7 @@ const appRPC = BrowserView.defineRPC<AppRPCType>({
 					else if (source === "local") {
 						const track = getLocalFileById(item.id)
 						user.currentPlaying = {
-							source: track.source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: track?.artist.map((item: { name: string }) => item.name).join(", ")
+							source: track.source, id: item.id, title: track?.name, thumbnail: track?.thumbnail, artist: formatArtists(track?.artist)
 						}
 						current.duration = track?.duration;
 						current.isLived = false;

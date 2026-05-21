@@ -11,6 +11,7 @@ import add_to_download from "@/mainview/utils/add_download.ts";
 import { Track } from "@/shared/types.ts";
 import Queue from "@/mainview/components/Show/common/queue";
 import { usePlayerState } from "@/mainview/context/PlayerContext.tsx";
+import formatArtists from "@/shared/utils/formatArtist";
 
 export default function Play_Queue() {
     const { playQueue, nextfrom: nextfromStr } = usePlayerState();
@@ -103,13 +104,7 @@ export default function Play_Queue() {
                                                 {item.name}
                                             </span>
                                             <span className="artists cursor-default select-none">
-                                                {item.artist
-                                                    .map(
-                                                        (artist: {
-                                                            name: string;
-                                                        }) => artist.name,
-                                                    )
-                                                    .join(", ")}
+                                                {formatArtists(item.artist)}
                                             </span>
                                             <div className="flex flex-row items-center">
                                                 <span className="releaseDate cursor-default select-none">
@@ -196,13 +191,7 @@ export default function Play_Queue() {
                                                 {item.name}
                                             </span>
                                             <span className="artists cursor-default select-none">
-                                                {item.artist
-                                                    .map(
-                                                        (artist: {
-                                                            name: string;
-                                                        }) => artist.name,
-                                                    )
-                                                    .join(", ")}
+                                                {formatArtists(item.artist)}
                                             </span>
                                             <div className="flex flex-row items-center">
                                                 <span className="releaseDate cursor-default select-none">
