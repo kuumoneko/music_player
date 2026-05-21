@@ -603,19 +603,6 @@ export default class Youtube {
         return promise;
     }
 
-    async fetch_contentRating(ids: string[]): Promise<Record<string, any>> {
-        const ratings: Record<string, any> = {};
-        for (const id of ids) {
-            try {
-                const data = await this.innertubeRequest<any>("player", { id });
-                const status = data?.playabilityStatus?.status ?? "UNKNOWN";
-                const ytRating = status === "OK" ? "ytUnspecified" : "ytAgeRestricted";
-                ratings[id] = { ytRating };
-            } catch (e) { this.log(e.message) }
-        }
-        return ratings;
-    }
-
     async search(query: string, type: "video" | "playlist" | "artist" | "") {
         try {
             const innerType = type === "artist" ? "channel" : type;
