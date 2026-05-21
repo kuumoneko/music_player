@@ -43,10 +43,11 @@ export default class DiscordRPC {
 
             this.socket.on('data', (data) => {
                 try {
-                    const { evt } = JSON.parse('{"a":' + data.toString().split('"data":')[1]);
-                    if (evt === 'READY') {
+                    const fetchedData = JSON.parse('{"a":' + data.toString().split('"data":')[1]);
+                    if (fetchedData.evt === 'READY') {
                         console.log('Discord is READY!');
                         this.isReady = true;
+                        this.username = fetchedData.a.user.username ?? null;
                         resolve(true);
                     }
                 } catch { }
