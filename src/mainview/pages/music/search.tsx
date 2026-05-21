@@ -2,7 +2,7 @@ import List from "@/mainview/components/Search/list.tsx";
 import { useEffect, useState } from "react";
 
 export default function Search({ url }: { url: string }) {
-    const [searchh, setsearch] = useState({
+    const [searchResult, setsearch] = useState({
         query: "",
         source: "",
         type: "",
@@ -36,17 +36,17 @@ export default function Search({ url }: { url: string }) {
     return (
         <>
             {[
-                ...(searchh?.result?.tracks ?? []),
-                ...(searchh?.result?.playlists ?? []),
-                ...(searchh?.result?.artists ?? []),
+                ...(searchResult?.result?.tracks ?? []),
+                ...(searchResult?.result?.playlists ?? []),
+                ...(searchResult?.result?.artists ?? []),
             ].length > 0 && (
                 <List
                     list={
                         url.split("/").slice(2)[1] === "video"
-                            ? searchh.result.tracks
+                            ? searchResult.result.tracks
                             : url.split("/").slice(2)[1] === "playlist"
-                              ? searchh.result.playlists
-                              : (searchh.result.artists ?? [])
+                              ? searchResult.result.playlists
+                              : (searchResult.result.artists ?? [])
                     }
                     source={url.split("/").slice(2)[0] as "youtube" | "local"}
                     type={url.split("/").slice(2)[1] + "s"}
