@@ -5,7 +5,7 @@ import {
     faThumbTack,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { formatDuration } from "@/mainview/utils/format.ts";
+import { formatDuration, remove_hashtag } from "@/mainview/utils/format.ts";
 import Loading from "@/mainview/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
 import { goto } from "@/mainview/utils/url.ts";
@@ -54,14 +54,6 @@ export default function List({
             cancelled = true;
         };
     }, [list]);
-
-    // remove  #hashtag from the title
-    const remove_hashtag = (title: string): string => {
-        const temp = title.split(" ").filter((item: string) => {
-            return !item.startsWith("#");
-        });
-        return temp.join(" ");
-    };
 
     if (list.length === 0) {
         return <Loading mode={"Searching"} />;
