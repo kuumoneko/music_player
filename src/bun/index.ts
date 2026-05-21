@@ -10,7 +10,17 @@ import MusicController from "./controllers/music.ts";
 import { getDataFromDatabase } from "./lib/database.ts";
 import getLocalIPv4 from "./lib/ipv4.ts";
 import CheckUserData from "./lib/env.ts"
-import { getAllLocalFiles, getLocalFileById, getUserData, getUserDatas, writeLogs, writeUserData, writeUserDatas } from "./db/index.ts";
+import {
+	getAllLocalFiles,
+	getLocalFileById,
+	getTrackByName,
+	getTracks,
+	getUserData,
+	getUserDatas,
+	writeLogs,
+	writeUserData,
+	writeUserDatas
+} from "./db/index.ts";
 // types
 import { Repeat, Shuffle, SleepMode, Track, UserData } from "../shared/types.ts";
 import type { AppRPCType, System } from "@/shared/types.ts";
@@ -93,13 +103,10 @@ const ytbTrackStart = "https://www.youtube.com/watch?v="
 
 const play = () => {
 	const currentPlaying = getUserData("currentPlaying");
-	if (currentPlaying.source === "youtube") {
-		player.player.play(`${ytbTrackStart}${currentPlaying.id}`)
-	}
-	else if (currentPlaying.source === "local") {
-		player.player.play(`${currentPlaying.id}`)
-	}
+	const url = currentPlaying.source === "youtube" ? `${ytbTrackStart}${currentPlaying.id}` : currentPlaying.id;
+	player.player.play(url, currentPlaying.title, currentPlaying.thumbnail)
 }
+
 const folder = getUserData("folder");
 
 player = new Player(userData, APP_ROOT, folder);
@@ -129,140 +136,135 @@ player.player.on("playing", async (data) => {
 	if (!data) return;
 
 	setDiscordRPC();
-	if (data.includes(`${ytbTrackStart}`)) {
-		const id = data.split(`${ytbTrackStart}`)[1];
-		if (!id || id === "undefined") return;
-		const track = (await player.youtube.fetch_track([id]))[0] ?? null;
-		const currentPlaying = {
-			source: "youtube",
-			title: track.name,
-			thumbnail: track.thumbnail,
-			artist: track.artist.map(item => item.name).join(", "),
-			duration: track.duration,
-			id: track.id
-		}
-		writeUserData("currentPlaying", currentPlaying)
-		emitToFrontend("currentTrackChanged", { source: currentPlaying.source, id: currentPlaying.id, title: currentPlaying.title, thumbnail: currentPlaying.thumbnail, artist: currentPlaying.artist });
-		if (isDiscord) {
-			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
-		}
-		player.player.setVideoMetadata(track.thumbnail, track.name)
+	let id = data.split(`${ytbTrackStart}`)[1];
+	let isYoutube = true;
+	if (!id || id === undefined || id === null) {
+		id = data;
+		isYoutube = false;
 	}
-	else {
-		const track = getLocalFileById(data)
-		if (!track) return;
-		const currentPlaying = {
-			source: "local", id: track.id, title: track.name, thumbnail: track.thumbnail, artist: track.artist.map((item: { name: string }) => item.name).join(", ")
-		}
-		writeUserData("currentPlaying", currentPlaying)
-		emitToFrontend("currentTrackChanged", { source: currentPlaying.source, id: currentPlaying.id, title: currentPlaying.title, thumbnail: currentPlaying.thumbnail, artist: currentPlaying.artist });
-		if (isDiscord) {
-			discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
-		}
-		player.player.setVideoMetadata(track.thumbnail, track.name);
+	const track = getTracks([id])[0] ?? null;
+
+	let temp_thumbnail = track.thumbnail;
+	if (!isYoutube) {
+		const youtubeTrack = getTrackByName(track.name)[0];
+		const isAvaiable = await player.youtube.checkYoutubeTracks([youtubeTrack.id]);
+		temp_thumbnail = isAvaiable ? youtubeTrack.thumbnail : track.thumbnail;
+	}
+
+	const currentPlaying = {
+		source: isYoutube ? "youtube" : "local",
+		title: track.name,
+		thumbnail: temp_thumbnail,
+		artist: track.artist.map(item => item.name).join(", "),
+		duration: track.duration,
+		id: track.id
+	}
+	writeUserData("currentPlaying", currentPlaying)
+	emitToFrontend("currentTrackChanged", currentPlaying);
+	if (isDiscord) {
+		discordRPC?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
 	}
 	player.player.getQueue();
 })
 
 player.player.on("queue", async (data: { filename: string, playing: boolean }[]) => {
-	if (!data) return;
-	let isYTB = false;
-	if (data[0].filename.includes(ytbTrackStart)) {
-		isYTB = true;
-		data = data.filter(item => item.filename.includes(ytbTrackStart))
-	}
-	else {
-		data = data.filter(item => !item.filename.includes(ytbTrackStart))
-	}
-
-	const currentTrack = data.splice(0, 1)[0].filename;
-	const ids = data.map(item => isYTB ? item.filename.split(ytbTrackStart)[1] : item.filename);
-
-	const { nextfrom, playQueue, shuffle } = getUserDatas(["nextfrom", "playQueue", "shuffle"]) as UserData;
-	const notinQueue = ids.filter(item => playQueue.includes(item));
-	let result = [];
-	playQueue.forEach(item => {
-		const [source, id] = item.split(":")
-		if (source === "youtube") {
-			result.push(`${ytbTrackStart}${id}`)
+	try {
+		if (!data) return;
+		let isYTB = false;
+		if (data[0].filename.includes(ytbTrackStart)) {
+			isYTB = true;
+			data = data.filter(item => item.filename.includes(ytbTrackStart))
 		}
 		else {
-			result.push(id)
+			data = data.filter(item => !item.filename.includes(ytbTrackStart))
 		}
-	});
-	result.push(...notinQueue);
-	result.push(...ids.map(item => `${ytbTrackStart}${item}`))
-	if (result.length < 20) {
-		const [source, mode, id] = nextfrom.split(":");
-		if (mode.includes("track")) {
-			player.player.setRepeat(true);
-		}
-		else if (source === "youtube") {
-			let data: Track[] = null;
-			if (mode.includes("artist")) {
-				data = (await player.youtube.fetch_artist(id)).tracks;
-			}
-			else if (mode.includes("playlist")) {
-				data = (await player.youtube.fetch_playlist(id)).tracks;
-			}
-			if (data?.length > 0) {
-				if (shuffle === Shuffle.Enable) {
-					for (let i = data.length - 1; i > 0; i--) {
-						const j = Math.floor(Math.random() * (i + 1));
-						[data[i], data[j]] = [data[j], data[i]];
-					}
-					result.push(...data.slice(0, 25 - result.length).map(item =>
-						item.source === "youtube" ? `${ytbTrackStart}${item.id}` : item.id
-					))
-				}
-				else {
-					let index = 0;
-					if (result.length > 0) {
-						index = data.findIndex(item => item.id === result[result.length - 1].split(ytbTrackStart)[1]);
-					}
-					else {
-						index = data.findIndex(item => item.id === currentTrack.split(ytbTrackStart)[1]);
-					}
-					result.push(...Array.from({ length: 25 - result.length + 1 }, (_, i) => data[(index + i) % data.length]).map(item =>
-						item.source === "youtube" ? `${ytbTrackStart}${item.id}` : item.id
-					))
-				}
-			}
-		}
-		else if (source === "local") {
-			const localFiles = getAllLocalFiles();
-			const otherTracks = localFiles.filter((localItem) => localItem.id !== currentTrack);
-			if (otherTracks.length > 0) {
-				if (shuffle === Shuffle.Enable) {
-					for (let i = otherTracks.length - 1; i > 0; i--) {
-						const j = Math.floor(Math.random() * (i + 1));
-						[otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
-					}
-					result.push(...otherTracks.slice(0, 25 - result.length).map(item => item.id))
-				}
-				else {
-					let index = 0;
-					if (otherTracks.length > 0) {
-						index = otherTracks.findIndex(item => item.id === currentTrack);
-					}
-					else {
-						index = otherTracks.findIndex(item => item.id === currentTrack);
-					}
 
-					result.push(...Array.from({ length: 25 - result.length + 1 }, (_, i) => otherTracks[(index + i) % otherTracks.length]).map(item => item.id))
-				}
+		const currentTrack = data.splice(0, 1)[0].filename;
+		const ids = data.map(item => isYTB ? item.filename.split(ytbTrackStart)[1] : item.filename);
 
-			}
+		const { nextfrom, playQueue, shuffle } = getUserDatas(["nextfrom", "playQueue", "shuffle"]) as UserData;
+		const notinQueue = ids.filter(item => playQueue.includes(item));
+		const resultIds: string[] = [];
 
-			else {
+		resultIds.push(...playQueue, ...notinQueue, ...ids);
+
+		if (resultIds.length < 20) {
+			const [source, mode, id] = nextfrom.split(":");
+			if (mode.includes("track")) {
 				player.player.setRepeat(true);
+				return;
 			}
+			else if (source === "youtube") {
+				let data: Track[] = null;
+				if (mode.includes("artist")) {
+					data = (await player.youtube.fetch_artist(id)).tracks;
+				}
+				else if (mode.includes("playlist")) {
+					data = (await player.youtube.fetch_playlist(id)).tracks;
+				}
+				if (data?.length > 0) {
+					if (shuffle === Shuffle.Enable) {
+						for (let i = data.length - 1; i > 0; i--) {
+							const j = Math.floor(Math.random() * (i + 1));
+							[data[i], data[j]] = [data[j], data[i]];
+						}
+						resultIds.push(...data.slice(0, 25 - resultIds.length).map(item => item.id))
+					}
+					else {
+						let index = 0;
+						if (resultIds.length > 0) {
+							index = data.findIndex(item => item.id === resultIds[result.length - 1]);
+						}
+						else {
+							index = data.findIndex(item => item.id === currentTrack.split(ytbTrackStart)[1]);
+						}
+						resultIds.push(...Array.from({ length: 25 - resultIds.length + 1 }, (_, i) => data[(index + i) % data.length]).map(item => item.id))
+					}
+				}
+			}
+			else if (source === "local") {
+				const localFiles = getAllLocalFiles();
+				const otherTracks = localFiles.filter((localItem) => localItem.id !== currentTrack);
+				if (otherTracks.length > 0) {
+					if (shuffle === Shuffle.Enable) {
+						for (let i = otherTracks.length - 1; i > 0; i--) {
+							const j = Math.floor(Math.random() * (i + 1));
+							[otherTracks[i], otherTracks[j]] = [otherTracks[j], otherTracks[i]];
+						}
+						resultIds.push(...otherTracks.slice(0, 25 - resultIds.length).map(item => item.id))
+					}
+					else {
+						let index = 0;
+						if (otherTracks.length > 0) {
+							index = otherTracks.findIndex(item => item.id === currentTrack);
+						}
+						else {
+							index = otherTracks.findIndex(item => item.id === currentTrack);
+						}
+						resultIds.push(...Array.from({ length: 25 - resultIds.length + 1 }, (_, i) => otherTracks[(index + i) % otherTracks.length]).map(item => item.id))
+					}
+				}
+				else {
+					player.player.setRepeat(true);
+				}
+			}
+			writeUserData("nextfrom", nextfrom);
+			let result: { url: string, thumbnail: string, title: string }[] = getTracks(resultIds).map(item => {
+				return {
+					url: (item.source === "youtube" ? ytbTrackStart : "") + item.id,
+					thumbnail: item.thumbnail,
+					title: item.name
+				}
+			});
+
+			result = [...new Set(result.filter(item => item.url !== currentTrack))];
+
+			await player.player.addTracks_test(result)
+			const queueState = getUserDatas(["playQueue", "nextfrom", "playedTrack"]) as UserData;
+			emitToFrontend("queueChanged", { playQueue: queueState.playQueue, nextfrom: queueState.nextfrom, playedTrack: queueState.playedTrack });
 		}
-		writeUserData("nextfrom", nextfrom);
-		result = [...new Set(result.filter(item => item !== currentTrack))];
-		await player.player.addTracks(result)
-		const queueState = getUserDatas(["playQueue", "nextfrom", "playedTrack"]) as UserData;
-		emitToFrontend("queueChanged", { playQueue: queueState.playQueue, nextfrom: queueState.nextfrom, playedTrack: queueState.playedTrack });
+	} catch (error) {
+		console.error(error)
 	}
 })
 

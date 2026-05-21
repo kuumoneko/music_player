@@ -198,10 +198,10 @@ export default class Play extends EventEmitter {
                                     result.push(
                                         ...this.playlistOriginalUrls
                                             .slice(
-                                                this.playlistIndex,
+                                                this.playlistIndex + 1,
                                                 Math.max(
                                                     this.playlistOriginalUrls.length - 1,
-                                                    this.playlistIndex + mpvQueue.length - 1))
+                                                    this.playlistIndex + mpvQueue.length))
                                             .map(item => {
                                                 return {
                                                     filename: item
@@ -309,7 +309,7 @@ export default class Play extends EventEmitter {
         }
     }
 
-    async play(urlOrPath: string) {
+    async play(urlOrPath: string, title?: string, thumbnail?: string) {
         this.playlistOriginalUrls = [urlOrPath];
         this.playlistIndex = 0;
         const videoId = this.isYouTubeUrl(urlOrPath);
@@ -322,7 +322,10 @@ export default class Play extends EventEmitter {
 
         this.send(["stop"]);
         this.send(["playlist-clear"]);
-        this.send(["loadfile", urlOrPath, "replace"]);
+        this.send(["loadfile", urlOrPath, "replace", "-1", {
+            "force-media-title": title ?? "",
+            "external-file": thumbnail ?? ""
+        }]);
     }
 
     getQueue() {
@@ -334,11 +337,11 @@ export default class Play extends EventEmitter {
         this.send(["set_property", "loop-file", isRepeat ? "inf" : "no"])
     }
 
-    async addTracks(urls: string[]) {
-        for (const url of urls) {
-            this.playlistOriginalUrls.push(url);
-            const videoId = this.isYouTubeUrl(url);
-            let resolved = url;
+    async addTracks(datas: string[]) {
+        for (const data of datas) {
+            this.playlistOriginalUrls.push(data);
+            const videoId = this.isYouTubeUrl(data);
+            let resolved = data;
             if (videoId) {
                 const directUrl = await this.directYT.resolve(videoId);
                 if (directUrl) {
@@ -349,10 +352,22 @@ export default class Play extends EventEmitter {
         }
     }
 
-    setVideoMetadata(thumbnailUrl: string, title: string) {
-        this.send(["video-add", thumbnailUrl, "auto"]);
-
-        this.send(["set_property", "metadata/by-key/title", title]);
+    async addTracks_test(datas: { url: string, title: string, thumbnail: string }[]) {
+        for (const data of datas) {
+            this.playlistOriginalUrls.push(data.url);
+            const videoId = this.isYouTubeUrl(data.url);
+            let resolved = data.url;
+            if (videoId) {
+                const directUrl = await this.directYT.resolve(videoId);
+                if (directUrl) {
+                    resolved = directUrl;
+                }
+            }
+            this.send(["loadfile", resolved, "append", "-1", {
+                "force-media-title": data.title ?? "",
+                "external-file": data.thumbnail ?? ""
+            }]);
+        }
     }
 
     next() {
