@@ -12,7 +12,9 @@ export default function Discord() {
             .then((data: string | boolean) => {
                 if (!cancelled) setUsername(data);
             });
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     if (username === null) {
@@ -40,7 +42,6 @@ export default function Discord() {
                         }
                     }}
                 >
-                    {username === null && "Not installed"}
                     {username === false ? "Connect" : username}
                 </span>
             </span>
