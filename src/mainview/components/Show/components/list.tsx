@@ -49,17 +49,15 @@ export default function List({
                     id,
                 });
                 if (cancelled) return;
-                list.push(...(data as Playlist).tracks);
                 list = [
                     ...new Map(
-                        [...list, (data as Playlist).tracks].map(
-                            (item: Track) => {
-                                return [
-                                    `${source}:${mode}:${id}:${item.id}`,
-                                    item,
-                                ];
-                            },
-                        ),
+                        [
+                            ...list,
+                            ...(data as Playlist).tracks,
+                            (data as Playlist).tracks,
+                        ].map((item: Track) => {
+                            return [`${source}:${mode}:${id}:${item.id}`, item];
+                        }),
                     ).values(),
                 ];
             }
