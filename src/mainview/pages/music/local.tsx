@@ -6,27 +6,30 @@ import { Track } from "@/shared/types.ts";
 export default function Local() {
     const [localfile, setlocalfile] = useState([]);
     const [duration, setduration] = useState(0);
+
     useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            const fetchData = async () => {
-                const data = await window.api.rpc.request.getLocalfile();
-                if (cancelled) return;
-                setlocalfile(data);
-                setduration(
-                    data.reduce((a: number, b: Track) => a + b.duration, 0),
-                );
-            };
-            await fetchData();
-            const running = setInterval(async () => {
-                await fetchData();
-            }, 1000);
-            return () => {
-                cancelled = true;
-                clearInterval(running);
-            };
-        })();
+        const cancelled = { current: false };
+        const running = setInterval(async () => {
+            const data = await window.api.rpc.request.getLocalfile();
+            if (cancelled.current) return;
+            setlocalfile(data);
+            setduration(
+                data.reduce((a: number, b: Track) => a + b.duration, 0),
+            );
+        }, 1000);
+        window.api.rpc.request.getLocalfile().then((data) => {
+            if (cancelled.current) return;
+            setlocalfile(data);
+            setduration(
+                data.reduce((a: number, b: Track) => a + b.duration, 0),
+            );
+        });
+        return () => {
+            cancelled.current = true;
+            clearInterval(running);
+        };
     }, []);
+
     return (
         <>
             <Top

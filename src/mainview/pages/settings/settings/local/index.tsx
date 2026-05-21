@@ -6,16 +6,20 @@ export default function LocalFile() {
     const [location, setlocation] = useState("");
 
     useEffect(() => {
-        let cancelled = false;
-        (async () => {
+        const cancelled = { current: false };
+        const running = setInterval(async () => {
             const data = await window.api.rpc.request.getUserData("folder");
-            if (!cancelled) setlocation(data);
-        })();
-        const interval = window.setInterval(async () => {
-            const data = await window.api.rpc.request.getUserData("folder");
-            if (!cancelled) setlocation(data);
+            if (cancelled.current) return;
+            setlocation(data);
         }, 1000);
-        return () => { cancelled = true; clearInterval(interval); };
+        window.api.rpc.request.getUserData("folder").then((data) => {
+            if (cancelled.current) return;
+            setlocation(data);
+        });
+        return () => {
+            cancelled.current = true;
+            clearInterval(running);
+        };
     }, []);
 
     if (location === null) {

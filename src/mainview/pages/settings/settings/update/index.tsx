@@ -4,20 +4,20 @@ import { useEffect, useState } from "react";
 
 export default function Update() {
     const [version, setVersion] = useState<string | boolean>("");
+
     useEffect(() => {
-        let cancelled = false;
+        const cancelled = { current: false };
+        const running = setInterval(async () => {
+            const data = await window.api.rpc.request.checkUpdate();
+            if (!cancelled.current) setVersion(data);
+        }, 1000);
         window.api.rpc.request.checkUpdate().then((data: string | boolean) => {
             if (!cancelled) setVersion(data);
         });
-
-        const interval = window.setInterval(() => {
-            window.api.rpc.request
-                .checkUpdate()
-                .then((data: string | boolean) => {
-                    if (!cancelled) setVersion(data);
-                });
-        }, 1000);
-        return () => { cancelled = true; clearInterval(interval); };
+        return () => {
+            cancelled.current = true;
+            clearInterval(running);
+        };
     }, []);
 
     return (
@@ -30,9 +30,9 @@ export default function Update() {
                     </span>
                 </span>
                 <span
-                    className="hover:cursor-pointer"
+                    className={version === true ? "hover:cursor-pointer" : ""}
                     onClick={() => {
-                        window.api.rpc.request.update();
+                        if (version === true) window.api.rpc.request.update();
                     }}
                 >
                     {version === true ? "Update is available!" : version}
