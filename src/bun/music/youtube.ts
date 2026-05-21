@@ -128,6 +128,33 @@ export default class Youtube {
         return data as T;
     }
 
+    private extractPlaylistTotalCount(data: any): number | null {
+        try {
+            const header = data?.header?.playlistHeaderRenderer;
+            if (header?.numVideos) return Number(header.numVideos);
+            if (header?.numVideosText?.simpleText) {
+                const match = String(header.numVideosText.simpleText).match(/(\d+)/);
+                if (match) return Number(match[1]);
+            }
+            if (header?.numVideosText?.runs) {
+                for (const run of header.numVideosText.runs) {
+                    const match = String(run?.text ?? "").match(/(\d+)/);
+                    if (match) return Number(match[1]);
+                }
+            }
+            if (Array.isArray(header?.stats)) {
+                for (const stat of header.stats) {
+                    const text = stat?.simpleText ?? stat?.runs?.[0]?.text ?? "";
+                    const match = String(text).match(/(\d+)/);
+                    if (match) return Number(match[1]);
+                }
+            }
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
     private extractPlaylistContents(data: any): any[] {
         try {
             const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs;
@@ -472,23 +499,41 @@ export default class Youtube {
         return playlist;
     }
 
-    fetch_playlist(id: string, isHomeData: boolean = false): Promise<Playlist> {
+    async fetch_playlist(id: string, isHomeData: boolean = false): Promise<Playlist> {
         const key = `playlist:${id}`;
         if (this.inflight.has(key)) return this.inflight.get(key)!;
 
         const promise = (async () => {
+            const browseId = id.startsWith("VL") ? id : `VL${id}`;
+
+            const data = await this.innertubeRequest<any>("browse", { browseId });
+            const liveCount = this.extractPlaylistTotalCount(data);
+
             const cached = getPlaylist(id);
-            if (cached && cached.ids?.length) {
-                const tracks = isHomeData ? [] : await this.fetch_track(cached.ids);
-                return {
-                    source: "youtube",
-                    name: cached.name,
-                    id: cached.id,
-                    thumbnail: cached.thumbnail,
-                    duration: tracks.reduce((sum, t) => sum + (t.duration ?? 0), 0),
-                    tracks,
-                } as Playlist
+            if (cached && cached.ids?.length && liveCount !== null && liveCount === cached.ids.length) {
+                const contents = this.extractPlaylistContents(data);
+                const freshIds: string[] = [];
+                for (let pos = 0; pos < contents.length; pos++) {
+                    const item = this.parsePlaylistItem(contents[pos], pos + 1);
+                    if (item) freshIds.push(item.id);
+                }
+                const firstPageMatch = freshIds.length > 0 &&
+                    freshIds.length <= cached.ids.length &&
+                    freshIds.every((id, i) => id === cached.ids![i]);
+
+                if (firstPageMatch) {
+                    const tracks = isHomeData ? [] : await this.fetch_track(cached.ids);
+                    return {
+                        source: "youtube",
+                        name: cached.name,
+                        id: cached.id,
+                        thumbnail: cached.thumbnail,
+                        duration: tracks.reduce((sum, t) => sum + (t.duration ?? 0), 0),
+                        tracks,
+                    } as Playlist
+                }
             }
+
             return await this.fetch_playlist_data(id);
         })()
             .catch((e) => { this.log(`Fetch playlist id=${id}, ${e}`); throw e; })
