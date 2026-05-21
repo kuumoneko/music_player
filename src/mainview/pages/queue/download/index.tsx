@@ -171,9 +171,7 @@ export default function Download_Queue() {
                                                     },
                                                 );
 
-                                                setlist(
-                                                    JSON.stringify(temp_obj),
-                                                );
+                                                setlist(temp_obj);
 
                                                 const queue_list = queue;
 
