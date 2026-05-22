@@ -55,6 +55,22 @@ export function createRpcHandlers(ctx: RpcContext) {
       }
     },
 
+    getQueueData: async (items: string[]) => {
+      if (!items || items.length === 0) return [];
+      const results = await Promise.all(items.map(async (entry) => {
+        const parts = entry.split(":");
+        const source = parts[0] as "youtube" | "local";
+        const type = parts[1] || "tracks";
+        const id = parts[2] || parts[1] || "";
+        try {
+          return await MusicController(player, { source, type, id, query: "", mode: "" });
+        } catch {
+          return null;
+        }
+      }));
+      return results;
+    },
+
     getLocalfile: async () => {
       try {
         return getAllLocalFiles();

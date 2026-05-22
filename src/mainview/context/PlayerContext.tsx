@@ -66,16 +66,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                     window.api.rpc.request.getUserData("nextfrom"),
                 ]);
 
-                const queue = [];
-                for (const item of playQueue) {
-                    const [source, mode, id] = item.split(":");
-                    const data = await window.api.rpc.request.getMusicData({
-                        source: source as "youtube" | "local",
-                        type: mode as "tracks" | "playlists" | "artists",
-                        id: id,
-                    });
-                    queue.push(data);
-                }
+                const queue = (await window.api.rpc.request.getQueueData(playQueue)) as Track[];
 
                 if (cancelled) return;
                 setState({

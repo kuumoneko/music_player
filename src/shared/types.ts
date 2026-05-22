@@ -108,6 +108,10 @@ export type AppRPCType = {
                 params: null,
                 response: string // username
             },
+            getQueueData: {
+                params: string[],
+                response: (Track | Playlist | Artist | null)[]
+            },
             setFolder: {
                 params: null,
                 response: string // folder full path

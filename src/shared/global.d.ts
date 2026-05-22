@@ -54,6 +54,8 @@ declare global {
                     toggleQuitonClose: () => Promise<void>,
                     isQuitonClose: () => Promise<boolean>,
                     getSystem: <K extends keyof System> (key: K) => Promise<System[K]>,
+                    // batch
+                    getQueueData: (items: string[]) => Promise<(Track | Playlist | Artist | null)[]>,
                     // error
                     sendError: (error: Error) => Promise<void>,
                 }
