@@ -10,7 +10,7 @@ import { formatDuration } from "@/mainview/utils/format.ts";
 import Loading from "@/mainview/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
 import add_to_download from "@/mainview/utils/add_download.ts";
-import { Artist, Shuffle, Track } from "@/shared/types";
+import { Shuffle, Track } from "@/shared/types";
 import formatArtists from "@/shared/utils/formatArtist";
 
 export default function Top({
@@ -28,7 +28,7 @@ export default function Top({
     thumbnail: string | null;
     duration: number | null;
     releaseDate?: string;
-    artists?: Artist[];
+    artists?: { name: string; id: string }[];
     source: "youtube" | "local";
     id: string;
     mode: "tracks" | "playlists" | "artists";

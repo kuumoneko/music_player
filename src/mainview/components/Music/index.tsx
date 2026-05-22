@@ -52,6 +52,11 @@ export default function Music({
                 id={id}
                 mode={type}
                 list={tracks}
+                artists={
+                    data?.artist?.length > 0
+                        ? data?.artist
+                        : [{ name: "", id: "" }]
+                }
             />
             <List list={tracks} source={source} id={id} mode={type} />
         </>

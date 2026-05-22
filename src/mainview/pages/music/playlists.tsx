@@ -10,7 +10,7 @@ export default function Playlists() {
     });
 
     const run = async () => {
-        const [source, id] = localstorage("get", "url", "/")
+        const [source, id] = (localstorage("get", "url", "/") as string)
             .split("/")
             .slice(2);
         if (source !== data.source || id !== data.id) {
@@ -18,7 +18,13 @@ export default function Playlists() {
                 source,
                 id,
             });
-            setdom(<Music source={source} type="playlists" id={id} />);
+            setdom(
+                <Music
+                    source={"youtube" }
+                    type="playlists"
+                    id={id}
+                />,
+            );
         }
     };
 
