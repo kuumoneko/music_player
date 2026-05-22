@@ -14,31 +14,23 @@ export default function Download() {
     const [data, setdata] = useState<string>("");
 
     useEffect(() => {
-        let cancelled = false;
-        const intervalId = window.setInterval(() => {
-            try {
-                if (status !== "done") {
-                    (async () => {
-                        if (!status || cancelled) return;
-                        const { data, track } =
-                            await window.api.rpc.request.getDownloadStatus();
-                        if (cancelled) return;
-                        if (data == Status.done) {
-                            setstatus(Status.done);
-                            setdownload(false);
-                            setdata("");
-                        } else if (data == Status.downloading) {
-                            setstatus(Status.downloading);
-                        } else if (data === Status.idle) {
-                            setstatus(Status.idle);
-                        } else {
-                            setdata(data + " " + track);
-                        }
-                    })();
-                }
-            } catch {}
-        }, 500);
-        return () => { cancelled = true; window.clearInterval(intervalId); };
+        const handler = (payload: { data: string; track: string }) => {
+            if (payload.data == Status.done) {
+                setstatus(Status.done);
+                setdownload(false);
+                setdata("");
+            } else if (payload.data == Status.downloading) {
+                setstatus(Status.downloading);
+            } else if (payload.data === Status.idle) {
+                setstatus(Status.idle);
+            } else {
+                setdata(payload.data + " " + payload.track);
+            }
+        };
+        window.api.rpc.addMessageListener("download-status-changed", handler);
+        return () => {
+            window.api.rpc.removeMessageListener("download-status-changed", handler);
+        };
     }, []);
 
     useEffect(() => {

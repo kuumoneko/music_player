@@ -8,6 +8,7 @@ export default async function DownloadController(player: Player) {
     player.status = {
         data: Status.idle, track: ""
     };
+    player.onStatusChange?.(player.status);
 
     player.audio_format = Audio_format.m4a;
     player.download_queue = [];
@@ -17,11 +18,13 @@ export default async function DownloadController(player: Player) {
     player.status = {
         data: Status.prepare, track: ""
     }
+    player.onStatusChange?.(player.status);
     for (const item of downloadQueue) {
         const [source, mode, id] = item.split(":");
         player.status = {
             data: Status.prepare, track: `${source} - ${mode} - ${id}`
         }
+        player.onStatusChange?.(player.status);
 
         if (source === "youtube") {
             if (mode.includes("track")) {
@@ -77,6 +80,7 @@ export default async function DownloadController(player: Player) {
     player.status = {
         data: Status.env, track: ""
     }
+    player.onStatusChange?.(player.status);
     console.log("---------------------- CHECKING ----------------------");
     await player.checking();
     player.download();

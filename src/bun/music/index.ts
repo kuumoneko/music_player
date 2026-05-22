@@ -25,6 +25,7 @@ export default class Player {
     public player: Play;
     public download_folder: string = "";
     public status: { data: string, track: string } = { data: Status.idle, track: "" };
+    public onStatusChange?: (status: { data: string; track: string }) => void;
     public download_queue: Download_item[] = [];
     public audio_format: string = Audio_format.m4a;
     public folder: string = "";
@@ -136,6 +137,7 @@ export default class Player {
         this.status = {
             data: Status.prepare, track: title
         };
+        this.onStatusChange?.(this.status);
 
         const command = [`${path.resolve(this.folder, "yt-dlp.exe")}`, ...option];
 
@@ -167,6 +169,7 @@ export default class Player {
                             this.status = {
                                 data: Status.downloading, track: `${percentage}%`
                             };
+                            this.onStatusChange?.(this.status);
                         }
                     }
                 }
@@ -177,6 +180,7 @@ export default class Player {
 
         if (exitCode === 0) {
             this.status = { data: Status.done, track: title };
+            this.onStatusChange?.(this.status);
             writeLogs([{ type: "info", message: `Done download ${title}!` }]);
         } else {
             writeLogs([{ type: "error", message: `Failed to download ${title} (Exit code: ${exitCode})` }]);

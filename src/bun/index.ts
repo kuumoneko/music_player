@@ -52,6 +52,7 @@ let isFirstLoad = true;
 const windowManager = new WindowManager(APP_ASSETS);
 const player = new Player(userData, APP_ROOT, getUserData("folder"));
 await player.init();
+player.onStatusChange = (status) => emitToFrontend("download-status-changed", status);
 const queueManager = new QueueManager(player);
 if (getUserData("folder").length > 0 && isLocal) {
 	player.local?.getfolder(getUserData("folder")).then(() => {
