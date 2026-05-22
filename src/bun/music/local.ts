@@ -14,7 +14,6 @@ export class Local {
     }
 
     async getThumbnail(file: string): Promise<string> {
-        console.log(file)
         try {
             const ffmpeg = Bun.spawn([
                 `${this.appPath}/ffmpeg.exe`,
@@ -53,7 +52,6 @@ export class Local {
     }
 
     async parseFile(file: string): Promise<Track> {
-        // console.log(file)
         try {
             const ffprobe = Bun.spawn([
                 `${this.appPath}/ffprobe.exe`,
@@ -139,7 +137,6 @@ export class Local {
         const rawResults = await Promise.all(processingPromises);
 
         const result: Track[] = rawResults.filter((item) => item !== null);
-        await Bun.write(Bun.file("E:\\coding\\kuumoapp\\test\\test.json"), JSON.stringify(result))
         writeLocalFiles(result);
 
         return result;
