@@ -32,7 +32,7 @@ export default async function MusicController(player: Player, data: { source, mo
             throw new Error("Invalid type");
         }
         else if (source === "youtube") {
-            if (type === "video") {
+            if (type === "video" || type.includes("track")) {
                 const temp = await player.youtube.fetch_track(typeof id === "string" ? [id] : id)
                 result = {
                     tracks: temp,

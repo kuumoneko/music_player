@@ -8,13 +8,13 @@ import PlayQueue from "@/mainview/pages/queue/play/index.tsx";
 import Local from "@/mainview/pages/music/local.tsx";
 
 function Pages({ url }: { url: string }) {
-    if (url.startsWith("/tracks")) {
+    if (url.startsWith("/track")) {
         return <Tracks />;
     }
-    if (url.startsWith("/playlists")) {
+    if (url.startsWith("/playlist")) {
         return <Playlists />;
     }
-    if (url.startsWith("/artists")) {
+    if (url.startsWith("/artist")) {
         return <Artists />;
     }
     if (url.startsWith("/search")) {
