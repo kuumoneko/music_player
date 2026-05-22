@@ -42,10 +42,10 @@ export class QueueManager {
       "playQueue",
       "shuffle",
     ]) as UserData;
-    const notinQueue = ids.filter((item) => playQueue.includes(item));
+    const nextFromQueue = ids.filter((item) => playQueue.includes(item));
     const resultIds: string[] = [];
 
-    resultIds.push(...playQueue, ...notinQueue, ...ids);
+    resultIds.push(...playQueue, ...nextFromQueue, ...ids);
 
     if (resultIds.length < 20) {
       const [source, mode, id] = nextfrom.split(":");
