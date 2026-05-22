@@ -146,6 +146,7 @@ export default class Play extends EventEmitter {
     private isFirstLoad: boolean = true;
     public isReady: boolean = false;
     private isRepeat: boolean = false;
+    private buffer = "";
     private directYT = new DirectYT();
     private playlistOriginalUrls: string[] = [];
     private playlistIndex: number = 0;
@@ -184,7 +185,9 @@ export default class Play extends EventEmitter {
                         this.isReady = true;
                     },
                     data: (_socket: Bun.Socket, data: Buffer) => {
-                        const lines = data.toString().split("\n");
+                        this.buffer += data.toString();
+                        const lines = this.buffer.split("\n");
+                        this.buffer = lines.pop() ?? "";
                         for (const line of lines) {
                             if (!line.trim()) continue;
                             try {
