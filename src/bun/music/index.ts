@@ -89,7 +89,10 @@ export default class Player {
                     .then(() => {
                         writeLogs([{ type: "info", message: `Delete unused file: ${filename}` }]);
                     })
-                    .catch(() => { });
+                    .catch((e) => {
+                        const message = e instanceof Error ? e.message : String(e);
+                        writeLogs([{ type: "error", message: `Failed to delete unused file ${filename}: ${message}` }]);
+                    });
 
                 deleteTasks.push(task);
             }
