@@ -218,8 +218,13 @@ export default class Play extends EventEmitter {
 
                                 if (response.event === "property-change") {
                                     if (response.name === "duration") {
-                                        const duration = response.data;
+                                        const duration = response.data || 0;
                                         this.emit("duration-update", duration);
+                                        if (duration === 0) {
+                                            this.emit("is-live", true);
+                                        } else {
+                                            this.emit("is-live", false);
+                                        }
                                     }
 
                                     if (response.name === "pause") {
@@ -247,15 +252,6 @@ export default class Play extends EventEmitter {
                                     }
                                 }
 
-                                if (response.name === "duration") {
-                                    const duration = response.data || 0;
-
-                                    if (duration === 0) {
-                                        this.emit("is-live", true);
-                                    } else {
-                                        this.emit("is-live", false);
-                                    }
-                                }
                                 if (response.event === "playback-restart" && this.isRepeat) {
                                     this.emit("change-playState", { time: 0 });
                                 }
