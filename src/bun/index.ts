@@ -54,7 +54,9 @@ const player = new Player(userData, APP_ROOT, getUserData("folder"));
 await player.init();
 const queueManager = new QueueManager(player);
 if (getUserData("folder").length > 0 && isLocal) {
-	player.local?.getfolder(getUserData("folder"));
+	player.local?.getfolder(getUserData("folder")).then(() => {
+		emitToFrontend("local-files-changed", null);
+	});
 }
 
 // --- Helpers ---
@@ -62,7 +64,8 @@ const emitToFrontend = (message: string, payload: any) => {
 	try {
 		(appRPC as any)?.send(message, payload);
 	} catch (e) {
-		writeLogs([{ type: "error", message: e.message }]);
+		const message = e instanceof Error ? e.message : String(e);
+		writeLogs([{ type: "error", message }]);
 	}
 };
 
@@ -200,7 +203,8 @@ if (isDiscord && String(DiscordClientId).length > 0) {
 	try {
 		await discordRPC.instance.connect();
 	} catch (e) {
-		writeLogs([{ type: "error", message: e.message }]);
+		const message = e instanceof Error ? e.message : String(e);
+		writeLogs([{ type: "error", message }]);
 	}
 }
 

@@ -6,18 +6,9 @@ export default function Update() {
     const [version, setVersion] = useState<string | boolean>("");
 
     useEffect(() => {
-        const cancelled = { current: false };
-        const running = setInterval(async () => {
-            const data = await window.api.rpc.request.checkUpdate();
-            if (!cancelled.current) setVersion(data);
-        }, 1000);
         window.api.rpc.request.checkUpdate().then((data: string | boolean) => {
-            if (!cancelled) setVersion(data);
+            setVersion(data);
         });
-        return () => {
-            cancelled.current = true;
-            clearInterval(running);
-        };
     }, []);
 
     return (
