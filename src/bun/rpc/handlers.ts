@@ -185,13 +185,6 @@ export function createRpcHandlers(ctx: RpcContext) {
     togglePlayPause: async () => {
       if (!player.player.isReady) return;
       player.player.togglePlayPause(!current.isPlaying);
-      current.isPlaying = !current.isPlaying;
-      emitToFrontend("playerStateChange", {
-        isPlaying: current.isPlaying,
-        isLoading: false,
-        duration: current.duration,
-        isLived: current.isLived,
-      });
     },
 
     getUserData: async (key: keyof UserData) => {
