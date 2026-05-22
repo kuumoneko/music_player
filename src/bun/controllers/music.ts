@@ -1,4 +1,4 @@
-import { getAllLocalFiles } from "../db/index.ts";
+import { getAllLocalFiles, writeLogs } from "../db/index.ts";
 import Player from "../music/index.ts"
 export default async function MusicController(player: Player, data: { source, mode, type, id, query }) {
     const { source, mode, type, id, query }: {
@@ -55,9 +55,8 @@ export default async function MusicController(player: Player, data: { source, mo
                     tracks: localFiles
                 };
             } catch (error) {
-                if (error.code === "ENOENT") {
-                    throw new Error("Folder not found");
-                }
+                const message = error instanceof Error ? error.message : String(error);
+                writeLogs([{ type: "error", message: message }]);
             }
         }
     }
