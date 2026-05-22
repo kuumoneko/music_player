@@ -11,7 +11,7 @@ export default function SleepUI() {
         "after 15 minutes",
         "after 30 minutes",
         "after 45 minutes",
-        "after 1 hours",
+        "after 1 hour",
         "end of this track",
     ];
     const [sleep, setsleep] = useState(SleepMode.no);

@@ -157,7 +157,7 @@ export enum SleepMode {
     fifteen = "after 15 minutes",
     thirty = "after 30 minutes",
     fortyfive = "after 45 minutes",
-    hour = "after 1 hours",
+    hour = "after 1 hour",
     eot = "end of this track"
 }
 
