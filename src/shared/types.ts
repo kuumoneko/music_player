@@ -189,6 +189,7 @@ export interface Track {
     duration: number,
     releasedDate: string // DD-MM-YYYY,
     index?: number // this is for local file,
+    fileModifiedAt?: number // mtime ms for local file cache invalidation,
 }
 
 export interface Search {

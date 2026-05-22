@@ -14,13 +14,14 @@ export class Local {
     }
 
     async getThumbnail(file: string): Promise<string> {
+        console.log(file)
         try {
             const ffmpeg = Bun.spawn([
                 `${this.appPath}/ffmpeg.exe`,
                 '-i', file,
-                '-an',
+                '-map', '0:v:0',
                 '-vframes', '1',
-                '-vcodec', 'mjpeg',
+                '-c:v', 'mjpeg',
                 '-f', 'image2pipe',
                 '-'
             ], {
@@ -28,10 +29,8 @@ export class Local {
                 stderr: "ignore",
             });
 
-            const buffer = await new Response(ffmpeg.stdout).arrayBuffer();
-
+            const buffer = await Bun.readableStreamToArrayBuffer(ffmpeg.stdout);
             const exitCode = await ffmpeg.exited;
-
             if (exitCode === 0 && buffer.byteLength > 0) {
                 const base64Image = Buffer.from(buffer).toString('base64');
                 return `data:image/jpeg;base64,${base64Image}`;
@@ -44,7 +43,17 @@ export class Local {
         }
     }
 
+    async getFileModifiedAt(file: string): Promise<number> {
+        try {
+            const stat = await Bun.file(file).stat();
+            return stat.mtimeMs;
+        } catch {
+            return 0;
+        }
+    }
+
     async parseFile(file: string): Promise<Track> {
+        // console.log(file)
         try {
             const ffprobe = Bun.spawn([
                 `${this.appPath}/ffprobe.exe`,
@@ -64,7 +73,6 @@ export class Local {
 
             const metadata = JSON.parse(output);
             const tags = metadata.format?.tags ?? {};
-
             return {
                 source: "local",
                 name: tags.title ?? "",
@@ -76,7 +84,8 @@ export class Local {
                         id: "", name: tags.artist ?? "Unknown Artist"
                     }
                 ],
-                thumbnail: await this.getThumbnail(file)
+                thumbnail: await this.getThumbnail(file),
+                fileModifiedAt: await this.getFileModifiedAt(file),
             };
         } catch (e) {
             writeLogs([{ type: "error", message: `Failed to parse file ${file}: ${e}` }]);
@@ -108,27 +117,29 @@ export class Local {
                     name.endsWith(".aac")
                 ) {
                     const filePath = join(folder, dirent.name);
-                    const get_data = localFilesMap.get(filePath);
+                    const cached = localFilesMap.get(filePath);
 
-                    if (!get_data || !get_data.thumbnail || get_data.thumbnail.length === 0) {
+                    const task = (async () => {
+                        if (cached?.thumbnail && cached.thumbnail.length > 0) {
+                            const currentMtime = await this.getFileModifiedAt(filePath);
+                            if (currentMtime === cached.fileModifiedAt) {
+                                return cached;
+                            }
+                        }
+                        return this.parseFile(filePath);
+                    })().catch((e) => {
+                        writeLogs([{ type: "error", message: e.message }]);
+                        return null;
+                    });
 
-                        processingPromises.push(
-                            this.parseFile(filePath)
-                                .catch((e) => {
-                                    writeLogs([{ type: "error", message: e.message }]);
-                                    return null;
-                                })
-                        );
-                    } else {
-                        processingPromises.push(Promise.resolve(get_data));
-                    }
+                    processingPromises.push(task);
                 }
             }
         }
         const rawResults = await Promise.all(processingPromises);
 
         const result: Track[] = rawResults.filter((item) => item !== null);
-
+        await Bun.write(Bun.file("E:\\coding\\kuumoapp\\test\\test.json"), JSON.stringify(result))
         writeLocalFiles(result);
 
         return result;

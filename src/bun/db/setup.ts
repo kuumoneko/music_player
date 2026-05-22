@@ -68,7 +68,8 @@ const commands = [
   `ALTER TABLE tracks DROP COLUMN etag;`,
   `ALTER TABLE playlists DROP COLUMN etag;`,
   `ALTER TABLE artists DROP COLUMN etag;`,
-  `ALTER TABLE tracks DROP COLUMN track_index;`
+  `ALTER TABLE tracks DROP COLUMN track_index;`,
+  `ALTER TABLE tracks ADD COLUMN fileModifiedAt INTEGER;`,
 ];
 for (const sql of commands) { try { db.run(sql); } catch (e) { console.error(e.message) } }
 db.run(`PRAGMA cache_size = -2000;`);

@@ -8,6 +8,7 @@ interface LocalFileRow {
     thumbnail: string;
     duration: number;
     releasedDate: string;
+    fileModifiedAt: number | null;
     artists_json: string;
 }
 
@@ -25,6 +26,7 @@ function mapRowToTrack(row: LocalFileRow): Track {
     thumbnail: row.thumbnail,
     duration: row.duration,
     releasedDate: row.releasedDate,
+    fileModifiedAt: row.fileModifiedAt ?? undefined,
     artist: parsedArtists
   };
 }
@@ -32,7 +34,7 @@ function mapRowToTrack(row: LocalFileRow): Track {
 const baseSelect = `
   SELECT 
     t.id, t.name, t.source, t.thumbnail, 
-    t.duration, t.releasedDate, 
+    t.duration, t.releasedDate, t.fileModifiedAt,
     json_group_array(
       json_object('id', ta.artist_id, 'name', ta.artist_name)
     ) as artists_json
