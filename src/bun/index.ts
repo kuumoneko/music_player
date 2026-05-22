@@ -38,12 +38,46 @@ const ytbTrackStart = "https://www.youtube.com/watch?v=";
 
 // --- State ---
 const firstLoadCurrent = getUserData("current");
-const current = {
-	time: 0,
-	duration: firstLoadCurrent.duration,
-	isLived: firstLoadCurrent.isLived,
-	isPlaying: false,
-};
+class PlayerState {
+	time = 0;
+	duration = firstLoadCurrent.duration;
+	isLived = firstLoadCurrent.isLived;
+	isPlaying = false;
+
+	update(partial: Partial<Pick<PlayerState, "time" | "duration" | "isLived" | "isPlaying">>) {
+		Object.assign(this, partial);
+		emitToFrontend("timeUpdate", { time: this.time, isPlaying: this.isPlaying });
+		setDiscordRPC();
+	}
+
+	updateDuration(duration: number) {
+		this.duration = duration * 1000;
+		const temp = getUserData("current");
+		if (temp.duration !== this.duration) {
+			temp.duration = this.duration;
+			writeUserData("current", temp);
+		}
+		this.emitPlayerState({ isLoading: false });
+	}
+
+	updateIsLived(isLived: boolean) {
+		this.isLived = isLived;
+		const temp = getUserData("current");
+		temp.isLived = isLived;
+		writeUserData("current", temp);
+		this.emitPlayerState({ isLoading: false });
+	}
+
+	emitPlayerState(extra: { isPlaying?: boolean; isLoading?: boolean; duration?: number; isLived?: boolean }) {
+		emitToFrontend("playerStateChange", {
+			isPlaying: extra.isPlaying ?? this.isPlaying,
+			isLoading: extra.isLoading ?? false,
+			duration: extra.duration ?? this.duration,
+			isLived: extra.isLived ?? this.isLived,
+		});
+	}
+}
+const current = new PlayerState();
 writeUserData("isLoading", true);
 
 let isFirstLoad = true;
@@ -98,14 +132,16 @@ player.player.on("exit", () => {
 });
 
 player.player.on("change-playState", (data: { isPlaying: boolean; time: number }) => {
+	const update: Partial<Pick<PlayerState, "time" | "isPlaying">> = {};
 	if (data.isPlaying !== undefined && data.isPlaying !== null) {
-		current.isPlaying = data.isPlaying;
+		update.isPlaying = data.isPlaying;
 	}
 	if (data.time !== undefined && data.time !== null) {
-		current.time = data.time;
+		update.time = data.time;
 	}
-	emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
-	setDiscordRPC();
+	if (Object.keys(update).length > 0) {
+		current.update(update);
+	}
 });
 
 player.player.on("playing", async (data) => {
@@ -152,49 +188,19 @@ player.player.on("queue", async (data: { filename: string; playing: boolean }[])
 });
 
 player.player.on("duration-update", (duration) => {
-	current.duration = duration * 1000;
-	const temp = getUserData("current");
-	if (temp.duration !== duration * 1000) {
-		temp.duration = duration * 1000;
-		writeUserData("current", temp);
-	}
-	emitToFrontend("playerStateChange", {
-		isPlaying: current.isPlaying,
-		isLoading: false,
-		duration: current.duration,
-		isLived: current.isLived,
-	});
+	current.updateDuration(duration);
 });
 
 player.player.on("is-live", (isLived) => {
-	current.isLived = isLived;
-	const temp = getUserData("current");
-	temp.isLived = isLived;
-	writeUserData("current", temp);
-	emitToFrontend("playerStateChange", {
-		isPlaying: current.isPlaying,
-		isLoading: false,
-		duration: current.duration,
-		isLived: current.isLived,
-	});
+	current.updateIsLived(isLived);
 });
 
 player.player.on("loading", (data) => {
-	emitToFrontend("playerStateChange", {
-		isPlaying: current.isPlaying,
-		isLoading: data,
-		duration: current.duration,
-		isLived: current.isLived,
-	});
+	current.emitPlayerState({ isLoading: data });
 });
 
 player.player.on("ready", () => {
-	emitToFrontend("playerStateChange", {
-		isPlaying: current.isPlaying,
-		isLoading: false,
-		duration: current.duration,
-		isLived: current.isLived,
-	});
+	current.emitPlayerState({ isLoading: false });
 });
 
 // --- Discord Init (before RPC so context sees value) ---
@@ -263,14 +269,20 @@ try {
 		});
 	}
 } catch {
-	Bun.serve({
-		port,
-		hostname: host,
-		fetch(_req) {
-			openAppUI();
-			return new Response("OK");
-		},
-	});
+	try {
+		Bun.serve({
+			port,
+			hostname: host,
+			fetch(_req) {
+				openAppUI();
+				return new Response("OK");
+			},
+		});
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
+		writeLogs([{ type: "error", message: `Failed to start lock server: ${message}` }]);
+		process.exit(1);
+	}
 }
 
 // --- Tray & UI ---
