@@ -183,7 +183,8 @@ player.player.on("queue", async (data: { filename: string; playing: boolean }[])
 	try {
 		await queueManager.refillQueue(data, emitToFrontend);
 	} catch (error) {
-		console.error(error);
+		const message = error instanceof Error ? error.message : String(error);
+		writeLogs([{ type: "error", message }]);
 	}
 });
 

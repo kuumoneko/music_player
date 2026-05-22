@@ -276,7 +276,8 @@ export default class Play extends EventEmitter {
                         }
                     },
                     error: (_socket: Bun.Socket, error: Error) => {
-                        console.error("IPC Socket Error:", error);
+                        const message = error instanceof Error ? error.message : String(error);
+                        writeLogs([{ type: "error", message: message }]);
                     }
                 }
             });
@@ -404,7 +405,6 @@ export default class Play extends EventEmitter {
     }
 
     public async destroy() {
-        console.log("Cleaning up Kuumo Player...");
         if (this.socket) {
             this.send(["quit"]);
             this.socket.end();

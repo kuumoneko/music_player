@@ -26,7 +26,6 @@ const insertArtistStmt = db.prepare(`
 const writeLocalFile = db.transaction((file: Track) => {
   if (file.source !== "local") {
     writeLogs([{ type: "info", message: `Warning: Track ${file.name} passed to writeLocalFile but had source '${file.source}'. Overriding to 'local'.` }])
-    console.warn(`Warning: Track ${file.name} passed to writeLocalFile but had source '${file.source}'. Overriding to 'local'.`);
   }
 
   const result = upsertLocalTrackStmt.run({

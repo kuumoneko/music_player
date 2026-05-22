@@ -37,7 +37,8 @@ export class Local {
 
             return "";
         } catch (error) {
-            console.error("FFmpeg extraction failed:", error);
+            const message = error instanceof Error ? error.message : String(error);
+            writeLogs([{ type: "error", message: `FFmpeg extraction failed: ${message}` }]);
             return "";
         }
     }

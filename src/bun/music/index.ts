@@ -151,31 +151,10 @@ export default class Player {
 
         if (proc.stdout) {
             const reader = proc.stdout.getReader();
-            const decoder = new TextDecoder();
 
             while (true) {
-                const { done, value } = await reader.read();
+                const { done } = await reader.read();
                 if (done) break;
-
-                const text = decoder.decode(value);
-                const lines = text.split("\n");
-
-                for (const line of lines) {
-                    if (line.includes("[download]") && line.includes("%")) {
-                        const percentMatch = line.match(/(\d+\.\d+)%/);
-
-                        if (percentMatch && percentMatch[1]) {
-                            const percentage = percentMatch[1];
-
-                            console.log(`Progress [${title}]: ${percentage}%`);
-
-                            this.status = {
-                                data: Status.downloading, track: `${percentage}%`
-                            };
-                            this.onStatusChange?.(this.status);
-                        }
-                    }
-                }
             }
         }
 
@@ -295,6 +274,5 @@ export default class Player {
 
         await Promise.all(executing);
         writeLogs([{ type: "info", message: "All downloads finished successfully!" }]);
-        console.log("---------------------- FINISH DOWNLOADING ----------------------")
     }
 }

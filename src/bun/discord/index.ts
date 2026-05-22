@@ -37,7 +37,7 @@ export default class DiscordRPC {
         return new Promise((resolve, reject) => {
             this.socket = net.connect(pipePath);
             this.socket.on('connect', () => {
-                console.log('Connected to pipe, sending handshake...');
+                writeLogs([{ type: "info", message: "Connected to pipe, sending handshake..." }]);
                 this.send(0, { v: 1, client_id: this.clientId });
             });
 
@@ -45,7 +45,7 @@ export default class DiscordRPC {
                 try {
                     const fetchedData = JSON.parse('{"a":' + data.toString().split('"data":')[1]);
                     if (fetchedData.evt === 'READY') {
-                        console.log('Discord is READY!');
+                        writeLogs([{ type: "info", message: "Connected to Discord, client is Ready..." }]);
                         this.isReady = true;
                         this.username = fetchedData.a.user.username ?? null;
                         resolve(true);
@@ -57,7 +57,7 @@ export default class DiscordRPC {
             });
             this.socket.on('error', (err) => reject(err));
             this.socket.on("close", (isError) => {
-                console.log(isError)
+                resolve(!isError)
             })
         });
     }

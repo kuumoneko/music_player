@@ -66,7 +66,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                     window.api.rpc.request.getUserData("nextfrom"),
                 ]);
 
-                const queue = (await window.api.rpc.request.getQueueData(playQueue)) as Track[];
+                const queue = (await window.api.rpc.request.getQueueData(
+                    playQueue,
+                )) as Track[];
 
                 if (cancelled) return;
                 setState({
@@ -84,7 +86,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                     nextfrom: nextfrom ?? "",
                 });
             } catch (err) {
-                console.error("PlayerContext init error:", err);
+                window.api.rpc.request.sendError(err);
             }
         })();
 

@@ -1,4 +1,5 @@
 import type { UserData } from "../../../shared/types.ts";
+import writeLogs from "../log/write.ts";
 import db from "../setup.ts"
 
 const getData = db.prepare(`
@@ -34,7 +35,8 @@ export const getUserDatas = <K extends keyof UserData>(keys: K[]) => {
     try {
       result[row.key as keyof UserData] = decodeValue(row.key, row.value);
     } catch (e) {
-      console.error(`Failed to parse user data for key=${row.key}:`, e);
+      const message = e instanceof Error ? e.message : String(e);
+      writeLogs([{ type: 'error', message: `Failed to parse user data for key=${row.key}: ${message}` }]);
     }
   }
 

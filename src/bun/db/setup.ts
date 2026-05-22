@@ -75,7 +75,7 @@ const commands = [
 for (const sql of commands) {
   try { db.run(sql); } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error(message)
+    console.error(message);
   }
 }
 db.run(`PRAGMA cache_size = -2000;`);

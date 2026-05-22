@@ -14,7 +14,6 @@ export default async function DownloadController(player: Player) {
     player.download_queue = [];
 
     const track_to_download: Download_item[] = [];
-    console.log(new Array(30).fill("-").join(""));
     player.status = {
         data: Status.prepare, track: ""
     }
@@ -74,16 +73,13 @@ export default async function DownloadController(player: Player) {
         }
     }
 
-    console.log("---------------------- READY ---------------------")
     player.download_queue = track_to_download;
     player.download_folder = download_folder;
     player.status = {
         data: Status.env, track: ""
     }
     player.onStatusChange?.(player.status);
-    console.log("---------------------- CHECKING ----------------------");
     await player.checking();
     player.download();
-    console.log("---------------------- DOWNLOADING ----------------------")
     return "ok"
 }
