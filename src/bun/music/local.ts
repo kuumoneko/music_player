@@ -86,7 +86,8 @@ export class Local {
                 fileModifiedAt: await this.getFileModifiedAt(file),
             };
         } catch (e) {
-            writeLogs([{ type: "error", message: `Failed to parse file ${file}: ${e}` }]);
+            const message = e instanceof Error ? e.message : String(e);
+            writeLogs([{ type: "error", message: `Failed to parse file ${file}: ${message}` }]);
             throw e;
         }
     }
@@ -126,7 +127,8 @@ export class Local {
                         }
                         return this.parseFile(filePath);
                     })().catch((e) => {
-                        writeLogs([{ type: "error", message: e.message }]);
+                        const message = e instanceof Error ? e.message : String(e);
+                        writeLogs([{ type: "error", message }]);
                         return null;
                     });
 

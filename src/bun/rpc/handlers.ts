@@ -46,10 +46,11 @@ export function createRpcHandlers(ctx: RpcContext) {
           mode: "",
         });
         return result;
-      } catch (error) {
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
         writeLogs([{
           type: "error",
-          message: `Error when getting music data with:\nSource = ${source}\nMode = ${type}\nId = ${id}\n ${error}`,
+          message: `Error when getting music data with:\nSource = ${source}\nMode = ${type}\nId = ${id}\n ${message}`,
         }]);
         return null;
       }
@@ -74,8 +75,9 @@ export function createRpcHandlers(ctx: RpcContext) {
     getLocalfile: async () => {
       try {
         return getAllLocalFiles();
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when getting Local files:\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when getting Local files:\n${message}` }]);
         return null;
       }
     },
@@ -90,8 +92,9 @@ export function createRpcHandlers(ctx: RpcContext) {
           mode: "search",
         });
         return result;
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when searching music data with:\nType = ${type}\nQuery = ${query}\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when searching music data with:\nType = ${type}\nQuery = ${query}\n${message}` }]);
         return null;
       }
     },
@@ -101,8 +104,9 @@ export function createRpcHandlers(ctx: RpcContext) {
         const pin = getUserData("pin");
         const result = await HomeController(player, pin);
         return result;
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Unexpected error when getting home data:\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Unexpected error when getting home data:\n${message}` }]);
         return null;
       }
     },
@@ -121,8 +125,9 @@ export function createRpcHandlers(ctx: RpcContext) {
           throw new Error("User dont set this app has local file");
         }
         return await DownloadController(player);
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when preparing download music:\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when preparing download music:\n${message}` }]);
         return null;
       }
     },
@@ -182,7 +187,9 @@ export function createRpcHandlers(ctx: RpcContext) {
             return { ok: false, data: "No folder selected" };
           }
           writeUserData("folder", value[0]);
-          player.local.getfolder(value[0]);
+          player.local.getfolder(value[0]).then(() => {
+            emitToFrontend("local-files-changed", null);
+          });
 
           return value[0];
         }
@@ -212,8 +219,9 @@ export function createRpcHandlers(ctx: RpcContext) {
             volume: getUserData("volume"),
           });
         }
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when writing user data with\nKey = ${key}\nValue = ${data}\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when writing user data with\nKey = ${key}\nValue = ${data}\n${message}` }]);
         return null;
       }
     },
@@ -230,8 +238,9 @@ export function createRpcHandlers(ctx: RpcContext) {
     next: async () => {
       try {
         player.player.next();
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when switching to next track\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when switching to next track\n${message}` }]);
         return null;
       }
     },
@@ -239,8 +248,9 @@ export function createRpcHandlers(ctx: RpcContext) {
     previous: async () => {
       try {
         player.player.previous();
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when switching to previous track\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when switching to previous track\n${message}` }]);
         return null;
       }
     },
@@ -306,8 +316,9 @@ export function createRpcHandlers(ctx: RpcContext) {
         current.time = time;
         player.player.seekTo(time);
         emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when changing time\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when changing time\n${message}` }]);
         return null;
       }
     },
@@ -315,8 +326,9 @@ export function createRpcHandlers(ctx: RpcContext) {
     setSleep: async (mode: SleepMode) => {
       try {
         player.player.setSleep(mode);
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when setting Sleep mode\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when setting Sleep mode\n${message}` }]);
         return null;
       }
     },
@@ -326,8 +338,9 @@ export function createRpcHandlers(ctx: RpcContext) {
         const { version } = await Updater.getLocallocalInfo();
         const { updateAvailable } = await Updater.checkForUpdate();
         return updateAvailable === true ? updateAvailable : version;
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when checking for update\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when checking for update\n${message}` }]);
         return null;
       }
     },
@@ -367,8 +380,9 @@ export function createRpcHandlers(ctx: RpcContext) {
           });
           return null;
         }
-      } catch (error) {
-        writeLogs([{ type: "error", message: `Error when connecting with Discord\n${error}` }]);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Error when connecting with Discord\n${message}` }]);
         return null;
       }
     },

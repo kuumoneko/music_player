@@ -248,7 +248,10 @@ export default class Player {
                         await this.converting(data.title, currentExt, "m4a");
                         try {
                             await Bun.file(path.join(this.download_folder, matchingFile)).delete();
-                        } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
+                        } catch (e) {
+                            const message = e instanceof Error ? e.message : String(e);
+                            writeLogs([{ type: "error", message }]);
+                        }
                         return;
                     } else if (currentExt === "m4a") {
                         writeLogs([{ type: "info", message: `Skipping ${data.title}, already exists.` }]);
@@ -270,8 +273,9 @@ export default class Player {
                 .then(() => {
                     executing.delete(task);
                 })
-                .catch(err => {
-                    writeLogs([{ type: "error", message: `Error processing ${data.title}: ${err}` }]);
+                .catch(e => {
+                    const message = e instanceof Error ? e.message : String(e);
+                    writeLogs([{ type: "error", message: `Error processing ${data.title}: ${message}` }]);
                     executing.delete(task);
                 });
 

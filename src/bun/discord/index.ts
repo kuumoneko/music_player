@@ -50,7 +50,10 @@ export default class DiscordRPC {
                         this.username = fetchedData.a.user.username ?? null;
                         resolve(true);
                     }
-                } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
+                } catch (e) {
+                    const message = e instanceof Error ? e.message : String(e);
+                    writeLogs([{ type: "error", message }]);
+                }
             });
             this.socket.on('error', (err) => reject(err));
             this.socket.on("close", (isError) => {

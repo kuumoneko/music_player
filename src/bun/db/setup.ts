@@ -72,7 +72,12 @@ const commands = [
   `ALTER TABLE tracks ADD COLUMN fileModifiedAt INTEGER;`,
   `ALTER TABLE tracks ADD COLUMN lastCheckedAt INTEGER;`,
 ];
-for (const sql of commands) { try { db.run(sql); } catch (e) { console.error(e.message) } }
+for (const sql of commands) {
+  try { db.run(sql); } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error(message)
+  }
+}
 db.run(`PRAGMA cache_size = -2000;`);
 db.run("PRAGMA shrink_memory;");
 export default db;

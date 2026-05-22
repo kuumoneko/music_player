@@ -58,7 +58,8 @@ class DirectYT {
             }
             this.ready = true;
         } catch (e) {
-            writeLogs([{ type: "error", message: `DirectYT session failed: ${e.message}` }]);
+            const message = e instanceof Error ? e.message : String(e);
+            writeLogs([{ type: "error", message: `DirectYT session failed: ${message}` }]);
         }
     }
 
@@ -74,7 +75,8 @@ class DirectYT {
             await this.ensureSession();
             return this.resolveOnce(videoId);
         } catch (e) {
-            writeLogs([{ type: "error", message: `DirectYT resolve failed: ${e.message}` }]);
+            const message = e instanceof Error ? e.message : String(e);
+            writeLogs([{ type: "error", message: `DirectYT resolve failed: ${message}` }]);
             return null;
         }
     }
@@ -267,7 +269,10 @@ export default class Play extends EventEmitter {
                                     }
                                     this.emit("ended");
                                 }
-                            } catch (e) { writeLogs([{ type: "error", message: e.message }]) }
+                            } catch (e) {
+                                const message = e instanceof Error ? e.message : String(e);
+                                writeLogs([{ type: "error", message }]);
+                            }
                         }
                     },
                     error: (_socket: Bun.Socket, error: Error) => {

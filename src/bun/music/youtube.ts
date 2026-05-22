@@ -69,7 +69,7 @@ export default class Youtube {
                 try {
                     const cfg = JSON.parse(cfgMatch[1]);
                     if (typeof cfg.INNERTUBE_API_KEY === "string") this.api_key = cfg.INNERTUBE_API_KEY;
-                } catch (e) { this.log(e.message) }
+                } catch (e) { this.log(e) }
             }
         }
 
@@ -344,8 +344,9 @@ export default class Youtube {
 
     // --- Public methods ---
 
-    log(message: any) {
-        writeLogs([{ type: "error", message: typeof message === "string" ? message : message?.message ?? String(message) }])
+    log(e: any) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: message }])
     }
 
     async fetch_track(ids: string[]): Promise<Track[]> {
@@ -537,7 +538,7 @@ export default class Youtube {
 
             return await this.fetch_playlist_data(id);
         })()
-            .catch((e) => { this.log(`Fetch playlist id=${id}, ${e}`); throw e; })
+            .catch((e) => { this.log(e); throw e; })
             .finally(() => this.inflight.delete(key));
 
         this.inflight.set(key, promise);
@@ -620,7 +621,7 @@ export default class Youtube {
             }
             return unavailableTracks;
         })()
-            .catch((error) => { this.log(error.message); return []; })
+            .catch((error) => { this.log(error); return []; })
             .finally(() => this.inflight.delete(key));
 
         this.inflight.set(key, promise);

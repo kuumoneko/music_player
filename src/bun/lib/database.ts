@@ -19,8 +19,9 @@ export async function getDataFromDatabase(...args: string[]): Promise<any> {
         else {
             throw new Error(`Database file not found at: ${filePath}`);
         }
-    } catch (error) {
-        writeLogs([{ type: "error", message: `Failed to read database file: ${filePath} \n Error: ${error}` }]);
+    } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `Failed to read database file: ${filePath} \n Error: ${message}` }]);
         return null
     }
 }
@@ -39,9 +40,10 @@ export async function writeDataToDatabase(...args: string[]) {
 
         await Bun.write(`${filePath}.tmp`, JSON.stringify(data, null, 2), { createPath: true });
         await rename(`${filePath}.tmp`, filePath);
-    } catch (error) {
+    } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
         writeLogs([{
-            type: "error", message: `Failed to write to database file: ${filePath} \n Error: ${error}`
+            type: "error", message: `Failed to write to database file: ${filePath} \n Error: ${message}`
         }])
     }
 }
