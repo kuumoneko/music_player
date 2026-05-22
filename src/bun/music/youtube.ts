@@ -1,8 +1,12 @@
 import { Playlist, Track, Artist } from "../../shared/types.ts";
 import { getPlaylist, getTracks, writeArtist, writeLogs, writePlaylist, writeTracks } from "../db/index.ts";
 import deleteTracks from "../db/tracks/delete.ts";
-import { getAllTracks } from "../db/index.ts";
 import db from "../db/setup.ts";
+
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const staleTracksStmt = db.prepare(`SELECT id FROM tracks WHERE lastCheckedAt IS NULL OR lastCheckedAt < $cutoff`);
+const checkCacheStmt = db.prepare(`SELECT id, lastCheckedAt FROM tracks WHERE id IN (SELECT value FROM json_each($ids))`);
+const updateCheckedStmt = db.prepare(`UPDATE tracks SET lastCheckedAt = ? WHERE id = ?`);
 
 const genericUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 const INNERTUBE_BASE = "https://www.youtube.com/youtubei/v1";
@@ -550,27 +554,24 @@ export default class Youtube {
         if (this.inflight.has(key)) return this.inflight.get(key)!;
 
         const promise = (async () => {
-            let videoIds: string[];
-            if (ids && ids.length > 0) {
-                videoIds = Array.from(new Set([...ids]));
-            } else {
-                videoIds = getAllTracks().map((item: Track) => item.id);
-            }
-            if (videoIds.length === 0) return [];
-
-            const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
             const now = Date.now();
-            const needsCheck: string[] = [];
+            let needsCheck: string[];
 
-            const existingStmt = db.prepare(`SELECT id, lastCheckedAt FROM tracks WHERE id IN (SELECT value FROM json_each($ids))`);
-            const existing = existingStmt.all({ $ids: JSON.stringify(videoIds) }) as { id: string; lastCheckedAt: number | null }[];
-            const existingMap = new Map(existing.map(r => [r.id, r.lastCheckedAt ?? 0]));
+            if (ids && ids.length > 0) {
+                const videoIds = Array.from(new Set([...ids]));
+                const existing = checkCacheStmt.all({ $ids: JSON.stringify(videoIds) }) as { id: string; lastCheckedAt: number | null }[];
+                const existingMap = new Map(existing.map(r => [r.id, r.lastCheckedAt ?? 0]));
 
-            for (const id of videoIds) {
-                const lastChecked = existingMap.get(id) ?? 0;
-                if (now - lastChecked > CACHE_TTL_MS) {
-                    needsCheck.push(id);
+                needsCheck = [];
+                for (const id of videoIds) {
+                    const lastChecked = existingMap.get(id) ?? 0;
+                    if (now - lastChecked > CACHE_TTL_MS) {
+                        needsCheck.push(id);
+                    }
                 }
+            } else {
+                const stale = staleTracksStmt.all({ $cutoff: now - CACHE_TTL_MS }) as { id: string }[];
+                needsCheck = stale.map(r => r.id);
             }
 
             if (needsCheck.length === 0) return [];
@@ -592,7 +593,6 @@ export default class Youtube {
             }
 
             const CONCURRENCY_LIMIT = 50;
-            const updateCheckedStmt = db.prepare(`UPDATE tracks SET lastCheckedAt = ? WHERE id = ?`);
             const updateAvailable = db.transaction((results: { id: string; available: boolean }[]) => {
                 for (const res of results) {
                     if (res.available) {
