@@ -155,7 +155,10 @@ player.player.on("playing", async (data) => {
 		isYoutube = false;
 	}
 	const track = getTracks([id])[0] ?? null;
-
+	if (track === null) {
+		discordRPC.instance.clearMusic();
+		return;
+	}
 	let temp_thumbnail = track.thumbnail;
 	if (!isYoutube) {
 		const youtubeTrack = getTrackByName(track.name)[0];
