@@ -127,7 +127,7 @@ export default function Play_Queue() {
                                                     navigator.clipboard.writeText(
                                                         "https://www.youtube.com/watch?v=" +
                                                             item.id,
-                                                    );
+                                                    ).catch(() => {});
                                                 }
                                             }}
                                         >
@@ -214,7 +214,7 @@ export default function Play_Queue() {
                                                     navigator.clipboard.writeText(
                                                         "https://www.youtube.com/watch?v=" +
                                                             item.id,
-                                                    );
+                                                    ).catch(() => {});
                                                 }
                                             }}
                                         >

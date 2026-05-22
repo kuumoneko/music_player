@@ -134,7 +134,7 @@ export default function Top({
                                                     id;
                                                 navigator.clipboard.writeText(
                                                     url,
-                                                );
+                                                ).catch(() => {});
                                             }
                                         } else if (mode.includes("playlist")) {
                                             if (source === "youtube") {
@@ -143,7 +143,7 @@ export default function Top({
                                                     id;
                                                 navigator.clipboard.writeText(
                                                     url,
-                                                );
+                                                ).catch(() => {});
                                             }
                                         }
                                     }}

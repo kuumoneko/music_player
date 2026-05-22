@@ -171,7 +171,7 @@ export default function List({
                                                             item.id;
                                                         navigator.clipboard.writeText(
                                                             url,
-                                                        );
+                                                        ).catch(() => {});
                                                     }
                                                 }}
                                             >

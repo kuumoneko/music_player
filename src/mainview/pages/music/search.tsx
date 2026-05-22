@@ -15,12 +15,11 @@ export default function Search({ url }: { url: string }) {
 
     useEffect(() => {
         let cancelled = false;
-        (async () => {
-            const [source, type, query] = url.split("/").slice(2);
-            const res = await window.api.rpc.request.searchMusic({
-                type: type as "video" | "playlist" | "artist",
-                query: query,
-            });
+        const [source, type, query] = url.split("/").slice(2);
+        window.api.rpc.request.searchMusic({
+            type: type as "video" | "playlist" | "artist",
+            query: query,
+        }).then((res) => {
             if (cancelled) return;
             setsearch({
                 query,
@@ -28,7 +27,7 @@ export default function Search({ url }: { url: string }) {
                 type,
                 result: res,
             });
-        })();
+        }).catch(() => {});
         return () => {
             cancelled = true;
         };

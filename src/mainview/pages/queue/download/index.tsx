@@ -287,7 +287,7 @@ export default function Download_Queue() {
                                                             item.id;
                                                         navigator.clipboard.writeText(
                                                             url,
-                                                        );
+                                                        ).catch(() => {});
                                                     }
                                                 }}
                                             >
