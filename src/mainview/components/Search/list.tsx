@@ -91,7 +91,7 @@ export default function List({
                                 index + 1
                             } flex h-23.75 w-[95%] flex-row items-center justify-between mb-5 bg-zinc-700 hover:bg-zinc-600 rounded-lg`}
                             onClick={() => {
-                                if (type === "videos") {
+                                if (type === "tracks") {
                                     window.api.rpc.request.play({
                                         item: item,
                                         source: source,
