@@ -8,6 +8,12 @@ const getData = db.prepare(`
   WHERE t.key = ?;
 `);
 
+const getMultiStmt = db.prepare(`
+  SELECT key, value 
+  FROM user_data 
+  WHERE key IN (SELECT value FROM json_each($keys));
+`);
+
 const getUserData = <K extends keyof UserData>(key: K) => {
   if (!key) return null;
 
@@ -19,11 +25,6 @@ const getUserData = <K extends keyof UserData>(key: K) => {
 export const getUserDatas = <K extends keyof UserData>(keys: K[]) => {
   if (!keys) return null;
 
-  const getMultiStmt = db.prepare(`
-  SELECT key, value 
-  FROM user_data 
-  WHERE key IN (SELECT value FROM json_each($keys));
-`);
 
   const rows = getMultiStmt.all({ $keys: JSON.stringify(keys) }) as { key: string; value: string }[];
 

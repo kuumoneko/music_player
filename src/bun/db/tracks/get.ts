@@ -14,6 +14,21 @@ const getMultipleTracksStmt = db.prepare(`
   GROUP BY t.id;
 `);
 
+const getTracksByNameStmt = db.prepare(`
+  SELECT 
+    t.id, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate,
+    json_group_array(
+      json_object('id', ta.artist_id, 'name', ta.artist_name)
+    ) as artists_json
+  FROM tracks t
+  LEFT JOIN track_artists ta ON t.id = ta.track_id
+  WHERE t.name LIKE $query
+  GROUP BY t.id;
+`);
+
+const getAllTracksIdsStmt = db.prepare("SELECT id FROM tracks");
+
 export default function getTracks(ids: string[]): Track[] {
   if (!ids || ids.length === 0) return [];
 
@@ -49,18 +64,6 @@ export default function getTracks(ids: string[]): Track[] {
 }
 
 export function getTrackByName(name: string, exact: boolean = false): Track[] {
-  const getTracksByNameStmt = db.prepare(`
-  SELECT 
-    t.id, t.name, t.source, t.thumbnail, 
-    t.duration, t.releasedDate,
-    json_group_array(
-      json_object('id', ta.artist_id, 'name', ta.artist_name)
-    ) as artists_json
-  FROM tracks t
-  LEFT JOIN track_artists ta ON t.id = ta.track_id
-  WHERE t.name LIKE $query
-  GROUP BY t.id;
-`);
   const query = exact ? name : `%${name}%`;
 
   const results = getTracksByNameStmt.all({ $query: query }) as {
@@ -94,7 +97,7 @@ export function getTrackByName(name: string, exact: boolean = false): Track[] {
 
 export function getAllTracks() {
   try {
-    const rows = db.prepare("SELECT id FROM tracks").all() as { id: string }[];
+    const rows = getAllTracksIdsStmt.all() as { id: string }[];
     return rows.map(r => ({ id: r.id }));
   } catch { return []; }
 }
