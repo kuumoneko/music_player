@@ -368,7 +368,7 @@ export default function Download_Queue() {
                                                                             itemm.id;
                                                                         navigator.clipboard.writeText(
                                                                             url,
-                                                                        );
+                                                                        ).catch(() => {});
                                                                     }
                                                                 }}
                                                             >
