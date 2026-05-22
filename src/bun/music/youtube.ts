@@ -370,7 +370,7 @@ export default class Youtube {
                 const results = await Promise.all(batch.map(async (id) => {
                     try {
                         const data = await this.innertubeRequest<any>("player", { videoId: id });
-                        if (!data?.videoDetails) return null;
+                        if (!data?.videoDetails) { return null; }
                         const vd = data.videoDetails;
                         const mf = data.microformat?.playerMicroformatRenderer ?? {};
                         return {
@@ -390,7 +390,7 @@ export default class Youtube {
             }
         }
 
-        const res = [...tracks_in_database, ...temp_tracks].map(track => {
+        const res = [...tracks_in_database, ...temp_tracks].filter(track => track !== null).map(track => {
             return {
                 ...track,
                 thumbnail: `https://i.ytimg.com/vi/${track.id}/default.jpg`,
@@ -410,6 +410,7 @@ export default class Youtube {
                 );
             });
         }
+        else { return [] }
     }
 
     private ensureHttps(url: string): string {
