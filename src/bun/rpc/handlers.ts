@@ -34,11 +34,26 @@ export interface RpcContext {
   play: () => void;
 }
 
+const rateLimitMap = new Map<string, number>();
+const RATE_LIMIT_MS = 500;
+
+function withRateLimit<T extends (...args: any[]) => any>(fn: T, name: string): T {
+  return ((...args: any[]) => {
+    const now = Date.now();
+    const last = rateLimitMap.get(name) ?? 0;
+    if (now - last < RATE_LIMIT_MS) {
+      throw new Error(`Rate limited: ${name}`);
+    }
+    rateLimitMap.set(name, now);
+    return fn(...args);
+  }) as T;
+}
+
 export function createRpcHandlers(ctx: RpcContext) {
   const { player, windowManager, current, isLocal, isDiscord, DiscordClientId, emitToFrontend, play } = ctx;
 
   return {
-    getMusicData: async ({ source, type, id }: { source: "youtube" | "local"; type: string; id: string }) => {
+    getMusicData: withRateLimit(async ({ source, type, id }: { source: "youtube" | "local"; type: string; id: string }) => {
       try {
         const result = await MusicController(player, {
           source,
@@ -56,8 +71,7 @@ export function createRpcHandlers(ctx: RpcContext) {
         }]);
         return null;
       }
-    },
-
+    }, "getMusicData"),
     getQueueData: async (items: string[]) => {
       if (!items || items.length === 0) return [];
       const results = await Promise.all(items.map(async (entry) => {
@@ -84,7 +98,7 @@ export function createRpcHandlers(ctx: RpcContext) {
       }
     },
 
-    searchMusic: async ({ type, query }: { type: "video" | "playlist" | "artist"; query: string }) => {
+    searchMusic: withRateLimit(async ({ type, query }: { type: "video" | "playlist" | "artist"; query: string }) => {
       try {
         const allowedTypes = ["video", "playlist", "artist"];
         if (!allowedTypes.includes(type)) {
@@ -113,9 +127,9 @@ export function createRpcHandlers(ctx: RpcContext) {
         writeLogs([{ type: "error", message: `Error when searching music data with:\nType = ${type}\nQuery = ${query}\n${message}` }]);
         return null;
       }
-    },
+    }, "searchMusic"),
 
-    getHomeData: async () => {
+    getHomeData: withRateLimit(async () => {
       try {
         const pin = getUserData("pin");
         const result = await HomeController(player, pin);
@@ -125,13 +139,13 @@ export function createRpcHandlers(ctx: RpcContext) {
         writeLogs([{ type: "error", message: `Unexpected error when getting home data:\n${message}` }]);
         return null;
       }
-    },
+    }, "getHomeData"),
 
     getSystem: (key: keyof System) => {
       return key === "isDiscord" ? isDiscord : isLocal;
     },
 
-    downloadMusic: async () => {
+    downloadMusic: withRateLimit(async () => {
       try {
         const downloadQueue = getUserData("downloadQueue");
         if (downloadQueue.length === 0) {
@@ -146,7 +160,7 @@ export function createRpcHandlers(ctx: RpcContext) {
         writeLogs([{ type: "error", message: `Error when preparing download music:\n${message}` }]);
         return null;
       }
-    },
+    }, "downloadMusic"),
 
     getDownloadStatus: async () => {
       return !isLocal ? null : player.status;
