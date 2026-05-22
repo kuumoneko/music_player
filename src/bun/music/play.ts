@@ -360,7 +360,7 @@ export default class Play extends EventEmitter {
     }
 
     previous() {
-        this.playlistIndex = Math.max(this.playlistIndex - 1, 0);
+        this.playlistIndex = Math.max(this.playlistIndex - 2, 0);
         this.send(["playlist-prev"])
     }
 
