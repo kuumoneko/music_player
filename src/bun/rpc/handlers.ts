@@ -10,7 +10,6 @@ import MusicController from "../controllers/music.ts";
 import formatArtists from "../../shared/utils/formatArtist.ts";
 import { SleepMode, Repeat } from "../../shared/types.ts";
 import type { UserData } from "../../shared/types.ts";
-import type { System } from "../../shared/types.ts";
 import {
   getAllLocalFiles,
   getLocalFileById,
@@ -141,8 +140,8 @@ export function createRpcHandlers(ctx: RpcContext) {
       }
     }, "getHomeData"),
 
-    getSystem: (key: keyof System) => {
-      return key === "isDiscord" ? isDiscord : isLocal;
+    getIsLocal: () => {
+      return isLocal;
     },
 
     downloadMusic: withRateLimit(async () => {

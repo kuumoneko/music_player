@@ -22,9 +22,9 @@ export type AppRPCType = {
                     newTracks: Track[],
                 }
             },
-            getSystem: {
-                params: keyof System,
-                response: System[keyof System]
+            getIsLocal: {
+                params: null,
+                response: boolean
             },
             downloadMusic: {
                 params: null,

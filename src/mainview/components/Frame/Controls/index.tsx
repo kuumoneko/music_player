@@ -37,7 +37,7 @@ export default function ControlPanel() {
 
     useEffect(() => {
         let cancelled = false;
-        window.api.rpc.request.getSystem("isLocal").then((data) => {
+        window.api.rpc.request.getIsLocal().then((data) => {
             if (!cancelled) setIsLocal(data);
         });
         return () => {

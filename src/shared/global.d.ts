@@ -53,7 +53,7 @@ declare global {
                     connectDiscordRPC: () => Promise<string>,
                     toggleQuitonClose: () => Promise<void>,
                     isQuitonClose: () => Promise<boolean>,
-                    getSystem: <K extends keyof System> (key: K) => Promise<System[K]>,
+                    getIsLocal: () => Promise<boolean>,
                     // batch
                     getQueueData: (items: string[]) => Promise<(Track | Playlist | Artist | null)[]>,
                     // error
