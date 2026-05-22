@@ -1,4 +1,6 @@
 import { Utils, Updater } from "electrobun/bun";
+import { resolve } from "node:path";
+import { stat } from "node:fs/promises";
 import type DiscordRPC from "../discord/index.ts";
 import type Player from "../music/index.ts";
 import type { WindowManager } from "../window/manager.ts";
@@ -84,11 +86,25 @@ export function createRpcHandlers(ctx: RpcContext) {
 
     searchMusic: async ({ type, query }: { type: "video" | "playlist" | "artist"; query: string }) => {
       try {
+        const allowedTypes = ["video", "playlist", "artist"];
+        if (!allowedTypes.includes(type)) {
+          throw new Error(`Invalid search type: ${type}`);
+        }
+        if (!query || typeof query !== "string") {
+          throw new Error("Search query is required");
+        }
+        if (query.length > 200) {
+          throw new Error("Search query exceeds maximum length");
+        }
+        const sanitized = query.replace(/[\x00-\x1f]/g, "").trim();
+        if (sanitized.length === 0) {
+          throw new Error("Search query is empty after sanitization");
+        }
         const result = await MusicController(player, {
           source: "youtube",
           id: "",
           type,
-          query,
+          query: sanitized,
           mode: "search",
         });
         return result;
@@ -186,12 +202,23 @@ export function createRpcHandlers(ctx: RpcContext) {
           if (!value || value.length === 0) {
             return { ok: false, data: "No folder selected" };
           }
-          writeUserData("folder", value[0]);
-          player.local.getfolder(value[0]).then(() => {
+
+          const canonicalPath = resolve(value[0]);
+          try {
+            const stats = await stat(canonicalPath);
+            if (!stats.isDirectory()) {
+              return { ok: false, data: "Selected path is not a directory" };
+            }
+          } catch {
+            return { ok: false, data: "Selected folder does not exist" };
+          }
+
+          writeUserData("folder", canonicalPath);
+          player.local.getfolder(canonicalPath).then(() => {
             emitToFrontend("local-files-changed", null);
           });
 
-          return value[0];
+          return canonicalPath;
         }
 
         writeUserData(key, data);
