@@ -2,6 +2,7 @@ import { Playlist, Track, Artist } from "../../shared/types.ts";
 import { getPlaylist, getTracks, writeArtist, writeLogs, writePlaylist, writeTracks } from "../db/index.ts";
 import deleteTracks from "../db/tracks/delete.ts";
 import { getAllTracks } from "../db/index.ts";
+import db from "../db/setup.ts";
 
 const genericUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 const INNERTUBE_BASE = "https://www.youtube.com/youtubei/v1";
@@ -556,6 +557,23 @@ export default class Youtube {
             }
             if (videoIds.length === 0) return [];
 
+            const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+            const now = Date.now();
+            const needsCheck: string[] = [];
+
+            const existingStmt = db.prepare(`SELECT id, lastCheckedAt FROM tracks WHERE id IN (SELECT value FROM json_each($ids))`);
+            const existing = existingStmt.all({ $ids: JSON.stringify(videoIds) }) as { id: string; lastCheckedAt: number | null }[];
+            const existingMap = new Map(existing.map(r => [r.id, r.lastCheckedAt ?? 0]));
+
+            for (const id of videoIds) {
+                const lastChecked = existingMap.get(id) ?? 0;
+                if (now - lastChecked > CACHE_TTL_MS) {
+                    needsCheck.push(id);
+                }
+            }
+
+            if (needsCheck.length === 0) return [];
+
             const unavailableTracks: string[] = [];
             const isTrackAvailable = async (id: string) => {
                 try {
@@ -572,10 +590,20 @@ export default class Youtube {
                 }
             }
 
-            const CONCURRENCY_LIMIT = 10;
+            const CONCURRENCY_LIMIT = 50;
+            const updateCheckedStmt = db.prepare(`UPDATE tracks SET lastCheckedAt = ? WHERE id = ?`);
+            const updateAvailable = db.transaction((results: { id: string; available: boolean }[]) => {
+                for (const res of results) {
+                    if (res.available) {
+                        updateCheckedStmt.run(now, res.id);
+                    } else {
+                        unavailableTracks.push(res.id);
+                    }
+                }
+            });
 
-            for (let i = 0; i < videoIds.length; i += CONCURRENCY_LIMIT) {
-                const chunk = videoIds.slice(i, i + CONCURRENCY_LIMIT);
+            for (let i = 0; i < needsCheck.length; i += CONCURRENCY_LIMIT) {
+                const chunk = needsCheck.slice(i, i + CONCURRENCY_LIMIT);
 
                 const chunkResults = await Promise.all(
                     chunk.map(async (id) => ({
@@ -584,11 +612,7 @@ export default class Youtube {
                     }))
                 );
 
-                chunkResults.forEach(res => {
-                    if (!res.available) unavailableTracks.push(res.id);
-                });
-
-                console.log(`Progress: ${Math.min(i + CONCURRENCY_LIMIT, videoIds.length)}/${videoIds.length}`);
+                updateAvailable(chunkResults);
             }
 
             if (!ids) {
