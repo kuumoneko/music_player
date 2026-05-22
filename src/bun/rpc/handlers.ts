@@ -314,7 +314,7 @@ export function createRpcHandlers(ctx: RpcContext) {
       } else if (source === "local") {
         const track = getLocalFileById(item.id);
         user.currentPlaying = {
-          source: track.source,
+          source: "local",
           id: item.id,
           title: track?.name,
           thumbnail: track?.thumbnail,
