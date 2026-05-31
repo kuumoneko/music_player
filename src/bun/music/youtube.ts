@@ -664,11 +664,20 @@ export default class Youtube {
                 itemsResult = itemsResult.slice(0, 100);
             }
 
+            let playlists: Playlist[] = [],
+                artists: Artist[] = [];
+            if (playlist_ids.length > 0) {
+                playlists = await Promise.all(playlist_ids.map(id => this.fetch_playlist(id)));
+            }
+            if (artist_ids.length > 0) {
+                artists = await Promise.all(artist_ids.map(id => this.fetch_artist(id)));
+            }
+
             return {
                 type: "youtube:search",
                 tracks: itemsResult,
-                playlists: playlist_ids,
-                artists: artist_ids,
+                playlists: playlists,
+                artists: artists,
             }
         }
         catch (e) {
