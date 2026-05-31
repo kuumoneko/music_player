@@ -9,7 +9,7 @@ export default async function config(thisWorkSpace: string, isDev: boolean) {
         resolve(thisWorkSpace, "package.json")
     ).json();
 
-    const electrobunConfig: ElectrobunConfig = {
+  const electrobunConfig: ElectrobunConfig = {
         release: {
             baseUrl: `https://github.com/${process.env["GHUSERNAME"]}/${process.env["REPO"]}/releases/download`,
         },
@@ -19,7 +19,10 @@ export default async function config(thisWorkSpace: string, isDev: boolean) {
                 bundleCEF: false,
                 icon: "assets/favicon.ico"
             },
-            copy: {}
+          copy: {},
+          bun: {
+            entrypoint:"src/bun/index.ts"
+          }
         },
         app: {
             name: packageJson.name,
@@ -30,7 +33,7 @@ export default async function config(thisWorkSpace: string, isDev: boolean) {
 
     // default config
     electrobunConfig.build.copy[`dist/`] = `views/src`;
-    electrobunConfig.build.copy[`bin/`] = `../../`;
+    // electrobunConfig.build.copy[`bin/`] = `../../`;
     electrobunConfig.build.copy[`assets/`] = `assets/`;
     electrobunConfig.build.copy[`data/${!isDev ? "temp" : ""}system.json`] = `data/system.json`;
 
