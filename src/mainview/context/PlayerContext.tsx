@@ -48,6 +48,7 @@ const PlayerContext = createContext<PlayerState>(defaultState);
 export function PlayerProvider({ children }: { children: ReactNode }) {
     const [state, setState] = useState<PlayerState>(defaultState);
 
+    // ── Main init ──
     useEffect(() => {
         let cancelled = false;
         (async () => {
@@ -80,7 +81,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                     shuffle: playingData.shuffle,
                     repeat: playingData.repeat,
                     playedTrack: playingData.playedTrack,
-                    currentTrack: currentPlaying || null,
+                    currentTrack: currentPlaying?.id ? currentPlaying : null,
                     volume: volume ?? 50,
                     playQueue: queue ?? [],
                     nextfrom: nextfrom ?? "",
