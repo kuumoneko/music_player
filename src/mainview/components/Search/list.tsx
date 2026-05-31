@@ -9,7 +9,7 @@ import { formatDuration, remove_hashtag } from "@/mainview/utils/format.ts";
 import Loading from "@/mainview/components/Loading/index.tsx";
 import { useEffect, useState } from "react";
 import { goto } from "@/mainview/utils/url.ts";
-import { Track } from "@/shared/types.ts";
+import { Artist, Track ,Playlist} from "@/shared/types.ts";
 import Queue from "@/mainview/components/Show/common/queue.ts";
 import download from "../Show/common/download";
 import formatArtists from "@/shared/utils/formatArtist";
@@ -21,7 +21,7 @@ export default function List({
     mode,
     type,
 }: {
-    list: Track[];
+    list: Track[] | Playlist[] | Artist[];
     source: "youtube" | "local";
     id: string;
     mode: string;
@@ -34,7 +34,7 @@ export default function List({
         head: 0,
         tail: Math.min(max_items, list.length),
     });
-    const [show_list, setlist] = useState<Track[]>([]);
+    const [show_list, setlist] = useState<Track[] | Playlist[] | Artist[]>([]);
     const [pin, setPin] = useState<string[]>([]);
 
     useEffect(() => {
@@ -83,7 +83,7 @@ export default function List({
             }}
         >
             <div className="item h-full grid grid-cols-3">
-                {show_list.map((item: Track, index: number) => {
+                {show_list.map((item: Track | Playlist | Artist, index: number) => {
                     return (
                         <div
                             key={`${item.name ? item.name + index : `${source} ${mode} ${id} ${index}`}`}
@@ -93,7 +93,7 @@ export default function List({
                             onClick={() => {
                                 if (type === "tracks") {
                                     window.api.rpc.request.play({
-                                        item: item,
+                                        item: item as Track,
                                         source: source,
                                         type: "tracks",
                                         id: item.id,
@@ -126,21 +126,31 @@ export default function List({
                                                 "cant load",
                                         )}
                                     </span>
-                                    <span className="artists cursor-default select-none">
-                                        {formatArtists(item.artist)}
-                                    </span>
+                                    {
+                                        type === "tracks" && (
+                                                <span className="artists cursor-default select-none">
+                                                    {formatArtists((item as Track).artist)}
+                                                </span>
+                                        )
+                                    }
+
                                     <div className="flex flex-row items-center justify-between">
-                                        <div>
-                                            <span className="releaseDate cursor-default select-none">
-                                                {item.releasedDate ?? ""}
-                                            </span>
-                                            <span className="duration cursor-default select-none ml-3.75">
-                                                {formatDuration(
-                                                    (item.duration as number) /
-                                                        1000,
-                                                ) ?? ""}
-                                            </span>
-                                        </div>
+                                        {
+                                            type === "tracks" && (
+                                                <div>
+                                                    <span className="releaseDate cursor-default select-none">
+                                                        {(item as Track).releasedDate ?? ""}
+                                                    </span>
+                                                    <span className="duration cursor-default select-none ml-3.75">
+                                                        {formatDuration(
+                                                            ((item as Track).duration as number) /
+                                                                1000,
+                                                        ) ?? ""}
+                                                    </span>
+                                                </div>
+                                            )
+                                        }
+
                                         <div className="action_button flex flex-row-reverse mr-2.5">
                                             <span
                                                 className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
@@ -160,17 +170,22 @@ export default function List({
                                                     icon={faShare}
                                                 />
                                             </span>
-                                            <span
-                                                className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    Queue(item);
-                                                }}
-                                            >
-                                                <FontAwesomeIcon
-                                                    icon={faListDots}
-                                                />
-                                            </span>
+                                            {
+                                                type === "tracks" && (
+                                                    <span
+                                                        className="mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            Queue(item as Track);
+                                                        }}
+                                                    >
+                                                        <FontAwesomeIcon
+                                                            icon={faListDots}
+                                                        />
+                                                    </span>
+                                                )
+                                            }
+
                                             <span
                                                 className={`mr-2.5 rounded-full px-1 py-0.5 hover:bg-zinc-500 hover:cursor-pointer ${
                                                     mode === "local"
@@ -179,7 +194,7 @@ export default function List({
                                                 }`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    download(item);
+                                                    download(item , type as "tracks" | "playlists" | "artists");
                                                 }}
                                             >
                                                 <FontAwesomeIcon
