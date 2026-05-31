@@ -181,12 +181,13 @@ export default class Player {
         this.status = { data: Status.prepare, track: title };
         this.onStatusChange?.(this.status);
 
+        let rawPath = "";
         try {
             const resolved = await this.youtubeResolver.resolveFull(videoId);
             if (!resolved) throw new Error("Failed to resolve video via InnerTube");
 
             const safeName = title.replace(/[<>:"/\\|?*]/g, "_").substring(0, 100);
-            const rawPath = path.join(this.download_folder, `${videoId}.raw`);
+            rawPath = path.join(this.download_folder, `${videoId}.raw`);
             const finalPath = path.join(this.download_folder, `${safeName}.m4a`);
 
             if (resolved.contentLength && resolved.contentLength > 0) {
@@ -201,7 +202,6 @@ export default class Player {
 
             writeLogs([{ type: "info", message: `Converting ${title} to M4A...` }]);
             await this.ffmpeg.convertAudio(rawPath, finalPath);
-            try { unlinkSync(rawPath); } catch { }
 
             const thumbDataUri = await downloadThumbnail(resolved.thumbnailUrl);
             const embedMeta: Record<string, string> = {
@@ -221,6 +221,8 @@ export default class Player {
             this.status = { data: Status.done, track: title };
             this.onStatusChange?.(this.status);
             return 1;
+        } finally {
+            if (rawPath) try { unlinkSync(rawPath); } catch { }
         }
     }
 
