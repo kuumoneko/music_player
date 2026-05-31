@@ -3,42 +3,26 @@ import { Track } from "@/shared/types.ts";
 import { getAllLocalFiles, writeLogs } from "../db/index.ts";
 import { writeLocalFiles } from "../db/index.ts";
 import { readdir } from "node:fs/promises";
+import FFmpeg from "../ffmpeg/index.ts";
 
 export class Local {
     public folder: string = "";
     public appPath: string = "";
+    private ffmpeg: FFmpeg;
 
     constructor(path: string, appPath: string) {
         this.folder = path;
         this.appPath = appPath;
+        this.ffmpeg = new FFmpeg(appPath);
     }
 
     async getThumbnail(file: string): Promise<string> {
         try {
-            const ffmpeg = Bun.spawn([
-                `${this.appPath}/ffmpeg.exe`,
-                '-i', file,
-                '-map', '0:v:0',
-                '-vframes', '1',
-                '-c:v', 'mjpeg',
-                '-f', 'image2pipe',
-                '-'
-            ], {
-                stdout: "pipe",
-                stderr: "ignore",
-            });
-
-            const buffer = await Bun.readableStreamToArrayBuffer(ffmpeg.stdout);
-            const exitCode = await ffmpeg.exited;
-            if (exitCode === 0 && buffer.byteLength > 0) {
-                const base64Image = Buffer.from(buffer).toString('base64');
-                return `data:image/jpeg;base64,${base64Image}`;
-            }
-
-            return "";
+            const result = this.ffmpeg.readThumbnail(file);
+            return result ?? "";
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
-            writeLogs([{ type: "error", message: `FFmpeg extraction failed: ${message}` }]);
+            writeLogs([{ type: "error", message: `FFmpeg thumbnail extraction failed: ${message}` }]);
             return "";
         }
     }
@@ -54,33 +38,17 @@ export class Local {
 
     async parseFile(file: string): Promise<Track> {
         try {
-            const ffprobe = Bun.spawn([
-                `${this.appPath}/ffprobe.exe`,
-                '-v', 'quiet',
-                '-print_format', 'json',
-                '-show_format',
-                '-show_streams',
-                file,
-            ]);
-
-            const output = await new Response(ffprobe.stdout).text();
-            const exitCode = await ffprobe.exited;
-
-            if (exitCode !== 0) {
-                throw new Error(`ffprobe exited with code ${exitCode}`);
-            }
-
-            const metadata = JSON.parse(output);
-            const tags = metadata.format?.tags ?? {};
+            const metadata = this.ffmpeg.readMetadata(file);
+            const tags = metadata.tags ?? {};
             return {
                 source: "local",
-                name: tags.title ?? "",
-                id: metadata.format?.filename ?? file,
-                duration: Math.floor(metadata.format?.duration ?? 0) * 1000,
-                releasedDate: "",
+                name: tags["title"] ?? "",
+                id: file,
+                duration: metadata.duration ? Math.floor(metadata.duration) * 1000 : 0,
+                releasedDate: tags["date"] ?? "",
                 artist: [
                     {
-                        id: "", name: tags.artist ?? "Unknown Artist"
+                        id: "", name: tags["artist"] ?? "Unknown Artist"
                     }
                 ],
                 thumbnail: await this.getThumbnail(file),
