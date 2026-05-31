@@ -1,4 +1,5 @@
 import { Utils, Updater } from "electrobun/bun";
+import { pickFolder } from "../music/filedialog.ts";
 import { resolve } from "node:path";
 import { stat } from "node:fs/promises";
 import type DiscordRPC from "../discord/index.ts";
@@ -200,16 +201,12 @@ export function createRpcHandlers(ctx: RpcContext) {
           return null;
         }
         if (key === "folder") {
-          const value = await Utils.openFileDialog({
-            canChooseDirectory: true,
-            canChooseFiles: false,
-          });
+          const value = await pickFolder(player.folder);
 
-          if (!value || value.length === 0) {
+          if (!value) {
             return { ok: false, data: "No folder selected" };
           }
-
-          const canonicalPath = resolve(value[0]);
+          const canonicalPath = resolve(value);
           try {
             const stats = await stat(canonicalPath);
             if (!stats.isDirectory()) {
@@ -223,7 +220,6 @@ export function createRpcHandlers(ctx: RpcContext) {
           player.local.getfolder(canonicalPath).then(() => {
             emitToFrontend("local-files-changed", null);
           });
-
           return canonicalPath;
         }
 
