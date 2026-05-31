@@ -1,317 +1,267 @@
 import EventEmitter from "node:events";
-import { writeLogs, getUserData, writeUserData } from "../db";
+import { dlopen, read, CString } from "bun:ffi";
+import { writeLogs, getUserData } from "../db";
+import { YoutubeResolver } from "./youtube-resolver.ts";
 import { SleepMode } from "../../shared/types.ts";
+import { resolve } from "node:path";
+import SMTC from "./smtc.ts";
 
-const YT_API_BASE = "https://www.youtube.com/youtubei/v1";
+const MPV_EVENT_SHUTDOWN = 1;
+const MPV_EVENT_START_FILE = 6;
+const MPV_EVENT_END_FILE = 7;
+const MPV_EVENT_FILE_LOADED = 8;
+const MPV_EVENT_PLAYBACK_RESTART = 11;
+const MPV_EVENT_PROPERTY_CHANGE = 22;
 
-interface YTFormat {
-    url?: string;
-    bitrate?: number;
-    audioChannels?: number;
-    width?: number;
-    cipher?: string;
-    signatureCipher?: string;
-}
+const MPV_FORMAT_NONE = 0;
+const MPV_FORMAT_STRING = 1;
+const MPV_FORMAT_FLAG = 2;
+const MPV_FORMAT_DOUBLE = 4;
 
-interface YTStreamingData {
-    formats?: YTFormat[];
-    adaptiveFormats?: YTFormat[];
-}
+type Pointer = any;
 
-interface MPVResponse {
-    request_id?: number;
-    error?: string;
-    data?: any;
-    event?: string;
-    name?: string;
-}
-
-class DirectYT {
-    private visitorData = "";
-    private signatureTimestamp: number;
-    private ready = false;
-    private persisted = false;
-
-    constructor() {
-        this.signatureTimestamp = getUserData("ytSignatureTimestamp") ?? 20584;
-    }
-
-    async ensureSession() {
-        if (this.ready) return;
-        try {
-            const res = await fetch(`${YT_API_BASE}/config?prettyPrint=false`, {
-                method: "POST",
-                body: JSON.stringify({
-                    context: { client: { clientName: "WEB", clientVersion: "2.20260515.01.00", hl: "en", gl: "US" } },
-                }),
-                headers: { "Content-Type": "application/json" },
-            });
-            const data = await res.json();
-            this.visitorData = data?.responseContext?.visitorData || "";
-            const fetched = data?.responseContext?.signatureTimestamp;
-            if (fetched) {
-                this.signatureTimestamp = fetched;
-                if (!this.persisted) {
-                    writeUserData("ytSignatureTimestamp", fetched);
-                    this.persisted = true;
-                }
-            }
-            this.ready = true;
-        } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            writeLogs([{ type: "error", message: `DirectYT session failed: ${message}` }]);
-        }
-    }
-
-    async resolve(videoId: string): Promise<string | null> {
-        try {
-            await this.ensureSession();
-            if (!this.visitorData) return null;
-
-            const result = await this.resolveOnce(videoId);
-            if (result) return result;
-
-            this.ready = false;
-            await this.ensureSession();
-            return this.resolveOnce(videoId);
-        } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            writeLogs([{ type: "error", message: `DirectYT resolve failed: ${message}` }]);
-            return null;
-        }
-    }
-
-    private async resolveOnce(videoId: string): Promise<string | null> {
-        const res = await fetch(`${YT_API_BASE}/player?prettyPrint=false&alt=json`, {
-            method: "POST",
-            body: JSON.stringify({
-                videoId,
-                racyCheckOk: true,
-                contentCheckOk: true,
-                playbackContext: {
-                    contentPlaybackContext: {
-                        vis: 0,
-                        splay: false,
-                        lactMilliseconds: "-1",
-                        signatureTimestamp: this.signatureTimestamp,
-                    },
-                },
-                context: {
-                    client: {
-                        hl: "en",
-                        gl: "US",
-                        visitorData: this.visitorData,
-                        clientName: "ANDROID_VR",
-                        clientVersion: "0.1",
-                        osName: "Android",
-                        osVersion: "14",
-                        platform: "MOBILE",
-                    },
-                    user: { enableSafetyMode: false, lockedSafetyMode: false },
-                    request: { useSsl: true, internalExperimentFlags: [] },
-                },
-            }),
-            headers: { "Content-Type": "application/json" },
-        });
-        const data = await res.json();
-        const sd = data?.streamingData as YTStreamingData | undefined;
-        if (!sd) return null;
-
-        const all = [...(sd.formats || []), ...(sd.adaptiveFormats || [])];
-        const best = all
-            .filter((f: YTFormat) => (f.audioChannels ?? 0) > 0 && !f.width)
-            .sort((a: YTFormat, b: YTFormat) => (b.bitrate ?? 0) - (a.bitrate ?? 0))[0];
-        if (!best) return null;
-
-        if (best.url) return best.url;
-        const cipher = best.cipher || best.signatureCipher;
-        if (cipher) {
-            const p = new URLSearchParams(cipher);
-            const baseUrl = p.get("url");
-            const sp = p.get("sp") || "signature";
-            const sig = p.get("s");
-            if (baseUrl && sig) return `${baseUrl}&${sp}=${sig}`;
-        }
-        return null;
-    }
-}
+const S = (s: string) => Buffer.from(s + "\0");
 
 export default class Play extends EventEmitter {
-    private mpv: Bun.Subprocess;
-    private socket: Bun.Socket;
-    private pipePath = "\\\\.\\pipe\\kuumo-ipc";
+    private handle: Pointer = 0;
+    private symbols: any = null;
+    private bridge: SMTC = null;
+    private bridgeReady: boolean = false;
     private appPath: string;
     private sleep: SleepMode = SleepMode.no;
-    private timer: NodeJS.Timeout;
-    private isFirstLoad: boolean = true;
+    private timer: NodeJS.Timeout | undefined;
+    private eventTimer: NodeJS.Timeout | undefined;
+    private timePosTimer: NodeJS.Timeout | undefined;
     public isReady: boolean = false;
+    private isFirstLoad: boolean = true;
     private isRepeat: boolean = false;
-    private buffer = "";
-    private directYT = new DirectYT();
-    private playlistOriginalUrls: string[] = [];
+    private isPlaying: boolean = false;
+    private resolver = new YoutubeResolver();
+    private playlistUrls: string[] = [];
     private playlistIndex: number = 0;
+    private loadedUrl: string = "";
 
     constructor(appPath: string) {
-        super()
+        super();
         this.appPath = appPath;
         this.sleep = SleepMode.no;
         this.init();
+        this.initSMTC();
     }
 
-    init() {
-        Bun.spawnSync([
-            `${this.appPath}/mpv.exe`,
-            "--register"
-        ]);
-        this.mpv = Bun.spawn([
-            `${this.appPath}/mpv.exe`,
-            "--idle",
-            `--input-ipc-server=${this.pipePath}`,
-            "--no-video",
-            "--ao=wasapi",
-            "--media-controls=yes",
-            "--force-window=no",
-            "--cache-pause=no",
-            "--demuxer-readahead-secs=20",
-            "--profile=low-latency",
-            "--ytdl=no",
-        ]);
+    private init() {
+        try {
+            const lib = dlopen(resolve(this.appPath, "libmpv.dll"), {
+                mpv_create: { args: [], returns: "pointer" },
+                mpv_initialize: { args: ["pointer"], returns: "int" },
+                mpv_set_option_string: { args: ["pointer", "cstring", "cstring"], returns: "int" },
+                mpv_command_string: { args: ["pointer", "cstring"], returns: "int" },
+                mpv_get_property_string: { args: ["pointer", "cstring"], returns: "pointer" },
+                mpv_set_property_string: { args: ["pointer", "cstring", "cstring"], returns: "int" },
+                mpv_observe_property: { args: ["pointer", "u64", "cstring", "int"], returns: "int" },
+                mpv_wait_event: { args: ["pointer", "double"], returns: "pointer" },
+                mpv_terminate_destroy: { args: ["pointer"], returns: "void" },
+                mpv_free: { args: ["pointer"], returns: "void" },
+                mpv_error_string: { args: ["int"], returns: "pointer" },
+                mpv_free_node_contents: { args: ["pointer"], returns: "void" },
+            });
+            this.symbols = lib.symbols;
 
-        this.connect();
+            const rawHandle = this.symbols.mpv_create();
+            if (!rawHandle || rawHandle === 0) {
+                throw new Error("mpv_create returned null");
+            }
+            this.handle = rawHandle;
+
+            const opts: [string, string][] = [
+                ["vo", "null"],
+                ["ao", "wasapi"],
+                ["cache-pause", "no"],
+                ["demuxer-readahead-secs", "20"],
+                ["ytdl", "no"],
+                ["keepaspect", "no"],
+            ];
+            for (const [k, v] of opts) {
+                const r = this.symbols.mpv_set_option_string(this.handle, S(k), S(v));
+                if (r < 0) writeLogs([{ type: "error", message: `mpv_set_option(${k}) failed: ${this.mpvError(r)}` }]);
+            }
+
+            const initErr = this.symbols.mpv_initialize(this.handle);
+            if (initErr < 0) throw new Error(`mpv_initialize: ${this.mpvError(initErr)}`);
+
+            this.symbols.mpv_observe_property(this.handle, BigInt(1), S("duration"), MPV_FORMAT_DOUBLE);
+            this.symbols.mpv_observe_property(this.handle, BigInt(2), S("pause"), MPV_FORMAT_FLAG);
+            this.symbols.mpv_observe_property(this.handle, BigInt(3), S("path"), MPV_FORMAT_STRING);
+
+            this.startEventLoop();
+            this.startTimePolling();
+
+            this.isReady = true;
+            this.emit("ready");
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            writeLogs([{ type: "error", message: `Libmpv init failed: ${message}` }]);
+        }
     }
 
-    async connect(retries: number = 50, delay: number = 200) {
-        for (let i = 0; i < retries; i++) {
+    private initSMTC() {
+        try {
+            this.bridge = new SMTC(this.appPath);
+            this.bridge.on("toggle", () => this.togglePlayPause(!this.isPlaying));
+            this.bridge.on("next", () => this.next());
+            this.bridge.on("previous", () => this.previous());
+            this.bridgeReady = true;
+        } catch (e) {
+            this.bridgeReady = false;
+        }
+    }
+
+    private startEventLoop() {
+        const poll = () => {
+            if (!this.isReady) return;
             try {
-                this.socket = await Bun.connect({
-                    unix: this.pipePath,
-                    socket: {
-                        open: () => {
-                            this.isReady = true;
-                        },
-                        data: (_socket: Bun.Socket, data: Buffer) => {
-                            this.buffer += data.toString();
-                            const lines = this.buffer.split("\n");
-                            this.buffer = lines.pop() ?? "";
-                            for (const line of lines) {
-                                if (!line.trim()) continue;
-                                try {
-                                    const response = JSON.parse(line) as MPVResponse;
-                                    if (response.request_id === 999 && response.error === "success") {
-                                        const mpvQueue = response.data;
-
-                                        const result = [];
-                                        result.push({
-                                            filename: this.playlistOriginalUrls[this.playlistIndex]
-                                        })
-
-                                        result.push(
-                                            ...this.playlistOriginalUrls
-                                                .slice(
-                                                    this.playlistIndex + 1,
-                                                    Math.max(
-                                                        this.playlistOriginalUrls.length - 1,
-                                                        this.playlistIndex + mpvQueue.length))
-                                                .map(item => {
-                                                    return {
-                                                        filename: item
-                                                    }
-                                                }))
-                                        this.emit("queue", result)
-                                    }
-
-                                    if (response.request_id === 888 && response.error === "success") {
-                                        this.emit("change-playState", { time: response.data });
-                                    }
-
-                                    if (response.event === "property-change") {
-                                        if (response.name === "duration") {
-                                            const duration = response.data || 0;
-                                            this.emit("duration-update", duration);
-                                            if (duration === 0) {
-                                                this.emit("is-live", true);
-                                            } else {
-                                                this.emit("is-live", false);
-                                            }
-                                        }
-
-                                        if (response.name === "pause") {
-                                            this.emit("change-playState", { isPlaying: !response.data })
-                                        }
-                                        if (response.name === "path") {
-                                            const original = this.playlistOriginalUrls[this.playlistIndex];
-                                            this.emit("playing", original || response.data)
-                                        }
-                                    }
-
-                                    if (response.event === "start-file") {
-                                        this.emit("loading", true);
-                                    }
-
-                                    if (response.event === "file-loaded") {
-                                        this.emit("loading", false);
-                                        if (this.isFirstLoad) {
-                                            this.isFirstLoad = false;
-                                            this.send(["set_property", "pause", true]);
-                                            this.send(["seek", 0, "absolute"]);
-                                        }
-                                        else {
-                                            this.send(["set_property", "pause", false]);
-                                        }
-                                    }
-
-                                    if (response.event === "playback-restart" && this.isRepeat) {
-                                        this.emit("change-playState", { time: 0 });
-                                    }
-                                    if (response.event === "end-file") {
-                                        if (!this.isRepeat) {
-                                            this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistOriginalUrls.length - 1);
-                                        }
-                                        if (this.sleep === SleepMode.eot) {
-                                            this.destroy();
-                                            this.emit("exit");
-                                        }
-                                        this.emit("ended");
-                                    }
-                                } catch (e) {
-                                    const message = e instanceof Error ? e.message : String(e);
-                                    writeLogs([{ type: "error", message }]);
-                                }
-                            }
-                        },
-                        error: (_socket: Bun.Socket, error: Error) => {
-                            const message = error instanceof Error ? error.message : String(error);
-                            writeLogs([{ type: "error", message: message }]);
-                        }
-                    }
-                });
-                this.send(["observe_property", 2, "duration"]);
-                this.send(["observe_property", 1, "pause"]);
-                this.send(["observe_property", 1, "path"]);
-
-                setInterval(() => {
-                    this.send(["get_property", "time-pos"], 888);
-                }, 1000);
-                return;
-            } catch {
-                if (i < retries - 1) {
-                    await new Promise(r => setTimeout(r, delay));
+                const eventPtr = this.symbols!.mpv_wait_event(this.handle, 0);
+                if (eventPtr && eventPtr !== 0) {
+                    this.processEvent(eventPtr);
                 }
+            } catch (e) {
+                const message = e instanceof Error ? e.message : String(e);
+                writeLogs([{ type: "error", message: `Event loop: ${message}` }]);
+            }
+            this.eventTimer = setTimeout(poll, 50);
+        };
+        this.eventTimer = setTimeout(poll, 50);
+    }
+
+    private startTimePolling() {
+        this.timePosTimer = setInterval(() => {
+            if (!this.isReady || !this.symbols) return;
+            try {
+                const strPtr: Pointer = this.symbols.mpv_get_property_string(this.handle, S("time-pos"));
+                if (strPtr && strPtr !== 0) {
+                    const time = parseFloat(new CString(strPtr).toString());
+                    this.symbols.mpv_free(strPtr);
+                    if (!isNaN(time)) {
+                        this.emit("change-playState", { time });
+                    }
+                }
+            } catch {
+            }
+        }, 1000);
+    }
+
+    private processEvent(eventPtr: Pointer) {
+        const eventId = read.i32(eventPtr, 0);
+        const data: Pointer = read.ptr(eventPtr, 16);
+        switch (eventId) {
+            case MPV_EVENT_PROPERTY_CHANGE:
+                if (data) this.handlePropertyChange(data);
+                break;
+            case MPV_EVENT_START_FILE:
+                this.emit("loading", true);
+                break;
+            case MPV_EVENT_FILE_LOADED:
+                this.handleFileLoaded();
+                break;
+            case MPV_EVENT_END_FILE:
+                this.handleEndFile();
+                break;
+            case MPV_EVENT_PLAYBACK_RESTART:
+                if (this.isRepeat) this.emit("change-playState", { time: 0 });
+                break;
+            case MPV_EVENT_SHUTDOWN:
+                this.isReady = false;
+                break;
+        }
+    }
+
+    private handlePropertyChange(propPtr: Pointer) {
+        if (!propPtr) return;
+        const namePtr: Pointer = read.ptr(propPtr, 0);
+        if (!namePtr) return;
+        const name = new CString(namePtr).toString();
+        const format = read.i32(propPtr, 8);
+        if (format === MPV_FORMAT_NONE) return;
+        const dataPtr: Pointer = read.ptr(propPtr, 16);
+        if (!dataPtr) return;
+        if (name === "duration" && format === MPV_FORMAT_DOUBLE) {
+            const duration = read.f64(dataPtr, 0);
+            if (duration > 0.5) {
+                this.emit("duration-update", duration);
+                this.emit("is-live", false);
+                this.updateSMTC();
+            }
+        } else if (name === "pause" && format === MPV_FORMAT_FLAG) {
+            const isPaused = read.i32(dataPtr, 0);
+            this.isPlaying = !isPaused;
+            this.updateSMTC(this.isPlaying);
+        } else if (name === "path" && format === MPV_FORMAT_STRING) {
+            const charPtr: Pointer = read.ptr(dataPtr, 0);
+            if (!charPtr) return;
+            const path = new CString(charPtr).toString();
+            if (path && path !== this.loadedUrl) {
+                this.loadedUrl = path;
+                const original = this.playlistUrls[this.playlistIndex];
+                this.emit("playing", original || path);
+                this.emitQueue();
+                this.updateSMTC();
             }
         }
-        writeLogs([{ type: "error", message: "Failed to connect to mpv IPC after retries" }]);
     }
 
-    private send(command: (string | number | boolean | Object)[], id: number = 0) {
-        const realCmd: { request_id?: number; command?: (string | number | boolean | Object)[] } = {}
-        if (id > 0) {
-            realCmd.request_id = id;
+    private handleFileLoaded() {
+        this.emit("loading", false);
+        if (this.isFirstLoad) {
+            this.isFirstLoad = false;
+            this.command("set", "pause", "yes");
+            this.command("seek", "0", "absolute");
+        } else {
+            this.command("set", "pause", "no");
         }
-        realCmd.command = command
-        if (this.socket && typeof this.socket.write === "function") {
-            const msg = JSON.stringify(realCmd) + "\n";
-            this.socket.write(msg);
+        setTimeout(() => this.emitDuration(), 500);
+    }
+
+    private emitDuration() {
+        if (!this.symbols) return;
+        try {
+            const strPtr: Pointer = this.symbols.mpv_get_property_string(this.handle, S("duration"));
+            if (strPtr && strPtr !== 0) {
+                const duration = parseFloat(new CString(strPtr).toString());
+                this.symbols.mpv_free(strPtr);
+                if (!isNaN(duration) && duration > 0.5) {
+                    this.emit("duration-update", duration);
+                    this.emit("is-live", false);
+                    this.updateSMTC();
+                }
+            }
+        } catch { }
+    }
+
+    private handleEndFile() {
+        if (!this.isRepeat) {
+            this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistUrls.length - 1);
         }
+        if (this.sleep === SleepMode.eot) {
+            this.destroy();
+            this.emit("exit");
+            return;
+        }
+        this.emit("ended");
+    }
+
+    private command(...args: string[]) {
+        if (!this.symbols) return;
+        const cmd = args.join(" ");
+        this.symbols.mpv_command_string(this.handle, S(cmd));
+    }
+
+    private mpvError(code: number): string {
+        if (!this.symbols) return String(code);
+        const strPtr: Pointer = this.symbols.mpv_error_string(code);
+        if (strPtr && strPtr !== 0) {
+            return new CString(strPtr).toString();
+        }
+        return String(code);
     }
 
     private isYouTubeUrl(url: string): string | null {
@@ -325,105 +275,126 @@ export default class Play extends EventEmitter {
         }
     }
 
-    async play(urlOrPath: string, title?: string, thumbnail?: string) {
-        this.playlistOriginalUrls = [urlOrPath];
+    async play(urlOrPath: string, _title?: string, _thumbnail?: string) {
+        this.playlistUrls = [urlOrPath];
         this.playlistIndex = 0;
         const videoId = this.isYouTubeUrl(urlOrPath);
         if (videoId) {
-            const directUrl = await this.directYT.resolve(videoId);
+            const directUrl = await this.resolver.resolveUrl(videoId);
             if (directUrl) {
                 urlOrPath = directUrl;
             }
         }
-
-        this.send(["stop"]);
-        this.send(["playlist-clear"]);
-        this.send(["loadfile", urlOrPath, "replace", "-1", {
-            "force-media-title": title ?? "",
-            "external-file": thumbnail ?? ""
-        }]);
+        this.command("stop");
+        const loadCmd = `loadfile "${urlOrPath.replace(/\\/g, "/")}" replace`;
+        this.symbols!.mpv_command_string(this.handle, S(loadCmd));
+        this.updateSMTC();
     }
 
     getQueue() {
-        this.send(["get_property", "playlist"], 999)
+        this.emitQueue();
+    }
+
+    private emitQueue() {
+        const result: { filename: string }[] = [];
+        result.push({ filename: this.playlistUrls[this.playlistIndex] || "" });
+        for (let i = this.playlistIndex + 1; i < this.playlistUrls.length; i++) {
+            result.push({ filename: this.playlistUrls[i] });
+        }
+        this.emit("queue", result);
     }
 
     setRepeat(isRepeat: boolean) {
         this.isRepeat = isRepeat;
-        this.send(["set_property", "loop-file", isRepeat ? "inf" : "no"])
+        this.symbols?.mpv_set_property_string(this.handle, S("loop-file"), S(isRepeat ? "inf" : "no"));
     }
 
-    async addTracks(datas: { url: string, title: string, thumbnail: string }[]) {
-        for (const data of datas) {
-            this.playlistOriginalUrls.push(data.url);
-            const videoId = this.isYouTubeUrl(data.url);
-            let resolved = data.url;
-            if (videoId) {
-                const directUrl = await this.directYT.resolve(videoId);
-                if (directUrl) {
-                    resolved = directUrl;
-                }
-            }
-            this.send(["loadfile", resolved, "append", "-1", {
-                "force-media-title": data.title ?? "",
-                "external-file": data.thumbnail ?? ""
-            }]);
+    async addTracks(datas: { url: string; title: string; thumbnail: string }[]) {
+        const snapshot = datas.map(d => d.url);
+        this.playlistUrls.push(...snapshot);
+        const tempPlaylist: string[] = Array(datas.length);
+        await Promise.all(
+            datas.map(async (data, i) => {
+                const videoId = this.isYouTubeUrl(data.url);
+                const resolvedUrl = videoId
+                    ? (await this.resolver.resolveUrl(videoId)) ?? data.url
+                    : data.url;
+                tempPlaylist[i] = resolvedUrl;
+            })
+        );
+        for (const url of tempPlaylist) {
+            this.symbols?.mpv_command_string(this.handle, S(`loadfile "${url}" append`));
         }
+        this.updateSMTC();
     }
 
     next() {
-        this.send(["playlist-next"])
+        this.symbols?.mpv_command_string(this.handle, S("playlist-next"));
     }
 
     previous() {
         this.playlistIndex = Math.max(this.playlistIndex - 2, 0);
-        this.send(["playlist-prev"])
+        this.symbols?.mpv_command_string(this.handle, S(`playlist-prev`));
     }
 
     togglePlayPause(isPlay: boolean) {
-        this.send(["set_property", "pause", !isPlay]);
+        this.isPlaying = isPlay;
+        this.symbols?.mpv_set_property_string(this.handle, S("pause"), S(isPlay ? "no" : "yes"));
+        this.updateSMTC(isPlay);
+        this.emit("change-playState", { isPlaying: isPlay });
     }
 
     seekTo(seconds: number) {
-        this.send(["seek", seconds, "absolute"]);
+        this.command("seek", String(seconds), "absolute");
     }
 
     setVolume(value: number) {
-        this.send(["set_property", "volume", value]);
+        this.symbols?.mpv_set_property_string(this.handle, S("volume"), S(String(value)));
     }
 
     setSleep(sleep: SleepMode) {
         this.sleep = sleep;
         if (sleep === SleepMode.no) {
             if (this.timer) clearTimeout(this.timer);
-        }
-        else if (sleep === SleepMode.eot) {
-
-        }
-        else if (sleep.includes("hours")) {
+        } else if (sleep === SleepMode.eot) {
+        } else if (sleep.includes("hours")) {
             const time = Number(sleep.split("after ")[1].split(" hours")[0]);
             this.timer = setTimeout(() => {
-                this.emit("exit")
+                this.emit("exit");
             }, time * 60 * 60 * 1000);
-        }
-        else {
+        } else {
             const time = Number(sleep.split("after ")[1].split(" minutes")[0]);
             this.timer = setTimeout(() => {
-                this.emit("exit")
+                this.emit("exit");
             }, time * 60 * 1000);
         }
     }
 
-    public async destroy() {
-        if (this.socket) {
-            this.send(["quit"]);
-            this.socket.end();
-        }
-
-        setTimeout(() => {
-            if (this.mpv && this.mpv.exitCode === null) {
-                this.mpv.kill();
+    public updateSMTC(isPlaying?: boolean) {
+        if (!this.bridgeReady) return;
+        try {
+            const current = getUserData("currentPlaying");
+            if (!current?.title) return;
+            this.bridge.updateMetadata(current.title, current.artist, current.thumbnail, this.playlistUrls.length > 1)
+            if (isPlaying === undefined) {
+                const strPtr = this.symbols?.mpv_get_property_string(this.handle, S("pause"));
+                if (strPtr && strPtr !== 0) {
+                    const paused = new CString(strPtr).toString();
+                    this.symbols?.mpv_free(strPtr);
+                    isPlaying = paused !== "yes";
+                }
             }
-        }, 100);
+            this.bridge.setPlaybackState(isPlaying)
+        } catch { }
+    }
+
+    public async destroy() {
+        this.isReady = false;
+        if (this.eventTimer) clearTimeout(this.eventTimer);
+        if (this.timePosTimer) clearInterval(this.timePosTimer);
+        if (this.timer) clearTimeout(this.timer);
+        if (this.handle) {
+            this.symbols?.mpv_terminate_destroy(this.handle);
+        }
     }
 }

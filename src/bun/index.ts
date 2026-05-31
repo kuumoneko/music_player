@@ -2,7 +2,6 @@ import { BrowserView, Utils } from "electrobun/bun";
 import { resolve } from "node:path";
 import type { AppRPCType } from "@/shared/types.ts";
 import type { System } from "@/shared/types.ts";
-
 import { getDataFromDatabase } from "./lib/database.ts";
 import { withSafeEncoding } from "./lib/encoding.ts";
 import { WindowManager } from "./window/manager.ts";
@@ -12,6 +11,7 @@ import getLocalIPv4 from "./lib/ipv4.ts";
 import CheckUserData from "./lib/env.ts";
 import Player from "./music/index.ts";
 import DiscordRPC from "./discord/index.ts";
+import { registerAumid } from "./music/aumid.ts";
 import formatArtists from "../shared/utils/formatArtist.ts";
 import {
 	getTrackByName,
@@ -21,10 +21,11 @@ import {
 	writeUserData,
 	writeUserDatas,
 } from "./db/index.ts";
-
 // --- Config ---
 const APP_ROOT = resolve("./");
 const APP_ASSETS = resolve(APP_ROOT, "..", "Resources", "app");
+
+registerAumid(APP_ROOT);
 
 const { isLocal, isDiscord, appPort, DiscordClientId } = await getDataFromDatabase(APP_ASSETS, "data", "system") as System;
 if ([isLocal, isDiscord, appPort].includes(null)) {
@@ -119,6 +120,11 @@ const setDiscordRPC = () => {
 
 const play = () => {
 	const currentPlaying = getUserData("currentPlaying");
+	if (!currentPlaying?.id) {
+		writeUserData("isLoading", false);
+		current.emitPlayerState({ isLoading: false });
+		return;
+	}
 	const url = currentPlaying.source === "youtube"
 		? `${ytbTrackStart}${currentPlaying.id}`
 		: currentPlaying.id;
@@ -175,6 +181,7 @@ player.player.on("playing", async (data) => {
 		id: track.id,
 	};
 	writeUserData("currentPlaying", currentPlaying);
+	player.player.updateSMTC();
 	emitToFrontend("currentTrackChanged", currentPlaying);
 	if (isDiscord) {
 		discordRPC.instance?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
@@ -200,6 +207,7 @@ player.player.on("is-live", (isLived) => {
 });
 
 player.player.on("loading", (data) => {
+	writeUserData("isLoading", data);
 	current.emitPlayerState({ isLoading: data });
 });
 
@@ -248,13 +256,6 @@ if (!isLocal) {
 		folder: "",
 		downloadQueue: [],
 	});
-
-	for (const binFile of ["ffmpeg", "ffprobe"]) {
-		const file = Bun.file(resolve(APP_ROOT, `${binFile}.exe`));
-		if (await file.exists()) {
-			file.delete();
-		}
-	}
 }
 
 // --- Lock server ---
