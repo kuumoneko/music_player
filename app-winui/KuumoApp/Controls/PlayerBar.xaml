@@ -1,0 +1,166 @@
+<UserControl
+    x:Class="KuumoApp.Controls.PlayerBar"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:helpers="using:KuumoApp.Controls">
+
+    <Grid
+        Padding="12,8"
+        ColumnSpacing="16"
+        Background="{ThemeResource LayerFillColorDefaultBrush}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Border
+                Width="56"
+                Height="56"
+                CornerRadius="6"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                VerticalAlignment="Center">
+                <Image
+                    x:Name="Thumb"
+                    helpers:ImageAttach.SquareCrop="True"
+                    Width="56"
+                    Height="56"
+                    Stretch="UniformToFill" />
+            </Border>
+            <StackPanel
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                Spacing="2">
+                <TextBlock
+                    x:Name="TrackTitle"
+                    Text="Nothing playing"
+                    FontWeight="SemiBold"
+                    TextTrimming="CharacterEllipsis"
+                    Tapped="OnTrackTitleTapped"
+                    ToolTipService.ToolTip="Open track" />
+                <TextBlock
+                    x:Name="TrackArtist"
+                    Text=""
+                    FontSize="12"
+                    Opacity="0.7"
+                    TextTrimming="CharacterEllipsis"
+                    Tapped="OnTrackArtistTapped"
+                    ToolTipService.ToolTip="Open artist" />
+                <TextBlock
+                    x:Name="TrackFrom"
+                    Text=""
+                    FontSize="11"
+                    Foreground="{StaticResource AppAccentBrush}"
+                    TextTrimming="CharacterEllipsis"
+                    Visibility="Collapsed"
+                    Tapped="OnTrackFromTapped"
+                    ToolTipService.ToolTip="Open source" />
+            </StackPanel>
+        </Grid>
+
+        <StackPanel
+            Grid.Column="1"
+            Orientation="Horizontal"
+            Spacing="4"
+            VerticalAlignment="Center">
+            <Button x:Name="ShuffleButton" Click="OnShuffleClick" Style="{StaticResource IconButtonStyle}" ToolTipService.ToolTip="Shuffle">
+                <FontIcon x:Name="ShuffleIcon" Glyph="&#xE8A9;" FontSize="14" />
+            </Button>
+            <Button x:Name="RepeatButton" Click="OnRepeatClick" Style="{StaticResource IconButtonStyle}" ToolTipService.ToolTip="Repeat">
+                <FontIcon x:Name="RepeatIcon" Glyph="&#xE8EE;" FontSize="14" />
+            </Button>
+            <Button x:Name="PrevButton" Click="OnPrevClick" Style="{StaticResource IconButtonStyle}" ToolTipService.ToolTip="Previous">
+                <FontIcon Glyph="&#xE892;" FontSize="14" />
+            </Button>
+            <Button x:Name="PlayPauseButton" Click="OnPlayPauseClick" Style="{StaticResource IconButtonStyle}" ToolTipService.ToolTip="Play/Pause">
+                <FontIcon x:Name="PlayPauseIcon" Glyph="&#xE768;" FontSize="16" />
+            </Button>
+            <Button x:Name="NextButton" Click="OnNextClick" Style="{StaticResource IconButtonStyle}" ToolTipService.ToolTip="Next">
+                <FontIcon Glyph="&#xE893;" FontSize="14" />
+            </Button>
+        </StackPanel>
+
+        <Grid
+            Grid.Column="2"
+            RowSpacing="2"
+            VerticalAlignment="Center">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Slider
+                x:Name="SeekSlider"
+                Minimum="0"
+                Maximum="1"
+                Value="0"
+                IsEnabled="False"
+                ValueChanged="OnSeekValueChanged" />
+            <Grid
+                Grid.Row="1"
+                ColumnSpacing="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="CurrentTime" Text="0:00" FontSize="11" Opacity="0.7" />
+                <TextBlock x:Name="LiveBadge" Grid.Column="1" Text="LIVE" FontSize="10" Foreground="{ThemeResource SystemFillColorCriticalBrush}" HorizontalAlignment="Center" Visibility="Collapsed" />
+                <TextBlock x:Name="TotalTime" Grid.Column="2" Text="0:00" FontSize="11" Opacity="0.7" />
+            </Grid>
+        </Grid>
+
+        <Grid
+            Grid.Column="3"
+            ColumnSpacing="8"
+            VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="120" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="SleepButton" Style="{StaticResource IconButtonStyle}" Width="Auto" MinWidth="36" Padding="8,0" ToolTipService.ToolTip="Sleep timer">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <FontIcon x:Name="SleepIcon" Glyph="&#xE8B2;" FontSize="14" />
+                    <TextBlock x:Name="SleepModeText" Text="" FontSize="11" VerticalAlignment="Center" Visibility="Collapsed" />
+                </StackPanel>
+                <Button.Flyout>
+                    <MenuFlyout x:Name="SleepMenu">
+                        <MenuFlyoutItem Text="Off" Tag="nosleep" Click="OnSleepModeClick" />
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem Text="5 minutes" Tag="after 5 minutes" Click="OnSleepModeClick" />
+                        <MenuFlyoutItem Text="10 minutes" Tag="after 10 minutes" Click="OnSleepModeClick" />
+                        <MenuFlyoutItem Text="15 minutes" Tag="after 15 minutes" Click="OnSleepModeClick" />
+                        <MenuFlyoutItem Text="30 minutes" Tag="after 30 minutes" Click="OnSleepModeClick" />
+                        <MenuFlyoutItem Text="45 minutes" Tag="after 45 minutes" Click="OnSleepModeClick" />
+                        <MenuFlyoutItem Text="1 hour" Tag="after 1 hour" Click="OnSleepModeClick" />
+                        <MenuFlyoutSeparator />
+                        <MenuFlyoutItem Text="End of track" Tag="end of this track" Click="OnSleepModeClick" />
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+            <Button
+                x:Name="MuteButton"
+                Grid.Column="1"
+                Click="OnMuteClick"
+                Style="{StaticResource IconButtonStyle}"
+                ToolTipService.ToolTip="Mute">
+                <FontIcon x:Name="VolumeIcon" Glyph="&#xE767;" FontSize="14" />
+            </Button>
+            <Slider
+                x:Name="VolumeSlider"
+                Grid.Column="3"
+                Minimum="0"
+                Maximum="100"
+                Value="50"
+                PointerPressed="OnVolumePointerPressed"
+                PointerReleased="OnVolumePointerReleased" />
+        </Grid>
+    </Grid>
+</UserControl>

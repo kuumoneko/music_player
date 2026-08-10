@@ -1,0 +1,39 @@
+﻿<Page
+    x:Class="KuumoApp.Views.LocalPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Padding="24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                x:Name="LocalTitle"
+                Text="Local files"
+                FontSize="24"
+                FontWeight="SemiBold"
+                Style="{StaticResource AppAccentTitleStyle}"
+                VerticalAlignment="Center" />
+            <Button
+                Grid.Column="1"
+                Content="Refresh"
+                Click="OnRefreshClick" />
+        </Grid>
+
+        <ListView
+            Grid.Row="1"
+            x:Name="LocalList"
+            ItemTemplate="{StaticResource TrackRowTemplate}"
+            IsItemClickEnabled="True"
+            ItemClick="OnLocalClick"
+            RightTapped="OnLocalRightTapped"
+            SelectionMode="None" />
+    </Grid>
+</Page>

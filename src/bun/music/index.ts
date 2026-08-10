@@ -1,0 +1,358 @@
+import Youtube from "./youtube";
+import { DownloadItem, Status, System } from "../../shared/types.ts";
+import path, { basename, extname, resolve } from "node:path";
+import { Local } from "./local.ts";
+import areStringsSimilar from "../utils/compareString.ts";
+import { getDataFromDatabase } from "../lib/database.ts";
+import { getUserData, writeUserData, writeLogs } from "../db/index.ts";
+import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
+import Play from "./play.ts";
+import { mkdir, writeFile } from "node:fs/promises";
+import { unlinkSync } from "node:fs";
+import FFmpeg from "../ffmpeg/index.ts";
+import { YoutubeResolver } from "./youtube-resolver.ts";
+import { YoutubeDataAPI } from "./youtube-data-api/index.ts";
+import { GoogleAuth } from "../auth/google.ts";
+
+export enum AudioFormat {
+    aac = "aac",
+    alac = "alac",
+    flac = "flac",
+    m4a = "m4a",
+    mp3 = "mp3",
+    opus = "opus",
+    vorbis = "vorbis",
+    wav = "wav"
+}
+
+async function fetchChunk(url: string, start: number, end: number): Promise<{ data: ArrayBuffer; index: number }> {
+    const res = await fetch(url, {
+        headers: { Range: `bytes=${start}-${end}` },
+    });
+    return { data: await res.arrayBuffer(), index: start };
+}
+
+async function downloadConcurrent(url: string, outputPath: string, contentLength: number, concurrency = 8): Promise<void> {
+    const chunkSize = Math.ceil(contentLength / concurrency);
+    const chunks: { data: ArrayBuffer; index: number }[] = [];
+
+    const chunkPromises = Array.from({ length: concurrency }, async (_, i) => {
+        const start = i * chunkSize;
+        const end = Math.min((i + 1) * chunkSize - 1, contentLength - 1);
+        if (start >= contentLength) return;
+        const chunk = await fetchChunk(url, start, end);
+        chunks.push(chunk);
+    });
+
+    await Promise.all(chunkPromises);
+    chunks.sort((a, b) => a.index - b.index);
+
+    const totalSize = chunks.reduce((sum, c) => sum + c.data.byteLength, 0);
+    const merged = new Uint8Array(totalSize);
+    let offset = 0;
+    for (const chunk of chunks) {
+        merged.set(new Uint8Array(chunk.data), offset);
+        offset += chunk.data.byteLength;
+    }
+    await writeFile(outputPath, merged);
+}
+
+async function downloadThumbnail(url: string): Promise<string> {
+    const res = await fetch(url);
+    const buf = await res.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+
+    let ext = "jpeg";
+    if (bytes[0] === 0x89 && bytes[1] === 0x50) ext = "png";
+    else if (bytes[0] === 0x47 && bytes[1] === 0x49) ext = "gif";
+    else if (bytes[0] === 0x52 && bytes[1] === 0x49) ext = "webp";
+
+    const b64 = Buffer.from(bytes).toString("base64");
+    return `data:image/${ext};base64,${b64}`;
+}
+
+export default class Player {
+    public youtube: Youtube | undefined;
+    public local: Local | undefined;
+    public player: Play | undefined;
+    public downloadFolder: string = "";
+    public status: { data: string, track: string } = { data: Status.idle, track: "" };
+    public onStatusChange?: (status: { data: string; track: string }) => void;
+    public downloadQueue: DownloadItem[] = [];
+    public audioFormat: string = AudioFormat.m4a;
+    public folder: string = "";
+    public userPath: string = "";
+    public assetsDir: string = "";
+    public googleAuth: GoogleAuth;
+    public youtubeDataAPI: YoutubeDataAPI;
+    private ffmpeg: FFmpeg;
+    private youtubeResolver: YoutubeResolver;
+
+    constructor(userPath: string, appPath: string, downloadFolder: string, assetsDir: string) {
+        this.folder = appPath;
+        this.userPath = userPath;
+        this.assetsDir = assetsDir;
+        this.downloadFolder = downloadFolder;
+        this.ffmpeg = new FFmpeg(appPath);
+        this.youtubeResolver = new YoutubeResolver();
+        this.googleAuth = new GoogleAuth();
+        this.youtubeDataAPI = new YoutubeDataAPI(this.googleAuth);
+    }
+
+    async init() {
+        this.player = new Play(this.folder)
+        await this.seedShippedCredentials();
+        const storedKeys = getUserData("youtubeApiKeys") ?? [];
+        this.youtube = new Youtube();
+        this.youtubeDataAPI.setYoutube(this.youtube);
+        this.youtubeDataAPI.updateApiKeys(storedKeys);
+        this.player.resolveYoutubeUrl = (videoId) => this.youtube?.resolveStreamUrl(videoId) ?? Promise.resolve({ url: null, error: "Resolver unavailable" });
+        await this.googleAuth.init();
+        const { isLocal } = await getDataFromDatabase(this.assetsDir, "data", "system") as System;
+        if (isLocal) {
+            this.local = new Local(resolve(this.userPath, "data"), this.folder);
+        }
+        return isLocal;
+    }
+
+    // First run: copy shipped credentials (encrypted in data/system.json) into
+    // the user's own database, so they work without any manual setup.
+    private async seedShippedCredentials() {
+        try {
+            const systemData = await getDataFromDatabase(this.assetsDir, "data", "system") as System;
+            if (!systemData) return;
+
+            const storedKeys = getUserData("youtubeApiKeys") ?? [];
+            const shippedKeys = systemData.youtubeApiKeys ?? [];
+            if (storedKeys.length === 0 && shippedKeys.length > 0) {
+                const decrypted: string[] = [];
+                for (const key of shippedKeys) {
+                    const plain = isEncrypted(key) ? await decryptCredential(key) : key;
+                    if (plain && plain.trim()) decrypted.push(plain.trim());
+                }
+                if (decrypted.length > 0) writeUserData("youtubeApiKeys", decrypted);
+            }
+
+            if (systemData.googleClientId && !getUserData("googleClientId")) {
+                writeUserData("googleClientId", systemData.googleClientId);
+            }
+            if (systemData.googleClientSecret && !getUserData("googleClientSecret")) {
+                writeUserData("googleClientSecret", systemData.googleClientSecret);
+            }
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            writeLogs([{ type: "error", message: `Failed to seed shipped credentials: ${message}` }]);
+        }
+    }
+
+    initMpv() {
+        this.player?.initialize();
+    }
+
+    formatTitle(title: string): string {
+        const emojiAndSymbolPattern =
+            /[\u2600-\u27FF\u2B00-\u2BFF\u2300-\u23FF\u{1F000}-\u{1FFFF}\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F900}-\u{1F9FF}]/gu;
+        const regionalIndicatorPattern = /[\u{1F1E6}-\u{1F1FF}]{2}/gu;
+        const invalidCharsPattern = /[\x7C\x2F\x3F\x3A\x2A\x3C\x3E]/gu;
+        const multipleSpacesPattern = /\s+/g;
+        const trimSpacesPattern = /\s+$/g;
+        let cleanedTitle = title;
+
+        cleanedTitle = cleanedTitle.replace(regionalIndicatorPattern, "");
+        cleanedTitle = cleanedTitle.replace(emojiAndSymbolPattern, "");
+        cleanedTitle = cleanedTitle.replace(invalidCharsPattern, "");
+        cleanedTitle = cleanedTitle.replace(multipleSpacesPattern, " ");
+        cleanedTitle = cleanedTitle.replace(trimSpacesPattern, "");
+
+        return cleanedTitle;
+    }
+
+    async checking(): Promise<void> {
+        writeLogs([{ type: "info", message: "Checking download folder before downloading" }]);
+
+        const glob = new Bun.Glob("*");
+        const files = await Array.fromAsync(
+            glob.scan({ cwd: this.downloadFolder, onlyFiles: true })
+        );
+
+        const deleteTasks: Promise<void>[] = [];
+
+        for (const file of files) {
+            const ext = extname(file);
+            const filename = basename(file, ext);
+
+            const isNeeded = this.downloadQueue.some((item) => {
+                return areStringsSimilar(item.title, filename);
+            });
+
+            if (!isNeeded) {
+                const filePath = path.join(this.downloadFolder, file);
+                const task = Bun.file(filePath).delete()
+                    .then(() => {
+                        writeLogs([{ type: "info", message: `Delete unused file: ${filename}` }]);
+                    })
+                    .catch((e) => {
+                        const message = e instanceof Error ? e.message : String(e);
+                        writeLogs([{ type: "error", message: `Failed to delete unused file ${filename}: ${message}` }]);
+                    });
+
+                deleteTasks.push(task);
+            }
+        }
+
+        if (deleteTasks.length > 0) {
+            await Promise.all(deleteTasks);
+        }
+
+        writeLogs([{ type: "info", message: "Done check download folder before downloading!" }]);
+    }
+
+    async converting(name: string, input: string, output: string): Promise<boolean> {
+        const inputPath = path.join(this.downloadFolder, `${name}.${input}`);
+        const outputPath = path.join(this.downloadFolder, `${name}.${output}`);
+
+        try {
+            await this.ffmpeg.convertAudio(inputPath, outputPath);
+            writeLogs([{ type: "info", message: `Successfully converted ${name} to ${output}` }]);
+            return true;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            writeLogs([{ type: "error", message: `Conversion failed for ${name}: ${message}` }]);
+            return false;
+        }
+    }
+
+    async downloadTrack(data: { id: string[], title: string, metadata: { artist: string, year: string, thumbnail: string } }) {
+        const { title, metadata, id } = data;
+        const videoId = id[0];
+        writeLogs([{ type: "info", message: `Downloading ${title}...` }]);
+
+        this.status = { data: Status.prepare, track: title };
+        this.onStatusChange?.(this.status);
+
+        let rawPath = "";
+        try {
+            const resolved = await this.youtubeResolver.resolveFull(videoId);
+            if (!resolved) throw new Error("Failed to resolve video via InnerTube");
+
+            const safeName = title.replace(/[<>:"/\\|?*]/g, "_").substring(0, 100);
+            rawPath = path.join(this.downloadFolder, `${videoId}.raw`);
+            const finalPath = path.join(this.downloadFolder, `${safeName}.m4a`);
+
+            if (resolved.contentLength && resolved.contentLength > 0) {
+                writeLogs([{ type: "info", message: `Downloading ${title} (${(resolved.contentLength / 1024 / 1024).toFixed(1)} MB)...` }]);
+                await downloadConcurrent(resolved.url, rawPath, resolved.contentLength);
+            } else {
+                writeLogs([{ type: "info", message: `Downloading ${title} (single connection)...` }]);
+                const res = await fetch(resolved.url);
+                const buf = await res.arrayBuffer();
+                await writeFile(rawPath, new Uint8Array(buf));
+            }
+
+            writeLogs([{ type: "info", message: `Converting ${title} to M4A...` }]);
+            await this.ffmpeg.convertAudio(rawPath, finalPath);
+
+            const thumbDataUri = await downloadThumbnail(resolved.thumbnailUrl);
+            const embedMeta: Record<string, string> = {
+                title: resolved.title,
+                artist: resolved.artist,
+            };
+            if (metadata.year) embedMeta["date"] = metadata.year;
+            await this.ffmpeg.embedMetadata(finalPath, embedMeta, thumbDataUri);
+
+            this.status = { data: Status.done, track: title };
+            this.onStatusChange?.(this.status);
+            writeLogs([{ type: "info", message: `Done download ${title}!` }]);
+            return 0;
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            writeLogs([{ type: "error", message: `Failed to download ${title}: ${message}` }]);
+            this.status = { data: Status.done, track: title };
+            this.onStatusChange?.(this.status);
+            return 1;
+        } finally {
+            if (rawPath) try { unlinkSync(rawPath); } catch { }
+        }
+    }
+
+    async download() {
+        try {
+            await mkdir(`${this.downloadFolder}`, { recursive: true });
+
+            const downloadData = [];
+
+            for (const item of this.downloadQueue) {
+                const clonedItem = { ...item };
+                clonedItem.title = this.formatTitle(clonedItem.title);
+                downloadData.push(clonedItem);
+            }
+
+            const glob = new Bun.Glob("*");
+            const existingFiles = await Array.fromAsync(
+                glob.scan({ cwd: this.downloadFolder, onlyFiles: true })
+            ).catch(() => []);
+
+            const processData = async (data: DownloadItem) => {
+                if (existingFiles.length > 0) {
+                    const matchingFile = existingFiles.find(file => {
+                        const name = basename(file, extname(file));
+                        return areStringsSimilar(name, data.title);
+                    });
+
+                    if (matchingFile) {
+                        const currentExt = extname(matchingFile).replace(".", "");
+
+                        if (currentExt !== "m4a" && Object.values(AudioFormat).includes(currentExt as AudioFormat)) {
+                            writeLogs([{ type: "info", message: `Converting ${data.title} from ${currentExt} to m4a...` }]);
+                            await this.converting(data.title, currentExt, "m4a");
+                            try {
+                                await Bun.file(path.join(this.downloadFolder, matchingFile)).delete();
+                            } catch (e) {
+                                const message = e instanceof Error ? e.message : String(e);
+                                writeLogs([{ type: "error", message }]);
+                            }
+                            return;
+                        } else if (currentExt === "m4a") {
+                            writeLogs([{ type: "info", message: `Skipping ${data.title}, already exists.` }]);
+                            return;
+                        }
+                    }
+                }
+
+                await this.downloadTrack(data);
+            };
+
+            const CONCURRENCY_LIMIT = 4;
+            const executing = new Set<Promise<void>>();
+
+            writeLogs([{ type: "info", message: `Starting queue: ${downloadData.length} items...` }]);
+
+            for (const data of downloadData) {
+                const task = processData(data)
+                    .then(() => {
+                        executing.delete(task);
+                    })
+                    .catch(e => {
+                        const message = e instanceof Error ? e.message : String(e);
+                        writeLogs([{ type: "error", message: `Error processing ${data.title}: ${message}` }]);
+                        executing.delete(task);
+                    });
+
+                executing.add(task);
+
+                if (executing.size >= CONCURRENCY_LIMIT) {
+                    await Promise.race(executing);
+                }
+            }
+
+            await Promise.all(executing);
+            writeLogs([{ type: "info", message: "All downloads finished successfully!" }]);
+            this.status = { data: Status.done, track: "" };
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            writeLogs([{ type: "error", message: `Download failed: ${message}` }]);
+            this.status = { data: Status.error, track: message };
+        }
+        this.onStatusChange?.(this.status);
+    }
+}

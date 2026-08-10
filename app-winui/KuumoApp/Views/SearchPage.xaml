@@ -1,0 +1,58 @@
+﻿<Page
+    x:Class="KuumoApp.Views.SearchPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Padding="24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox
+                x:Name="SearchBox"
+                PlaceholderText="Search tracks, playlists, artists..."
+                KeyDown="OnSearchKeyDown" />
+            <Button
+                Grid.Column="1"
+                Content="Search"
+                Click="OnSearchClick" />
+        </Grid>
+
+        <ListView
+            Grid.Row="1"
+            x:Name="TypeTabs"
+            SelectionMode="Single"
+            IsItemClickEnabled="True"
+            ItemClick="OnTypeClick">
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock
+                        Text="{Binding}"
+                        FontSize="14"
+                        Padding="12,6" />
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <ListView
+            Grid.Row="2"
+            x:Name="ResultList"
+            ItemTemplate="{StaticResource TrackRowTemplate}"
+            IsItemClickEnabled="True"
+            ItemClick="OnResultClick"
+            RightTapped="OnResultRightTapped"
+            SelectionMode="None" />
+    </Grid>
+</Page>

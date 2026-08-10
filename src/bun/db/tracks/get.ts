@@ -1,0 +1,109 @@
+import type { Track } from "../../../shared/types.ts";
+import db from "../setup.ts"
+
+const getMultipleTracksStmt = db.prepare(`
+  SELECT 
+    t.id, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate, t.youtubeTrackId, t.etag,
+    json_group_array(
+      json_object('id', ta.artist_id, 'name', COALESCE(a.name, ''))
+    ) as artists_json
+  FROM tracks t
+  LEFT JOIN track_artists ta ON t.id = ta.track_id 
+  LEFT JOIN artists a ON ta.artist_id = a.id
+  WHERE t.id IN (SELECT value FROM json_each($ids))
+  GROUP BY t.id;
+`);
+
+const getTracksByNameStmt = db.prepare(`
+  SELECT 
+    t.id, t.name, t.source, t.thumbnail, 
+    t.duration, t.releasedDate, t.youtubeTrackId, t.etag,
+    json_group_array(
+      json_object('id', ta.artist_id, 'name', COALESCE(a.name, ''))
+    ) as artists_json
+  FROM tracks t
+  LEFT JOIN track_artists ta ON t.id = ta.track_id
+  LEFT JOIN artists a ON ta.artist_id = a.id
+  WHERE t.name LIKE $query
+  GROUP BY t.id;
+`);
+
+const getAllTracksIdsStmt = db.prepare("SELECT id FROM tracks");
+
+export default function getTracks(ids: string[]): Track[] {
+  if (!ids || ids.length === 0) return [];
+
+  const results = getMultipleTracksStmt.all({
+    $ids: JSON.stringify(ids)
+  }) as {
+    id: string,
+    name: string,
+    source: string,
+    thumbnail: string,
+    duration: number,
+    releasedDate: string,
+    youtubeTrackId: string | null,
+    etag: string | null,
+    artists_json: string,
+  }[]
+
+  return results.map((row) => {
+    let parsedArtists = JSON.parse(row.artists_json);
+
+    parsedArtists = parsedArtists.filter((a: any) => a.id !== null);
+
+    return {
+      id: row.id,
+      name: row.name,
+      source: row.source,
+      thumbnail: row.thumbnail,
+      duration: row.duration,
+      releasedDate: row.releasedDate,
+      youtubeTrackId: row.youtubeTrackId ?? undefined,
+      etag: row.etag ?? undefined,
+      artist: parsedArtists
+    } as Track;
+  });
+}
+
+export function getTrackByName(name: string, exact: boolean = false): Track[] {
+  const query = exact ? name : `%${name}%`;
+
+  const results = getTracksByNameStmt.all({ $query: query }) as {
+    id: string,
+    name: string,
+    source: string,
+    thumbnail: string,
+    duration: number,
+    releasedDate: string,
+    youtubeTrackId: string | null,
+    etag: string | null,
+    artists_json: string,
+  }[];
+
+  return results.map((row) => {
+    let parsedArtists = JSON.parse(row.artists_json);
+
+    parsedArtists = parsedArtists.filter((a: any) => a.id !== null);
+
+    return {
+      id: row.id,
+      name: row.name,
+      source: row.source,
+      thumbnail: row.thumbnail,
+      duration: row.duration,
+      releasedDate: row.releasedDate,
+      youtubeTrackId: row.youtubeTrackId ?? undefined,
+      etag: row.etag ?? undefined,
+      artist: parsedArtists
+    } as Track
+  });
+}
+
+export function getAllTracks() {
+  try {
+    const rows = getAllTracksIdsStmt.all() as { id: string }[];
+    return rows.map(r => ({ id: r.id }));
+  } catch { return []; }
+}

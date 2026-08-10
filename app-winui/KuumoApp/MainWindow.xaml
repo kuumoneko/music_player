@@ -1,0 +1,11 @@
+<Window
+    x:Class="KuumoApp.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:tb="using:H.NotifyIcon"
+    xmlns:views="using:KuumoApp.Views">
+    <Grid>
+        <views:ShellPage x:Name="Shell" />
+        <tb:TaskbarIcon x:Name="TrayIcon" />
+    </Grid>
+</Window>

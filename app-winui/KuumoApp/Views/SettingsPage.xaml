@@ -1,0 +1,94 @@
+﻿<Page
+    x:Class="KuumoApp.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:KuumoApp.Controls">
+
+    <ScrollViewer>
+        <StackPanel
+            Padding="24"
+            Spacing="24">
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="General" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <ToggleSwitch x:Name="QuitOnCloseSwitch" Header="Quit app on window close" Toggled="OnQuitOnCloseToggled" />
+                <ToggleSwitch x:Name="CloseToTraySwitch" Header="Close to tray" Toggled="OnCloseToTrayToggled" />
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="Theme" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <RadioButton x:Name="DarkThemeRadio" Content="Dark" GroupName="ThemeGroup" Checked="OnThemeModeChanged" />
+                    <RadioButton x:Name="LightThemeRadio" Content="Light" GroupName="ThemeGroup" Checked="OnThemeModeChanged" />
+                    <RadioButton x:Name="SystemThemeRadio" Content="System" GroupName="ThemeGroup" Checked="OnThemeModeChanged" />
+                </StackPanel>
+                <ToggleSwitch x:Name="DynamicAccentSwitch" Header="Accent from artwork" Toggled="OnDynamicAccentToggled" />
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="Equalizer" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <ToggleSwitch x:Name="EqualizerSwitch" Header="Enable equalizer" Toggled="OnEqualizerToggled" />
+                <ComboBox
+                    x:Name="PresetBox"
+                    Header="Preset"
+                    SelectionChanged="OnPresetChanged"
+                    PlaceholderText="Flat" />
+                <controls:EqGraphControl x:Name="EqGraph" Height="200" BandsChanged="OnEqBandsChanged" />
+                <TextBlock FontSize="12" Opacity="0.7" Text="Drag a handle up/down to boost or cut that band (-12 to +12 dB). Double-tap a handle to reset it." TextWrapping="Wrap" />
+                <Button Content="Reset all" Click="OnEqResetClick" />
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="Local music folder" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <TextBlock x:Name="FolderText" FontSize="12" Opacity="0.7" Text="Not set" />
+                <Button Content="Choose folder..." Click="OnChooseFolderClick" />
+            </StackPanel>
+
+            <Expander Header="Advanced">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="YouTube API keys" FontSize="16" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                    <TextBlock FontSize="12" Opacity="0.7" Text="API keys let the app access YouTube data without signing in to Google. Pre-configured keys are installed with the app; add your own only if you want to." TextWrapping="Wrap" />
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="ApiKeyBox" PlaceholderText="API key" />
+                        <Button Grid.Column="1" Content="Add" Click="OnAddKeyClick" />
+                        <Button Grid.Column="2" Content="Remove selected" Click="OnRemoveKeyClick" />
+                    </Grid>
+                    <ListView x:Name="ApiKeysList" Height="140" SelectionMode="Single" DisplayMemberPath="Masked" />
+                </StackPanel>
+            </Expander>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="YouTube cookies" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <TextBox x:Name="CookiesBox" Height="120" AcceptsReturn="True" TextWrapping="Wrap" PlaceholderText="Paste cookies here (NID, etc.)" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Load current" Click="OnLoadCookiesClick" />
+                    <Button Content="Save" Click="OnSaveCookiesClick" />
+                    <Button Content="Clear" Click="OnClearCookiesClick" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="Discord RPC" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <TextBlock x:Name="DiscordText" FontSize="12" Opacity="0.7" Text="Not connected" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Connect" Click="OnDiscordConnectClick" />
+                    <Button Content="Disconnect" Click="OnDiscordDisconnectClick" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="Google account" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <TextBlock x:Name="GoogleText" FontSize="12" Opacity="0.7" Text="Not signed in" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="SignInButton" Content="Sign in" Click="OnSignInClick" />
+                    <Button x:Name="SignOutButton" Content="Sign out" Click="OnSignOutClick" Visibility="Collapsed" />
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
