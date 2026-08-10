@@ -24,10 +24,6 @@ export function extractSearchContents(data: any): any[] {
 }
 
 export function extractPlaylistContents(data: any): any[] {
-    return extractPlaylistPage(data).items;
-}
-
-export function extractPlaylistContents(data: any): any[] {
     try {
         const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs;
         if (!tabs?.length) return [];
