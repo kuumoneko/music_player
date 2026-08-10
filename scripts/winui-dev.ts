@@ -1,11 +1,11 @@
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
+import { Database } from "bun:sqlite";
 import readline from "node:readline";
 
 const root = resolve(import.meta.dir, "..");
 const PROFILE = "myown";
-const logFile = "C:\\Users\\maing\\AppData\\Local\\KuumoApp\\app.log";
 const dataDir = resolve(process.env["APPDATA"] ?? "", "KuumoApp");
 const legacyDataDir = resolve(process.env["LOCALAPPDATA"] ?? "", "musicapp");
 const logDbPath = resolve(dataDir, "app_data.sqlite");
@@ -19,6 +19,37 @@ function migrateLegacyData() {
             if (existsSync(src)) copyFileSync(src, resolve(dataDir, name));
         }
         console.log(`[winui:dev] migrated legacy data from ${legacyDataDir} to ${dataDir}`);
+    }
+}
+
+function getMaxLogId(): number {
+    if (!existsSync(logDbPath)) return 0;
+    try {
+        const db = new Database(logDbPath);
+        try {
+            const row = db.query<{ m: number }, []>("SELECT COALESCE(MAX(id), 0) AS m FROM log").get();
+            return row?.m ?? 0;
+        } finally {
+            db.close();
+        }
+    } catch {
+        return 0;
+    }
+}
+
+function readFreshLogs(sinceId: number): { id: number; message: string }[] {
+    if (!existsSync(logDbPath)) return [];
+    try {
+        const db = new Database(logDbPath);
+        try {
+            return db.query<{ id: number; message: string }, [number]>(
+                "SELECT id, message FROM log WHERE id > ? ORDER BY id",
+            ).all(sinceId);
+        } finally {
+            db.close();
+        }
+    } catch {
+        return [];
     }
 }
 
@@ -114,7 +145,6 @@ async function runDevCycle(): Promise<boolean> {
     }
 
     console.log("[winui:dev] launching app...");
-    const logStart = existsSync(logFile) ? (await Bun.file(logFile).text()).split("\n").length : 0;
     Bun.spawn([appExe, "--data-dir", dataDir], {
         cwd: root,
         env: {
@@ -129,23 +159,25 @@ async function runDevCycle(): Promise<boolean> {
     console.log("[winui:dev] waiting for backend endpoint...");
     const deadline = Date.now() + 20_000;
     let wsUrl: string | null = null;
+    let lastId = getMaxLogId();
+    const freshLogs: string[] = [];
     while (Date.now() < deadline) {
         await Bun.sleep(1000);
-        if (!existsSync(logFile)) continue;
-        const text = await Bun.file(logFile).text();
-        const fresh = text.split("\n").slice(logStart).join("\n");
-        const matches = fresh.match(/KUUMO_WS=(ws:\/\/[^\s]+)/g);
-        const match = matches?.[matches.length - 1];
-        if (match) {
-            wsUrl = match;
-            break;
+        const rows = readFreshLogs(lastId);
+        if (rows.length > 0) {
+            lastId = rows[rows.length - 1].id;
+            freshLogs.push(...rows.map((r) => r.message));
+            const matches = rows
+                .flatMap((r) => r.message.match(/KUUMO_WS=(ws:\/\/[^\s]+)/g) ?? []);
+            const match = matches[matches.length - 1];
+            if (match) {
+                wsUrl = match;
+                break;
+            }
         }
     }
 
-    const full = existsSync(logFile) ? await Bun.file(logFile).text() : "";
-    const problems = full
-        .split("\n")
-        .slice(logStart)
+    const problems = freshLogs
         .filter((line) => /UNHANDLED|\[theme\] .* failed|load failed|accent failed/.test(line))
         .slice(-10);
 
