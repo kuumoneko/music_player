@@ -27,6 +27,8 @@ public sealed class RpcApi
     public Task UpdateAsync() => Call<object?>("update");
     public Task<object?> OpenDevToolsAsync() => Call<object?>("openDevTools");
     public Task SendErrorAsync(string message) => Call<object?>("sendError", new { message });
+    public Task WriteLogAsync(string type, string source, string message)
+        => Call<object?>("writeLog", new { type, source, message }, timeoutMs: 5000);
 
     // --- Player ---
     public Task TogglePlayPauseAsync() => Call<object?>("togglePlayPause");

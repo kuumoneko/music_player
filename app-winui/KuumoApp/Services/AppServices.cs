@@ -23,6 +23,7 @@ public sealed class AppServices
         Api = new RpcApi(Rpc);
         Events = new AppEvents(DispatcherQueue.GetForCurrentThread());
         Theme = new ThemeService(Events, Rpc, DispatcherQueue.GetForCurrentThread());
+        AppLog.SetSink((type, source, message) => Api.WriteLogAsync(type, source, message));
     }
 
     public void Start()
