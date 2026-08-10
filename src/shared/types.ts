@@ -383,10 +383,8 @@ export interface System {
     isLocal: boolean | null,
     isDiscord: boolean | null,
     appPort: number | null,
-    playerPort: number,
     DiscordClientId: number,
     googleClientId?: string,
-    googleClientSecret?: string,
     youtubeApiKeys?: string[]
 }
 

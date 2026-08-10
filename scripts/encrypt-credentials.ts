@@ -75,14 +75,17 @@ async function main() {
     existing.youtubeApiKeys = encryptedKeys;
     if (clientId) existing.googleClientId = clientId;
     else delete existing.googleClientId;
-    if (clientSecret) existing.googleClientSecret = clientSecret;
-    else delete existing.googleClientSecret;
+    // Never ship the client secret — PKCE auth (public desktop client) doesn't need it.
+    delete existing.googleClientSecret;
+    if (clientSecret) {
+        console.warn(`  ! profile contains google.client_secret; it will NOT be shipped (PKCE public client does not need it).`);
+    }
 
     writeFileSync(SYSTEM_FILE, JSON.stringify(existing, null, 2), "utf8");
     console.log(`Wrote ${SYSTEM_FILE} (profile: ${profile})`);
     console.log(`  youtubeApiKeys: ${encryptedKeys.length} encrypted key(s)`);
     console.log(`  googleClientId: ${existing.googleClientId ?? "(none)"}`);
-    console.log(`  googleClientSecret: ${existing.googleClientSecret ? "(set)" : "(none)"}`);
+    console.log(`  googleClientSecret: (never shipped)`);
 }
 
 main().catch((e) => {

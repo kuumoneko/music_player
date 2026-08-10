@@ -1,4 +1,5 @@
 import { getUserData, writeUserData, writeLogs } from "../db/index.ts";
+import { encryptCredential, decryptCredential, isEncrypted } from "../lib/crypto.ts";
 import type { GoogleTokens } from "../../shared/types.ts";
 
 const YT_OAUTH_BASE = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -36,13 +37,34 @@ export class GoogleAuth {
     private tokens: GoogleTokens | null = null;
     private pendingVerifier: string | null = null;
 
-    loadCredentials() {
+    async loadCredentials() {
         this.clientId = getUserData("googleClientId") ?? "";
-        this.clientSecret = getUserData("googleClientSecret") ?? "";
+        const storedSecret = getUserData("googleClientSecret") as string | undefined;
+        this.clientSecret = storedSecret && isEncrypted(storedSecret)
+            ? (await decryptCredential(storedSecret)) ?? ""
+            : storedSecret ?? "";
     }
 
-    loadTokens() {
-        this.tokens = getUserData("googleOAuthTokens") ?? null;
+    async loadTokens() {
+        const stored = getUserData("googleOAuthTokens") as GoogleTokens | null | undefined;
+        if (!stored) {
+            this.tokens = null;
+            return;
+        }
+        if (typeof stored === "string" && isEncrypted(stored)) {
+            const plain = await decryptCredential(stored);
+            if (plain) {
+                try {
+                    this.tokens = JSON.parse(plain) as GoogleTokens;
+                } catch {
+                    this.tokens = null;
+                }
+            } else {
+                this.tokens = null;
+            }
+        } else {
+            this.tokens = stored;
+        }
     }
 
     get hasCredentials(): boolean {
@@ -70,8 +92,8 @@ export class GoogleAuth {
     }
 
     async init() {
-        this.loadCredentials();
-        this.loadTokens();
+        await this.loadCredentials();
+        await this.loadTokens();
         if (this.tokens && !this.hasValidToken) {
             await this.tryRefresh();
         }
@@ -169,11 +191,11 @@ export class GoogleAuth {
         writeUserData("googleUserEmail", null as any);
     }
 
-    saveCredentials(clientId: string, clientSecret: string = "") {
+    async saveCredentials(clientId: string, clientSecret: string = "") {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         writeUserData("googleClientId", clientId);
-        writeUserData("googleClientSecret", clientSecret);
+        writeUserData("googleClientSecret", clientSecret ? await encryptCredential(clientSecret) : null as any);
     }
 
     clearCredentials() {
@@ -201,7 +223,7 @@ export class GoogleAuth {
         }
     }
 
-    private persistTokens() {
-        writeUserData("googleOAuthTokens", this.tokens as any);
+    private async persistTokens() {
+        writeUserData("googleOAuthTokens", this.tokens ? await encryptCredential(JSON.stringify(this.tokens)) : null as any);
     }
 }

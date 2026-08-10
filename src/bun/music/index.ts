@@ -136,8 +136,10 @@ export default class Player {
             if (systemData.googleClientId && !getUserData("googleClientId")) {
                 writeUserData("googleClientId", systemData.googleClientId);
             }
-            if (systemData.googleClientSecret && !getUserData("googleClientSecret")) {
-                writeUserData("googleClientSecret", systemData.googleClientSecret);
+            // The client secret is no longer shipped (PKCE public client).
+            // Purge any stale plaintext copy from older installs.
+            if (getUserData("googleClientSecret")) {
+                writeUserData("googleClientSecret", null as any);
             }
         } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
