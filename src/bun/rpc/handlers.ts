@@ -472,6 +472,10 @@ export function createRpcHandlers(ctx: RpcContext) {
       emitToFrontend("error", { message });
     },
 
+    writeLog: ({ type, source, message }: { type: "info" | "error"; source?: string; message: string }) => {
+      writeLogs([{ type: type === "error" ? "error" : "info", source: source ?? "app", message: String(message ?? "") }]);
+    },
+
     openDevTools: () => {
       return null;
     },

@@ -365,4 +365,6 @@ try {
 	process.exit(1);
 }
 
-process.stdout.write(`KUUMO_WS=ws://${rpcServer.hostname}:${rpcServer.port}/ws\n`);
+const endpointLine = `KUUMO_WS=ws://${rpcServer.hostname}:${rpcServer.port}/ws`;
+process.stdout.write(endpointLine + "\n");
+writeLogs([{ type: "info", source: "backend", message: endpointLine }]);

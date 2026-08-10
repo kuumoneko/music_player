@@ -66,6 +66,7 @@ db.run(`
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   date TEXT NOT NULL,
   type TEXT NOT NULL,
+  source TEXT,
   message TEXT
   );
 `);
@@ -85,6 +86,7 @@ const commands = [
   `ALTER TABLE tracks ADD COLUMN etag TEXT;`,
   `ALTER TABLE playlists ADD COLUMN etag TEXT;`,
   `ALTER TABLE artists ADD COLUMN etag TEXT;`,
+  `ALTER TABLE log ADD COLUMN source TEXT;`,
 ];
 for (const sql of commands) {
   try { db.run(sql); } catch (e) {

@@ -218,6 +218,10 @@ export type AppRPCType = {
             getUserYoutubePlaylistTracks: {
                 params: { playlistId: string },
                 response: Track[]
+            },
+            writeLog: {
+                params: { type: "info" | "error", source?: string, message: string },
+                response: void
             }
         },
         messages: {
