@@ -23,7 +23,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        SetCurrentProcessExplicitAppUserModelID("musicapp.kuumo.dev");
+        SetCurrentProcessExplicitAppUserModelID("kuumo.app");
         MainWindow = new MainWindow();
         MainWindow.Activate();
         Services.Start();

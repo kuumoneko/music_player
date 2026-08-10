@@ -30,7 +30,43 @@ public sealed class BunHostService
 
     private static string GetDefaultDataDir()
     {
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "musicapp");
+        var target = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "KuumoApp");
+        var legacy = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "musicapp");
+
+        if (!Directory.Exists(target) && Directory.Exists(legacy))
+        {
+            if (TryMigrateLegacyData(legacy, target))
+            {
+                return target;
+            }
+            return legacy; // migration failed — keep using the old dir so data stays accessible
+        }
+        return target;
+    }
+
+    private static bool TryMigrateLegacyData(string source, string target)
+    {
+        try
+        {
+            Directory.CreateDirectory(target);
+            foreach (var pattern in new[] { "app_data.sqlite", "app_data.sqlite-wal", "app_data.sqlite-shm" })
+            {
+                var file = Path.Combine(source, pattern);
+                if (File.Exists(file))
+                {
+                    File.Copy(file, Path.Combine(target, pattern), overwrite: false);
+                }
+            }
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static string ResolveBunExe()

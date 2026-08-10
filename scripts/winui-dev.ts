@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import readline from "node:readline";
@@ -6,13 +6,29 @@ import readline from "node:readline";
 const root = resolve(import.meta.dir, "..");
 const PROFILE = "myown";
 const logFile = "C:\\Users\\maing\\AppData\\Local\\KuumoApp\\app.log";
-const dataDir = "C:\\Users\\maing\\AppData\\Local\\musicapp";
+const dataDir = resolve(process.env["APPDATA"] ?? "", "KuumoApp");
+const legacyDataDir = resolve(process.env["LOCALAPPDATA"] ?? "", "musicapp");
+const logDbPath = resolve(dataDir, "app_data.sqlite");
+
+// One-time: copy legacy data from the old %LocalAppData%\musicapp location.
+function migrateLegacyData() {
+    if (existsSync(legacyDataDir) && !existsSync(logDbPath)) {
+        mkdirSync(dataDir, { recursive: true });
+        for (const name of ["app_data.sqlite", "app_data.sqlite-wal", "app_data.sqlite-shm"]) {
+            const src = resolve(legacyDataDir, name);
+            if (existsSync(src)) copyFileSync(src, resolve(dataDir, name));
+        }
+        console.log(`[winui:dev] migrated legacy data from ${legacyDataDir} to ${dataDir}`);
+    }
+}
 
 const profileFile = resolve(root, "apikeys", `${PROFILE}.json`);
 if (!existsSync(profileFile)) {
     console.error(`Missing profile file: ${profileFile}`);
     process.exit(1);
 }
+
+migrateLegacyData();
 
 // Bake the profile's credentials (encrypted keys + googleClientId) into data/system.json.
 const encrypt = spawnSync("bun", ["./scripts/encrypt-credentials.ts", "--profile", PROFILE], {
