@@ -11,7 +11,6 @@
 
             <SolidColorBrush x:Key="AppAccentBrush" Color="{ThemeResource SystemAccentColor}" />
             <SolidColorBrush x:Key="AppAccentHoverBrush" Color="{ThemeResource SystemAccentColorLight2}" />
-            <SolidColorBrush x:Key="AppAccentTextBrush" Color="#FFFFFF" />
 
             <Style x:Key="AppAccentTitleStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource AppAccentBrush}" />
@@ -32,7 +31,6 @@
                 TargetType="Button"
                 BasedOn="{StaticResource AccentButtonStyle}">
                 <Setter Property="Background" Value="{StaticResource AppAccentBrush}" />
-                <Setter Property="Foreground" Value="{StaticResource AppAccentTextBrush}" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

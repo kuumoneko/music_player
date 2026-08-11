@@ -46,8 +46,21 @@ public sealed partial class ShellPage : Page
         Nav.SelectedItem = Nav.MenuItems[0];
         ContentFrame.Navigated += OnNavigated;
         ContentFrame.Navigate(typeof(HomePage));
+        KeyDown += OnRootKeyDown;
         AddAltAccelerator(VirtualKey.Left, OnBackAccelerator);
         AddAltAccelerator(VirtualKey.Right, OnForwardAccelerator);
+    }
+
+    // Space toggles play/pause only when no focused control consumed the key.
+    // TextBox/Button/etc. mark Space handled during bubbling, so typing in the
+    // search box (or activating a button) never reaches this handler.
+    private void OnRootKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == VirtualKey.Space)
+        {
+            e.Handled = true;
+            PlayerBar.TogglePlayPause();
+        }
     }
 
     private void OnNavigated(object sender, NavigationEventArgs e)
@@ -106,17 +119,6 @@ public sealed partial class ShellPage : Page
         {
             ContentFrame.Navigate(page);
         }
-    }
-
-    private void OnSpaceAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
-    {
-        if (IsTextInputFocused())
-        {
-            args.Handled = false;
-            return;
-        }
-        args.Handled = true;
-        PlayerBar.TogglePlayPause();
     }
 
     private void OnPrevAccelerator(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -195,10 +197,5 @@ public sealed partial class ShellPage : Page
             args.Handled = true;
             ContentFrame.GoForward();
         }
-    }
-
-    private static bool IsTextInputFocused()
-    {
-        return FocusManager.GetFocusedElement() is TextBox or PasswordBox or AutoSuggestBox or RichEditBox;
     }
 }

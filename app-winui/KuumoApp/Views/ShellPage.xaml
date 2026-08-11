@@ -5,7 +5,6 @@
     xmlns:controls="using:KuumoApp.Controls">
 
     <Page.KeyboardAccelerators>
-        <KeyboardAccelerator Key="Space" Invoked="OnSpaceAccelerator" />
         <KeyboardAccelerator Key="Left" Modifiers="Control" Invoked="OnPrevAccelerator" />
         <KeyboardAccelerator Key="Right" Modifiers="Control" Invoked="OnNextAccelerator" />
         <KeyboardAccelerator Key="Up" Modifiers="Control" Invoked="OnVolumeUpAccelerator" />
