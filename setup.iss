@@ -75,24 +75,25 @@ Type: files; Name: "{app}\SessionHandleIPCProxyStub.dll"
 Type: files; Name: "{app}\System.Numerics.Tensors.dll"
 Type: files; Name: "{app}\workloads*.json"
 Type: files; Name: "{app}\KuumoApp.pdb"
-; Old locale satellite folders — the only "xx-XX"-shaped dirs ever at root
-Type: filesandordirs; Name: "{app}\??-??"
+; Old WinUI satellite resource folders from self-contained installs (any locale
+; format: en-US, fil-PH, az-Latn-AZ, ...). The framework-dependent build ships
+; no .mui files; localized resources come from the runtime package.
+Type: files; Name: "{app}\*\*.mui"
+Type: dirifempty; Name: "{app}\*"
 
 [Files]
 Source: "build\package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; Runtime prerequisites (installed by [Run] below, app is ready after install)
-Source: "build\runtime-installer\windowsdesktop-runtime-10.0.9-win-x64.exe"; DestDir: "{tmp}\prereq"
-Source: "build\runtime-installer\runtime\*"; DestDir: "{tmp}\prereq\runtime"; Flags: recursesubdirs createallsubdirs
+; Runtime prerequisite installer script (downloads .NET + Windows App SDK runtime)
+Source: "scripts\install-prereqs.ps1"; DestDir: "{tmp}"; Flags: dontcopy
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUserModelID: "kuumo.app"
 Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; AppUserModelID: "kuumo.app"
 
 [Run]
-; 1) .NET Desktop Runtime (app is .NET framework-dependent; pinned to 10.0.9)
-Filename: "{tmp}\prereq\windowsdesktop-runtime-10.0.9-win-x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Installing .NET Desktop Runtime..."; Flags: waituntilterminated
-; 2) Windows App SDK runtime, offline from the bundled MSIX packages
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\prereq\runtime\install-runtime.ps1"""; StatusMsg: "Installing Windows App SDK Runtime..."; Flags: runhidden waituntilterminated
-; 3) Seed app data, then launch
+; 1) Runtime prerequisites: .NET Desktop Runtime + Windows App SDK runtime
+;    (downloaded and installed by install-prereqs.ps1; requires internet)
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\install-prereqs.ps1"""; StatusMsg: "Installing runtime prerequisites..."; Flags: runhidden waituntilterminated
+; 2) Seed app data, then launch
 Filename: "{app}\backend.exe"; Parameters: "--seed --data-dir ""{userappdata}\KuumoApp"" --assets {app}"; StatusMsg: "Configuring app data..."; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent

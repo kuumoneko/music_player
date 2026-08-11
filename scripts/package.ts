@@ -6,16 +6,17 @@
 //   bun run build:prod              -> build/backend.js + build/*.dll
 //   bun build --compile             -> build/backend.exe (compiled Bun backend)
 //   dotnet publish                  -> WinUI publish output (framework-dependent WinAppSDK)
-//   prerequisites                   -> build/runtime-installer/ (.NET Desktop Runtime +
-//                                      Windows App SDK runtime MSIX, installed offline by setup.iss)
 //   assemble                        -> build/package/ (KuumoApp.exe, backend.exe, include/, data/)
 //   ISCC.exe setup.iss              -> artifacts/kuumoapp[_<profile>]_{version}-setup.exe
 //   update manifest                 -> artifacts/stable-win-x64-update.json
 //
+// Runtime prerequisites (.NET Desktop Runtime + Windows App SDK runtime) are
+// NOT bundled — setup.iss downloads and installs them at install time via
+// scripts/install-prereqs.ps1.
+//
 // Usage:
 //   bun run package                 -> builds ALL profiles found in apikeys/ (myown first, release last)
 //   bun run package --profile myown -> builds only that profile (dev testing)
-//   bun run package --skip-downloads-> fail instead of downloading missing prerequisites
 import { spawnSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -87,12 +88,8 @@ const PUBLISH_ROOT_ALLOW = new Set([
     "Assets",
 ]);
 
-// Runtime prerequisites — pinned to match KuumoApp.csproj (Microsoft.WindowsAppSDK
-// 2.3.1, net10.0) and Program.cs (bootstrap 0x00020003). Bump together.
-const DOTNET_RUNTIME_FILE = "windowsdesktop-runtime-10.0.9-win-x64.exe";
-const DOTNET_RUNTIME_URL = `https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/10.0.9/${DOTNET_RUNTIME_FILE}`;
-const WASDK_REDIST_ZIP = "Microsoft.WindowsAppRuntime.Redist.2.3.zip";
-const WASDK_REDIST_URL = `https://aka.ms/windowsappsdk/2.3/2.3.1/${WASDK_REDIST_ZIP}`;
+// Runtime prerequisites are installed by the setup.exe at install time via
+// scripts/install-prereqs.ps1 — nothing to download or stage here.
 
 // 1) Backend bundle + native DLLs (profile-independent)
 run("bun", ["run", "build:prod"]);
@@ -122,33 +119,9 @@ requireDir(publishDir, "dotnet publish output");
 // the publish pipeline can drop Content items on incremental runs.
 cpSync(resolve(root, "app-winui", "KuumoApp", "Assets"), resolve(publishDir, "Assets"), { recursive: true });
 
-// 2c) Stage the runtime prerequisites that setup.iss installs offline:
-// .NET Desktop Runtime (the app is .NET framework-dependent) and the Windows
-// App SDK runtime MSIX packages (x64 only).
-const prereqDir = resolve(buildDir, "runtime-installer");
-const runtimeDir = resolve(prereqDir, "runtime");
-mkdirSync(prereqDir, { recursive: true });
-const skipDownloads = process.argv.includes("--skip-downloads");
-const dotnetExe = resolve(prereqDir, DOTNET_RUNTIME_FILE);
-if (!existsSync(dotnetExe)) {
-    if (skipDownloads) {
-        console.error(`Missing prerequisite (--skip-downloads): ${DOTNET_RUNTIME_FILE}`);
-        process.exit(1);
-    }
-    await downloadIfMissing(dotnetExe, DOTNET_RUNTIME_URL, DOTNET_RUNTIME_FILE);
-}
-const redistZip = resolve(buildDir, WASDK_REDIST_ZIP);
-if (!existsSync(redistZip)) {
-    if (skipDownloads) {
-        console.error(`Missing prerequisite (--skip-downloads): ${WASDK_REDIST_ZIP}`);
-        process.exit(1);
-    }
-    await downloadIfMissing(redistZip, WASDK_REDIST_URL, WASDK_REDIST_ZIP);
-}
-const extractDir = resolve(buildDir, "redist-extract");
-rmSync(extractDir, { recursive: true, force: true });
-run("powershell", ["-NoProfile", "-Command", `Expand-Archive -LiteralPath '${redistZip}' -DestinationPath '${extractDir}' -Force`]);
-assembleWasdkRuntime(extractDir, runtimeDir);
+// 2c) Runtime prerequisites are NOT bundled — setup.iss downloads and installs
+// .NET Desktop Runtime + Windows App SDK runtime at install time via
+// scripts/install-prereqs.ps1 (see scripts/install-prereqs.ps1 for the pins).
 
 const iscc = findIscc();
 if (!iscc) {
@@ -224,65 +197,4 @@ function findIscc(): string | null {
         if (existsSync(candidate)) return candidate;
     }
     return null;
-}
-
-async function downloadIfMissing(dest: string, url: string, label: string) {
-    console.log(`Downloading ${label} ...`);
-    const res = await fetch(url);
-    if (!res.ok) {
-        console.error(`Download failed: ${url} -> HTTP ${res.status}`);
-        process.exit(1);
-    }
-    await Bun.write(dest, res);
-    console.log(`Saved ${label} (${dest})`);
-}
-
-function walk(dir: string): string[] {
-    const out: string[] = [];
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = resolve(dir, entry.name);
-        if (entry.isDirectory()) out.push(...walk(full));
-        else out.push(full);
-    }
-    return out;
-}
-
-// Pull the x64 MSIX packages out of the Redist archive (which contains all
-// architectures) and stage them with a filtered inventory + the install script.
-function assembleWasdkRuntime(extractDir: string, runtimeDir: string) {
-    rmSync(runtimeDir, { recursive: true, force: true });
-    mkdirSync(runtimeDir, { recursive: true });
-
-    const files = walk(extractDir);
-    const inventoryFiles = files.filter(f => f.endsWith("MSIX.inventory"));
-    if (inventoryFiles.length === 0) {
-        console.error("MSIX.inventory not found in the Windows App SDK Redist archive.");
-        process.exit(1);
-    }
-    let inventory: string[] = [];
-    for (const inv of inventoryFiles) {
-        const lines = readFileSync(inv, "utf8").split(/\r?\n/).filter(l => l.includes("_x64__"));
-        if (lines.length > 0) {
-            inventory = lines;
-            break;
-        }
-    }
-    if (inventory.length === 0) {
-        console.error("No x64 MSIX entries found in the Redist MSIX.inventory.");
-        process.exit(1);
-    }
-    for (const line of inventory) {
-        const short = line.split("=", 2)[0].trim();
-        const full = line.split("=", 2)[1].trim();
-        let found = files.find(f => f.endsWith(`\\${short}`));
-        if (!found) found = files.find(f => f.endsWith(`\\${full}.msix`));
-        if (!found) {
-            console.error(`Missing MSIX file for ${short} in the Redist archive.`);
-            process.exit(1);
-        }
-        copyFileSync(found, resolve(runtimeDir, short));
-    }
-    writeFileSync(resolve(runtimeDir, "MSIX.inventory"), inventory.join("\n") + "\n", "utf8");
-    copyFileSync(resolve(root, "scripts", "install-runtime.ps1"), resolve(runtimeDir, "install-runtime.ps1"));
-    console.log(`Windows App SDK runtime staged at ${runtimeDir} (${inventory.length} x64 packages).`);
 }
