@@ -76,21 +76,20 @@ function installerBaseName(profile: string): string {
     return profile === "release" ? `kuumoapp_${version}-setup` : `kuumoapp_${profile}_${version}-setup`;
 }
 
-// Framework-dependent Windows App SDK deployment: the app folder only keeps
-// the files below; every DLL (managed + native) is staged in include\ where
-// Program.cs redirects loading. Keep the allowlist in sync with Program.cs.
-const PUBLISH_ROOT_ALLOW = new Set([
-    "KuumoApp.exe",
-    "KuumoApp.dll",
-    "KuumoApp.pri",
-    "KuumoApp.deps.json",
-    "KuumoApp.runtimeconfig.json",
-    "Assets",
-]);
+// Framework-dependent Windows App SDK deployment, flat layout: the .NET host
+// resolves every managed assembly strictly through KuumoApp.deps.json paths
+// relative to the app root (verified via COREHOST_TRACE — it strips subfolder
+// prefixes from package entries, probes nothing else, and Microsoft.WinUI is
+// loaded at JIT time before Main's AssemblyResolve handler can attach). All
+// publish output therefore stays flat at the app root. Only the backend's
+// native libs (dlopen'd by backend.exe from its CWD) live in include\.
 
 // WASDK package files with no code references (verified: no C#/Bun usage of
 // onnx/AI/WebView2/notifications/widgets/etc.). Skipped from the payload
 // entirely. Keep in sync with the [InstallDelete] block in setup.iss.
+// Microsoft.InteractiveExperiences.Projection.dll is deliberately NOT trimmed:
+// unpackaged framework-dependent WinUI apps need it at XAML startup (removing
+// it crashes with 0xC000027B — verified by bisection).
 const PUBLISH_TRIM = new Set([
     "onnxruntime.dll",
     "DirectML.dll",
@@ -104,7 +103,6 @@ const PUBLISH_TRIM = new Set([
     "Microsoft.Windows.AI.Projection.dll",
     "Microsoft.Windows.AI.Text.Projection.dll",
     "Microsoft.Windows.AI.Video.Projection.dll",
-    "Microsoft.InteractiveExperiences.Projection.dll",
     "Microsoft.Windows.Widgets.Projection.dll",
     "Microsoft.Windows.AppNotifications.Projection.dll",
     "Microsoft.Windows.AppNotifications.Builder.Projection.dll",
@@ -121,7 +119,7 @@ const PUBLISH_TRIM = new Set([
     "Microsoft.Windows.System.Projection.dll",
     "Microsoft.Windows.Storage.Pickers.Projection.dll",
     "Microsoft.Windows.Storage.Projection.dll",
-    "Microsoft.Windows.Graphics.Imaging.Projection.dll",
+    "Microsoft.Graphics.Imaging.Projection.dll",
     "Microsoft.Web.WebView2.Core.dll",
     "Microsoft.Web.WebView2.Core.Projection.dll",
     "WebView2Loader.dll",
@@ -181,16 +179,15 @@ for (const profile of profiles) {
     rmSync(pkg, { recursive: true, force: true });
     mkdirSync(pkg, { recursive: true });
 
-    // Publish output split: allowlisted files stay at root; every DLL/winmd
-    // goes to include\ (Program.cs redirects managed + native loading there).
+    // Publish output copied flat to the app root (the host resolves every
+    // managed assembly from deps.json paths relative to the app root). Only
+    // the backend's native libs go to include\ (dlopen'd from CWD = include).
     const includeDir = resolve(pkg, "include");
     mkdirSync(includeDir, { recursive: true });
     for (const entry of readdirSync(publishDir)) {
         if (entry === "KuumoApp.pdb") continue; // no debug symbols in the payload
         if (PUBLISH_TRIM.has(entry)) continue; // unused WASDK files, see PUBLISH_TRIM
-        const src = resolve(publishDir, entry);
-        const dst = PUBLISH_ROOT_ALLOW.has(entry) ? resolve(pkg, entry) : resolve(includeDir, entry);
-        cpSync(src, dst, { recursive: true });
+        cpSync(resolve(publishDir, entry), resolve(pkg, entry), { recursive: true });
     }
 
     // backend.exe at app root (compiled Bun backend; BunHostService launches it there)

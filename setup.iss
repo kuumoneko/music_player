@@ -81,7 +81,8 @@ Type: files; Name: "{app}\KuumoApp.pdb"
 Type: files; Name: "{app}\*\*.mui"
 Type: dirifempty; Name: "{app}\*"
 ; Unused WASDK files (no code references) removed from include\ — keep in sync
-; with PUBLISH_TRIM in scripts/package.ts
+; with PUBLISH_TRIM in scripts/package.ts. Microsoft.InteractiveExperiences.Projection.dll
+; is NOT listed: unpackaged WinUI needs it at XAML startup.
 Type: files; Name: "{app}\include\onnxruntime.dll"
 Type: files; Name: "{app}\include\DirectML.dll"
 Type: files; Name: "{app}\include\Microsoft.ML.OnnxRuntime.dll"
@@ -94,7 +95,6 @@ Type: files; Name: "{app}\include\Microsoft.Windows.AI.MachineLearning.Projectio
 Type: files; Name: "{app}\include\Microsoft.Windows.AI.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Windows.AI.Text.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Windows.AI.Video.Projection.dll"
-Type: files; Name: "{app}\include\Microsoft.InteractiveExperiences.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Windows.Widgets.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Windows.AppNotifications.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Windows.AppNotifications.Builder.Projection.dll"
@@ -111,10 +111,29 @@ Type: files; Name: "{app}\include\Microsoft.Windows.System.Power.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Windows.System.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Windows.Storage.Pickers.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Windows.Storage.Projection.dll"
-Type: files; Name: "{app}\include\Microsoft.Windows.Graphics.Imaging.Projection.dll"
+Type: files; Name: "{app}\include\Microsoft.Graphics.Imaging.Projection.dll"
 Type: files; Name: "{app}\include\Microsoft.Web.WebView2.Core.dll"
 Type: files; Name: "{app}\include\Microsoft.Web.WebView2.Core.Projection.dll"
 Type: files; Name: "{app}\include\WebView2Loader.dll"
+; Old include\ layout (pre-flat installs) staged these at {app}\include\; the
+; flat layout ships them at the app root. Remove the stale copies — only the
+; backend's dlopen libs (avcodec/avformat/avutil/swresample/libmpv/libssp)
+; remain in include\.
+Type: files; Name: "{app}\include\CommunityToolkit.Mvvm.dll"
+Type: files; Name: "{app}\include\H.GeneratedIcons.System.Drawing.dll"
+Type: files; Name: "{app}\include\H.NotifyIcon.dll"
+Type: files; Name: "{app}\include\H.NotifyIcon.WinUI.dll"
+Type: files; Name: "{app}\include\Microsoft.Security.Authentication.OAuth.Projection.dll"
+Type: files; Name: "{app}\include\Microsoft.Win32.SystemEvents.dll"
+Type: files; Name: "{app}\include\Microsoft.Windows.ApplicationModel.DynamicDependency.Projection.dll"
+Type: files; Name: "{app}\include\Microsoft.Windows.ApplicationModel.Resources.Projection.dll"
+Type: files; Name: "{app}\include\Microsoft.Windows.Foundation.Projection.dll"
+Type: files; Name: "{app}\include\Microsoft.Windows.SDK.NET.dll"
+Type: files; Name: "{app}\include\Microsoft.WindowsAppRuntime.Bootstrap.dll"
+Type: files; Name: "{app}\include\Microsoft.WindowsAppRuntime.Bootstrap.Net.dll"
+Type: files; Name: "{app}\include\Microsoft.WinUI.dll"
+Type: files; Name: "{app}\include\System.Drawing.Common.dll"
+Type: files; Name: "{app}\include\WinRT.Runtime.dll"
 
 [Files]
 Source: "build\package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -1,9 +1,11 @@
 // Custom entry point for the framework-dependent Windows App SDK deployment.
 //
-// Installed builds keep every DLL (managed + native) inside {app}\include, so
-// this Main redirects assembly/native resolution to that folder before WinUI
-// starts. Dev builds (winui:dev) are flat-layout: both fallbacks are no-ops
-// there, so nothing changes for development.
+// Installed builds use a FLAT layout: every managed assembly sits at the app
+// root (KuumoApp.deps.json resolves them from there — verified via
+// COREHOST_TRACE that the host strips subfolder prefixes and never falls back
+// to loose probing; Microsoft.WinUI also loads at JIT time, before this Main
+// can attach any AssemblyResolve handler). Only the backend's native libs live
+// in include\, loaded by backend.exe itself, never by the .NET host.
 //
 // The Windows App SDK runtime is installed machine-wide by setup.iss; we
 // initialize it via the Bootstrap API. The version constant below (0x00020003
@@ -44,17 +46,16 @@ public static class Program
         var baseDir = AppContext.BaseDirectory;
         var includeDir = Path.Combine(baseDir, "include");
 
-        // Native DLLs (Bootstrap, WebView2Loader, ...) live in include\ on
-        // installed builds. Missing dir (flat dev layout) is a harmless no-op.
+        // Backend native libs (ffmpeg/mpv) live in include\; adding it to the
+        // LoadLibrary search is harmless when the dir is absent (flat dev run).
         if (Directory.Exists(includeDir))
         {
             SetDefaultDllDirectories(LoadLibrarySearchDefaultDirs);
             AddDllDirectory(includeDir);
         }
 
-        // Managed DLLs (Microsoft.Windows.SDK.NET, WinRT.Runtime, WebView2.Core,
-        // CommunityToolkit, H.NotifyIcon, ...) also live in include\. Fall back
-        // to default probing when not found there (flat dev layout).
+        // Safety net for loose assemblies; the flat payload resolves everything
+        // through deps.json, so this normally never fires.
         AssemblyLoadContext.Default.Resolving += (ctx, name) =>
         {
             if (!Directory.Exists(includeDir)) return null;
