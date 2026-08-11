@@ -88,6 +88,45 @@ const PUBLISH_ROOT_ALLOW = new Set([
     "Assets",
 ]);
 
+// WASDK package files with no code references (verified: no C#/Bun usage of
+// onnx/AI/WebView2/notifications/widgets/etc.). Skipped from the payload
+// entirely. Keep in sync with the [InstallDelete] block in setup.iss.
+const PUBLISH_TRIM = new Set([
+    "onnxruntime.dll",
+    "DirectML.dll",
+    "Microsoft.ML.OnnxRuntime.dll",
+    "System.Numerics.Tensors.dll",
+    "Microsoft.Windows.AI.MachineLearning.dll",
+    "Microsoft.Windows.AI.ContentSafety.Projection.dll",
+    "Microsoft.Windows.AI.Foundation.Projection.dll",
+    "Microsoft.Windows.AI.Imaging.Projection.dll",
+    "Microsoft.Windows.AI.MachineLearning.Projection.dll",
+    "Microsoft.Windows.AI.Projection.dll",
+    "Microsoft.Windows.AI.Text.Projection.dll",
+    "Microsoft.Windows.AI.Video.Projection.dll",
+    "Microsoft.InteractiveExperiences.Projection.dll",
+    "Microsoft.Windows.Widgets.Projection.dll",
+    "Microsoft.Windows.AppNotifications.Projection.dll",
+    "Microsoft.Windows.AppNotifications.Builder.Projection.dll",
+    "Microsoft.Windows.PushNotifications.Projection.dll",
+    "Microsoft.Windows.BadgeNotifications.Projection.dll",
+    "Microsoft.Windows.Media.Capture.Projection.dll",
+    "Microsoft.Windows.Management.Deployment.Projection.dll",
+    "Microsoft.Windows.Security.AccessControl.Projection.dll",
+    "Microsoft.Windows.ApplicationModel.Background.Projection.dll",
+    "Microsoft.Windows.ApplicationModel.Background.UniversalBGTask.dll",
+    "Microsoft.Windows.ApplicationModel.WindowsAppRuntime.Projection.dll",
+    "Microsoft.Windows.AppLifecycle.Projection.dll",
+    "Microsoft.Windows.System.Power.Projection.dll",
+    "Microsoft.Windows.System.Projection.dll",
+    "Microsoft.Windows.Storage.Pickers.Projection.dll",
+    "Microsoft.Windows.Storage.Projection.dll",
+    "Microsoft.Windows.Graphics.Imaging.Projection.dll",
+    "Microsoft.Web.WebView2.Core.dll",
+    "Microsoft.Web.WebView2.Core.Projection.dll",
+    "WebView2Loader.dll",
+]);
+
 // Runtime prerequisites are installed by the setup.exe at install time via
 // scripts/install-prereqs.ps1 — nothing to download or stage here.
 
@@ -148,6 +187,7 @@ for (const profile of profiles) {
     mkdirSync(includeDir, { recursive: true });
     for (const entry of readdirSync(publishDir)) {
         if (entry === "KuumoApp.pdb") continue; // no debug symbols in the payload
+        if (PUBLISH_TRIM.has(entry)) continue; // unused WASDK files, see PUBLISH_TRIM
         const src = resolve(publishDir, entry);
         const dst = PUBLISH_ROOT_ALLOW.has(entry) ? resolve(pkg, entry) : resolve(includeDir, entry);
         cpSync(src, dst, { recursive: true });
