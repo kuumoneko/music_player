@@ -4,15 +4,19 @@
 // Pipeline (per profile):
 //   encrypt-credentials --profile X -> data/system.json with profile X's keys
 //   bun run build:prod              -> build/backend.js + build/*.dll
-//   dotnet publish                  -> WinUI publish output
-//   assemble                        -> build/package/ (KuumoApp.exe, bun.exe, backend/, data/)
+//   bun build --compile             -> build/backend.exe (compiled Bun backend)
+//   dotnet publish                  -> WinUI publish output (framework-dependent WinAppSDK)
+//   prerequisites                   -> build/runtime-installer/ (.NET Desktop Runtime +
+//                                      Windows App SDK runtime MSIX, installed offline by setup.iss)
+//   assemble                        -> build/package/ (KuumoApp.exe, backend.exe, include/, data/)
 //   ISCC.exe setup.iss              -> artifacts/kuumoapp[_<profile>]_{version}-setup.exe
 //   update manifest                 -> artifacts/stable-win-x64-update.json
 //
 // Usage:
 //   bun run package                 -> builds ALL profiles found in apikeys/ (myown first, release last)
 //   bun run package --profile myown -> builds only that profile (dev testing)
-import { execSync, spawnSync } from "node:child_process";
+//   bun run package --skip-downloads-> fail instead of downloading missing prerequisites
+import { spawnSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -71,17 +75,80 @@ function installerBaseName(profile: string): string {
     return profile === "release" ? `kuumoapp_${version}-setup` : `kuumoapp_${profile}_${version}-setup`;
 }
 
+// Framework-dependent Windows App SDK deployment: the app folder only keeps
+// the files below; every DLL (managed + native) is staged in include\ where
+// Program.cs redirects loading. Keep the allowlist in sync with Program.cs.
+const PUBLISH_ROOT_ALLOW = new Set([
+    "KuumoApp.exe",
+    "KuumoApp.dll",
+    "KuumoApp.pri",
+    "KuumoApp.deps.json",
+    "KuumoApp.runtimeconfig.json",
+    "Assets",
+]);
+
+// Runtime prerequisites — pinned to match KuumoApp.csproj (Microsoft.WindowsAppSDK
+// 2.3.1, net10.0) and Program.cs (bootstrap 0x00020003). Bump together.
+const DOTNET_RUNTIME_FILE = "windowsdesktop-runtime-10.0.9-win-x64.exe";
+const DOTNET_RUNTIME_URL = `https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/10.0.9/${DOTNET_RUNTIME_FILE}`;
+const WASDK_REDIST_ZIP = "Microsoft.WindowsAppRuntime.Redist.2.3.zip";
+const WASDK_REDIST_URL = `https://aka.ms/windowsappsdk/2.3/2.3.1/${WASDK_REDIST_ZIP}`;
+
 // 1) Backend bundle + native DLLs (profile-independent)
 run("bun", ["run", "build:prod"]);
 const buildDir = resolve(root, "build");
 const binDir = resolve(buildDir, "bin");
 requireDir(buildDir, "backend build output");
 
-// 2) Publish the WinUI app (self-contained WindowsAppSDK, profile-independent)
+// 1b) Compile the backend into a standalone exe (release entrypoint at app root)
+run("bun", [
+    "build",
+    "--compile",
+    "--target=bun",
+    "--minify",
+    "--outfile",
+    resolve(buildDir, "backend.exe"),
+    resolve(root, "src", "bun", "index.ts"),
+]);
+
+// 2) Publish the WinUI app (framework-dependent WinAppSDK — the runtime is an
+// installer prerequisite, not part of the app folder; profile-independent)
 const publishDir = resolve(root, "build", "publish");
 rmSync(publishDir, { recursive: true, force: true });
-run("dotnet", ["publish", resolve(root, "app-winui", "KuumoApp", "KuumoApp.csproj"), "-c", "Release", "-r", "win-x64", "-o", publishDir, "-p:WindowsAppSDKSelfContained=true"], resolve(root, "app-winui"));
+run("dotnet", ["publish", resolve(root, "app-winui", "KuumoApp", "KuumoApp.csproj"), "-c", "Release", "-r", "win-x64", "-o", publishDir, "-p:WindowsAppSDKSelfContained=false"], resolve(root, "app-winui"));
 requireDir(publishDir, "dotnet publish output");
+
+// 2b) Ensure the app's Assets (titlebar/tray/SMTC icons) land in the payload —
+// the publish pipeline can drop Content items on incremental runs.
+cpSync(resolve(root, "app-winui", "KuumoApp", "Assets"), resolve(publishDir, "Assets"), { recursive: true });
+
+// 2c) Stage the runtime prerequisites that setup.iss installs offline:
+// .NET Desktop Runtime (the app is .NET framework-dependent) and the Windows
+// App SDK runtime MSIX packages (x64 only).
+const prereqDir = resolve(buildDir, "runtime-installer");
+const runtimeDir = resolve(prereqDir, "runtime");
+mkdirSync(prereqDir, { recursive: true });
+const skipDownloads = process.argv.includes("--skip-downloads");
+const dotnetExe = resolve(prereqDir, DOTNET_RUNTIME_FILE);
+if (!existsSync(dotnetExe)) {
+    if (skipDownloads) {
+        console.error(`Missing prerequisite (--skip-downloads): ${DOTNET_RUNTIME_FILE}`);
+        process.exit(1);
+    }
+    await downloadIfMissing(dotnetExe, DOTNET_RUNTIME_URL, DOTNET_RUNTIME_FILE);
+}
+const redistZip = resolve(buildDir, WASDK_REDIST_ZIP);
+if (!existsSync(redistZip)) {
+    if (skipDownloads) {
+        console.error(`Missing prerequisite (--skip-downloads): ${WASDK_REDIST_ZIP}`);
+        process.exit(1);
+    }
+    await downloadIfMissing(redistZip, WASDK_REDIST_URL, WASDK_REDIST_ZIP);
+}
+const extractDir = resolve(buildDir, "redist-extract");
+rmSync(extractDir, { recursive: true, force: true });
+run("powershell", ["-NoProfile", "-Command", `Expand-Archive -LiteralPath '${redistZip}' -DestinationPath '${extractDir}' -Force`]);
+assembleWasdkRuntime(extractDir, runtimeDir);
 
 const iscc = findIscc();
 if (!iscc) {
@@ -102,18 +169,23 @@ for (const profile of profiles) {
     rmSync(pkg, { recursive: true, force: true });
     mkdirSync(pkg, { recursive: true });
 
-    cpSync(publishDir, pkg, { recursive: true });
+    // Publish output split: allowlisted files stay at root; every DLL/winmd
+    // goes to include\ (Program.cs redirects managed + native loading there).
+    const includeDir = resolve(pkg, "include");
+    mkdirSync(includeDir, { recursive: true });
+    for (const entry of readdirSync(publishDir)) {
+        if (entry === "KuumoApp.pdb") continue; // no debug symbols in the payload
+        const src = resolve(publishDir, entry);
+        const dst = PUBLISH_ROOT_ALLOW.has(entry) ? resolve(pkg, entry) : resolve(includeDir, entry);
+        cpSync(src, dst, { recursive: true });
+    }
 
-    // bun.exe at app root (BunHostService looks for it next to KuumoApp.exe)
-    const bunExe = process.env["BUN_EXE"] ?? findBunExe();
-    copyFileSync(bunExe, resolve(pkg, "bun.exe"));
+    // backend.exe at app root (compiled Bun backend; BunHostService launches it there)
+    copyFileSync(resolve(buildDir, "backend.exe"), resolve(pkg, "backend.exe"));
 
-    // backend/ — backend.js + DLLs (dlopen'd from CWD = backend dir)
-    const backendDir = resolve(pkg, "backend");
-    mkdirSync(backendDir, { recursive: true });
-    copyFileSync(resolve(buildDir, "backend.js"), resolve(backendDir, "backend.js"));
+    // include/ also holds the backend's native libs (dlopen'd from CWD = include dir)
     for (const dll of readdirSync(binDir)) {
-        copyFileSync(resolve(binDir, dll), resolve(backendDir, dll));
+        copyFileSync(resolve(binDir, dll), resolve(includeDir, dll));
     }
 
     // data/system.json — shipped credentials (encrypted), read as {app}/data/system.json
@@ -139,24 +211,6 @@ writeFileSync(
 console.log(`\nDone: ${profiles.map(p => `${installerBaseName(p)}.exe`).join(", ")}`);
 console.log(`Manifest: artifacts/stable-win-x64-update.json (v${version})`);
 
-function findBunExe(): string {
-    if (process.env["BUN_EXE"]) return process.env["BUN_EXE"]!;
-    const inPath = findExeInPath("bun");
-    if (inPath) return inPath;
-    const local = resolve(root, "node_modules", ".bin", "bun.exe");
-    if (existsSync(local)) return local;
-    return "bun.exe";
-}
-
-function findExeInPath(name: string): string | null {
-    try {
-        const out = execSync(`where ${name}`, { stdio: ["ignore", "pipe", "ignore"], encoding: "utf8" }).toString();
-        return out.split(/\r?\n/).find(line => line.length > 0 && line.endsWith(".exe")) ?? null;
-    } catch {
-        return null;
-    }
-}
-
 function findIscc(): string | null {
     if (process.env["ISCC"]) return process.env["ISCC"]!;
     const roots = [
@@ -170,4 +224,65 @@ function findIscc(): string | null {
         if (existsSync(candidate)) return candidate;
     }
     return null;
+}
+
+async function downloadIfMissing(dest: string, url: string, label: string) {
+    console.log(`Downloading ${label} ...`);
+    const res = await fetch(url);
+    if (!res.ok) {
+        console.error(`Download failed: ${url} -> HTTP ${res.status}`);
+        process.exit(1);
+    }
+    await Bun.write(dest, res);
+    console.log(`Saved ${label} (${dest})`);
+}
+
+function walk(dir: string): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = resolve(dir, entry.name);
+        if (entry.isDirectory()) out.push(...walk(full));
+        else out.push(full);
+    }
+    return out;
+}
+
+// Pull the x64 MSIX packages out of the Redist archive (which contains all
+// architectures) and stage them with a filtered inventory + the install script.
+function assembleWasdkRuntime(extractDir: string, runtimeDir: string) {
+    rmSync(runtimeDir, { recursive: true, force: true });
+    mkdirSync(runtimeDir, { recursive: true });
+
+    const files = walk(extractDir);
+    const inventoryFiles = files.filter(f => f.endsWith("MSIX.inventory"));
+    if (inventoryFiles.length === 0) {
+        console.error("MSIX.inventory not found in the Windows App SDK Redist archive.");
+        process.exit(1);
+    }
+    let inventory: string[] = [];
+    for (const inv of inventoryFiles) {
+        const lines = readFileSync(inv, "utf8").split(/\r?\n/).filter(l => l.includes("_x64__"));
+        if (lines.length > 0) {
+            inventory = lines;
+            break;
+        }
+    }
+    if (inventory.length === 0) {
+        console.error("No x64 MSIX entries found in the Redist MSIX.inventory.");
+        process.exit(1);
+    }
+    for (const line of inventory) {
+        const short = line.split("=", 2)[0].trim();
+        const full = line.split("=", 2)[1].trim();
+        let found = files.find(f => f.endsWith(`\\${short}`));
+        if (!found) found = files.find(f => f.endsWith(`\\${full}.msix`));
+        if (!found) {
+            console.error(`Missing MSIX file for ${short} in the Redist archive.`);
+            process.exit(1);
+        }
+        copyFileSync(found, resolve(runtimeDir, short));
+    }
+    writeFileSync(resolve(runtimeDir, "MSIX.inventory"), inventory.join("\n") + "\n", "utf8");
+    copyFileSync(resolve(root, "scripts", "install-runtime.ps1"), resolve(runtimeDir, "install-runtime.ps1"));
+    console.log(`Windows App SDK runtime staged at ${runtimeDir} (${inventory.length} x64 packages).`);
 }

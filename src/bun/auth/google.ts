@@ -1,4 +1,4 @@
-import { getUserData, writeUserData, writeLogs } from "../db/index.ts";
+import { getSystemData, getUserData, writeSystemData, writeUserData, writeLogs } from "../db/index.ts";
 import { encryptCredential, decryptCredential, isEncrypted } from "../lib/crypto.ts";
 import type { GoogleTokens } from "../../shared/types.ts";
 
@@ -38,8 +38,9 @@ export class GoogleAuth {
     private pendingVerifier: string | null = null;
 
     async loadCredentials() {
-        this.clientId = getUserData("googleClientId") ?? "";
-        const storedSecret = getUserData("googleClientSecret") as string | undefined;
+        const { googleClientId, googleClientSecret } = getSystemData();
+        this.clientId = googleClientId ?? "";
+        const storedSecret = googleClientSecret as string | undefined;
         this.clientSecret = storedSecret && isEncrypted(storedSecret)
             ? (await decryptCredential(storedSecret)) ?? ""
             : storedSecret ?? "";
@@ -194,16 +195,17 @@ export class GoogleAuth {
     async saveCredentials(clientId: string, clientSecret: string = "") {
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        writeUserData("googleClientId", clientId);
-        writeUserData("googleClientSecret", clientSecret ? await encryptCredential(clientSecret) : null as any);
+        writeSystemData({
+            googleClientId: clientId,
+            googleClientSecret: clientSecret ? await encryptCredential(clientSecret) : undefined,
+        });
     }
 
     clearCredentials() {
         this.clientId = "";
         this.clientSecret = "";
         this.tokens = null;
-        writeUserData("googleClientId", null as any);
-        writeUserData("googleClientSecret", null as any);
+        writeSystemData({ googleClientId: "", googleClientSecret: "" });
         writeUserData("googleOAuthTokens", null as any);
         writeUserData("googleUserEmail", null as any);
     }

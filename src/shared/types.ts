@@ -368,8 +368,6 @@ export interface UserData {
     youtubeApiKeys: string[],
     equalizerBands: EqualizerBand[],
     equalizerEnabled: boolean,
-    googleClientId?: string,
-    googleClientSecret?: string,
     googleOAuthTokens?: GoogleTokens,
     googleUserEmail?: string,
     ytCookies?: string,
@@ -383,8 +381,9 @@ export interface System {
     isLocal: boolean | null,
     isDiscord: boolean | null,
     appPort: number | null,
-    DiscordClientId: number,
+    DiscordClientId: string,
     googleClientId?: string,
+    googleClientSecret?: string,
     youtubeApiKeys?: string[]
 }
 

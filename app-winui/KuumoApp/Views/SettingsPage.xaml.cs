@@ -68,11 +68,9 @@ public sealed partial class SettingsPage : Page
             var themeTask = App.Services.Api.GetUserDataAsync<string>("themeMode");
             var accentTask = App.Services.Api.GetUserDataAsync<JsonElement?>("dynamicAccent");
             var folderTask = App.Services.Api.GetUserDataAsync<string>(UserDataKeys.Folder);
-            var keysTask = App.Services.Api.GetYoutubeApiKeysAsync();
-            var cookiesTask = App.Services.Api.GetYtCookiesAsync();
             var discordTask = App.Services.Api.IsHasDiscordRpcAsync();
 
-            await Task.WhenAll(bandsTask, eqEnabledTask, quitTask, closeToTrayTask, themeTask, accentTask, folderTask, keysTask, cookiesTask, discordTask);
+            await Task.WhenAll(bandsTask, eqEnabledTask, quitTask, closeToTrayTask, themeTask, accentTask, folderTask, discordTask);
 
             EqGraph.SetBands(ParseBands(bandsTask.Result));
             EqualizerSwitch.IsOn = eqEnabledTask.Result;
@@ -93,12 +91,6 @@ public sealed partial class SettingsPage : Page
             DynamicAccentSwitch.IsOn = ThemeService.ParseAccentFlag(accentTask.Result);
             var folder = folderTask.Result;
             FolderText.Text = string.IsNullOrEmpty(folder) ? "Not set" : folder;
-            ApiKeysList.ItemsSource = keysTask.Result?.Select(k => new ApiKeyListItemDto(k, MaskKey(k))).ToArray() ?? [];
-            var cookies = cookiesTask.Result;
-            if (!string.IsNullOrEmpty(cookies))
-            {
-                CookiesBox.Text = cookies;
-            }
             DiscordText.Text = discordTask.Result is JsonElement { ValueKind: JsonValueKind.String or JsonValueKind.True }
                 ? "Connected"
                 : "Not connected";
@@ -337,16 +329,7 @@ public sealed partial class SettingsPage : Page
         return null;
     }
 
-    private static string MaskKey(string key)
-    {
-        if (key.Length <= 8)
-        {
-            return "****";
-        }
-        return key[..2] + "****" + key[^2..];
-    }
-
-    private async void OnChooseFolderClick(object sender, RoutedEventArgs e)
+private async void OnChooseFolderClick(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -375,79 +358,7 @@ public sealed partial class SettingsPage : Page
         }
     }
 
-    private async void OnAddKeyClick(object sender, RoutedEventArgs e)
-    {
-        var key = ApiKeyBox.Text.Trim();
-        if (key.Length == 0)
-        {
-            return;
-        }
-        try
-        {
-            var keys = await App.Services.Api.AddYoutubeApiKeyAsync(key);
-            ApiKeysList.ItemsSource = keys?.Select(k => new ApiKeyListItemDto(k, MaskKey(k))).ToArray() ?? [];
-            ApiKeyBox.Text = "";
-        }
-        catch (Exception ex)
-        {
-            AppLog.Write("settings", $"add key failed: {ex.Message}");
-        }
-    }
-
-    private async void OnRemoveKeyClick(object sender, RoutedEventArgs e)
-    {
-        if (ApiKeysList.SelectedItem is not ApiKeyListItemDto item)
-        {
-            return;
-        }
-        try
-        {
-            var keys = await App.Services.Api.RemoveYoutubeApiKeyAsync(item.Raw);
-            ApiKeysList.ItemsSource = keys?.Select(k => new ApiKeyListItemDto(k, MaskKey(k))).ToArray() ?? [];
-        }
-        catch (Exception ex)
-        {
-            AppLog.Write("settings", $"remove key failed: {ex.Message}");
-        }
-    }
-
-    private async void OnLoadCookiesClick(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            CookiesBox.Text = await App.Services.Api.GetYtCookiesAsync() ?? "";
-        }
-        catch (Exception ex)
-        {
-            AppLog.Write("settings", $"load cookies failed: {ex.Message}");
-        }
-    }
-
-    private async void OnSaveCookiesClick(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            CookiesBox.Text = await App.Services.Api.SetYtCookiesAsync(CookiesBox.Text) ?? "";
-        }
-        catch (Exception ex)
-        {
-            AppLog.Write("settings", $"save cookies failed: {ex.Message}");
-        }
-    }
-
-    private async void OnClearCookiesClick(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            CookiesBox.Text = await App.Services.Api.ClearYtCookiesAsync() ?? "";
-        }
-        catch (Exception ex)
-        {
-            AppLog.Write("settings", $"clear cookies failed: {ex.Message}");
-        }
-    }
-
-    private async void OnDiscordConnectClick(object sender, RoutedEventArgs e)
+private async void OnDiscordConnectClick(object sender, RoutedEventArgs e)
     {
         try
         {

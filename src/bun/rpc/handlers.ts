@@ -11,9 +11,11 @@ import { MusicSource, MusicType, UserData } from "../../shared/types.ts";
 import {
   getAllLocalFiles,
   getLocalFileById,
+  getSystemData,
   getUserData,
   getUserDatas,
   writeLogs,
+  writeSystemData,
   writeUserData,
   writeUserDatas,
   createPlaylist,
@@ -26,6 +28,7 @@ import {
   getArtistByPlaylistId,
 } from "../db/index.ts";
 import { getHash, resolveId, tracksToFront } from "../lib/hash.ts";
+import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
 import SearchController from "../controllers/search.ts";
 
 export interface RpcContext {
@@ -33,7 +36,7 @@ export interface RpcContext {
   current: { time: number; duration: number; isLived: boolean; isPlaying: boolean };
   isLocal: boolean;
   isDiscord: boolean;
-  DiscordClientId: number;
+  DiscordClientId: string;
   discordRPC: { instance: DiscordRPC | null };
   emitToFrontend: (message: string, payload: any) => void;
   emitError: (error: unknown) => void;
@@ -554,33 +557,38 @@ export function createRpcHandlers(ctx: RpcContext) {
     }),
 
     getYoutubeApiKeys: async () => {
-      return getUserData("youtubeApiKeys") ?? [];
+      const storedKeys = getSystemData().youtubeApiKeys ?? [];
+      const plainKeys: string[] = [];
+      for (const k of storedKeys) {
+        plainKeys.push(isEncrypted(k) ? ((await decryptCredential(k)) ?? k) : k);
+      }
+      return plainKeys;
     },
 
     addYoutubeApiKey: async ({ key }: { key: string }) => {
-      const keys = getUserData("youtubeApiKeys") ?? [];
+      const keys = getSystemData().youtubeApiKeys ?? [];
       const trimmed = key.trim();
       if (trimmed && !keys.includes(trimmed)) {
         keys.push(trimmed);
-        writeUserData("youtubeApiKeys", keys);
+        writeSystemData({ youtubeApiKeys: keys });
         player.youtubeDataAPI.updateApiKeys(keys);
       }
       return keys;
     },
 
     removeYoutubeApiKey: async ({ key }: { key: string }) => {
-      const keys = getUserData("youtubeApiKeys") ?? [];
+      const keys = getSystemData().youtubeApiKeys ?? [];
       const updated = keys.filter((k: string) => k !== key);
-      writeUserData("youtubeApiKeys", updated);
+      writeSystemData({ youtubeApiKeys: updated });
       player.youtubeDataAPI.updateApiKeys(updated);
       return updated;
     },
 
     importYoutubeApiKeys: async ({ keys }: { keys: string[] }) => {
-      const existing = getUserData("youtubeApiKeys") ?? [];
+      const existing = getSystemData().youtubeApiKeys ?? [];
       const trimmed = keys.map((k: string) => k.trim()).filter((k: string) => k.length > 0);
       const merged = [...new Set([...existing, ...trimmed])];
-      writeUserData("youtubeApiKeys", merged);
+      writeSystemData({ youtubeApiKeys: merged });
       player.youtubeDataAPI.updateApiKeys(merged);
       return merged;
     },

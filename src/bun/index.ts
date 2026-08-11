@@ -1,7 +1,7 @@
-import { resolve } from "node:path";
-import { mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { rmdir } from "node:fs/promises";
 import { MusicSource, MusicType, type System } from "../shared/types.ts";
-import { getDataFromDatabase } from "./lib/database.ts";
 import { parseAppArgs } from "./lib/args.ts";
 import { RpcWsServer } from "./rpc/ws-server.ts";
 import { QueueManager } from "./queue/manager.ts";
@@ -22,6 +22,7 @@ import {
 	writeUserDatas,
 	deleteTracks,
 	purgeExpiredSearchCache,
+	seedSystemFromAssets,
 } from "./db/index.ts";
 import { getHash, getPath } from "./lib/hash.ts";
 import { setHomeEmitDataChanged } from "./controllers/home.ts";
@@ -32,7 +33,31 @@ const assetsDir = appArgs.assetsDir || APP_ROOT;
 const userData = appArgs.dataDir || resolve(APP_ROOT, "data");
 mkdirSync(userData, { recursive: true });
 
-const { isLocal, isDiscord, appPort, DiscordClientId } = await getDataFromDatabase(assetsDir, "data", "system") as System;
+// Installer-run seeding mode: copies data/system.json into the app_data.sqlite
+// system table, then deletes system.json and the now-empty data folder.
+// Best-effort: failures exit 0 so the installer never aborts on this step.
+if (process.argv.includes("--seed")) {
+	try {
+		const systemFilePath = join(assetsDir, "data", "system.json");
+		const hadSystemFile = existsSync(systemFilePath);
+		await seedSystemFromAssets(assetsDir, { deleteFile: true });
+		if (hadSystemFile && !existsSync(systemFilePath)) {
+			const dataFolder = dirname(systemFilePath);
+			try {
+				await rmdir(dataFolder);
+				console.log("[seed] removed empty data folder.");
+			} catch {
+				// folder still non-empty or locked — leave it
+			}
+		}
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
+		console.error(`[seed] failed: ${message} (runtime seed will handle it)`);
+	}
+	process.exit(0);
+}
+
+const { isLocal, isDiscord, appPort, DiscordClientId } = await seedSystemFromAssets(assetsDir) as System;
 if ([isLocal, isDiscord, appPort].includes(null)) {
 	writeLogs([{ type: "error", message: "Null Object, please reinstall app." }]);
 	process.exit(1);
@@ -102,7 +127,7 @@ let isFirstLoad = true;
 let folder = getUserData("folder") ?? "";
 // --- Managers ---
 let rpcServer: RpcWsServer | null = null;
-const player = new Player(userData, APP_ROOT, folder, assetsDir);
+const player = new Player(userData, APP_ROOT, folder);
 await player.init();
 player.onStatusChange = (status) => emitToFrontend("download-status-changed", status);
 let resolveMpvReady: () => void;

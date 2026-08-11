@@ -20,21 +20,26 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType Condition="'$(EnableMsix)' == 'true'">MSIX</WindowsPackageType>
     <WindowsPackageType Condition="'$(EnableMsix)' != 'true'">None</WindowsPackageType>
-    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <!-- Framework-dependent Windows App SDK: runtime installed machine-wide (setup.iss ships it).
+         Bootstrap is initialized manually in Program.cs (WindowsAppSdkBootstrapInitialize=false). -->
+    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
+    <!-- We provide our own Main in Program.cs (required for DLL redirection to include\). -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <AppxPackageSigningEnabled Condition="'$(EnableMsix)' == 'true'">true</AppxPackageSigningEnabled>
     <PackageCertificateKeyFile Condition="'$(EnableMsix)' == 'true'">KuumoApp_TemporaryKey.pfx</PackageCertificateKeyFile>
     <PackageCertificateThumbprint Condition="'$(EnableMsix)' == 'true'">1838FFAB69D562AB4BC94C105AFC9369CDB96D45</PackageCertificateThumbprint>
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Assets\AppIcon.ico" />
-    <Content Include="Assets\SplashScreen.png" />
-    <Content Include="Assets\Square150x150Logo.png" />
-    <Content Include="Assets\Square310x310Logo.png" />
-    <Content Include="Assets\Square44x44Logo.png" />
-    <Content Include="Assets\Square71x71Logo.png" />
-    <Content Include="Assets\StoreLogo.png" />
-    <Content Include="Assets\Wide310x150Logo.png" />
+    <Content Include="Assets\AppIcon.ico" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\SplashScreen.png" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\Square150x150Logo.png" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\Square310x310Logo.png" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\Square44x44Logo.png" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\Square71x71Logo.png" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\StoreLogo.png" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Assets\Wide310x150Logo.png" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

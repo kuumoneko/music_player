@@ -56,6 +56,11 @@ db.run(`
     value TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS system (
+    key TEXT NOT NULL PRIMARY KEY,
+    value TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS search_cache (
     search_key TEXT NOT NULL PRIMARY KEY,
     data TEXT NOT NULL,

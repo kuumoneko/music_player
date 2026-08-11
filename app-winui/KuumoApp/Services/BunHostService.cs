@@ -30,49 +30,56 @@ public sealed class BunHostService
 
     private static string GetDefaultDataDir()
     {
-        var target = Path.Combine(
+        return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "KuumoApp");
-        var legacy = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "musicapp");
-
-        if (!Directory.Exists(target) && Directory.Exists(legacy))
-        {
-            if (TryMigrateLegacyData(legacy, target))
-            {
-                return target;
-            }
-            return legacy; // migration failed — keep using the old dir so data stays accessible
-        }
-        return target;
-    }
-
-    private static bool TryMigrateLegacyData(string source, string target)
-    {
-        try
-        {
-            Directory.CreateDirectory(target);
-            foreach (var pattern in new[] { "app_data.sqlite", "app_data.sqlite-wal", "app_data.sqlite-shm" })
-            {
-                var file = Path.Combine(source, pattern);
-                if (File.Exists(file))
-                {
-                    File.Copy(file, Path.Combine(target, pattern), overwrite: false);
-                }
-            }
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     private static string ResolveBunExe()
     {
         var bundled = Path.Combine(AppContext.BaseDirectory, "bun.exe");
         return File.Exists(bundled) ? bundled : "bun";
+    }
+
+    private static ProcessStartInfo NewStartInfo(string fileName, string workingDirectory)
+    {
+        return new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+    }
+
+    private ProcessStartInfo? ResolveDevProcessInfo()
+    {
+        var entry = Path.Combine(BackendDir, "backend.js");
+        if (!File.Exists(entry))
+        {
+            Log($"backend.js not found at {entry}");
+            return null;
+        }
+        var psi = NewStartInfo(ResolveBunExe(), BackendDir);
+        psi.ArgumentList.Add(entry);
+        return psi;
+    }
+
+    private ProcessStartInfo? ResolveReleaseProcessInfo()
+    {
+        var entry = Path.Combine(AppContext.BaseDirectory, "backend.exe");
+        if (!File.Exists(entry))
+        {
+            Log($"backend.exe not found at {entry}");
+            return null;
+        }
+        var includeDir = Path.Combine(AppContext.BaseDirectory, "include");
+        if (!Directory.Exists(includeDir))
+        {
+            Log($"include dir not found at {includeDir}");
+        }
+        return NewStartInfo(entry, includeDir);
     }
 
     public void Start()
@@ -82,22 +89,12 @@ public sealed class BunHostService
             return;
         }
 
-        var entry = Path.Combine(BackendDir, "backend.js");
-        if (!File.Exists(entry))
+        var psi = IsDev ? ResolveDevProcessInfo() : ResolveReleaseProcessInfo();
+        if (psi is null)
         {
-            Log($"backend.js not found at {entry}");
             return;
         }
 
-        var psi = new ProcessStartInfo(ResolveBunExe())
-        {
-            WorkingDirectory = BackendDir,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        psi.ArgumentList.Add(entry);
         psi.ArgumentList.Add("--data-dir");
         psi.ArgumentList.Add(DataDir);
         psi.ArgumentList.Add("--assets");

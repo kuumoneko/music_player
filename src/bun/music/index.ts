@@ -1,11 +1,9 @@
 import Youtube from "./youtube";
-import { DownloadItem, Status, System } from "../../shared/types.ts";
+import { DownloadItem, Status } from "../../shared/types.ts";
 import path, { basename, extname, resolve } from "node:path";
 import { Local } from "./local.ts";
 import areStringsSimilar from "../utils/compareString.ts";
-import { getDataFromDatabase } from "../lib/database.ts";
-import { getUserData, writeUserData, writeLogs } from "../db/index.ts";
-import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
+import { getSystemData, writeLogs } from "../db/index.ts";
 import Play from "./play.ts";
 import { mkdir, writeFile } from "node:fs/promises";
 import { unlinkSync } from "node:fs";
@@ -13,6 +11,7 @@ import FFmpeg from "../ffmpeg/index.ts";
 import { YoutubeResolver } from "./youtube-resolver.ts";
 import { YoutubeDataAPI } from "./youtube-data-api/index.ts";
 import { GoogleAuth } from "../auth/google.ts";
+import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
 
 export enum AudioFormat {
     aac = "aac",
@@ -82,16 +81,14 @@ export default class Player {
     public audioFormat: string = AudioFormat.m4a;
     public folder: string = "";
     public userPath: string = "";
-    public assetsDir: string = "";
     public googleAuth: GoogleAuth;
     public youtubeDataAPI: YoutubeDataAPI;
     private ffmpeg: FFmpeg;
     private youtubeResolver: YoutubeResolver;
 
-    constructor(userPath: string, appPath: string, downloadFolder: string, assetsDir: string) {
+    constructor(userPath: string, appPath: string, downloadFolder: string) {
         this.folder = appPath;
         this.userPath = userPath;
-        this.assetsDir = assetsDir;
         this.downloadFolder = downloadFolder;
         this.ffmpeg = new FFmpeg(appPath);
         this.youtubeResolver = new YoutubeResolver();
@@ -101,50 +98,30 @@ export default class Player {
 
     async init() {
         this.player = new Play(this.folder)
-        await this.seedShippedCredentials();
-        const storedKeys = getUserData("youtubeApiKeys") ?? [];
+        const { youtubeApiKeys } = getSystemData();
+        const storedKeys = youtubeApiKeys ?? [];
+        const plainKeys: string[] = [];
+        for (const k of storedKeys) {
+            if (isEncrypted(k)) {
+                const plain = await decryptCredential(k);
+                if (plain) {
+                    plainKeys.push(plain);
+                    continue;
+                }
+                writeLogs([{ type: "error", message: "Failed to decrypt a stored API key" }]);
+            }
+            plainKeys.push(k);
+        }
         this.youtube = new Youtube();
         this.youtubeDataAPI.setYoutube(this.youtube);
-        this.youtubeDataAPI.updateApiKeys(storedKeys);
+        this.youtubeDataAPI.updateApiKeys(plainKeys);
         this.player.resolveYoutubeUrl = (videoId) => this.youtube?.resolveStreamUrl(videoId) ?? Promise.resolve({ url: null, error: "Resolver unavailable" });
         await this.googleAuth.init();
-        const { isLocal } = await getDataFromDatabase(this.assetsDir, "data", "system") as System;
+        const { isLocal } = getSystemData();
         if (isLocal) {
             this.local = new Local(resolve(this.userPath, "data"), this.folder);
         }
         return isLocal;
-    }
-
-    // First run: copy shipped credentials (encrypted in data/system.json) into
-    // the user's own database, so they work without any manual setup.
-    private async seedShippedCredentials() {
-        try {
-            const systemData = await getDataFromDatabase(this.assetsDir, "data", "system") as System;
-            if (!systemData) return;
-
-            const storedKeys = getUserData("youtubeApiKeys") ?? [];
-            const shippedKeys = systemData.youtubeApiKeys ?? [];
-            if (storedKeys.length === 0 && shippedKeys.length > 0) {
-                const decrypted: string[] = [];
-                for (const key of shippedKeys) {
-                    const plain = isEncrypted(key) ? await decryptCredential(key) : key;
-                    if (plain && plain.trim()) decrypted.push(plain.trim());
-                }
-                if (decrypted.length > 0) writeUserData("youtubeApiKeys", decrypted);
-            }
-
-            if (systemData.googleClientId && !getUserData("googleClientId")) {
-                writeUserData("googleClientId", systemData.googleClientId);
-            }
-            // The client secret is no longer shipped (PKCE public client).
-            // Purge any stale plaintext copy from older installs.
-            if (getUserData("googleClientSecret")) {
-                writeUserData("googleClientSecret", null as any);
-            }
-        } catch (e) {
-            const message = e instanceof Error ? e.message : String(e);
-            writeLogs([{ type: "error", message: `Failed to seed shipped credentials: ${message}` }]);
-        }
     }
 
     initMpv() {
