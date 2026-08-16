@@ -160,6 +160,7 @@ public sealed class RpcClient : IDisposable
                     if (root.TryGetProperty("error", out var error))
                     {
                         var message = error.TryGetProperty("message", out var m) ? m.GetString() : "RPC error";
+                        AppLog.Write("rpc", $"RPC error response for id {id}: '{message}'");
                         tcs.SetException(new InvalidOperationException(message ?? "RPC error"));
                     }
                     else

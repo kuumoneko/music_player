@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import type DiscordRPC from "../discord/index.ts";
 import type Player from "../music/index.ts";
 import DownloadController from "../controllers/download.ts";
-import HomeController, { HomeFeedController, getHomeArtists, getHomePlaylists, getHomeTracks, getHomeNewTracks } from "../controllers/home.ts";
+import HomeController, { HomeFeedController, clearHomeCaches, getHomeArtists, getHomePlaylists, getHomeTracks, getHomeNewTracks } from "../controllers/home.ts";
 import MusicController from "../controllers/music.ts";
 import formatArtists from "../../shared/utils/formatArtist.ts";
 import { SleepMode, Repeat, Track } from "../../shared/types.ts";
@@ -27,8 +27,9 @@ import {
   getArtistById,
   getArtistByPlaylistId,
 } from "../db/index.ts";
-import { isValidContextEntry } from "../lib/nextfrom.ts";
 import { getHash, resolveId, tracksToFront } from "../lib/hash.ts";
+import { isValidContextEntry } from "../lib/nextfrom.ts";
+import db from "../db/setup.ts";
 import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
 import SearchController from "../controllers/search.ts";
 
@@ -50,6 +51,10 @@ const RATE_LIMIT_MS = 500;
 const imageCache = new Map<string, { data: string; at: number }>();
 const IMAGE_TTL_MS = 30 * 60_000;
 const IMAGE_CACHE_MAX = 200;
+
+function purgeImageCache() {
+  imageCache.clear();
+}
 
 let downloadInFlight = false;
 
@@ -260,6 +265,19 @@ export function createRpcHandlers(ctx: RpcContext) {
         }
 
         writeUserData(key, data);
+
+        if (key === "pin" && Array.isArray(data)) {
+          // Re-pinning an item clears its broken marker so it is retried immediately.
+          const broken = getUserData("brokenPins") ?? {};
+          let changed = false;
+          for (const p of data) {
+            if (p in broken) {
+              delete broken[p];
+              changed = true;
+            }
+          }
+          if (changed) writeUserData("brokenPins", broken);
+        }
 
         if (key === "volume") {
           player.player?.setVolume(data);
@@ -488,6 +506,20 @@ writeLogs([{
       writeLogs([{ type: type === "error" ? "error" : "info", source: source ?? "app", message: String(message ?? "") }]);
     },
 
+    setUiVisibility: async (visible: boolean) => {
+      if (!visible) {
+        purgeImageCache();
+        clearHomeCaches();
+        try {
+          db.run("PRAGMA shrink_memory;");
+        } catch {
+          // non-fatal
+        }
+        Bun.gc(false);
+      }
+      return true;
+    },
+
     openDevTools: () => {
       return null;
     },
@@ -497,7 +529,10 @@ writeLogs([{
       if (cached && Date.now() - cached.at < IMAGE_TTL_MS) {
         return cached.data;
       }
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) {
+        throw new Error(`getImageDataUri: fetch failed with status ${res.status}`);
+      }
       const buf = await res.arrayBuffer();
       const bytes = new Uint8Array(buf);
 
@@ -509,7 +544,15 @@ writeLogs([{
       const b64 = Buffer.from(bytes).toString("base64");
       const data = `data:image/${ext};base64,${b64}`;
       if (imageCache.size >= IMAGE_CACHE_MAX) {
-        imageCache.delete(imageCache.keys().next().value as string);
+        let oldestKey: string | undefined;
+        let oldestAt = Infinity;
+        for (const [key, entry] of imageCache) {
+          if (entry.at < oldestAt) {
+            oldestAt = entry.at;
+            oldestKey = key;
+          }
+        }
+        if (oldestKey !== undefined) imageCache.delete(oldestKey);
       }
       imageCache.set(url, { data, at: Date.now() });
       return data;

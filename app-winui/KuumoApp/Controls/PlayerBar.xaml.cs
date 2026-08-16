@@ -89,7 +89,7 @@ public sealed partial class PlayerBar : UserControl
         }
         catch (Exception ex)
         {
-            AppLog.Write("playerbar", $"initial load failed: {ex.Message}");
+            AppLog.Write("playerbar", $"initial load failed: {ex.GetType().Name}: {ex}");
         }
     }
 
@@ -111,7 +111,7 @@ public sealed partial class PlayerBar : UserControl
         }
         catch (Exception ex)
         {
-            AppLog.Write("playerbar", $"thumbnail failed: {ex.Message}");
+            AppLog.Write("playerbar", $"thumbnail failed: {ex.GetType().Name}: {ex}");
         }
     }
 

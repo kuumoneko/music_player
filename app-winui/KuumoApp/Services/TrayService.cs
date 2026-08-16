@@ -66,7 +66,6 @@ public sealed class TrayService : IDisposable
     {
         if (_windowService.IsWindowVisible)
         {
-            _windowService.IsWindowVisible = false;
             _window.AppWindow.Hide();
         }
         else

@@ -180,6 +180,7 @@ export default class Youtube {
                 "user-agent": INNERTUBE_USER_AGENT,
             },
             body,
+            signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) {
             console.error(`browse [${browseId}]: HTTP ${res.status}`);
@@ -189,14 +190,14 @@ export default class Youtube {
     }
 
     async searchAll(query: string, type: MusicType): Promise<{ tracks: Track[]; playlists: any[]; artists: any[] }> {
-        const session = await ytSession.ensure();
+        const session = await ytSession.ensure().catch(() => null);
 
         const client: Record<string, unknown> = {
             clientName: "WEB",
             clientVersion: INNERTUBE_CLIENT_VERSION,
             hl: "en",
             gl: "US",
-            visitorData: session.visitorData,
+            ...(session?.visitorData ? { visitorData: session.visitorData } : {}),
         };
 
         const body: Record<string, unknown> = {
@@ -207,7 +208,7 @@ export default class Youtube {
 
         const url = new URL(`${INNERTUBE_BASE}/search`);
         url.searchParams.set("prettyPrint", "false");
-        if (session.apiKey) url.searchParams.set("key", session.apiKey);
+        if (session?.apiKey) url.searchParams.set("key", session.apiKey);
 
         const headers: Record<string, string> = {
             "content-type": "application/json",
@@ -216,7 +217,7 @@ export default class Youtube {
             "user-agent": INNERTUBE_USER_AGENT,
             "origin": "https://www.youtube.com",
         };
-        if (session.cookies) {
+        if (session?.cookies) {
             headers["cookie"] = session.cookies;
         }
 
@@ -224,6 +225,7 @@ export default class Youtube {
             method: "POST",
             headers,
             body: JSON.stringify(body),
+            signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) {
             return { tracks: [], playlists: [], artists: [] };

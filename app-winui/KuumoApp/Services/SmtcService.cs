@@ -16,6 +16,7 @@ public sealed class SmtcService : IDisposable
     private InMemoryRandomAccessStream? _thumbnailStream;
     private RandomAccessStreamReference? _thumbnailReference;
     private int _thumbnailVersion;
+    private string? _pendingThumbnailUrl;
     private bool _disposed;
 
     public SmtcService(Window window)
@@ -154,6 +155,7 @@ public sealed class SmtcService : IDisposable
             _updater.MusicProperties.Title = data.Title;
             _updater.MusicProperties.Artist = data.Artist ?? "";
             _smtc.PlaybackStatus = data.IsPlaying ? MediaPlaybackStatus.Playing : MediaPlaybackStatus.Paused;
+            _updater.Update();
             _ = LoadThumbnailAsync(data.Thumbnail);
         }
         catch (Exception ex)
@@ -218,6 +220,11 @@ public sealed class SmtcService : IDisposable
             _updater.Update();
             return;
         }
+        if (_pendingThumbnailUrl == url)
+        {
+            return;
+        }
+        _pendingThumbnailUrl = url;
         try
         {
             var dataUri = await App.Services.Api.GetImageDataUriAsync(url);
@@ -246,6 +253,7 @@ public sealed class SmtcService : IDisposable
             stream.Seek(0);
             if (version != _thumbnailVersion)
             {
+                stream.Dispose();
                 return;
             }
             _thumbnailStream?.Dispose();
@@ -253,13 +261,24 @@ public sealed class SmtcService : IDisposable
             _thumbnailReference = RandomAccessStreamReference.CreateFromStream(stream);
             _updater.Thumbnail = _thumbnailReference;
             _updater.Update();
+            AppLog.Write("smtc", $"thumbnail set: {bytes.Length} bytes from {url}");
         }
         catch (Exception ex)
         {
-            AppLog.Write("smtc", $"thumbnail failed: {ex.Message}");
-            _thumbnailReference = null;
-            _updater.Thumbnail = null;
-            _updater.Update();
+            if (version == _thumbnailVersion)
+            {
+                AppLog.Write("smtc", $"thumbnail failed: {ex.Message}");
+                _thumbnailReference = null;
+                _updater.Thumbnail = null;
+                _updater.Update();
+            }
+        }
+        finally
+        {
+            if (_pendingThumbnailUrl == url)
+            {
+                _pendingThumbnailUrl = null;
+            }
         }
     }
 

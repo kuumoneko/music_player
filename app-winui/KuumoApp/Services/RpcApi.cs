@@ -17,6 +17,7 @@ public sealed class RpcApi
 
     // --- App ---
     public Task<bool> GetIsLocalAsync() => Call<bool>("getIsLocal");
+    public Task SetUiVisibilityAsync(bool visible) => Call<object?>("setUiVisibility", visible, timeoutMs: 5000);
     public Task<string> DownloadMusicAsync() => Call<string>("downloadMusic");
     public Task<DownloadStatusDto?> GetDownloadStatusAsync() => Call<DownloadStatusDto?>("getDownloadStatus");
     public Task CloseAsync() => Call<object?>("close");

@@ -1,5 +1,7 @@
 using System.Runtime.InteropServices;
+using System.Threading;
 using KuumoApp.Services;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
 namespace KuumoApp;
@@ -23,6 +25,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
         SetCurrentProcessExplicitAppUserModelID("kuumo.app");
         MainWindow = new MainWindow();
         MainWindow.Activate();

@@ -80,7 +80,8 @@ export default class Play extends EventEmitter {
                 ["vo", "null"],
                 ["ao", "wasapi"],
                 ["cache-pause", "no"],
-                ["demuxer-readahead-secs", "20"],
+                ["demuxer-readahead-secs", "5"],
+                ["demuxer-max-bytes", "8388608"],
                 ["keepaspect", "no"],
                 ["referrer", "https://www.youtube.com/"],
                 ["user-agent", INNERTUBE_USER_AGENT],
@@ -444,6 +445,12 @@ export default class Play extends EventEmitter {
         const currentVolume = strPtr ? parseInt(new CString(strPtr).toString()) || 0 : 0;
         if (strPtr) this.symbols?.mpv_free(strPtr);
         await this.fadeVolume(currentVolume, 0, 450);
+        if (this.playlistIndex >= this.playlistUrls.length - 1 && this.playlistUrls.length > 1) {
+            // Queue exhausted — wrap to the first known track; the refill
+            // rebuilds the rest via the "queue" event.
+            await this.play(this.playlistUrls[0]);
+            return;
+        }
         this.symbols?.mpv_command_string(this.handle, S("playlist-next"));
     }
 

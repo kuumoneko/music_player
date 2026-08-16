@@ -374,7 +374,9 @@ export interface UserData {
     youtubePlaylists?: Playlist[],
     youtubePlaylistsEtag?: string,
     youtubeSubscriptions?: Artist[],
-    youtubeSubscriptionsEtag?: string
+    youtubeSubscriptionsEtag?: string,
+    brokenPins?: Record<string, { at: number, name: string }>,
+    homeFeedSections?: { sections: HomeFeedSection[], at: number }
 }
 
 export interface System {

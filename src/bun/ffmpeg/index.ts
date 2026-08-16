@@ -639,9 +639,57 @@ export default class FFmpeg {
       if (frame === 0) throw new Error("av_frame_alloc failed");
       cleanups.push(() => this.U.av_frame_free(ptr(new BigUint64Array([BigInt(frame)]))));
 
-      // --- Read-decode-resample-encode loop ---
-      const accums: Float32Array[] = [];
-      for (let c = 0; c < outChannels; c++) accums[c] = new Float32Array(0);
+      // --- Read-decode-resample-encode loop (bounded rolling buffers) ---
+      const rings: Float32Array[] = [];
+      const ringLens: number[] = [];
+      for (let c = 0; c < outChannels; c++) {
+        rings[c] = new Float32Array(0);
+        ringLens[c] = 0;
+      }
+      const buildAndSendFrame = (offset: number, count: number): boolean => {
+        const ef = Number(this.U.av_frame_clone(encFrameTemplate));
+        if (ef === 0) return false;
+        const bufs: Uint8Array[] = [];
+        for (let c = 0; c < outChannels; c++) {
+          const chunkBuf = new Uint8Array(encFrameSize * 4);
+          const srcView = rings[c].subarray(offset, offset + count);
+          chunkBuf.set(new Uint8Array(srcView.buffer, srcView.byteOffset, srcView.byteLength));
+          bufs.push(chunkBuf);
+          writePtr(ef + OFF_FRAME_DATA + c * 8, BigInt(Number(ptr(chunkBuf))));
+          writeInt32(ef + OFF_FRAME_LINESIZE + c * 4, encFrameSize * 4);
+        }
+        const extData = Number(this.readU64(ef, OFF_FRAME_EXTENDED_DATA));
+        if (extData !== 0) {
+          for (let c = 0; c < outChannels; c++) {
+            writePtr(extData + c * 8, BigInt(Number(ptr(bufs[c]))));
+          }
+        }
+        writeInt32(ef + OFF_FRAME_NB_SAMPLES, encFrameSize);
+        writeInt32(ef + OFF_FRAME_FORMAT, outSampleFmt);
+        writeInt32(ef + OFF_FRAME_SAMPLE_RATE, outSampleRate);
+        writeInt64(ef + OFF_FRAME_PTS, BigInt(ptsCounter));
+        ptsCounter += encFrameSize;
+        const sendRet = this.C.avcodec_send_frame(encoderCtx, ef);
+        this.U.av_frame_free(ptr(new BigUint64Array([BigInt(ef)])));
+        if (sendRet < 0) return false;
+        while (true) {
+          const eret = this.C.avcodec_receive_packet(encoderCtx, outPkt);
+          if (eret < 0) break;
+          this.F.av_interleaved_write_frame(ocPtr, outPkt);
+          this.C.av_packet_unref(outPkt);
+        }
+        return true;
+      };
+      const drainEncoded = (): boolean => {
+        while (ringLens[0] >= encFrameSize) {
+          if (!buildAndSendFrame(0, encFrameSize)) return false;
+          for (let c = 0; c < outChannels; c++) {
+            rings[c].copyWithin(0, encFrameSize);
+            ringLens[c] -= encFrameSize;
+          }
+        }
+        return true;
+      };
       let hadFrames = false;
 
       while (true) {
@@ -691,56 +739,19 @@ export default class FFmpeg {
             }
 
             for (let c = 0; c < outChannels; c++) {
-              const old = accums[c];
               const src = new Float32Array(outBufs[c].buffer, 0, convertedSamples);
-              const newBuf = new Float32Array(old.length + convertedSamples);
-              newBuf.set(old);
-              newBuf.set(src, old.length);
-              accums[c] = newBuf;
+              let ring = rings[c];
+              if (ringLens[c] + convertedSamples > ring.length) {
+                const next = new Float32Array(Math.max(ring.length * 2, ringLens[c] + convertedSamples));
+                next.set(ring.subarray(0, ringLens[c]));
+                rings[c] = next;
+                ring = next;
+              }
+              ring.set(src, ringLens[c]);
+              ringLens[c] += convertedSamples;
             }
 
-            while (accums[0].length >= encFrameSize) {
-              const ef = Number(this.U.av_frame_clone(encFrameTemplate));
-              if (ef === 0) { ret = -1; break; }
-
-              const bufs: Uint8Array[] = [];
-              for (let c = 0; c < outChannels; c++) {
-                const chunkBuf = new Uint8Array(encFrameSize * 4);
-                const srcView = new Float32Array(accums[c].buffer, 0, encFrameSize);
-                chunkBuf.set(new Uint8Array(srcView.buffer, srcView.byteOffset, srcView.byteLength));
-                bufs.push(chunkBuf);
-                writePtr(ef + OFF_FRAME_DATA + c * 8, BigInt(Number(ptr(chunkBuf))));
-                writeInt32(ef + OFF_FRAME_LINESIZE + c * 4, encFrameSize * 4);
-              }
-
-              const extData = Number(this.readU64(ef, OFF_FRAME_EXTENDED_DATA));
-              if (extData !== 0) {
-                for (let c = 0; c < outChannels; c++) {
-                  writePtr(extData + c * 8, BigInt(Number(ptr(bufs[c]))));
-                }
-              }
-
-              writeInt32(ef + OFF_FRAME_NB_SAMPLES, encFrameSize);
-              writeInt32(ef + OFF_FRAME_FORMAT, outSampleFmt);
-              writeInt32(ef + OFF_FRAME_SAMPLE_RATE, outSampleRate);
-              writeInt64(ef + OFF_FRAME_PTS, BigInt(ptsCounter));
-              ptsCounter += encFrameSize;
-
-              let eret = this.C.avcodec_send_frame(encoderCtx, ef);
-              this.U.av_frame_free(ptr(new BigUint64Array([BigInt(ef)])));
-              if (eret < 0) { ret = eret; break; }
-
-              while (true) {
-                eret = this.C.avcodec_receive_packet(encoderCtx, outPkt);
-                if (eret < 0) break;
-                this.F.av_interleaved_write_frame(ocPtr, outPkt);
-                this.C.av_packet_unref(outPkt);
-              }
-
-              for (let c = 0; c < outChannels; c++) {
-                accums[c] = accums[c].slice(encFrameSize);
-              }
-            }
+            if (!drainEncoded()) { ret = -1; break; }
             if (ret < 0) break;
           }
         } else {
@@ -777,93 +788,23 @@ export default class FFmpeg {
         if (convertedSamples <= 0) continue;
 
         for (let c = 0; c < outChannels; c++) {
-          const old = accums[c];
           const src = new Float32Array(outBufs[c].buffer, 0, convertedSamples);
-          const newBuf = new Float32Array(old.length + convertedSamples);
-          newBuf.set(old);
-          newBuf.set(src, old.length);
-          accums[c] = newBuf;
+          let ring = rings[c];
+          if (ringLens[c] + convertedSamples > ring.length) {
+            const next = new Float32Array(Math.max(ring.length * 2, ringLens[c] + convertedSamples));
+            next.set(ring.subarray(0, ringLens[c]));
+            rings[c] = next;
+            ring = next;
+          }
+          ring.set(src, ringLens[c]);
+          ringLens[c] += convertedSamples;
         }
 
-        while (accums[0].length >= encFrameSize) {
-          const ef = Number(this.U.av_frame_clone(encFrameTemplate));
-          if (ef === 0) { ret = -1; break; }
-
-          const bufs: Uint8Array[] = [];
-          for (let c = 0; c < outChannels; c++) {
-            const chunkBuf = new Uint8Array(encFrameSize * 4);
-            const srcView = new Float32Array(accums[c].buffer, 0, encFrameSize);
-            chunkBuf.set(new Uint8Array(srcView.buffer, srcView.byteOffset, srcView.byteLength));
-            bufs.push(chunkBuf);
-            writePtr(ef + OFF_FRAME_DATA + c * 8, BigInt(Number(ptr(chunkBuf))));
-            writeInt32(ef + OFF_FRAME_LINESIZE + c * 4, encFrameSize * 4);
-          }
-
-          const extData = Number(this.readU64(ef, OFF_FRAME_EXTENDED_DATA));
-          if (extData !== 0) {
-            for (let c = 0; c < outChannels; c++) {
-              writePtr(extData + c * 8, BigInt(Number(ptr(bufs[c]))));
-            }
-          }
-
-          writeInt32(ef + OFF_FRAME_NB_SAMPLES, encFrameSize);
-          writeInt32(ef + OFF_FRAME_FORMAT, outSampleFmt);
-          writeInt32(ef + OFF_FRAME_SAMPLE_RATE, outSampleRate);
-          writeInt64(ef + OFF_FRAME_PTS, BigInt(ptsCounter));
-          ptsCounter += encFrameSize;
-
-          this.C.avcodec_send_frame(encoderCtx, ef);
-          this.U.av_frame_free(ptr(new BigUint64Array([BigInt(ef)])));
-
-          while (true) {
-            const eret = this.C.avcodec_receive_packet(encoderCtx, outPkt);
-            if (eret < 0) break;
-            this.F.av_interleaved_write_frame(ocPtr, outPkt);
-            this.C.av_packet_unref(outPkt);
-          }
-
-          for (let c = 0; c < outChannels; c++) {
-            accums[c] = accums[c].slice(encFrameSize);
-          }
-        }
+        if (!drainEncoded()) { ret = -1; break; }
       }
 
-      if (accums[0].length > 0) {
-        const ef = Number(this.U.av_frame_clone(encFrameTemplate));
-        if (ef !== 0) {
-          const bufs: Uint8Array[] = [];
-          for (let c = 0; c < outChannels; c++) {
-            const chunkBuf = new Uint8Array(encFrameSize * 4);
-            const srcView = new Float32Array(accums[c].buffer, 0, accums[c].length);
-            chunkBuf.set(new Uint8Array(srcView.buffer, srcView.byteOffset, srcView.byteLength));
-            bufs.push(chunkBuf);
-            writePtr(ef + OFF_FRAME_DATA + c * 8, BigInt(Number(ptr(chunkBuf))));
-            writeInt32(ef + OFF_FRAME_LINESIZE + c * 4, encFrameSize * 4);
-          }
-
-          const extData = Number(this.readU64(ef, OFF_FRAME_EXTENDED_DATA));
-          if (extData !== 0) {
-            for (let c = 0; c < outChannels; c++) {
-              writePtr(extData + c * 8, BigInt(Number(ptr(bufs[c]))));
-            }
-          }
-
-          writeInt32(ef + OFF_FRAME_NB_SAMPLES, encFrameSize);
-          writeInt32(ef + OFF_FRAME_FORMAT, outSampleFmt);
-          writeInt32(ef + OFF_FRAME_SAMPLE_RATE, outSampleRate);
-          writeInt64(ef + OFF_FRAME_PTS, BigInt(ptsCounter));
-          ptsCounter += encFrameSize;
-
-          this.C.avcodec_send_frame(encoderCtx, ef);
-          this.U.av_frame_free(ptr(new BigUint64Array([BigInt(ef)])));
-
-          while (true) {
-            const eret = this.C.avcodec_receive_packet(encoderCtx, outPkt);
-            if (eret < 0) break;
-            this.F.av_interleaved_write_frame(ocPtr, outPkt);
-            this.C.av_packet_unref(outPkt);
-          }
-        }
+      if (ringLens[0] > 0) {
+        buildAndSendFrame(0, ringLens[0]);
       }
 
       this.C.avcodec_send_frame(encoderCtx, null);

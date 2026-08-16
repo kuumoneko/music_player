@@ -69,6 +69,14 @@ export class Resource<T> {
                 return this.latest?.data ?? ([] as unknown as T);
             }
             this.latest = { data: partial.data, etag: partial.etag, at: Date.now(), complete: partial.complete ?? false };
+            if (this.latest.complete) {
+                try {
+                    this.options.persist?.(this.latest);
+                } catch (e) {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    writeLogs([{ type: "error", message: `Resource ${this.key}: persist failed: ${msg}` }]);
+                }
+            }
             return partial.data;
         })();
 
@@ -144,6 +152,7 @@ export class Resource<T> {
             return;
         }
         if (result.notModified) {
+            this.latest = { ...latest, at: Date.now() };
             writeLogs([{ type: "info", message: `Resource ${this.key}: revalidation 304, keeping cache` }]);
             return;
         }

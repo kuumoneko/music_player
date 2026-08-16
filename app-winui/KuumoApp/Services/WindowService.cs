@@ -15,6 +15,10 @@ public sealed class WindowService
 
     public bool IsWindowVisible { get; set; } = true;
 
+    public event Action? WindowHidden;
+
+    public event Action? WindowShown;
+
     public WindowService(Window window, RpcClient rpc)
     {
         _window = window;
@@ -35,9 +39,30 @@ public sealed class WindowService
             {
                 _closingSubscribed = true;
                 _window.AppWindow.Closing += OnClosing;
+                _window.AppWindow.Changed += (_, _) => UpdateVisibility();
             }
             AppLog.Write("window", $"initialized, QuitOnClose={IsQuitOnClose}, closeToTray={IsCloseToTray}");
         });
+    }
+
+    private void UpdateVisibility()
+    {
+        var isMinimized = _window.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter { State: Microsoft.UI.Windowing.OverlappedPresenterState.Minimized };
+        var visible = _window.AppWindow.IsVisible && !isMinimized;
+        if (visible == IsWindowVisible)
+        {
+            return;
+        }
+        IsWindowVisible = visible;
+        AppLog.Write("window", $"visibility: {(visible ? "shown" : "hidden")}");
+        if (visible)
+        {
+            WindowShown?.Invoke();
+        }
+        else
+        {
+            WindowHidden?.Invoke();
+        }
     }
 
     private async Task<bool> ReadBoolAsync(string key, bool fallback)
@@ -67,7 +92,6 @@ public sealed class WindowService
         if (IsCloseToTray)
         {
             AppLog.Write("window", "close-to-tray, hiding window");
-            IsWindowVisible = false;
             sender.Hide();
         }
         else if (IsQuitOnClose)
@@ -78,7 +102,6 @@ public sealed class WindowService
         else
         {
             AppLog.Write("window", "close hides window (quit-on-close off)");
-            IsWindowVisible = false;
             sender.Hide();
         }
     }

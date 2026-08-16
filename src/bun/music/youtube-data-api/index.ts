@@ -30,6 +30,25 @@ function pickThumbnail(thumbnails: any, kind: "video" | "wide" = "video"): strin
     return thumbnails.high?.url ?? thumbnails.medium?.url ?? thumbnails.default?.url ?? "";
 }
 
+const BROKEN_PIN_TTL_MS = 24 * 3600_000;
+
+interface BrokenPin {
+    at: number;
+    name: string;
+}
+
+export function isPinBroken(pin: string, now: number = Date.now()): boolean {
+    const broken = getUserData("brokenPins") ?? {};
+    const entry = broken[pin] as BrokenPin | undefined;
+    return !!entry && typeof entry.at === "number" && now - entry.at < BROKEN_PIN_TTL_MS;
+}
+
+export function markPinBroken(pin: string, name: string) {
+    const broken = getUserData("brokenPins") ?? {};
+    broken[pin] = { at: Date.now(), name };
+    writeUserData("brokenPins", broken);
+}
+
 export class YoutubeDataAPI {
     private apiKeys: string[] = [];
     private keyIndex = -1;
@@ -553,7 +572,17 @@ export class YoutubeDataAPI {
                 writeLogs([{ type: "info", message: `DataAPI fetchArtist: ${id} unchanged (304), serving cached artist` }]);
                 return cached;
             }
-            if (error || !data?.items?.[0]) throw new Error(error ?? "Channel not found");
+            if (error || !data?.items?.[0]) {
+                // Channels API returned an empty items list (channel deleted/renamed).
+                // Remember the pin as broken so the home feed skips it without
+                // retrying for 24h — real API errors (bad key/quota) and non-channel
+                // ids (e.g. a video id used as an artist reference) are NOT recorded.
+                if (!error && id.startsWith("UC")) {
+                    markPinBroken(`${MusicSource.Youtube}:${MusicType.Artist}:${id}`, cached?.name ?? "");
+                    writeLogs([{ type: "info", message: `DataAPI fetchArtist: ${id} channel not found, marked broken` }]);
+                }
+                throw new Error(error ?? "Channel not found");
+            }
 
             const ch = data.items[0];
             const artName = ch.snippet?.title ?? "";
@@ -610,7 +639,7 @@ export class YoutubeDataAPI {
     // ── Get new / recent tracks ──
 
     async getNewTracks(channelIds: string[]): Promise<Track[]> {
-        const unique = [...new Set(channelIds.filter(Boolean))];
+        const unique = [...new Set(channelIds.filter(Boolean))].filter(id => !isPinBroken(`${MusicSource.Youtube}:${MusicType.Artist}:${id}`));
         if (unique.length === 0) return [];
 
         const results = await Promise.all(unique.map(id => this.fetchRecentTracks(id, 10)));
@@ -660,7 +689,7 @@ export class YoutubeDataAPI {
         if (resource) return resource;
         resource = new Resource<Playlist[]>({
             key: "userPlaylists",
-            ttl: 0,
+            ttl: 30 * 60_000,
             loadPartial: (ifNoneMatch) => this.fetchUserPlaylistsPage(ifNoneMatch),
             loadFull: () => this.loadUserPlaylists(),
             loadPersisted: () => {
@@ -756,7 +785,7 @@ export class YoutubeDataAPI {
         if (resource) return resource;
         resource = new Resource<Artist[]>({
             key: "userSubscriptions",
-            ttl: 0,
+            ttl: 30 * 60_000,
             loadPartial: (ifNoneMatch) => this.fetchUserSubscriptionsPage(ifNoneMatch),
             loadFull: () => this.loadUserSubscriptions(),
             loadPersisted: () => {

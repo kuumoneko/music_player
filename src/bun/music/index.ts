@@ -5,7 +5,7 @@ import { Local } from "./local.ts";
 import areStringsSimilar from "../utils/compareString.ts";
 import { getSystemData, writeLogs } from "../db/index.ts";
 import Play from "./play.ts";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import { unlinkSync } from "node:fs";
 import FFmpeg from "../ffmpeg/index.ts";
 import { YoutubeResolver } from "./youtube-resolver.ts";
@@ -24,36 +24,22 @@ export enum AudioFormat {
     wav = "wav"
 }
 
-async function fetchChunk(url: string, start: number, end: number): Promise<{ data: ArrayBuffer; index: number }> {
-    const res = await fetch(url, {
-        headers: { Range: `bytes=${start}-${end}` },
-    });
-    return { data: await res.arrayBuffer(), index: start };
-}
+const DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024;
 
-async function downloadConcurrent(url: string, outputPath: string, contentLength: number, concurrency = 8): Promise<void> {
-    const chunkSize = Math.ceil(contentLength / concurrency);
-    const chunks: { data: ArrayBuffer; index: number }[] = [];
-
-    const chunkPromises = Array.from({ length: concurrency }, async (_, i) => {
-        const start = i * chunkSize;
-        const end = Math.min((i + 1) * chunkSize - 1, contentLength - 1);
-        if (start >= contentLength) return;
-        const chunk = await fetchChunk(url, start, end);
-        chunks.push(chunk);
-    });
-
-    await Promise.all(chunkPromises);
-    chunks.sort((a, b) => a.index - b.index);
-
-    const totalSize = chunks.reduce((sum, c) => sum + c.data.byteLength, 0);
-    const merged = new Uint8Array(totalSize);
-    let offset = 0;
-    for (const chunk of chunks) {
-        merged.set(new Uint8Array(chunk.data), offset);
-        offset += chunk.data.byteLength;
+async function downloadConcurrent(url: string, outputPath: string, contentLength: number): Promise<void> {
+    const writer = Bun.file(outputPath).writer();
+    try {
+        for (let start = 0; start < contentLength; start += DOWNLOAD_CHUNK_SIZE) {
+            const end = Math.min(start + DOWNLOAD_CHUNK_SIZE - 1, contentLength - 1);
+            const res = await fetch(url, {
+                headers: { Range: `bytes=${start}-${end}` },
+            });
+            writer.write(new Uint8Array(await res.arrayBuffer()));
+            writer.flush();
+        }
+    } finally {
+        await writer.end();
     }
-    await writeFile(outputPath, merged);
 }
 
 async function downloadThumbnail(url: string): Promise<string> {
@@ -224,8 +210,16 @@ export default class Player {
             } else {
                 writeLogs([{ type: "info", message: `Downloading ${title} (single connection)...` }]);
                 const res = await fetch(resolved.url);
-                const buf = await res.arrayBuffer();
-                await writeFile(rawPath, new Uint8Array(buf));
+                if (!res.body) throw new Error("No response body for download");
+                const sink = Bun.file(rawPath).writer();
+                try {
+                    for await (const chunk of res.body) {
+                        sink.write(chunk);
+                        sink.flush();
+                    }
+                } finally {
+                    await sink.end();
+                }
             }
 
             writeLogs([{ type: "info", message: `Converting ${title} to M4A...` }]);

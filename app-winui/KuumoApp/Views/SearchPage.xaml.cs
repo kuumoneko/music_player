@@ -11,6 +11,7 @@ public sealed partial class SearchPage : Page
     private static readonly string[] Types = { MusicType.Track, MusicType.Playlist, MusicType.Artist };
     private string _selectedType = MusicType.Track;
     private SearchResultDto? _result;
+    private int _searchVersion;
 
     public SearchPage()
     {
@@ -64,18 +65,35 @@ public sealed partial class SearchPage : Page
             }
             return;
         }
+        var version = ++_searchVersion;
         try
         {
+            SearchingRing.IsActive = true;
             _result = await App.Services.Api.SearchMusicAsync(_selectedType, MusicSource.Youtube, query);
+            if (version != _searchVersion)
+            {
+                return;
+            }
             await RenderResultsAsync();
             ShellPage.SetTitle($"{TitleFor(query)} search result");
         }
         catch (Exception ex)
         {
+            if (version != _searchVersion)
+            {
+                return;
+            }
             AppLog.Write("search", $"search failed: {ex.Message}");
             _result = null;
             ResultList.ItemsSource = null;
             ShellPage.SetTitle("Search");
+        }
+        finally
+        {
+            if (version == _searchVersion)
+            {
+                SearchingRing.IsActive = false;
+            }
         }
     }
 

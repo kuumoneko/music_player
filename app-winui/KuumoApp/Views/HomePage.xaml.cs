@@ -54,22 +54,94 @@ public sealed partial class HomePage : Page
         Root.Children.Clear();
         try
         {
-            var (sections, playlists, artists) = await LoadCardsAsync();
+            var feedTask = App.Services.Api.GetHomeFeedAsync();
+            var localTask = App.Services.Api.GetUserPlaylistsAsync();
+            var ytPlaylistsTask = App.Services.Api.GetUserYoutubePlaylistsAsync();
+            var subscriptionsTask = App.Services.Api.GetUserYoutubeSubscriptionsAsync();
+
+            var localPlaylists = await localTask ?? [];
             if (version != _loadVersion)
             {
                 return;
             }
 
+            var playlists = Merge(localPlaylists.Select(MediaCard.FromPlaylist));
+            var playlistsRowStart = -1;
+            if (playlists.Count > 0)
+            {
+                playlistsRowStart = InsertRow(Root.Children.Count, "Your Playlists", playlists, withCreate: true, sourceKey: "userPlaylists", reload: LoadMergedPlaylistsAsync);
+            }
+
+            var ytPlaylists = await ytPlaylistsTask ?? [];
+            if (version != _loadVersion)
+            {
+                return;
+            }
+            if (ytPlaylists is { Length: > 0 })
+            {
+                playlists = Merge(ytPlaylists.Select(MediaCard.FromPlaylist), localPlaylists.Select(MediaCard.FromPlaylist));
+                if (playlistsRowStart >= 0)
+                {
+                    RemoveFrom(playlistsRowStart);
+                    playlistsRowStart = InsertRow(playlistsRowStart, "Your Playlists", playlists, withCreate: true, sourceKey: "userPlaylists", reload: LoadMergedPlaylistsAsync);
+                }
+                else
+                {
+                    playlistsRowStart = InsertRow(Root.Children.Count, "Your Playlists", playlists, withCreate: true, sourceKey: "userPlaylists", reload: LoadMergedPlaylistsAsync);
+                }
+            }
+
+            var subscriptions = await subscriptionsTask ?? [];
+            if (version != _loadVersion)
+            {
+                return;
+            }
+
+            var artists = Merge(subscriptions.Select(MediaCard.FromArtist));
+            var artistsRowStart = -1;
+            if (artists.Count > 0)
+            {
+                artistsRowStart = InsertRow(Root.Children.Count, "Artists", artists, withCreate: false, sourceKey: "userSubscriptions", reload: LoadMergedArtistsAsync);
+            }
+
+            var sections = (await feedTask)?.Sections ?? [];
+            if (version != _loadVersion)
+            {
+                return;
+            }
+
+            var pinnedArtists = CardsFromSections(sections, "pinned_artists");
+            var pinnedPlaylists = CardsFromSections(sections, "pinned_playlists");
             var pinnedTracks = CardsFromSections(sections, "pinned_tracks");
             var pinnedNewTracks = CardsFromSections(sections, "pinned_new_tracks");
 
-            if (playlists.Count > 0)
+            var rebuildPlaylists = playlistsRowStart >= 0 && pinnedPlaylists.Length > 0;
+            var rebuildArtists = artistsRowStart >= 0 && pinnedArtists.Length > 0;
+            if (rebuildPlaylists)
             {
-                RenderRow("Your Playlists", playlists, withCreate: true, sourceKey: "userPlaylists", reload: LoadMergedPlaylistsAsync);
+                RemoveFrom(playlistsRowStart);
+                InsertRow(playlistsRowStart, "Your Playlists", Merge(pinnedPlaylists, ytPlaylists.Select(MediaCard.FromPlaylist), localPlaylists.Select(MediaCard.FromPlaylist)), withCreate: true, sourceKey: "userPlaylists", reload: LoadMergedPlaylistsAsync);
+                if (rebuildArtists)
+                {
+                    InsertRow(Root.Children.Count, "Artists", Merge(pinnedArtists, subscriptions.Select(MediaCard.FromArtist)), withCreate: false, sourceKey: "userSubscriptions", reload: LoadMergedArtistsAsync);
+                }
+                else
+                {
+                    InsertRow(Root.Children.Count, "Artists", artists, withCreate: false, sourceKey: "userSubscriptions", reload: LoadMergedArtistsAsync);
+                }
             }
-            if (artists.Count > 0)
+            else if (rebuildArtists)
             {
-                RenderRow("Artists", artists, withCreate: false, sourceKey: "userSubscriptions", reload: LoadMergedArtistsAsync);
+                RemoveFrom(artistsRowStart);
+                InsertRow(artistsRowStart, "Artists", Merge(pinnedArtists, subscriptions.Select(MediaCard.FromArtist)), withCreate: false, sourceKey: "userSubscriptions", reload: LoadMergedArtistsAsync);
+            }
+            if (playlistsRowStart < 0 && pinnedPlaylists.Length > 0)
+            {
+                InsertRow(Root.Children.Count, "Your Playlists", Merge(pinnedPlaylists), withCreate: true, sourceKey: "userPlaylists", reload: LoadMergedPlaylistsAsync);
+            }
+            if (artistsRowStart < 0 && pinnedArtists.Length > 0)
+            {
+                InsertRow(Root.Children.Count, "Artists", Merge(pinnedArtists), withCreate: false, sourceKey: "userSubscriptions", reload: LoadMergedArtistsAsync);
             }
 
             if (sections.Length == 0)
@@ -113,10 +185,10 @@ public sealed partial class HomePage : Page
         }
         catch (Exception ex)
         {
-            AppLog.Write("home", $"load failed: {ex.Message}");
+            AppLog.Write("home", $"load failed: {ex.GetType().Name}: {ex}");
             if (version == _loadVersion)
             {
-                Root.Children.Add(new TextBlock { Text = $"Failed to load home: {ex.Message}" });
+                Root.Children.Add(new TextBlock { Text = $"Failed to load home: {ex.GetType().Name}: {ex.Message}" });
             }
         }
         if (version == _loadVersion)
@@ -207,6 +279,12 @@ public sealed partial class HomePage : Page
 
     private void RenderRow(string title, IReadOnlyList<MediaCard> allCards, bool withCreate, string sourceKey = "", Func<Task<MediaCard[]>>? reload = null)
     {
+        InsertRow(Root.Children.Count, title, allCards, withCreate, sourceKey, reload);
+    }
+
+    private int InsertRow(int index, string title, IReadOnlyList<MediaCard> allCards, bool withCreate, string sourceKey = "", Func<Task<MediaCard[]>>? reload = null)
+    {
+        var start = index;
         var header = new Grid { ColumnSpacing = 8 };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -255,14 +333,23 @@ public sealed partial class HomePage : Page
         }
         Grid.SetColumn(actions, 1);
         header.Children.Add(actions);
-        Root.Children.Add(header);
+        Root.Children.Insert(index++, header);
 
         if (createRow is not null)
         {
-            Root.Children.Add(createRow);
+            Root.Children.Insert(index++, createRow);
         }
 
-        Root.Children.Add(CardStrip.Build(allCards.Take(MaxRowItems), MediaGrid.DefaultOpen));
+        Root.Children.Insert(index, CardStrip.Build(allCards.Take(MaxRowItems), MediaGrid.DefaultOpen));
+        return start;
+    }
+
+    private void RemoveFrom(int start)
+    {
+        while (Root.Children.Count > start)
+        {
+            Root.Children.RemoveAt(Root.Children.Count - 1);
+        }
     }
 
     private StackPanel BuildCreateRow()

@@ -10,9 +10,11 @@ public sealed partial class MainWindow : Window
     private readonly WindowService _windowService;
     private readonly SmtcService _smtc;
     private readonly TrayService _tray;
+    private readonly UiMemoryManager _memory;
     private bool _smtcInitialized;
     private int _lastTimeMs;
     private int _lastDurationMs;
+    private SmtcUpdateDto? _lastSmtc;
 
     public MainWindow()
     {
@@ -29,12 +31,30 @@ public sealed partial class MainWindow : Window
         App.Services.Window = _windowService;
         _smtc = new SmtcService(this);
         _tray = new TrayService(this, _windowService, TrayIcon);
+        _memory = new UiMemoryManager(this, App.Services.Rpc);
+
+        _windowService.WindowHidden += () =>
+        {
+            _memory.OnWindowHidden();
+        };
+        _windowService.WindowShown += () =>
+        {
+            _memory.OnWindowShown();
+            if (_lastSmtc is not null)
+            {
+                _smtc.Update(_lastSmtc);
+            }
+        };
 
         App.Services.Events.OpenApp += () => _windowService.Activate();
         App.Services.Events.AppExit += App.ShutdownApp;
         App.Services.SingleInstanceDetected += () => DispatcherQueue.TryEnqueue(App.ShutdownApp);
         App.Services.Events.MessageReceived += data => AppLog.Write("app", $"showMessage: {data.Title} - {data.Message}");
-        App.Services.Events.SmtcUpdated += data => _smtc.Update(data);
+        App.Services.Events.SmtcUpdated += data =>
+        {
+            _lastSmtc = data;
+            _smtc.Update(data);
+        };
         App.Services.Events.TimeUpdated += data =>
         {
             _lastTimeMs = (int)(data.Time * 1000);

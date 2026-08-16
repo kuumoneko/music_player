@@ -46,13 +46,21 @@
             </ListView.ItemTemplate>
         </ListView>
 
-        <ListView
-            Grid.Row="2"
-            x:Name="ResultList"
-            ItemTemplate="{StaticResource TrackRowTemplate}"
-            IsItemClickEnabled="True"
-            ItemClick="OnResultClick"
-            RightTapped="OnResultRightTapped"
-            SelectionMode="None" />
+        <Grid Grid.Row="2">
+            <ListView
+                x:Name="ResultList"
+                ItemTemplate="{StaticResource TrackRowTemplate}"
+                IsItemClickEnabled="True"
+                ItemClick="OnResultClick"
+                RightTapped="OnResultRightTapped"
+                SelectionMode="None" />
+            <ProgressRing
+                x:Name="SearchingRing"
+                IsActive="False"
+                Width="48"
+                Height="48"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+        </Grid>
     </Grid>
 </Page>

@@ -32,6 +32,7 @@ class YtSessionManager {
                 "accept-language": "en-US,en;q=0.9",
                 "user-agent": INNERTUBE_USER_AGENT,
             },
+            signal: AbortSignal.timeout(10_000),
         });
         const html = await res.text();
 
@@ -67,6 +68,7 @@ class YtSessionManager {
                 context: { client: { clientName: "WEB", clientVersion: this.clientVersion, hl: "en", gl: "US" } },
             }),
             headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(10_000),
         });
         if (!res.ok) {
             throw new Error(`config endpoint returned ${res.status}`);
