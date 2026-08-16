@@ -176,10 +176,7 @@ public sealed partial class QueuePage : Page
 
     private void AddToUpcomingFrom(TrackRow row)
     {
-        var parts = _nextfrom.Split(':');
-        var source = parts.Length > 0 ? parts[0] : MusicSource.Youtube;
-        var type = parts.Length > 1 ? parts[1] : MusicType.Track;
-        var id = parts.Length > 2 ? parts[2] : (parts.Length > 1 ? parts[1] : "");
+        var (source, type, id) = QueueContext();
         if (type == MusicType.Track)
         {
             RemoveFromQueue(row);
@@ -190,11 +187,22 @@ public sealed partial class QueuePage : Page
         }
     }
 
+    private (string Source, string Type, string Id) QueueContext()
+    {
+        var parts = _nextfrom.Split(':');
+        var source = parts.Length > 0 ? parts[0] : MusicSource.Youtube;
+        var type = parts.Length > 1 ? parts[1] : MusicType.Track;
+        var id = parts.Length > 2 ? parts[2] : (parts.Length > 1 ? parts[1] : "");
+        return (source, type, id);
+    }
+
     private async void OnQueueItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is TrackRow row)
         {
-            await Playback.PlayEntryAsync($"{row.Source}:{row.Type}:{row.Id}", row.Payload);
+            var (source, type, id) = QueueContext();
+            (string Source, string Type, string Id) ctx = type == MusicType.Track ? (row.Source, row.Type, row.Id) : (source, type, id);
+            await Playback.PlayEntryAsync($"{ctx.Source}:{ctx.Type}:{ctx.Id}", row.Payload);
         }
     }
 
@@ -202,7 +210,9 @@ public sealed partial class QueuePage : Page
     {
         if (e.ClickedItem is TrackRow row)
         {
-            await Playback.PlayTrackAsync(row.Payload!, row.Source, row.Type, row.Id);
+            var (source, type, id) = QueueContext();
+            (string Source, string Type, string Id) ctx = type == MusicType.Track ? (row.Source, row.Type, row.Id) : (source, type, id);
+            await Playback.PlayTrackAsync(row.Payload!, ctx.Source, ctx.Type, ctx.Id);
         }
     }
 

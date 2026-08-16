@@ -27,6 +27,7 @@ import {
   getArtistById,
   getArtistByPlaylistId,
 } from "../db/index.ts";
+import { isValidContextEntry } from "../lib/nextfrom.ts";
 import { getHash, resolveId, tracksToFront } from "../lib/hash.ts";
 import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
 import SearchController from "../controllers/search.ts";
@@ -321,6 +322,10 @@ export function createRpcHandlers(ctx: RpcContext) {
     previous: withErrorLogEmit("previous", async () => { player.player?.previous(); }),
 
     play: async ({ item, source, type, id }: { item: Track; source: MusicSource; type: string; id: string }) => {
+writeLogs([{
+        type: "info",
+        message: JSON.stringify({ item, source, type, id })
+      }]);
       const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"]) as UserData;
       user.playQueue = [];
       player.player?.setRepeat(false);
@@ -373,7 +378,11 @@ export function createRpcHandlers(ctx: RpcContext) {
         current.isLived = false;
       }
 
-      user.nextfrom = `${source}:${type}:${id}`;
+      user.nextfrom = isValidContextEntry(`${source}:${type}:${id}`) ? `${source}:${type}:${id}` : "";
+      writeLogs([{
+        type: "info",
+        message: `play: nextfrom="${user.nextfrom}" (input "${source}:${type}:${id}", item id="${item?.id}")`
+      }]);
 
       current.time = 0;
       user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
@@ -611,8 +620,12 @@ export function createRpcHandlers(ctx: RpcContext) {
     },
 
     addToBatchQueue: async ({ source, type, id }: { source: MusicSource; type: MusicType; id: string }) => {
-      const batchQueue = getUserData("batchQueue") as string[];
       const entry = `${source}:${type}:${id}`;
+      if (!isValidContextEntry(entry)) {
+        writeLogs([{ type: "error", message: `addToBatchQueue: invalid entry "${entry}"` }]);
+        return null;
+      }
+      const batchQueue = getUserData("batchQueue") as string[];
       if (!batchQueue.includes(entry)) {
         batchQueue.push(entry);
         writeUserData("batchQueue", batchQueue);

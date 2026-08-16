@@ -1,7 +1,7 @@
 import { dirname, join, resolve } from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
 import { rmdir } from "node:fs/promises";
-import { MusicSource, MusicType, type System } from "../shared/types.ts";
+import { MusicSource, MusicType, Repeat, type System, type Track } from "../shared/types.ts";
 import { parseAppArgs } from "./lib/args.ts";
 import { RpcWsServer } from "./rpc/ws-server.ts";
 import { QueueManager } from "./queue/manager.ts";
@@ -25,6 +25,7 @@ import {
 	seedSystemFromAssets,
 } from "./db/index.ts";
 import { getHash, getPath } from "./lib/hash.ts";
+import { isValidContextEntry } from "./lib/nextfrom.ts";
 import { setHomeEmitDataChanged } from "./controllers/home.ts";
 // --- Config ---
 const APP_ROOT = resolve("./");
@@ -64,6 +65,19 @@ if ([isLocal, isDiscord, appPort].includes(null)) {
 }
 
 CheckUserData();
+// Drop stale/invalid auto-play contexts (e.g. a video id stored as an artist id
+// by an older version) so the queue refill can't fail on them every track start.
+if (!isValidContextEntry(getUserData("nextfrom"))) {
+	const staleNextfrom = getUserData("nextfrom");
+	writeLogs([{ type: "info", message: `nextfrom is invalid, clearing: "${staleNextfrom}"` }]);
+	writeUserData("nextfrom", "");
+}
+const staleBatch = getUserData("batchQueue") ?? [];
+const cleanBatch = staleBatch.filter(isValidContextEntry);
+if (cleanBatch.length !== staleBatch.length) {
+	writeLogs([{ type: "info", message: `batchQueue had ${staleBatch.length - cleanBatch.length} invalid entries, cleared` }]);
+	writeUserData("batchQueue", cleanBatch);
+}
 purgeExpiredSearchCache();
 const cachePurgeTimer = setInterval(purgeExpiredSearchCache, 6 * 60 * 60 * 1000);
 (cachePurgeTimer as any).unref?.();
@@ -189,6 +203,60 @@ const play = async () => {
 	player.player?.play(url, currentPlaying.title, currentPlaying.thumbnail);
 };
 
+// Restarts playback from the first track of the current "nextfrom" context
+// (artist/playlist). Used by Repeat.All to wrap back to the start when the
+// queue is exhausted. Returns false when there is nothing to restart from.
+let restartHistory: number[] = [];
+const playContextStart = async (excludeId?: string): Promise<boolean> => {
+	const nextfrom = getUserData("nextfrom");
+	if (!nextfrom || !isValidContextEntry(nextfrom)) return false;
+	const [source, type, id] = nextfrom.split(":");
+	if (!source || !type || !id) return false;
+
+	let track: Track | null = null;
+	try {
+		if (type === MusicType.Track) {
+			track = (await player.youtubeDataAPI.fetchTrack([id]))?.[0] ?? null;
+		} else if (type === MusicType.Artist) {
+			const tracks = (await player.youtubeDataAPI.fetchArtist(id))?.tracks ?? [];
+			track = tracks.find((t) => t.id !== excludeId) ?? tracks[0] ?? null;
+		} else if (type === MusicType.Playlist) {
+			const tracks = (await player.youtubeDataAPI.fetchPlaylist(id))?.tracks ?? [];
+			track = tracks.find((t) => t.id !== excludeId) ?? tracks[0] ?? null;
+		} else if (source === MusicSource.Local) {
+			const files = getAllLocalFiles();
+			track = files.find((t) => getHash(t.id) !== excludeId) ?? files[0] ?? null;
+		}
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
+		writeLogs([{ type: "error", message: `repeat all: cannot restart from "${nextfrom}": ${message}` }]);
+		return false;
+	}
+	if (!track) return false;
+
+	const now = Date.now();
+	restartHistory = [...restartHistory.filter((t) => now - t < 30_000), now];
+	if (restartHistory.length > 6) {
+		restartHistory = [];
+		writeLogs([{ type: "error", message: "repeat all: 6+ restarts within 30s — unplayable tracks, stopping instead of looping" }]);
+		return false;
+	}
+
+	const isYoutube = source === MusicSource.Youtube;
+	const currentPlaying = {
+		source: isYoutube ? MusicSource.Youtube : MusicSource.Local,
+		id: isYoutube ? track.id : getHash(track.id),
+		title: track.name,
+		thumbnail: track.thumbnail,
+		artist: formatArtists(track.artist),
+		artistId: track.artist?.[0]?.id ?? "",
+	};
+	writeUserData("currentPlaying", currentPlaying);
+	emitToFrontend("currentTrackChanged", { ...currentPlaying });
+	await play();
+	return true;
+};
+
 // --- Player Events ---
 player.player?.on("track-error", (data: any) => {
 	const id = typeof data === "string" ? data : data.id;
@@ -309,7 +377,12 @@ player.player?.on("loading", (data) => {
 	current.emitPlayerState({ isLoading: data });
 });
 
-player.player?.on("ended", () => {
+player.player?.on("ended", async () => {
+	if (getUserData("repeat") === Repeat.All) {
+		const currentPlaying = getUserData("currentPlaying");
+		const restarted = await playContextStart(currentPlaying?.id ?? undefined);
+		if (restarted) return;
+	}
 	current.isPlaying = false;
 	current.emitPlayerState({ isPlaying: false });
 	discordRPC.instance?.clearMusic();

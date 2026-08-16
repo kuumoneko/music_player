@@ -40,6 +40,7 @@ export default class Play extends EventEmitter {
     private loadedUrl: string = "";
     private isLiveStream: boolean = false;
     private fadeTimer: NodeJS.Timeout | null = null;
+    private suppressEndFile: boolean = false;
 
     constructor(appPath: string) {
         super();
@@ -212,6 +213,7 @@ export default class Play extends EventEmitter {
     }
 
     private handleFileLoaded() {
+        this.suppressEndFile = false;
         this.emit("loading", false);
         if (this.isFirstLoad) {
             this.isFirstLoad = false;
@@ -274,6 +276,12 @@ export default class Play extends EventEmitter {
             errorCode = read.i32(data, 4);
         }
         writeLogs([{ type: "info", message: `mpv end-file: reason=${reason} errorCode=${errorCode}` }]);
+        if (this.suppressEndFile) {
+            // The file was killed by our own stop/replace in play() — not a
+            // natural end. Ignore it so the queue never sees a fake "ended".
+            this.suppressEndFile = false;
+            return;
+        }
         if (reason === 4) {
             writeLogs([{ type: "error", message: `mpv file load error: ${this.mpvError(errorCode)}` }]);
         }
@@ -286,6 +294,7 @@ export default class Play extends EventEmitter {
             this.isRepeat = false;
             this.playlistUrls = [];
             this.playlistIndex = 0;
+            this.suppressEndFile = true;
             this.command("stop");
             this.emit("change-playState", { isPlaying: false, time: 0 });
             return;
@@ -359,6 +368,7 @@ export default class Play extends EventEmitter {
                 return;
             }
         }
+        this.suppressEndFile = true;
         this.command("stop");
         const escaped = urlOrPath.replace(/\\/g, "/");
         writeLogs([{ type: "info", message: `play: loadfile "${escaped}" replace` }]);
@@ -406,6 +416,17 @@ export default class Play extends EventEmitter {
                 resolved.push({ url: data.url, original: data.url });
             })
         );
+        const MAX_PLAYLIST_URLS = 100;
+        if (this.playlistUrls.length + resolved.length > MAX_PLAYLIST_URLS) {
+            // Drop only already-consumed entries (before the current index) so
+            // the app-side queue keeps matching mpv's internal playlist position.
+            const overflow = this.playlistUrls.length + resolved.length - MAX_PLAYLIST_URLS;
+            const removable = Math.min(overflow, this.playlistIndex);
+            if (removable > 0) {
+                this.playlistUrls.splice(0, removable);
+                this.playlistIndex -= removable;
+            }
+        }
         this.playlistUrls.push(...resolved.map(r => r.original));
         for (const { url } of resolved) {
             const ret = this.symbols?.mpv_command_string(this.handle, S(`loadfile "${url.replace(/\\/g, "/")}" append`));

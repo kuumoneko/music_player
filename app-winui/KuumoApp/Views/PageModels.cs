@@ -57,9 +57,10 @@ public static class Playback
     {
         var source = track.Source ?? nextfromSource ?? MusicSource.Youtube;
         var type = source == MusicSource.Local ? MusicType.Local : (nextfromType ?? MusicType.Track);
-        var id = track.Id ?? nextfromId ?? "";
+        var id = nextfromId ?? track.Id ?? "";
         try
         {
+            AppLog.Write("playback", $"play: item={track.Id} source={source} type={type} id={id}");
             await App.Services.Api.PlayAsync(track, source, type, id);
         }
         catch (Exception ex)
@@ -77,6 +78,7 @@ public static class Playback
         var track = payload ?? new TrackDto("", id, [], source, "", 0, "");
         try
         {
+            AppLog.Write("playback", $"play entry: item={track.Id} source={source} type={type} id={id}");
             await App.Services.Api.PlayAsync(track, source, type, id);
         }
         catch (Exception ex)

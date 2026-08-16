@@ -99,7 +99,7 @@ public sealed partial class SearchPage : Page
             id = parts[2];
             if (MusicSource.Youtube == source || MusicSource.Local == source)
             {
-                return true;
+                return IsValidEntryId(type, id);
             }
         }
 
@@ -151,6 +151,18 @@ public sealed partial class SearchPage : Page
                 id = list;
                 return true;
             }
+            if (url.AbsolutePath.StartsWith("/channel/"))
+            {
+                var channelId = url.AbsolutePath.Split("/channel/")[1]?.Split('/')[0] ?? "";
+                if (channelId.Length == 0)
+                {
+                    return false;
+                }
+                source = MusicSource.Youtube;
+                type = MusicType.Artist;
+                id = channelId;
+                return true;
+            }
             if (url.AbsolutePath.StartsWith("/@"))
             {
                 var handle = url.AbsolutePath.Split("/@")[1]?.Split('/')[0] ?? "";
@@ -168,6 +180,19 @@ public sealed partial class SearchPage : Page
         {
         }
         return false;
+    }
+
+    private static bool IsValidEntryId(string type, string id)
+    {
+        if (type == MusicType.Artist)
+        {
+            return id.StartsWith("UC") || id.StartsWith("UU") || id.StartsWith("@");
+        }
+        if (type == MusicType.Playlist)
+        {
+            return id.StartsWith("PL") || id.StartsWith("OLAK5uy_") || id.StartsWith("UU") || id.StartsWith("RD") || id.StartsWith("VL");
+        }
+        return true;
     }
 
     private static string? GetQueryParam(Uri url, string name)

@@ -1,11 +1,12 @@
 import Player from "../music/index.ts";
-import { MusicSource, MusicType, Shuffle, Track, UserData } from "../../shared/types.ts";
+import { MusicSource, MusicType, Repeat, Shuffle, Track, UserData } from "../../shared/types.ts";
 import { YTB_TRACK_START } from "../../shared/constants.ts";
 import {
   getAllLocalFiles,
   getTracks,
   getUserData,
   getUserDatas,
+  writeLogs,
   writeUserData,
 } from "../db/index.ts";
 import { resolveId } from "../lib/hash.ts";
@@ -22,6 +23,22 @@ export class QueueManager {
 
   constructor(player: Player) {
     this.player = player;
+  }
+
+  private async fetchContextTracks(source: string, type: string, id: string): Promise<Track[]> {
+    try {
+      if (source !== MusicSource.Youtube) return [];
+      if (type === MusicType.Artist) {
+        return (await this.player?.youtubeDataAPI?.fetchArtist(id))?.tracks ?? [];
+      }
+      if (type === MusicType.Playlist) {
+        return (await this.player?.youtubeDataAPI?.fetchPlaylist(id))?.tracks ?? [];
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      writeLogs([{ type: "error", message: `refillQueue: fetch ${type} ${id} failed: ${message}` }]);
+    }
+    return [];
   }
 
   async refillQueue(
@@ -45,10 +62,11 @@ export class QueueManager {
       isYTB ? item.filename.split(YTB_TRACK_START)[1] : item.filename,
     );
 
-    const { nextfrom, playQueue, shuffle } = getUserDatas([
+    const { nextfrom, playQueue, shuffle, repeat } = getUserDatas([
       "nextfrom",
       "playQueue",
       "shuffle",
+      "repeat",
     ]) as UserData;
     const playQueueIds = playQueue.map((entry) => entry.split(":").slice(-1)[0]);
     const nextFromQueue = ids.filter((item) => playQueueIds.includes(item));
@@ -67,12 +85,7 @@ export class QueueManager {
           for (const entry of batchQueue) {
             const [bSource, bType, bId] = entry.split(":");
             if (bSource === MusicSource.Youtube) {
-              let tracks: Track[] = [];
-              if (bType === MusicType.Artist) {
-                tracks = (await this.player?.youtubeDataAPI?.fetchArtist(bId))?.tracks ?? [];
-              } else if (bType === MusicType.Playlist) {
-                tracks = (await this.player?.youtubeDataAPI?.fetchPlaylist(bId))?.tracks ?? [];
-              }
+              const tracks = await this.fetchContextTracks(bSource, bType, bId);
               if (tracks.length > 0) {
                 if (shuffle === Shuffle.Enable) {
                   shuffleArray(tracks);
@@ -96,17 +109,15 @@ export class QueueManager {
 
       const [source, type, id] = activeNextfrom.split(":");
       if (type === MusicType.Track) {
-        this.player.player?.setRepeat(true);
+        // A lone track has no queue around it: only loop it (repeat-one) when
+        // the user actually chose Repeat.One. Otherwise let it end so the
+        // normal "ended" -> repeat wrap path decides what happens next.
+        this.player.player?.setRepeat(repeat === Repeat.One);
         return;
       }
 
       if (source === MusicSource.Youtube) {
-        let tracks: Track[] = [];
-        if (type === MusicType.Artist) {
-          tracks = (await this.player?.youtubeDataAPI?.fetchArtist(id))?.tracks ?? [];
-        } else if (type === MusicType.Playlist) {
-          tracks = (await this.player?.youtubeDataAPI?.fetchPlaylist(id))?.tracks ?? [];
-        }
+        const tracks = await this.fetchContextTracks(source, type, id);
 
         if (tracks?.length > 0) {
           if (shuffle === Shuffle.Enable) {

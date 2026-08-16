@@ -24,6 +24,7 @@ public sealed partial class PlayerBar : UserControl
     private int _lastVolume = 50;
     private string _sleepMode = "nosleep";
     private string _nextfrom = "";
+    private string _resolvedNextfrom = "";
     private string _currentSource = "";
     private string _currentId = "";
     private string _currentArtistId = "";
@@ -312,14 +313,20 @@ public sealed partial class PlayerBar : UserControl
     private async void SetNextFrom(string nextfrom)
     {
         _nextfrom = nextfrom;
+        if (nextfrom == _resolvedNextfrom)
+        {
+            return;
+        }
         if (string.IsNullOrEmpty(nextfrom))
         {
+            _resolvedNextfrom = "";
             TrackFrom.Visibility = Visibility.Collapsed;
             return;
         }
         var parts = nextfrom.Split(':');
         if (parts.Length < 3)
         {
+            _resolvedNextfrom = nextfrom;
             TrackFrom.Visibility = Visibility.Collapsed;
             return;
         }
@@ -328,6 +335,7 @@ public sealed partial class PlayerBar : UserControl
         var id = parts[2];
         if (type == MusicType.Track || type == MusicType.Local)
         {
+            _resolvedNextfrom = nextfrom;
             TrackFrom.Visibility = Visibility.Collapsed;
             return;
         }
@@ -339,19 +347,23 @@ public sealed partial class PlayerBar : UserControl
                 var name = el.TryGetProperty("name", out var n) ? n.GetString() : null;
                 if (string.IsNullOrEmpty(name))
                 {
+                    _resolvedNextfrom = nextfrom;
                     TrackFrom.Visibility = Visibility.Collapsed;
                     return;
                 }
+                _resolvedNextfrom = nextfrom;
                 TrackFrom.Text = $"From: {name}";
                 TrackFrom.Visibility = Visibility.Visible;
             }
             else
             {
+                _resolvedNextfrom = nextfrom;
                 TrackFrom.Visibility = Visibility.Collapsed;
             }
         }
         catch (Exception ex)
         {
+            _resolvedNextfrom = nextfrom;
             AppLog.Write("playerbar", $"nextfrom resolve failed: {ex.Message}");
             TrackFrom.Visibility = Visibility.Collapsed;
         }

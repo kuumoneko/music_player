@@ -2,6 +2,7 @@ import { INNERTUBE_CLIENT_VERSION, INNERTUBE_USER_AGENT, ANDROID_CLIENT_VERSION,
 import { ytSession } from "./session.ts";
 import { MusicType, MusicSource, Track } from "../../../shared/types.ts";
 import { extractSearchContents, ensureHttps } from "./InnerTube/parser.ts";
+import { writeLogs } from "../../db/index.ts";
 
 const INNERTUBE_BASE = "https://www.youtube.com/youtubei/v1";
 
@@ -84,7 +85,9 @@ export default class Youtube {
 
         const ps = data?.playabilityStatus;
         if (ps?.reason) {
-            console.error(`resolveStreamUrl [${videoId}] attempt ${attempt}: ${ps.reason}`);
+            // Permanent playability failure (removed/unavailable video) —
+            // retrying cannot help, fail fast.
+            return { url: null, error: ps.reason };
         }
 
         if (!data?.streamingData) {
@@ -136,20 +139,20 @@ export default class Youtube {
                     }
                 }
                 if (attempt < MAX_ATTEMPTS) {
-                    console.error(`resolveStreamUrl [${videoId}] attempt ${attempt} failed, retrying...`);
+                    writeLogs([{ type: "info", message: `resolveStreamUrl [${videoId}] attempt ${attempt} failed, retrying...` }]);
                     await new Promise(r => setTimeout(r, 1000));
                 }
             } catch (e) {
                 const msg = e instanceof Error ? e.message : String(e);
-                console.error(`resolveStreamUrl [${videoId}] attempt ${attempt} threw: ${msg}`);
+                writeLogs([{ type: "info", message: `resolveStreamUrl [${videoId}] attempt ${attempt} threw: ${msg}` }]);
                 lastError = msg;
                 if (attempt < MAX_ATTEMPTS) {
-                    console.error(`resolveStreamUrl [${videoId}] retrying attempt ${attempt + 1}...`);
+                    writeLogs([{ type: "info", message: `resolveStreamUrl [${videoId}] retrying attempt ${attempt + 1}...` }]);
                     await new Promise(r => setTimeout(r, 1000));
                 }
             }
         }
-        console.error(`resolveStreamUrl [${videoId}] all ${MAX_ATTEMPTS} attempts failed`);
+        writeLogs([{ type: "error", message: `resolveStreamUrl [${videoId}] all ${MAX_ATTEMPTS} attempts failed` }]);
         return { url: null, error: lastError };
     }
 
