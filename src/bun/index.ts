@@ -397,11 +397,8 @@ player.player?.on("ready", () => {
 if (isDiscord && String(DiscordClientId).length > 0) {
 	const DiscordModule = await import("./discord/index.ts");
 	discordRPC.instance = new DiscordModule.default(String(DiscordClientId));
-	try {
-		await discordRPC.instance.connect();
-	} catch (e) {
-		emitError(e);
-	}
+	discordRPC.instance.onReady = () => setDiscordRPC();
+	await discordRPC.instance.connectWithRetry();
 }
 
 // --- RPC ---
@@ -415,6 +412,7 @@ const handlers = createRpcHandlers({
 	emitToFrontend,
 	emitError,
 	play,
+	setDiscordRPC,
 }) as any;
 
 // --- Cleanup local-only resources ---

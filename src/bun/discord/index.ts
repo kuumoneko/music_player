@@ -8,11 +8,17 @@ const pipePath = os.platform() === 'win32'
     ? '\\\\?\\pipe\\discord-ipc-0'
     : `/tmp/discord-ipc-0`;
 
+const CONNECT_TIMEOUT_MS = 6000;
+const RETRY_INTERVAL_MS = 20_000;
+
 export default class DiscordRPC {
     private socket: net.Socket | null = null;
     private clientId: string;
+    private retryTimer: ReturnType<typeof setTimeout> | null = null;
+    private retryStopped = true;
     public isReady: boolean = false;
     public username: string | null | undefined;
+    public onReady: (() => void) | null = null;
 
     constructor(clientId: string) {
         this.clientId = clientId;
@@ -22,45 +28,120 @@ export default class DiscordRPC {
         return new Promise((resolve) => {
             const socket = net.connect(pipePath);
             socket.on('connect', () => {
+                socket.destroy();
                 resolve(true);
             });
             socket.on('error', () => {
                 this.isReady = false;
                 this.username = null;
                 this.socket = null;
+                socket.destroy();
                 resolve(false);
             });
         })
     }
 
-    async connect() {
+    async connect(): Promise<boolean> {
         return new Promise((resolve, reject) => {
             this.socket = net.connect(pipePath);
+            let buffer = Buffer.alloc(0);
+            let settled = false;
+
+            const finish = (result: boolean, err?: Error) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                if (err) reject(err);
+                else resolve(result);
+            };
+
+            const timeout = setTimeout(() => {
+                this.socket?.destroy();
+                this.socket = null;
+                finish(false, new Error("Discord IPC connect timed out (is the Discord client running?)"));
+            }, CONNECT_TIMEOUT_MS);
+
             this.socket.on('connect', () => {
                 writeLogs([{ type: "info", message: "Connected to pipe, sending handshake..." }]);
                 this.send(0, { v: 1, client_id: this.clientId });
             });
 
-            let resolved = false;
             this.socket.on('data', (data: Buffer) => {
-                try {
-                    const json = JSON.parse(data.subarray(8).toString());
-                    if (json.evt === 'READY') {
-                        writeLogs([{ type: "info", message: "Connected to Discord, client is Ready..." }]);
-                        this.isReady = true;
-                        this.username = json.data?.user?.username ?? null;
-                        if (!resolved) { resolved = true; resolve(true); }
+                buffer = Buffer.concat([buffer, data]);
+                while (buffer.length >= 8) {
+                    const len = buffer.readUInt32LE(4);
+                    if (buffer.length < 8 + len) break;
+                    const frame = buffer.subarray(8, 8 + len);
+                    buffer = buffer.subarray(8 + len);
+                    try {
+                        const json = JSON.parse(frame.toString());
+                        if (json.evt === 'READY') {
+                            writeLogs([{ type: "info", message: "Connected to Discord, client is Ready..." }]);
+                            this.isReady = true;
+                            this.username = json.data?.user?.username ?? null;
+                            finish(true);
+                        } else if (json.evt === 'ERROR') {
+                            const message = `Discord IPC error: ${json.data?.code ?? ""} ${json.data?.message ?? ""}`.trim();
+                            writeLogs([{ type: "error", message }]);
+                            const err = new Error(message) as Error & { fatal?: boolean };
+                            err.fatal = true;
+                            finish(false, err);
+                        }
+                    } catch (e) {
+                        const message = e instanceof Error ? e.message : String(e);
+                        writeLogs([{ type: "error", message }]);
                     }
-                } catch (e) {
-                    const message = e instanceof Error ? e.message : String(e);
-                    writeLogs([{ type: "error", message }]);
                 }
             });
-            this.socket.on('error', (err) => { if (!resolved) { resolved = true; reject(err); } });
-            this.socket.on("close", () => {
-                if (!resolved) { resolved = true; resolve(false); }
-            })
+
+            this.socket.on('error', (err) => {
+                this.socket = null;
+                finish(false, err);
+            });
+
+            this.socket.on('close', () => {
+                this.socket = null;
+                this.isReady = false;
+                this.username = null;
+                finish(false);
+            });
         });
+    }
+
+    async connectWithRetry(intervalMs: number = RETRY_INTERVAL_MS): Promise<boolean> {
+        this.stopRetry();
+        this.retryStopped = false;
+        try {
+            const ok = await this.connect();
+            if (ok) {
+                this.onReady?.();
+                return true;
+            }
+        } catch (e) {
+            const fatal = (e as Error & { fatal?: boolean })?.fatal;
+            if (fatal) {
+                this.stopRetry();
+                return false;
+            }
+        }
+        this.scheduleRetry(intervalMs);
+        return false;
+    }
+
+    private scheduleRetry(intervalMs: number) {
+        if (this.retryStopped || this.isReady) return;
+        this.retryTimer = setTimeout(() => {
+            this.retryTimer = null;
+            this.connectWithRetry(intervalMs);
+        }, intervalMs);
+    }
+
+    private stopRetry() {
+        this.retryStopped = true;
+        if (this.retryTimer) {
+            clearTimeout(this.retryTimer);
+            this.retryTimer = null;
+        }
     }
 
     async setMusic(track: { source: string, id: string, title: string, thumbnail: string, artist: string } | null, player: Player, current: { time: number, duration: number }) {
@@ -142,6 +223,7 @@ export default class DiscordRPC {
     }
 
     disconnect() {
+        this.stopRetry();
         this.clearMusic();
         this.isReady = false;
         this.username = null;

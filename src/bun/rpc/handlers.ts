@@ -43,6 +43,7 @@ export interface RpcContext {
   emitToFrontend: (message: string, payload: any) => void;
   emitError: (error: unknown) => void;
   play: () => void;
+  setDiscordRPC: () => void;
 }
 
 const rateLimitMap = new Map<string, number>();
@@ -88,7 +89,7 @@ function withErrorLog<T, A extends unknown[]>(
 }
 
 export function createRpcHandlers(ctx: RpcContext) {
-  const { player, current, isLocal, isDiscord, DiscordClientId, emitToFrontend, play } = ctx;
+  const { player, current, isLocal, isDiscord, DiscordClientId, emitToFrontend, play, setDiscordRPC } = ctx;
 
   const withErrorLogEmit = <T, A extends unknown[]>(label: string, fn: (...args: A) => Promise<T>) => {
     return withErrorLog(label, fn, (message: string) => {
@@ -461,17 +462,18 @@ writeLogs([{
       try {
         if (isDiscord) {
           const DiscordModule = await import("../discord/index.ts");
+          ctx.discordRPC.instance?.disconnect();
           ctx.discordRPC.instance = new DiscordModule.default(String(DiscordClientId));
-          try {
-            await ctx.discordRPC.instance.connect();
+          ctx.discordRPC.instance.onReady = () => setDiscordRPC();
+          const ok = await ctx.discordRPC.instance.connectWithRetry();
+          if (ok) {
             return ctx.discordRPC.instance?.username ?? false;
-          } catch {
-            emitToFrontend("showMessage", {
-              title: "Discord Client is not running",
-              message: "Please open Discord Client then Connect again.",
-            });
-            return false;
           }
+          emitToFrontend("showMessage", {
+            title: "Discord Client is not running",
+            message: "Please open Discord Client then Connect again.",
+          });
+          return false;
         } else {
           emitToFrontend("showMessage", {
             title: "Discord RPC is not installed",

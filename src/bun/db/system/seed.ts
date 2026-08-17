@@ -54,7 +54,7 @@ export async function seedSystemFromAssets(assetsDir: string, options: SeedOptio
                         writeLogs([{ type: "error", message: `Failed to remove system.json after seeding: ${message}` }]);
                     }
                 }
-                return data;
+                return { ...getSystemDefaults(), ...getSystemData(), ...data };
             }
         }
     } catch (e) {

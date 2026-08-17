@@ -80,6 +80,19 @@ async function main() {
     if (clientSecret) existing.googleClientSecret = await encryptCredential(clientSecret);
     else delete existing.googleClientSecret;
 
+    // Ensure runtime/system keys are always present so dev and packaged runs
+    // get local mode and Discord RPC even if the profile omits them.
+    // Fill-if-missing only: explicit values in the file always survive.
+    const SYSTEM_DEFAULTS: Record<string, unknown> = {
+        isLocal: true,
+        isDiscord: true,
+        appPort: 12345,
+        DiscordClientId: "1456480026869629094",
+    };
+    for (const [k, v] of Object.entries(SYSTEM_DEFAULTS)) {
+        if (!(k in existing)) existing[k] = v;
+    }
+
     writeFileSync(SYSTEM_FILE, JSON.stringify(existing, null, 2), "utf8");
     console.log(`Wrote ${SYSTEM_FILE} (profile: ${profile})`);
     console.log(`  youtubeApiKeys: ${encryptedKeys.length} encrypted key(s)`);
