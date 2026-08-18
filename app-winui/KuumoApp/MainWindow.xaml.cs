@@ -122,6 +122,7 @@ public sealed partial class MainWindow : Window
                 DispatcherQueue.TryEnqueue(() => _smtc.Update(new SmtcUpdateDto(current.Title, current.Artist, current.Thumbnail, false, playing?.IsPlaying ?? false)));
             }
             await _windowService.InitializeAsync();
+            _showFallbackTimer.Stop();
             DispatcherQueue.TryEnqueue(() => Shell.SetStatus($"connected | isLocal={isLocal}"));
         }
         catch (Exception ex)

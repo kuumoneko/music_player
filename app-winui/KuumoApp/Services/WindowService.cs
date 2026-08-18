@@ -17,7 +17,7 @@ public sealed class WindowService
 
     public bool IsCloseToTray { get; set; }
 
-    public bool IsWindowVisible { get; set; } = true;
+    public bool IsWindowVisible => _visible;
 
     public event Action? WindowHidden;
 
@@ -32,6 +32,7 @@ public sealed class WindowService
     private bool _closingSubscribed;
     private bool _shownOnce;
     private bool _applying;
+    private bool _visible;
     private CancellationTokenSource? _saveCts;
     private int _lastSavedWidth;
     private int _lastSavedHeight;
@@ -151,11 +152,11 @@ public sealed class WindowService
     {
         var isMinimized = _window.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter { State: Microsoft.UI.Windowing.OverlappedPresenterState.Minimized };
         var visible = _window.AppWindow.IsVisible && !isMinimized;
-        if (visible == IsWindowVisible)
+        if (visible == _visible)
         {
             return;
         }
-        IsWindowVisible = visible;
+        _visible = visible;
         AppLog.Write("window", $"visibility: {(visible ? "shown" : "hidden")}");
         if (visible)
         {
@@ -296,7 +297,6 @@ public sealed class WindowService
 
     public void Activate()
     {
-        IsWindowVisible = true;
         _window.AppWindow.Show();
         _window.Activate();
     }
