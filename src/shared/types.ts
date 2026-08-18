@@ -62,7 +62,7 @@ export type AppRPCType = {
                 response: UserData[keyof UserData]
             },
             setUserData: {
-                params: { key: keyof UserData, data: string },
+                params: { key: keyof UserData, data: any },
                 response: unknown
             },
             getPlayingData: {
@@ -376,7 +376,8 @@ export interface UserData {
     youtubeSubscriptions?: Artist[],
     youtubeSubscriptionsEtag?: string,
     brokenPins?: Record<string, { at: number, name: string }>,
-    homeFeedSections?: { sections: HomeFeedSection[], at: number }
+    homeFeedSections?: { sections: HomeFeedSection[], at: number },
+    windowSize?: { width: number, height: number, isMaximized: boolean }
 }
 
 export interface System {

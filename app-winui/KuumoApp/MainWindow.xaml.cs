@@ -1,6 +1,7 @@
 using System.Text.Json;
 using KuumoApp.Models;
 using KuumoApp.Services;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 
 namespace KuumoApp;
@@ -11,6 +12,7 @@ public sealed partial class MainWindow : Window
     private readonly SmtcService _smtc;
     private readonly TrayService _tray;
     private readonly UiMemoryManager _memory;
+    private readonly DispatcherQueueTimer _showFallbackTimer;
     private bool _smtcInitialized;
     private int _lastTimeMs;
     private int _lastDurationMs;
@@ -39,12 +41,26 @@ public sealed partial class MainWindow : Window
         };
         _windowService.WindowShown += () =>
         {
+            _showFallbackTimer.Stop();
             _memory.OnWindowShown();
             if (_lastSmtc is not null)
             {
                 _smtc.Update(_lastSmtc);
             }
         };
+
+        _showFallbackTimer = DispatcherQueue.CreateTimer();
+        _showFallbackTimer.Interval = TimeSpan.FromSeconds(12);
+        _showFallbackTimer.IsRepeating = false;
+        _showFallbackTimer.Tick += (_, _) =>
+        {
+            if (!_windowService.IsWindowVisible)
+            {
+                AppLog.Write("window", "backend not ready in time, showing window at default bounds");
+                _windowService.Activate();
+            }
+        };
+        _showFallbackTimer.Start();
 
         App.Services.Events.OpenApp += () => _windowService.Activate();
         App.Services.Events.AppExit += App.ShutdownApp;

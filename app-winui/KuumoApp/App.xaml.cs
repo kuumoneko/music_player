@@ -28,7 +28,6 @@ public partial class App : Application
         SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
         SetCurrentProcessExplicitAppUserModelID("kuumo.app");
         MainWindow = new MainWindow();
-        MainWindow.Activate();
         Services.Start();
     }
 
