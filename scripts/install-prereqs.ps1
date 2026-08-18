@@ -16,15 +16,36 @@ $WasdkRedistUrl = "https://aka.ms/windowsappsdk/2.3/2.3.1/Microsoft.WindowsAppRu
 $tempRoot = Join-Path $env:TEMP "kuumo-prereq"
 New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
 
-function Install-DotnetRuntime {
-    $installed = Get-ItemProperty "HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App" -ErrorAction SilentlyContinue
-    if ($installed) {
-        foreach ($v in $installed.PSObject.Properties.Value) {
-            if ($v -as [version] -and [version]$v -ge [version]$DotnetVersion) {
-                Write-Output "SKIP .NET Desktop Runtime (>= $DotnetVersion installed: $v)"
-                return
+function Test-DotnetInstalled {
+    # Most reliable: ask dotnet itself (covers sharedhost/sharedfx layouts and
+    # per-user installs). Registry fallbacks for non-PATH machines.
+    $dotnet = Join-Path $env:ProgramFiles "dotnet\dotnet.exe"
+    if (Test-Path $dotnet) {
+        foreach ($line in & $dotnet --list-runtimes 2>$null) {
+            if ($line -match "^Microsoft\.WindowsDesktop\.App\s+(\d+\.\d+\.\d+)" -and [version]$matches[1] -ge [version]$DotnetVersion) {
+                return $true
             }
         }
+    }
+    foreach ($regPath in @(
+        "HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App",
+        "HKCU:\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
+    )) {
+        $installed = Get-ItemProperty $regPath -ErrorAction SilentlyContinue
+        if (-not $installed) { continue }
+        foreach ($v in $installed.PSObject.Properties.Value) {
+            if ($v -as [version] -and [version]$v -ge [version]$DotnetVersion) {
+                return $true
+            }
+        }
+    }
+    return $false
+}
+
+function Install-DotnetRuntime {
+    if (Test-DotnetInstalled) {
+        Write-Output "SKIP .NET Desktop Runtime (>= $DotnetVersion installed)"
+        return
     }
 
     Write-Output "DOWNLOAD .NET Desktop Runtime $DotnetVersion ..."
@@ -59,55 +80,65 @@ function Install-WasdkRuntime {
         exit 1
     }
 
-    $inventory = Get-ChildItem -LiteralPath $extract -Recurse -Filter "MSIX.inventory" | Select-Object -First 1
-    if (-not $inventory) {
-        Write-Error "MSIX.inventory not found in the Windows App SDK Redist archive."
+    # The 2.3 Redist archive serves the x64 framework packages directly under
+    # MSIX/win10-x64/ (no MSIX.inventory since the 2.3.1 refresh).
+    $msixes = Get-ChildItem -LiteralPath $extract -Recurse -Filter "*.msix" |
+        Where-Object { $_.FullName -match "win10-x64" }
+
+    if ($msixes.Count -eq 0) {
+        Write-Error "No win10-x64 MSIX packages found in the Windows App SDK Redist archive."
         exit 1
     }
 
-    $packages = Get-Content -LiteralPath $inventory.FullName | ForEach-Object {
-        $parts = $_ -split "=", 2
-        if ($parts.Count -ne 2) { return }
-        $fullParts = $parts[1] -split "_", 4
-        if ($fullParts.Count -ne 4) { return }
-        [PSCustomObject]@{
-            File    = $parts[0].Trim()
-            Name    = $fullParts[0]
-            Version = $fullParts[1]
-            Arch    = $fullParts[2]
-        }
-    } | Where-Object { $_.Arch -eq "x64" }
-
-    if ($packages.Count -eq 0) {
-        Write-Error "No x64 MSIX entries found in the Windows App SDK Redist archive."
-        exit 1
-    }
-
-    foreach ($pkg in $packages) {
-        $file = Get-ChildItem -LiteralPath $extract -Recurse -Filter $pkg.File | Select-Object -First 1
-        if (-not $file) {
-            Write-Error "Missing $($pkg.File) in the Windows App SDK Redist archive."
+    foreach ($msix in $msixes) {
+        $identity = Get-MsixIdentity $msix.FullName
+        if (-not $identity) {
+            Write-Error "Failed to read AppxManifest.xml from $($msix.Name)."
             exit 1
         }
 
-        $installed = Get-AppxPackage -Name $pkg.Name -ErrorAction SilentlyContinue |
-            Where-Object { $_.Architecture -ieq $pkg.Arch -and $_.Version -ge [version]$pkg.Version }
+        $installed = Get-AppxPackage -Name $identity.Name -ErrorAction SilentlyContinue |
+            Where-Object { $_.Architecture -ieq $identity.Arch -and $_.Version -ge [version]$identity.Version }
         if ($installed) {
-            Write-Output "SKIP $($pkg.Name) $($pkg.Version) (already installed)"
+            Write-Output "SKIP $($identity.Name) $($identity.Version) (already installed)"
             continue
         }
 
-        Write-Output "INSTALL $($pkg.Name) $($pkg.Version) ..."
+        Write-Output "INSTALL $($identity.Name) $($identity.Version) ..."
         try {
-            Add-AppxPackage -Path $file.FullName -ErrorAction Stop
+            Add-AppxPackage -Path $msix.FullName -ErrorAction Stop
         } catch {
-            $check = Get-AppxPackage -Name $pkg.Name -ErrorAction SilentlyContinue |
-                Where-Object { $_.Version -ge [version]$pkg.Version }
+            $check = Get-AppxPackage -Name $identity.Name -ErrorAction SilentlyContinue |
+                Where-Object { $_.Version -ge [version]$identity.Version }
             if (-not $check) {
-                Write-Error "Failed to install $($pkg.Name): $_"
+                Write-Error "Failed to install $($identity.Name): $_"
                 exit 1
             }
         }
+    }
+}
+
+function Get-MsixIdentity {
+    param([string]$MsixPath)
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($MsixPath)
+    try {
+        $entry = $archive.Entries | Where-Object { $_.FullName -eq "AppxManifest.xml" } | Select-Object -First 1
+        if (-not $entry) { return $null }
+        $reader = New-Object System.IO.StreamReader($entry.Open())
+        try {
+            [xml]$manifest = $reader.ReadToEnd()
+        } finally {
+            $reader.Dispose()
+        }
+        return [PSCustomObject]@{
+            Name    = $manifest.Package.Identity.Name
+            Version = $manifest.Package.Identity.Version
+            Arch    = $manifest.Package.Identity.ProcessorArchitecture
+        }
+    } finally {
+        $archive.Dispose()
     }
 }
 

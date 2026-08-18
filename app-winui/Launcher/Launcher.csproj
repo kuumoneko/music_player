@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <DebugType>none</DebugType>
+    <AssemblyName>KuumoApp</AssemblyName>
+    <RootNamespace>KuumoApp.Launcher</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>..\KuumoApp\Assets\AppIcon.ico</ApplicationIcon>
+    <Version>6.0.0</Version>
+    <Product>Kuumo App</Product>
+    <Company>kuumoneko</Company>
+    <Description>Kuumo App launcher</Description>
+  </PropertyGroup>
+</Project>

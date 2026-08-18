@@ -6,7 +6,8 @@
 //   bun run build:prod              -> build/backend.js + build/*.dll
 //   bun build --compile             -> build/backend.exe (compiled Bun backend)
 //   dotnet publish                  -> WinUI publish output (framework-dependent WinAppSDK)
-//   assemble                        -> build/package/ (KuumoApp.exe, backend.exe, include/, data/)
+//   dotnet publish launcher         -> build/launcher/ (single-file root launcher exe)
+//   assemble                        -> build/package/ (launcher KuumoApp.exe + app/ payload)
 //   ISCC.exe setup.iss              -> artifacts/kuumoapp[_<profile>]_{version}-setup.exe
 //   update manifest                 -> artifacts/stable-win-x64-update.json
 //
@@ -76,13 +77,15 @@ function installerBaseName(profile: string): string {
     return profile === "release" ? `kuumoapp_${version}-setup` : `kuumoapp_${profile}_${version}-setup`;
 }
 
-// Framework-dependent Windows App SDK deployment, flat layout: the .NET host
-// resolves every managed assembly strictly through KuumoApp.deps.json paths
-// relative to the app root (verified via COREHOST_TRACE — it strips subfolder
-// prefixes from package entries, probes nothing else, and Microsoft.WinUI is
-// loaded at JIT time before Main's AssemblyResolve handler can attach). All
-// publish output therefore stays flat at the app root. Only the backend's
-// native libs (dlopen'd by backend.exe from its CWD) live in include\.
+// Framework-dependent Windows App SDK deployment, kept FLAT inside app\: the
+// .NET host resolves every managed assembly strictly through KuumoApp.deps.json
+// paths relative to app\KuumoApp.exe (verified via COREHOST_TRACE — it strips
+// subfolder prefixes from package entries, probes nothing else, and
+// Microsoft.WinUI is loaded at JIT time before Main's AssemblyResolve handler
+// can attach). The install root only holds the launcher (see
+// app-winui/Launcher) plus the app\ folder, so the proven flat layout stays
+// untouched. The backend's native libs (dlopen'd by backend.exe from its CWD)
+// live in app\include\.
 
 // WASDK package files with no code references (verified: no C#/Bun usage of
 // onnx/AI/WebView2/notifications/widgets/etc.). Skipped from the payload
@@ -174,35 +177,53 @@ for (const profile of profiles) {
     console.log(`\n===== Packaging profile: ${profile} =====`);
     run("bun", ["./scripts/encrypt-credentials.ts", "--profile", profile]);
 
-    // 3) Assemble payload
+    // 3) Assemble payload: launcher at the package root, full app payload in
+    // app\ (the host resolves every managed assembly from deps.json paths
+    // relative to app\KuumoApp.exe, so the flat layout inside app\ is the same
+    // as before — only the install root gets a launcher in front of it).
     const pkg = resolve(buildDir, "package");
     rmSync(pkg, { recursive: true, force: true });
     mkdirSync(pkg, { recursive: true });
 
-    // Publish output copied flat to the app root (the host resolves every
-    // managed assembly from deps.json paths relative to the app root). Only
-    // the backend's native libs go to include\ (dlopen'd from CWD = include).
-    const includeDir = resolve(pkg, "include");
-    mkdirSync(includeDir, { recursive: true });
+    const appDir = resolve(pkg, "app");
+    mkdirSync(appDir, { recursive: true });
     for (const entry of readdirSync(publishDir)) {
         if (entry === "KuumoApp.pdb") continue; // no debug symbols in the payload
         if (PUBLISH_TRIM.has(entry)) continue; // unused WASDK files, see PUBLISH_TRIM
-        cpSync(resolve(publishDir, entry), resolve(pkg, entry), { recursive: true });
+        cpSync(resolve(publishDir, entry), resolve(appDir, entry), { recursive: true });
     }
 
-    // backend.exe at app root (compiled Bun backend; BunHostService launches it there)
-    copyFileSync(resolve(buildDir, "backend.exe"), resolve(pkg, "backend.exe"));
+    // backend.exe at app\ (compiled Bun backend; BunHostService launches it there)
+    copyFileSync(resolve(buildDir, "backend.exe"), resolve(appDir, "backend.exe"));
 
-    // include/ also holds the backend's native libs (dlopen'd from CWD = include dir)
+    // app\include\ holds the backend's native libs (dlopen'd from CWD = include dir)
+    const includeDir = resolve(appDir, "include");
+    mkdirSync(includeDir, { recursive: true });
     for (const dll of readdirSync(binDir)) {
         copyFileSync(resolve(binDir, dll), resolve(includeDir, dll));
     }
 
-    // data/system.json — shipped credentials (encrypted), read as {app}/data/system.json
-    const dataDir = resolve(pkg, "data");
+    // app\data\system.json — shipped credentials (encrypted), read as {app}\app\data\system.json
+    const dataDir = resolve(appDir, "data");
     mkdirSync(dataDir, { recursive: true });
     requireDir(resolve(root, "data", "system.json"), "data/system.json");
     copyFileSync(resolve(root, "data", "system.json"), resolve(dataDir, "system.json"));
+
+    // 3b) Root launcher: single-file exe that spawns app\KuumoApp.exe
+    const launcherDir = resolve(buildDir, "launcher");
+    rmSync(launcherDir, { recursive: true, force: true });
+    run("dotnet", [
+        "publish",
+        resolve(root, "app-winui", "Launcher", "Launcher.csproj"),
+        "-c",
+        "Release",
+        "-o",
+        launcherDir,
+    ], resolve(root, "app-winui"));
+    for (const entry of readdirSync(launcherDir)) {
+        if (entry.endsWith(".pdb")) continue;
+        copyFileSync(resolve(launcherDir, entry), resolve(pkg, entry));
+    }
 
     console.log(`Payload assembled at ${pkg}`);
 

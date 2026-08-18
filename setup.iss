@@ -61,7 +61,8 @@ Type: files; Name: "{app}\DirectML.dll"
 Type: files; Name: "{app}\onnxruntime.dll"
 Type: files; Name: "{app}\Microsoft.ML.OnnxRuntime.dll"
 Type: files; Name: "{app}\NPUDetect.dll"
-; Managed DLLs that moved to include\ (Program.cs redirects loading there)
+; Managed DLLs that used to sit at the app root in old layouts; new installs
+; ship them inside app\ (payload). Remove the stale root copies.
 Type: files; Name: "{app}\CommunityToolkit.Mvvm.dll"
 Type: files; Name: "{app}\H.NotifyIcon.dll"
 Type: files; Name: "{app}\H.NotifyIcon.WinUI.dll"
@@ -75,6 +76,17 @@ Type: files; Name: "{app}\SessionHandleIPCProxyStub.dll"
 Type: files; Name: "{app}\System.Numerics.Tensors.dll"
 Type: files; Name: "{app}\workloads*.json"
 Type: files; Name: "{app}\KuumoApp.pdb"
+; Old flat-layout installs kept the whole payload at the app root; it now
+; lives in app\ (root holds only the launcher + uninstaller). Purge the stale
+; files on upgrade so the root stays clean.
+Type: filesandordirs; Name: "{app}\include"
+Type: filesandordirs; Name: "{app}\Assets"
+Type: filesandordirs; Name: "{app}\data"
+Type: files; Name: "{app}\backend.exe"
+Type: files; Name: "{app}\KuumoApp.dll"
+Type: files; Name: "{app}\KuumoApp.pri"
+Type: files; Name: "{app}\KuumoApp.deps.json"
+Type: files; Name: "{app}\KuumoApp.runtimeconfig.json"
 ; Old WinUI satellite resource folders from self-contained installs (any locale
 ; format: en-US, fil-PH, az-Latn-AZ, ...). The framework-dependent build ships
 ; no .mui files; localized resources come from the runtime package.
@@ -138,7 +150,7 @@ Type: files; Name: "{app}\include\WinRT.Runtime.dll"
 [Files]
 Source: "build\package\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Runtime prerequisite installer script (downloads .NET + Windows App SDK runtime)
-Source: "scripts\install-prereqs.ps1"; DestDir: "{tmp}"; Flags: dontcopy
+Source: "scripts\install-prereqs.ps1"; DestDir: "{tmp}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUserModelID: "kuumo.app"
@@ -147,7 +159,7 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 ; 1) Runtime prerequisites: .NET Desktop Runtime + Windows App SDK runtime
 ;    (downloaded and installed by install-prereqs.ps1; requires internet)
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\install-prereqs.ps1"""; StatusMsg: "Installing runtime prerequisites..."; Flags: runhidden waituntilterminated
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\install-prereqs.ps1"""; StatusMsg: "Installing runtime prerequisites..."; Flags: waituntilterminated
 ; 2) Seed app data, then launch
-Filename: "{app}\backend.exe"; Parameters: "--seed --data-dir ""{userappdata}\KuumoApp"" --assets {app}"; StatusMsg: "Configuring app data..."; Flags: runhidden waituntilterminated
+Filename: "{app}\app\backend.exe"; Parameters: "--seed --data-dir ""{userappdata}\KuumoApp"" --assets ""{app}\app"""; StatusMsg: "Configuring app data..."; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent

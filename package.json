@@ -14,9 +14,10 @@
         "release": "bun ./scripts/release.ts",
         "package": "bun ./scripts/package.ts",
         "encrypt-credentials": "bun ./scripts/encrypt-credentials.ts",
+        "install-run": "bun ./scripts/install-run.ts",
         "register-shortcut": "bun ./scripts/register-shortcut.ts",
         "typecheck:bun": "bunx tsc --noEmit",
-        "typecheck:dotnet": "dotnet msbuild app-winui/KuumoApp/KuumoApp.csproj /t:Build /p:GenerateAppxPackageOnBuild=false -p:RunAnalyzersDuringBuild=false -p:DisableXbfLineInfo=true -p:WindowsAppSDKSelfContained=false -clp:ErrorsOnly -nologo",
+        "typecheck:dotnet": "dotnet msbuild app-winui/KuumoApp/KuumoApp.csproj /t:Build /p:GenerateAppxPackageOnBuild=false -p:RunAnalyzersDuringBuild=false -p:DisableXbfLineInfo=true -p:WindowsAppSDKSelfContained=false -clp:ErrorsOnly -nologo && dotnet msbuild app-winui/Launcher/Launcher.csproj /t:\"Restore;Build\" -clp:ErrorsOnly -nologo",
         "typecheck": "bun run typecheck:bun && bun run typecheck:dotnet"
     },
     "dependencies": {

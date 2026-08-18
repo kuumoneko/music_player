@@ -44,6 +44,10 @@ app-winui/KuumoApp/      WinUI 3 frontend
   Services/              RpcClient.cs (WS JSON-RPC), RpcApi.cs (typed wrappers, 60s timeout),
                          BunHostService.cs (spawns backend, parses KUUMO_WS=), AppServices.cs (composition root)
   Views/                 ShellPage, HomePage, SearchPage, DetailPage, DownloadsPage, LocalPage, SettingsPage...
+app-winui/Launcher/      Tiny launcher exe (single-file, framework-dependent). Installed layout:
+                         root = launcher KuumoApp.exe + app\ folder holding the full flat payload
+                         (real apphost, backend.exe, DLLs, include\, Assets\, data\). The .NET host
+                         resolves everything relative to app\KuumoApp.exe, so the payload is untouched.
 scripts/                 dev.ts, winui-dev.ts, build.ts, package.ts, release.ts, encrypt-credentials.ts...
 ```
 
@@ -70,7 +74,7 @@ scripts/                 dev.ts, winui-dev.ts, build.ts, package.ts, release.ts,
 ## Critical gotchas
 
 - **Secrets — never commit or log**: `apikeys/*.json` (gitignored), `.env` (gitignored), `data/system.json` (encrypted creds, gitignored). Credentials are AES-256-GCM obfuscated with hardcoded key `kuumoapp::ship-credentials::v1` in `src/bun/lib/crypto.ts` (`ENC:` prefix) — obfuscation, not real security.
-- **Gitignored runtime dirs — do not edit**: `bin/` (native DLLs: libmpv, avcodec-62, avformat-62, avutil-60, swresample-6, libssp-0), `build/` (bundle/package output), `artifacts/`, `assets/`, `app-winui/KuumoApp/bin/` + `obj/`, `data/`.
+- **Gitignored runtime dirs — do not edit**: `bin/` (native DLLs: libmpv, avcodec-62, avformat-62, avutil-60, swresample-6, libssp-0), `build/` (bundle/package output), `artifacts/`, `assets/`, `app-winui/KuumoApp/bin/` + `obj/`, `app-winui/Launcher/bin/` + `obj/`, `data/`.
 - **Interlocking version pins — keep in sync**: WinAppSDK 2.3.1 (csproj) ↔ Bootstrap `0x00020003` (`Program.cs`) ↔ WindowsAppRuntime 2.3.1 (`install-prereqs.ps1`) ↔ .NET Desktop Runtime 10.0.9.
 - **PUBLISH_TRIM in `scripts/package.ts`**: only remove DLLs also listed in `setup.iss` `[InstallDelete]`. `Microsoft.InteractiveExperiences.Projection.dll` must NOT be trimmed (0xC000027B crash).
 - `package.json` `dependencies: {"bun": "^1.3.14"}` is a runtime marker placeholder — do not remove.
