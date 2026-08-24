@@ -107,7 +107,7 @@ jobs:
               if: steps.compare.outputs.should_release == 'true' && steps.cache-bin.outputs.cache-hit != 'true'
               shell: bash
               env:
-                  GH_TOKEN: ${{ secrets.CLONE_TOKEN  }}
+                  GH_TOKEN: ${{ secrets.CLONE_REPO  }}
               run: |
                   gh repo clone kuumoneko/musicapp-bin bin -- --depth 1
 
