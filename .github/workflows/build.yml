@@ -127,19 +127,6 @@ jobs:
                     '{api_keys: [$key], google: {client_id: $cid, client_secret: $secret}}' > apikeys/release.json
                   jq -n --arg id "$DISCORD_CLIENT_ID" '{client_id: $id}' > apikeys/discord.json
 
-            - name: Verify credentials
-              if: steps.compare.outputs.should_release == 'true'
-              shell: bash
-              run: |
-                  KEYS=$(jq '.api_keys | length' apikeys/release.json)
-                  CID=$(jq -r '.google.client_id // empty' apikeys/release.json)
-                  HAS_SECRET=$(jq -r 'if .google.client_secret then "encrypted" else "" end' apikeys/release.json)
-                  DISCORD=$(jq -r '.client_id // empty' apikeys/discord.json)
-                  echo "youtubeApiKeys: $KEYS key(s)"
-                  echo "googleClientId: ${CID:0:6}***"
-                  echo "googleClientSecret: $HAS_SECRET"
-                  echo "discordClientId: ${DISCORD:0:6}***"
-
             - name: Install dependencies
               if: steps.compare.outputs.should_release == 'true'
               run: bun install

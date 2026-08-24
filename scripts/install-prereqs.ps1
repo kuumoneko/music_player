@@ -68,18 +68,9 @@ function Install-DotnetRuntime {
 }
 
 function Install-WasdkRuntime {
-    $required = @(
-        "Microsoft.WindowsAppRuntime.Framework",
-        "Microsoft.WindowsAppRuntime.MainNet",
-        "Microsoft.WindowsAppRuntime.Singleton"
-    )
-    $allInstalled = $true
-    foreach ($name in $required) {
-        $pkg = Get-AppxPackage -Name $name -ErrorAction SilentlyContinue |
-            Where-Object { $_.Version -ge [version]"2.3.0" }
-        if (-not $pkg) { $allInstalled = $false; break }
-    }
-    if ($allInstalled) {
+    $installed = Get-AppxPackage -Name "Microsoft.WindowsAppRuntime*" -ErrorAction SilentlyContinue |
+        Where-Object { $_.Version -ge [version]"2.3.0" }
+    if ($installed) {
         Write-Output "SKIP Windows App SDK runtime (>= 2.3.0 installed)"
         return
     }
