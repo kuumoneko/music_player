@@ -6,6 +6,9 @@
 //     "api_keys": ["AIza..."],
 //     "google": { "client_id": "xxx.apps.googleusercontent.com" }
 //   }
+// Discord file: apikeys/discord.json (required)
+// Shape:
+//   { "client_id": "abc123..." }
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { encryptCredential } from "../src/bun/lib/crypto.ts";
@@ -16,6 +19,10 @@ const SYSTEM_FILE = resolve(ROOT, "data", "system.json");
 interface ProfileFile {
     api_keys: string[];
     google?: { client_id?: string; client_secret?: string };
+}
+
+interface DiscordFile {
+    client_id?: string;
 }
 
 function readProfileArg(): string {
@@ -68,6 +75,26 @@ async function main() {
     const clientId = data.google?.client_id?.trim() || "";
     const clientSecret = data.google?.client_secret?.trim() || "";
 
+    const discordFile = resolve(ROOT, "apikeys", "discord.json");
+    if (!existsSync(discordFile)) {
+        console.error(`Discord file not found: ${discordFile}`);
+        console.error('Create it with { "client_id": "..." } and try again.');
+        process.exit(1);
+    }
+
+    let discordClientId: string;
+    try {
+        const discordData = JSON.parse(readFileSync(discordFile, "utf8")) as DiscordFile;
+        discordClientId = discordData.client_id?.trim() || "";
+    } catch (e) {
+        console.error(`Failed to parse ${discordFile}: ${e instanceof Error ? e.message : String(e)}`);
+        process.exit(1);
+    }
+    if (!discordClientId) {
+        console.error(`No client_id found in ${discordFile}.`);
+        process.exit(1);
+    }
+
     const existing = existsSync(SYSTEM_FILE) ? JSON.parse(readFileSync(SYSTEM_FILE, "utf8")) : {};
 
     const encryptedKeys = [];
@@ -87,7 +114,7 @@ async function main() {
         isLocal: true,
         isDiscord: true,
         appPort: 12345,
-        DiscordClientId: "1456480026869629094",
+        DiscordClientId: discordClientId,
     };
     for (const [k, v] of Object.entries(SYSTEM_DEFAULTS)) {
         if (!(k in existing)) existing[k] = v;
