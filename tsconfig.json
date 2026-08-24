@@ -1,40 +1,50 @@
 {
     "compilerOptions": {
-        "moduleDetection": "force",
-        "allowJs": true,
-        "verbatimModuleSyntax": false,
-        "noPropertyAccessFromIndexSignature": true,
-
-        "target": "ES2020",
-        "useDefineForClassFields": true,
-        "lib": ["ES2020", "DOM", "DOM.Iterable"],
-        "module": "es2022",
-        "skipLibCheck": true,
-
+        /* Base Language & Environment */
+        "target": "ESNext",
+        "lib": [
+            "ESNext",
+            "DOM",
+            "DOM.Iterable"
+        ],
+        "module": "ESNext",
         "moduleResolution": "bundler",
-        "allowImportingTsExtensions": true,
+        "moduleDetection": "force",
+        "useDefineForClassFields": true,
+        "types": [
+            "bun"
+        ],
+        "allowJs": true,
         "resolveJsonModule": true,
-        "isolatedModules": true,
         "noEmit": true,
-        "jsx": "react-jsx",
-
+        "allowImportingTsExtensions": true,
+        "isolatedModules": true,
+        "verbatimModuleSyntax": false,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        /* Strict Type-Checking */
         "strict": true,
+        "skipLibCheck": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
-
-        "composite": true,
-        "allowSyntheticDefaultImports": true,
-
+        "noPropertyAccessFromIndexSignature": true,
         "paths": {
-            "@/*": ["./src/*"]
-        },
-        "types": ["bun"],
-        "erasableSyntaxOnly": false,
-        "noUncheckedSideEffectImports": true,
-        "allowArbitraryExtensions": false,
-        "esModuleInterop": true
+            "@/*": [
+                "/src/*"
+            ]
+        }
     },
-    "include": ["src/**/*", "scripts", "test/**/*"],
-    "exclude": ["node_modules", "dist", "build", "electrobun", "backup/**/*"]
+    "include": [
+        "src/**/*",
+        "scripts/**/*",
+        "test/**/*"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "build",
+        "electrobun",
+        "backup/**/*"
+    ]
 }
