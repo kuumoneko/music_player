@@ -50,7 +50,7 @@ jobs:
               id: version
               shell: bash
               run: |
-                  VERSION=$(awk '/^## Version$/{getline; sub(/^>\s*/, ""); print}' README.md)
+                  VERSION=$(awk '/^## Version$/{getline; if (/^>/) {sub(/^>\s*/, ""); print} else {getline; sub(/^>\s*/, ""); print}}' README.md)
                   if [ -z "$VERSION" ]; then
                     echo "No version found in README.md"
                     echo "should_release=false" >> "$GITHUB_OUTPUT"
