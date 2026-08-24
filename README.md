@@ -4,7 +4,7 @@
 
 ## Version
 
-> 7.0.0
+> 7.0.001
 
 ## Features
 
