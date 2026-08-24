@@ -10,7 +10,6 @@ node_modules
 bin/
 obj/
 *.pfx
-package-lock.json
 .env
 electrobun.config.ts
 artifacts
@@ -22,3 +21,4 @@ tsconfig.tsbuildinfo
 temp_electrobun.config.ts
 .vite-dev-url
 /apikeys
+bun.lock
