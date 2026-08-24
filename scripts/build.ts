@@ -17,7 +17,7 @@ if (!result.success) process.exit(1);
 
 const binDir = resolve(root, "build", "bin");
 mkdirSync(binDir, { recursive: true });
-for (const file of readdirSync(resolve(root, "bin"))) {
+for (const file of readdirSync(resolve(root, "bin")).filter(f => f !== ".git")) {
     copyFileSync(resolve(root, "bin", file), resolve(binDir, file));
     copyFileSync(resolve(root, "bin", file), resolve(root, "build", file));
 }
