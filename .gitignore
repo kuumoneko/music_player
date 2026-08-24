@@ -13,7 +13,6 @@ obj/
 .env
 electrobun.config.ts
 artifacts
-/assets
 electrobun
 release
 .zigversion
