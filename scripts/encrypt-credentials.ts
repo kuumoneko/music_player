@@ -4,7 +4,7 @@
 // Shape:
 //   {
 //     "api_keys": ["AIza..."],
-//     "google": { "client_id": "xxx.apps.googleusercontent.com" }
+//     "google": { "client_id": "xxx.apps.googleusercontent.com", "client_secret": "..." }
 //   }
 // Discord file: apikeys/discord.json (required)
 // Shape:
@@ -18,7 +18,7 @@ const SYSTEM_FILE = resolve(ROOT, "data", "system.json");
 
 interface ProfileFile {
     api_keys: string[];
-    google?: { client_id?: string; client_secret?: string };
+    google: { client_id: string; client_secret: string };
 }
 
 interface DiscordFile {
@@ -72,8 +72,16 @@ async function main() {
             console.warn(`  ! suspicious placeholder key in profile: "${k.trim()}"`);
         }
     }
-    const clientId = data.google?.client_id?.trim() || "";
-    const clientSecret = data.google?.client_secret?.trim() || "";
+    const clientId = data.google.client_id.trim();
+    const clientSecret = data.google.client_secret.trim();
+    if (!clientId) {
+        console.error(`No client_id found in google section of ${profileFile}.`);
+        process.exit(1);
+    }
+    if (!clientSecret) {
+        console.error(`No client_secret found in google section of ${profileFile}.`);
+        process.exit(1);
+    }
 
     const discordFile = resolve(ROOT, "apikeys", "discord.json");
     if (!existsSync(discordFile)) {
@@ -100,15 +108,11 @@ async function main() {
     const encryptedKeys = [];
     for (const k of keys) encryptedKeys.push(await encryptCredential(k.trim()));
     existing.youtubeApiKeys = encryptedKeys;
-    if (clientId) existing.googleClientId = clientId;
-    else delete existing.googleClientId;
-    // Ship the client secret encrypted if the profile has one (modern OAuth
-    // clients — including desktop apps — require it at the token endpoint).
-    if (clientSecret) existing.googleClientSecret = await encryptCredential(clientSecret);
-    else delete existing.googleClientSecret;
+    existing.googleClientId = clientId;
+    existing.googleClientSecret = await encryptCredential(clientSecret);
 
     // Ensure runtime/system keys are always present so dev and packaged runs
-    // get local mode and Discord RPC even if the profile omits them.
+    // get local mode and Discord RPC.
     // Fill-if-missing only: explicit values in the file always survive.
     const SYSTEM_DEFAULTS: Record<string, unknown> = {
         isLocal: true,
@@ -125,6 +129,7 @@ async function main() {
     console.log(`  youtubeApiKeys: ${encryptedKeys.length} encrypted key(s)`);
     console.log(`  googleClientId: ${existing.googleClientId ?? "(none)"}`);
     console.log(`  googleClientSecret: ${existing.googleClientSecret ? "encrypted" : "(none)"}`);
+    console.log(`  discordClientId: ${discordClientId}`);
 }
 
 main().catch((e) => {

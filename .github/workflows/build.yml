@@ -1,0 +1,131 @@
+name: Build & Release
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "README.md"
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+
+            - name: Setup .NET 10 SDK
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "10.0.x"
+
+            - name: Install Inno Setup
+              run: choco install innosetup -y
+
+            - name: Extract version from README.md
+              id: version
+              shell: bash
+              run: |
+                  VERSION=$(awk '/^## Version$/{getline; sub(/^>\s*/, ""); print}' README.md)
+                  if [ -z "$VERSION" ]; then
+                    echo "No version found in README.md"
+                    echo "should_release=false" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "Found version: $VERSION"
+
+            - name: Get latest release
+              id: latest_release
+              if: steps.version.outputs.version != ''
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null | sed 's/^v//')
+                  echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+                  echo "Latest release: $LATEST"
+
+            - name: Compare versions
+              id: compare
+              if: steps.version.outputs.version != ''
+              shell: bash
+              run: |
+                  NEW="${{ steps.version.outputs.version }}"
+                  LATEST="${{ steps.latest_release.outputs.latest }}"
+
+                  if [ -z "$LATEST" ]; then
+                    echo "No existing release — will release"
+                    echo "should_release=true" >> "$GITHUB_OUTPUT"
+                    echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+
+                  HIGHER=$(printf '%s\n%s' "$LATEST" "$NEW" | sort -V | tail -n 1)
+                  if [ "$HIGHER" = "$NEW" ] && [ "$NEW" != "$LATEST" ]; then
+                    echo "README version ($NEW) is newer than latest release ($LATEST)"
+                    echo "should_release=true" >> "$GITHUB_OUTPUT"
+                    echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "README version is not newer — skipping release"
+                    echo "should_release=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Download native DLLs
+              if: steps.compare.outputs.should_release == 'true'
+              uses: actions/cache@v4
+              id: cache-bin
+              with:
+                  path: bin
+                  key: musicapp-bin-${{ hashFiles('.github/workflows/build.yml') }}
+
+            - name: Clone musicapp-bin
+              if: steps.compare.outputs.should_release == 'true' && steps.cache-bin.outputs.cache-hit != 'true'
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh repo clone kuumoneko/musicapp-bin bin -- --depth 1
+
+            - name: Write API keys
+              if: steps.compare.outputs.should_release == 'true'
+              shell: bash
+              env:
+                  YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+                  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+                  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+                  DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+              run: |
+                  mkdir -p apikeys
+                  jq -n --arg key "$YOUTUBE_API_KEY" --arg cid "$GOOGLE_CLIENT_ID" --arg secret "$GOOGLE_CLIENT_SECRET" \
+                    '{api_keys: [$key], google: {client_id: $cid, client_secret: $secret}}' > apikeys/release.json
+                  jq -n --arg id "$DISCORD_CLIENT_ID" '{client_id: $id}' > apikeys/discord.json
+
+                    - name: Install dependencies
+                      if: steps.compare.outputs.should_release == 'true'
+                      run: bun install
+
+                    - name: Package release
+                      if: steps.compare.outputs.should_release == 'true'
+                      run: bun run package --profile release
+
+                    - name: Create tag
+                      if: steps.compare.outputs.should_release == 'true'
+                      run: |
+                          git tag "${{ steps.compare.outputs.tag }}"
+                          git push origin "${{ steps.compare.outputs.tag }}"
+
+                    - name: Create GitHub Release
+                      if: steps.compare.outputs.should_release == 'true'
+                      uses: softprops/action-gh-release@v3
+                      with:
+                          tag_name: ${{ steps.compare.outputs.tag }}
+                          name: "KuumoApp ${{ steps.compare.outputs.tag }}"
+                          generate_release_notes: true
+                          files: |
+                              artifacts/*.exe
+                              artifacts/*.json
