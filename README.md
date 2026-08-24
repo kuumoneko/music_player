@@ -1,6 +1,6 @@
 # KuumoApp
 
-> A Windows music player that finds, plays, and downloads songs from YouTube and plays your local files.
+> A Windows music player that finds, plays, downloads songs from YouTube and plays your local files.
 
 ## Version
 
