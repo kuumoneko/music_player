@@ -148,6 +148,7 @@ jobs:
                   tag_name: ${{ steps.compare.outputs.tag }}
                   name: "KuumoApp ${{ steps.compare.outputs.tag }}"
                   generate_release_notes: true
+                  draft: true
                   files: |
                       artifacts/*.exe
                       artifacts/*.json
