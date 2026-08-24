@@ -33,5 +33,14 @@ jobs:
               with:
                   path: ~\AppData\Local\NuGet\v3-cache
                   key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+            - name: Cache MSBuild outputs
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      app-winui/**/obj
+                      app-winui/**/bin
+                  key: msbuild-${{ runner.os }}-${{ hashFiles('app-winui/**/*.cs', 'app-winui/**/*.xaml', 'app-winui/**/*.csproj', 'app-winui/**/*.slnx') }}
+                  restore-keys: |
+                      msbuild-${{ runner.os }}-
             - run: dotnet restore app-winui/KuumoApp/KuumoApp.csproj
-            - run: bun run typecheck:dotnet
+            - run: dotnet build app-winui/KuumoApp.slnx -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:RunAnalyzersDuringBuild=false /p:DisableXbfLineInfo=true /p:WindowsAppSDKSelfContained=false /p:ProduceReferenceAssembly=false /p:EnableXBindDiagnostics=false /p:PRIResourceMerging=false -clp:ErrorsOnly -nologo
