@@ -42,5 +42,5 @@ jobs:
                   key: msbuild-${{ runner.os }}-${{ hashFiles('app-winui/**/*.cs', 'app-winui/**/*.xaml', 'app-winui/**/*.csproj', 'app-winui/**/*.slnx') }}
                   restore-keys: |
                       msbuild-${{ runner.os }}-
-            - run: dotnet restore app-winui/KuumoApp.slnx --disable-parallel:false -p:RestoreUseStaticGraphEvaluation=true --verbosity quiet
+            - run: dotnet restore app-winui/KuumoApp.slnx -p:RestoreUseStaticGraphEvaluation=true --verbosity quiet
             - run: dotnet build app-winui/KuumoApp.slnx -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:RunAnalyzersDuringBuild=false /p:DisableXbfLineInfo=true /p:WindowsAppSDKSelfContained=false /p:ProduceReferenceAssembly=false /p:EnableXBindDiagnostics=false /p:PRIResourceMerging=false -clp:ErrorsOnly -nologo
