@@ -9,7 +9,7 @@
 // Discord file: apikeys/discord.json (required)
 // Shape:
 //   { "client_id": "abc123..." }
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { encryptCredential } from "../src/bun/lib/crypto.ts";
 
@@ -124,6 +124,7 @@ async function main() {
         if (!(k in existing)) existing[k] = v;
     }
 
+    mkdirSync(resolve(ROOT, "data"), { recursive: true });
     writeFileSync(SYSTEM_FILE, JSON.stringify(existing, null, 2), "utf8");
     console.log(`Wrote ${SYSTEM_FILE} (profile: ${profile})`);
     console.log(`  youtubeApiKeys: ${encryptedKeys.length} encrypted key(s)`);
