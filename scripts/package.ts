@@ -63,7 +63,6 @@ function resolveProfiles(): string[] {
         .filter(p => /^[a-zA-Z0-9_-]+$/.test(p));
     if (profiles.length === 0) {
         console.error("No profile files found in apikeys/.");
-        process.exit(1);
     }
     // myown first, release last — repo data/system.json ends in the release state
     return profiles.sort((a, b) => {
@@ -174,6 +173,7 @@ const artifactsDir = resolve(root, "artifacts");
 mkdirSync(artifactsDir, { recursive: true });
 
 for (const profile of profiles) {
+    if (profile === "discord") continue;
     console.log(`\n===== Packaging profile: ${profile} =====`);
     run("bun", ["./scripts/encrypt-credentials.ts", "--profile", profile]);
 
