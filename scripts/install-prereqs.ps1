@@ -68,6 +68,22 @@ function Install-DotnetRuntime {
 }
 
 function Install-WasdkRuntime {
+    $required = @(
+        "Microsoft.WindowsAppRuntime.Framework",
+        "Microsoft.WindowsAppRuntime.MainNet",
+        "Microsoft.WindowsAppRuntime.Singleton"
+    )
+    $allInstalled = $true
+    foreach ($name in $required) {
+        $pkg = Get-AppxPackage -Name $name -ErrorAction SilentlyContinue |
+            Where-Object { $_.Version -ge [version]"2.3.0" }
+        if (-not $pkg) { $allInstalled = $false; break }
+    }
+    if ($allInstalled) {
+        Write-Output "SKIP Windows App SDK runtime (>= 2.3.0 installed)"
+        return
+    }
+
     Write-Output "DOWNLOAD Windows App SDK runtime Redist 2.3 ..."
     $zip = Join-Path $tempRoot "Microsoft.WindowsAppRuntime.Redist.2.3.zip"
     $extract = Join-Path $tempRoot "redist"
