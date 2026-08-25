@@ -132,7 +132,7 @@ public record PlayingCurrentDto(double Time, double Duration, bool IsLived, bool
 
 public record DownloadStatusDto(string Data, string Track);
 
-public record GoogleAuthStateDto(bool IsSignedIn, string? Email = null, long? ExpiresAt = null);
+public record GoogleAuthStateDto(bool IsSignedIn, bool HasOAuth = true, string? Email = null, long? ExpiresAt = null);
 
 public record SignInResultDto(bool Success, string? AuthUrl = null, int? Port = null);
 

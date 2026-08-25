@@ -84,6 +84,10 @@ export class YoutubeDataAPI {
         return this.apiKeys[this.keyIndex];
     }
 
+    private get hasApiKeys(): boolean {
+        return this.apiKeys.length > 0;
+    }
+
     private async fetch<T>(endpoint: string, params: Record<string, string>, useAuth: boolean = false, attempts: number = 2, ifNoneMatch?: string): Promise<{ data: T | null; error?: string; notModified?: boolean; etag?: string }> {
         let lastError: string | undefined;
         for (let attempt = 1; attempt <= attempts; attempt++) {
@@ -182,6 +186,25 @@ export class YoutubeDataAPI {
 
         if (uncached.length === 0) {
             return ids.map(id => cachedMap.get(id)!).filter(Boolean);
+        }
+
+        // InnerTube-only mode when no API keys configured
+        if (!this.hasApiKeys) {
+            const inner = await withRetries(
+                () => this.fetchTracksViaInnerTube(uncached),
+                3,
+                `InnerTube video metadata`
+            );
+            if (inner && inner.length > 0) {
+                const innerMap = new Map(inner.map(t => [t.id, t]));
+                for (const id of uncached) {
+                    const t = innerMap.get(id);
+                    if (t) cachedMap.set(id, t);
+                }
+            }
+            const fetched = [...cachedMap.values()];
+            if (fetched.length > 0) writeTracks(fetched);
+            return ids.map(id => cachedMap.get(id)).filter(Boolean) as Track[];
         }
 
         // Group by stored etag so revalidation requests match the previous batch
@@ -362,6 +385,17 @@ export class YoutubeDataAPI {
                         tracks: [],
                     } as Playlist;
                 }
+
+                // InnerTube-only mode when no API keys configured
+                if (!this.hasApiKeys) {
+                    const inner = await this.fetchPlaylistViaInnerTube(id);
+                    if (inner) {
+                        writePlaylist(inner);
+                        return inner;
+                    }
+                    return { source: MusicSource.Youtube, name: "", id, thumbnail: "", duration: 0, tracks: [] };
+                }
+
                 const { data, error } = await this.fetch<any>("playlists", { part: "snippet,contentDetails", id });
                 if (error || !data?.items?.[0]) return { source: MusicSource.Youtube, name: "", id, thumbnail: "", duration: 0, tracks: [] };
                 const p = data.items[0];
@@ -388,6 +422,21 @@ export class YoutubeDataAPI {
     }
 
     private async fetchPlaylistData(id: string, existing: Playlist | null = null): Promise<Playlist> {
+        // InnerTube-only mode when no API keys configured
+        if (!this.hasApiKeys) {
+            const inner = await withRetries(
+                () => this.fetchPlaylistViaInnerTube(id),
+                3,
+                `InnerTube playlist`
+            );
+            if (inner?.tracks?.length) {
+                writeTracks(inner.tracks);
+                writePlaylist(inner);
+                return inner;
+            }
+            return { source: MusicSource.Youtube, name: existing?.name ?? "", id, thumbnail: existing?.thumbnail ?? "", duration: 0, ids: [], tracks: [] };
+        }
+
         const allTracks: Track[] = [];
         let pageToken: string | undefined;
         let plName = existing?.name ?? "";
@@ -567,6 +616,42 @@ export class YoutubeDataAPI {
                 return cached;
             }
 
+            let artName = "";
+            let artThumbnail = "";
+            const uploadsPlaylistId = "UU" + id.slice(2);
+
+            // InnerTube-only mode when no API keys configured
+            if (!this.hasApiKeys) {
+                const channelInfo = this.youtube ? await withRetries(
+                    () => this.youtube!.getChannelInfo(id),
+                    3,
+                    `InnerTube channel info`
+                ) : null;
+                artName = channelInfo?.name ?? cached?.name ?? "";
+                artThumbnail = channelInfo?.thumbnail ?? cached?.thumbnail ?? "";
+
+                let artistTracks: Track[] = [];
+                if (!isHomeData) {
+                    const inner = await withRetries(
+                        () => this.fetchPlaylistViaInnerTube(uploadsPlaylistId),
+                        3,
+                        `InnerTube artist uploads`
+                    );
+                    artistTracks = inner?.tracks ?? [];
+                }
+
+                const thisArtist: Artist = {
+                    source: MusicSource.Youtube,
+                    id,
+                    name: artName,
+                    thumbnail: artThumbnail,
+                    playlistId: uploadsPlaylistId,
+                    tracks: isHomeData ? [] : artistTracks,
+                };
+                writeArtist(thisArtist);
+                return thisArtist;
+            }
+
             const { data, error, notModified, etag } = await this.fetch<any>("channels", { part: "snippet", id }, false, 2, cached && cached.tracks.length > 0 ? cached.etag : undefined);
             if (notModified && cached) {
                 writeLogs([{ type: "info", message: `DataAPI fetchArtist: ${id} unchanged (304), serving cached artist` }]);
@@ -585,9 +670,8 @@ export class YoutubeDataAPI {
             }
 
             const ch = data.items[0];
-            const artName = ch.snippet?.title ?? "";
-            const artThumbnail = pickThumbnail(ch.snippet?.thumbnails);
-            const uploadsPlaylistId = "UU" + id.slice(2);
+            artName = ch.snippet?.title ?? "";
+            artThumbnail = pickThumbnail(ch.snippet?.thumbnails);
 
             let artistTracks: Track[] = [];
             if (!isHomeData) {
@@ -650,6 +734,18 @@ export class YoutubeDataAPI {
 
     private async fetchRecentTracks(channelId: string, count: number): Promise<Track[]> {
         const uploadsId = "UU" + channelId.slice(2);
+
+        // InnerTube-only mode when no API keys configured
+        if (!this.hasApiKeys) {
+            const inner = await withRetries(
+                () => this.fetchPlaylistViaInnerTube(uploadsId),
+                3,
+                `InnerTube recent tracks`
+            );
+            if (!inner?.tracks?.length) return [];
+            return inner.tracks.slice(0, count);
+        }
+
         const allIds: string[] = [];
         let pageToken: string | undefined;
 

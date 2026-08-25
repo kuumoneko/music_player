@@ -53,13 +53,24 @@
                 </StackPanel>
             </StackPanel>
 
-            <StackPanel Spacing="8">
+            <StackPanel x:Name="GoogleSection" Spacing="8" Visibility="Collapsed">
                 <TextBlock Text="Google account" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
                 <TextBlock x:Name="GoogleText" FontSize="12" Opacity="0.7" Text="Not signed in" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <Button x:Name="SignInButton" Content="Sign in" Click="OnSignInClick" />
                     <Button x:Name="SignOutButton" Content="Sign out" Click="OnSignOutClick" Visibility="Collapsed" />
                 </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="YouTube API Keys" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <TextBlock FontSize="12" Opacity="0.7" Text="Optional. Improves metadata quality when added." TextWrapping="Wrap" />
+                <TextBlock x:Name="ApiKeysStatusText" FontSize="12" Opacity="0.7" Text="No API keys configured" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="ApiKeyTextBox" PlaceholderText="Enter YouTube Data API key" Width="300" />
+                    <Button Content="Add" Click="OnAddApiKeyClick" />
+                </StackPanel>
+                <Button x:Name="RemoveApiKeyButton" Content="Remove API Key" Click="OnRemoveApiKeyClick" Visibility="Collapsed" />
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

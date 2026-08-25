@@ -83,6 +83,7 @@ export class GoogleAuth {
     get authState() {
         return {
             isSignedIn: this.hasValidToken,
+            hasOAuth: this.hasCredentials,
             email: getUserData("googleUserEmail") as string | undefined,
             expiresAt: this.tokens?.expiry_date,
         };

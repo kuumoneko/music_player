@@ -17,8 +17,8 @@ const ROOT = import.meta.dir ? resolve(import.meta.dir, "..") : process.cwd();
 const SYSTEM_FILE = resolve(ROOT, "data", "system.json");
 
 interface ProfileFile {
-    api_keys: string[];
-    google: { client_id: string; client_secret: string };
+    api_keys?: string[];
+    google?: { client_id?: string; client_secret?: string };
 }
 
 interface DiscordFile {
@@ -64,23 +64,20 @@ async function main() {
 
     const keys = Array.isArray(data.api_keys) ? data.api_keys.filter(k => typeof k === "string" && k.trim().length > 0) : [];
     if (keys.length === 0) {
-        console.error(`No api_keys found in ${profileFile}.`);
-        process.exit(1);
+        console.warn(`  No api_keys in ${profileFile} — release will use InnerTube only.`);
     }
     for (const k of keys) {
         if (looksLikePlaceholder(k.trim())) {
             console.warn(`  ! suspicious placeholder key in profile: "${k.trim()}"`);
         }
     }
-    const clientId = data.google.client_id.trim();
-    const clientSecret = data.google.client_secret.trim();
+    const clientId = data.google?.client_id?.trim() ?? "";
+    const clientSecret = data.google?.client_secret?.trim() ?? "";
     if (!clientId) {
-        console.error(`No client_id found in google section of ${profileFile}.`);
-        process.exit(1);
+        console.warn(`  No client_id in google section of ${profileFile} — Google sign-in disabled.`);
     }
-    if (!clientSecret) {
-        console.error(`No client_secret found in google section of ${profileFile}.`);
-        process.exit(1);
+    if (!clientSecret && clientId) {
+        console.warn(`  No client_secret in google section of ${profileFile}.`);
     }
 
     const discordFile = resolve(ROOT, "apikeys", "discord.json");
@@ -108,8 +105,8 @@ async function main() {
     const encryptedKeys = [];
     for (const k of keys) encryptedKeys.push(await encryptCredential(k.trim()));
     existing.youtubeApiKeys = encryptedKeys;
-    existing.googleClientId = clientId;
-    existing.googleClientSecret = await encryptCredential(clientSecret);
+    existing.googleClientId = clientId || undefined;
+    existing.googleClientSecret = clientSecret ? await encryptCredential(clientSecret) : undefined;
 
     // Ensure runtime/system keys are always present so dev and packaged runs
     // get local mode and Discord RPC.

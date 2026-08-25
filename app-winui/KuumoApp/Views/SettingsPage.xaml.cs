@@ -94,22 +94,42 @@ public sealed partial class SettingsPage : Page
             DiscordText.Text = discordTask.Result is JsonElement { ValueKind: JsonValueKind.String or JsonValueKind.True }
                 ? "Connected"
                 : "Not connected";
+
             try
             {
                 var google = await App.Services.Api.GetGoogleAuthStatusAsync();
-                if (google is { IsSignedIn: true })
+                if (google is { HasOAuth: true })
                 {
-                    GoogleText.Text = $"Signed in as {google.Email}";
+                    GoogleSection.Visibility = Visibility.Visible;
+                    if (google.IsSignedIn)
+                    {
+                        GoogleText.Text = $"Signed in as {google.Email}";
+                    }
+                    else
+                    {
+                        GoogleText.Text = "Not signed in";
+                    }
+                    UpdateGoogleAuthUi(google.IsSignedIn);
                 }
                 else
                 {
-                    GoogleText.Text = "Not signed in";
+                    GoogleSection.Visibility = Visibility.Collapsed;
                 }
-                UpdateGoogleAuthUi(google is { IsSignedIn: true });
             }
             catch (Exception ex)
             {
                 AppLog.Write("settings", $"google status load failed: {ex.Message}");
+                GoogleSection.Visibility = Visibility.Collapsed;
+            }
+
+            try
+            {
+                var keys = await App.Services.Api.GetYoutubeApiKeysAsync();
+                UpdateApiKeysUi(keys);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("settings", $"api keys load failed: {ex.Message}");
             }
         }
         catch (Exception ex)
@@ -119,6 +139,20 @@ public sealed partial class SettingsPage : Page
         finally
         {
             _loading = false;
+        }
+    }
+
+    private void UpdateApiKeysUi(string[]? keys)
+    {
+        if (keys == null || keys.Length == 0)
+        {
+            ApiKeysStatusText.Text = "No API keys configured";
+            RemoveApiKeyButton.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            ApiKeysStatusText.Text = $"{keys.Length} API key(s) configured";
+            RemoveApiKeyButton.Visibility = Visibility.Visible;
         }
     }
 
@@ -329,7 +363,7 @@ public sealed partial class SettingsPage : Page
         return null;
     }
 
-private async void OnChooseFolderClick(object sender, RoutedEventArgs e)
+    private async void OnChooseFolderClick(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -358,7 +392,7 @@ private async void OnChooseFolderClick(object sender, RoutedEventArgs e)
         }
     }
 
-private async void OnDiscordConnectClick(object sender, RoutedEventArgs e)
+    private async void OnDiscordConnectClick(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -384,7 +418,7 @@ private async void OnDiscordConnectClick(object sender, RoutedEventArgs e)
         }
     }
 
-private async void OnSignInClick(object sender, RoutedEventArgs e)
+    private async void OnSignInClick(object sender, RoutedEventArgs e)
     {
         try
         {
@@ -420,5 +454,42 @@ private async void OnSignInClick(object sender, RoutedEventArgs e)
             AppLog.Write("settings", $"sign out failed: {ex.Message}");
         }
     }
-}
 
+    private async void OnAddApiKeyClick(object sender, RoutedEventArgs e)
+    {
+        var key = ApiKeyTextBox.Text?.Trim();
+        if (string.IsNullOrEmpty(key))
+        {
+            return;
+        }
+        try
+        {
+            var keys = await App.Services.Api.AddYoutubeApiKeyAsync(key);
+            UpdateApiKeysUi(keys);
+            ApiKeyTextBox.Text = "";
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("settings", $"add api key failed: {ex.Message}");
+        }
+    }
+
+    private async void OnRemoveApiKeyClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var keys = await App.Services.Api.GetYoutubeApiKeysAsync();
+            if (keys == null || keys.Length == 0)
+            {
+                return;
+            }
+            var key = keys[0];
+            var updatedKeys = await App.Services.Api.RemoveYoutubeApiKeyAsync(key);
+            UpdateApiKeysUi(updatedKeys);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("settings", $"remove api key failed: {ex.Message}");
+        }
+    }
+}

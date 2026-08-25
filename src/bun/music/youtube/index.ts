@@ -312,4 +312,26 @@ export default class Youtube {
     async browsePlaylist(playlistId: string): Promise<any | null> {
         return this.browse(`VL${playlistId}`);
     }
+
+    async getChannelInfo(channelId: string): Promise<{ name: string; thumbnail: string } | null> {
+        const data = await this.browse(channelId);
+        if (!data) return null;
+
+        try {
+            const header = data?.header?.pageHeaderRenderer?.content?.pageHeaderViewModel?.title?.dynamicTextViewModel?.text?.content
+                ?? data?.header?.c4TabbedHeaderRenderer?.title
+                ?? data?.metadata?.channelMetadataRenderer?.title
+                ?? "";
+            const avatar = data?.header?.pageHeaderRenderer?.content?.pageHeaderViewModel?.image?.decoratedAvatarViewModel?.avatar?.avatarViewModel?.image?.sources?.[0]?.url
+                ?? data?.header?.c4TabbedHeaderRenderer?.avatar?.thumbnails?.[0]?.url
+                ?? data?.metadata?.channelMetadataRenderer?.avatar?.thumbnails?.[0]?.url
+                ?? "";
+            if (header || avatar) {
+                return { name: header, thumbnail: ensureHttps(avatar) };
+            }
+        } catch {
+            // fall through
+        }
+        return null;
+    }
 }
