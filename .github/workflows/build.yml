@@ -93,31 +93,60 @@ jobs:
               id: check
               shell: bash
               env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
               run: |
-                  VERSION=$(awk '/^## Version$/{getline; if (/^>/) {sub(/^>\s*/, ""); print} else {getline; sub(/^>\s*/, ""); print}}' README.md)
-                  if [ -z "$VERSION" ]; then
-                    echo "No version found in README.md"
-                    echo "should_release=false" >> "$GITHUB_OUTPUT"
-                    exit 0
-                  fi
-                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                VERSION=$(awk '/^## Version$/{getline; if (/^>/) {sub(/^>\s*/, ""); print} else {getline; sub(/^>\s*/, ""); print}}' README.md | tr -d '\r' | xargs)
+                if [ -z "$VERSION" ]; then
+                  echo "No version found in README.md"
+                  echo "should_release=false" >> "$GITHUB_OUTPUT"
+                  exit 0
+                fi
+      
+                TAG="v$VERSION"
+                echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      
+                # 1. Handle manual trigger (force release)
+                if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+                  echo "Triggered manually — forcing release for $TAG"
+                  SHOULD_RELEASE=true
+                else
+                  # 2. Check latest GitHub release version
                   LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null | sed 's/^v//')
+      
                   if [ -z "$LATEST" ]; then
-                    echo "No existing release — will release"
-                    echo "should_release=true" >> "$GITHUB_OUTPUT"
-                    echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-                    exit 0
-                  fi
-                  HIGHER=$(printf '%s\n%s' "$LATEST" "$VERSION" | sort -V | tail -n 1)
-                  if [ "$HIGHER" = "$VERSION" ] && [ "$VERSION" != "$LATEST" ]; then
-                    echo "README version ($VERSION) is newer than latest release ($LATEST)"
-                    echo "should_release=true" >> "$GITHUB_OUTPUT"
-                    echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+                    echo "No existing release found — will release"
+                    SHOULD_RELEASE=true
                   else
-                    echo "README version is not newer — skipping release"
-                    echo "should_release=false" >> "$GITHUB_OUTPUT"
+                    HIGHER=$(printf '%s\n%s' "$LATEST" "$VERSION" | sort -V | tail -n 1)
+                    if [ "$HIGHER" = "$VERSION" ] && [ "$VERSION" != "$LATEST" ]; then
+                      echo "README version ($VERSION) is newer than latest release ($LATEST)"
+                      SHOULD_RELEASE=true
+                    else
+                      echo "README version ($VERSION) is not newer than latest release ($LATEST) — skipping"
+                      SHOULD_RELEASE=false
+                    fi
                   fi
+                fi
+      
+                echo "should_release=$SHOULD_RELEASE" >> "$GITHUB_OUTPUT"
+      
+                # 3. If releasing, check and delete existing release/tag
+                if [ "$SHOULD_RELEASE" = "true" ]; then
+                  echo "Checking if tag/release $TAG already exists..."
+      
+                  # Delete GitHub Release if it exists
+                  gh release delete "$TAG" --yes 2>/dev/null || true
+      
+                  # Delete remote Git tag if it exists
+                  if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+                    echo "Tag $TAG found on remote. Deleting..."
+                    git push --delete origin "$TAG" || true
+                  fi
+      
+                  # Delete local tag if it exists
+                  git tag -d "$TAG" 2>/dev/null || true
+                fi
 
             - name: Write credentials
               if: steps.check.outputs.should_release == 'true'

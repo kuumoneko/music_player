@@ -1,12 +1,7 @@
 name: Typecheck
 
 on:
-    push:
-        branches: [main]
-        paths:
-            - "README.md"
-    pull_request:
-        branches: [main]
+    workflow_dispatch:
 
 jobs:
     typecheck-bun:
