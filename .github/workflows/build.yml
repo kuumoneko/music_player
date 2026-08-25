@@ -25,17 +25,22 @@ jobs:
               with:
                   dotnet-version: "10.0.x"
 
+            - name: Install Inno Setup
+              run: choco install innosetup -y
+
             - name: Cache Bun
               uses: actions/cache@v4
               with:
                   path: ~/.bun/install/cache
                   key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+                  restore-keys: bun-${{ runner.os }}-
 
             - name: Cache NuGet
               uses: actions/cache@v4
               with:
                   path: ~/.nuget/packages
                   key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+                  restore-keys: nuget-${{ runner.os }}-
 
             - name: Cache .NET build
               uses: actions/cache@v4
@@ -44,13 +49,48 @@ jobs:
                       app-winui/KuumoApp/obj
                       app-winui/Launcher/obj
                   key: dotnet-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.cs') }}
+                  restore-keys: dotnet-${{ runner.os }}-
 
-            - name: Install Inno Setup
-              run: choco install innosetup -y
+            - name: Cache backend build
+              uses: actions/cache@v4
+              id: cache-backend
+              with:
+                  path: |
+                      build/backend.js
+                      build/backend.exe
+                      build/bin
+                      build/*.dll
+                  key: backend-${{ runner.os }}-${{ hashFiles('src/bun/**/*.ts', 'scripts/build.ts') }}
+                  restore-keys: backend-${{ runner.os }}-
 
-            - name: Extract version from README.md
-              id: version
+            - name: Cache dotnet publish
+              uses: actions/cache@v4
+              id: cache-publish
+              with:
+                  path: build/publish
+                  key: publish-${{ runner.os }}-${{ hashFiles('app-winui/**/*.cs', 'app-winui/**/*.xaml', 'app-winui/**/*.csproj', 'app-winui/**/*.resw') }}
+                  restore-keys: publish-${{ runner.os }}-
+
+            - name: Cache native DLLs
+              uses: actions/cache@v4
+              id: cache-bin
+              with:
+                  path: bin
+                  key: musicapp-bin-${{ hashFiles('.github/workflows/build.yml') }}
+                  restore-keys: musicapp-bin-
+
+            - name: Clone musicapp-bin
+              if: steps.cache-bin.outputs.cache-hit != 'true'
               shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.CLONE_REPO }}
+              run: gh repo clone kuumoneko/musicapp-bin bin -- --depth 1
+
+            - name: Check if release needed
+              id: check
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   VERSION=$(awk '/^## Version$/{getline; if (/^>/) {sub(/^>\s*/, ""); print} else {getline; sub(/^>\s*/, ""); print}}' README.md)
                   if [ -z "$VERSION" ]; then
@@ -59,62 +99,25 @@ jobs:
                     exit 0
                   fi
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-                  echo "Found version: $VERSION"
-
-            - name: Get latest release
-              id: latest_release
-              if: steps.version.outputs.version != ''
-              shell: bash
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: |
                   LATEST=$(gh release list --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null | sed 's/^v//')
-                  echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
-                  echo "Latest release: $LATEST"
-
-            - name: Compare versions
-              id: compare
-              if: steps.version.outputs.version != ''
-              shell: bash
-              run: |
-                  NEW="${{ steps.version.outputs.version }}"
-                  LATEST="${{ steps.latest_release.outputs.latest }}"
-
                   if [ -z "$LATEST" ]; then
                     echo "No existing release — will release"
                     echo "should_release=true" >> "$GITHUB_OUTPUT"
-                    echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+                    echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
                     exit 0
                   fi
-
-                  HIGHER=$(printf '%s\n%s' "$LATEST" "$NEW" | sort -V | tail -n 1)
-                  if [ "$HIGHER" = "$NEW" ] && [ "$NEW" != "$LATEST" ]; then
-                    echo "README version ($NEW) is newer than latest release ($LATEST)"
+                  HIGHER=$(printf '%s\n%s' "$LATEST" "$VERSION" | sort -V | tail -n 1)
+                  if [ "$HIGHER" = "$VERSION" ] && [ "$VERSION" != "$LATEST" ]; then
+                    echo "README version ($VERSION) is newer than latest release ($LATEST)"
                     echo "should_release=true" >> "$GITHUB_OUTPUT"
-                    echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+                    echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
                   else
                     echo "README version is not newer — skipping release"
                     echo "should_release=false" >> "$GITHUB_OUTPUT"
                   fi
 
-            - name: Download native DLLs
-              if: steps.compare.outputs.should_release == 'true'
-              uses: actions/cache@v4
-              id: cache-bin
-              with:
-                  path: bin
-                  key: musicapp-bin-${{ hashFiles('.github/workflows/build.yml') }}
-
-            - name: Clone musicapp-bin
-              if: steps.compare.outputs.should_release == 'true' && steps.cache-bin.outputs.cache-hit != 'true'
-              shell: bash
-              env:
-                  GH_TOKEN: ${{ secrets.CLONE_REPO  }}
-              run: |
-                  gh repo clone kuumoneko/musicapp-bin bin -- --depth 1
-
             - name: Write credentials
-              if: steps.compare.outputs.should_release == 'true'
+              if: steps.check.outputs.should_release == 'true'
               shell: bash
               env:
                   DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
@@ -123,26 +126,22 @@ jobs:
                   echo '{"api_keys": [], "google": {}}' > apikeys/release.json
                   jq -n --arg id "$DISCORD_CLIENT_ID" '{client_id: $id}' > apikeys/discord.json
 
-            - name: Install dependencies
-              if: steps.compare.outputs.should_release == 'true'
-              run: bun install
-
             - name: Package release
-              if: steps.compare.outputs.should_release == 'true'
-              run: bun run package --profile release
+              if: steps.check.outputs.should_release == 'true'
+              run: bun run package --cached --profile release
 
             - name: Create tag
-              if: steps.compare.outputs.should_release == 'true'
+              if: steps.check.outputs.should_release == 'true'
               run: |
-                  git tag "${{ steps.compare.outputs.tag }}"
-                  git push origin "${{ steps.compare.outputs.tag }}"
+                  git tag "${{ steps.check.outputs.tag }}"
+                  git push origin "${{ steps.check.outputs.tag }}"
 
             - name: Create GitHub Release
-              if: steps.compare.outputs.should_release == 'true'
+              if: steps.check.outputs.should_release == 'true'
               uses: softprops/action-gh-release@v3
               with:
-                  tag_name: ${{ steps.compare.outputs.tag }}
-                  name: "KuumoApp ${{ steps.compare.outputs.tag }}"
+                  tag_name: ${{ steps.check.outputs.tag }}
+                  name: "KuumoApp ${{ steps.check.outputs.tag }}"
                   generate_release_notes: true
                   draft: true
                   files: |

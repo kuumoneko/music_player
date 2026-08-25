@@ -18,12 +18,14 @@
 // Usage:
 //   bun run package                 -> builds ALL profiles found in apikeys/ (myown first, release last)
 //   bun run package --profile myown -> builds only that profile (dev testing)
+//   bun run package --cached        -> skips profile-independent builds if outputs exist (CI)
 import { spawnSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
 const { version } = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const useCache = process.argv.includes("--cached");
 
 function run(cmd: string, args: string[], cwd: string = root) {
     console.log(`\n> ${cmd} ${args.join(" ")}`);
@@ -131,32 +133,39 @@ const PUBLISH_TRIM = new Set([
 // scripts/install-prereqs.ps1 — nothing to download or stage here.
 
 // 1) Backend bundle + native DLLs (profile-independent)
-run("bun", ["run", "build:prod"]);
 const buildDir = resolve(root, "build");
 const binDir = resolve(buildDir, "bin");
-requireDir(buildDir, "backend build output");
-
-// 1b) Compile the backend into a standalone exe (release entrypoint at app root)
-run("bun", [
-    "build",
-    "--compile",
-    "--target=bun",
-    "--minify",
-    "--outfile",
-    resolve(buildDir, "backend.exe"),
-    resolve(root, "src", "bun", "index.ts"),
-]);
-
-// 2) Publish the WinUI app (framework-dependent WinAppSDK — the runtime is an
-// installer prerequisite, not part of the app folder; profile-independent)
+const backendJs = resolve(buildDir, "backend.js");
+const backendExe = resolve(buildDir, "backend.exe");
 const publishDir = resolve(root, "build", "publish");
-rmSync(publishDir, { recursive: true, force: true });
-run("dotnet", ["publish", resolve(root, "app-winui", "KuumoApp", "KuumoApp.csproj"), "-c", "Release", "-r", "win-x64", "-o", publishDir, "-p:WindowsAppSDKSelfContained=false"], resolve(root, "app-winui"));
-requireDir(publishDir, "dotnet publish output");
 
-// 2b) Ensure the app's Assets (titlebar/tray/SMTC icons) land in the payload —
-// the publish pipeline can drop Content items on incremental runs.
-cpSync(resolve(root, "app-winui", "KuumoApp", "Assets"), resolve(publishDir, "Assets"), { recursive: true });
+if (useCache && existsSync(backendJs) && existsSync(backendExe) && existsSync(publishDir)) {
+    console.log("\n Skipping profile-independent builds (--cached, outputs exist)");
+} else {
+    run("bun", ["run", "build:prod"]);
+    requireDir(buildDir, "backend build output");
+
+    // 1b) Compile the backend into a standalone exe (release entrypoint at app root)
+    run("bun", [
+        "build",
+        "--compile",
+        "--target=bun",
+        "--minify",
+        "--outfile",
+        backendExe,
+        resolve(root, "src", "bun", "index.ts"),
+    ]);
+
+    // 2) Publish the WinUI app (framework-dependent WinAppSDK — the runtime is an
+    // installer prerequisite, not part of the app folder; profile-independent)
+    rmSync(publishDir, { recursive: true, force: true });
+    run("dotnet", ["publish", resolve(root, "app-winui", "KuumoApp", "KuumoApp.csproj"), "-c", "Release", "-r", "win-x64", "-o", publishDir, "-p:WindowsAppSDKSelfContained=false"], resolve(root, "app-winui"));
+    requireDir(publishDir, "dotnet publish output");
+
+    // 2b) Ensure the app's Assets (titlebar/tray/SMTC icons) land in the payload —
+    // the publish pipeline can drop Content items on incremental runs.
+    cpSync(resolve(root, "app-winui", "KuumoApp", "Assets"), resolve(publishDir, "Assets"), { recursive: true });
+}
 
 // 2c) Runtime prerequisites are NOT bundled — setup.iss downloads and installs
 // .NET Desktop Runtime + Windows App SDK runtime at install time via
