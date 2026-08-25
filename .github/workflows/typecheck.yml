@@ -3,8 +3,6 @@ name: Typecheck
 on:
     push:
         branches: [main]
-        paths:
-            - "README.md"
     pull_request:
         branches: [main]
 
@@ -19,7 +17,7 @@ jobs:
               with:
                   path: ~/.bun/install/cache
                   key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-            - run: bun install
+                  restore-keys: bun-${{ runner.os }}-
             - run: bun run typecheck:bun
     typecheck-winui3:
         runs-on: windows-latest
@@ -31,8 +29,9 @@ jobs:
             - name: Cache NuGet
               uses: actions/cache@v4
               with:
-                  path: ~\AppData\Local\NuGet\v3-cache
+                  path: ~\.nuget\packages
                   key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+                  restore-keys: nuget-${{ runner.os }}-
             - name: Cache MSBuild outputs
               uses: actions/cache@v4
               with:
