@@ -113,18 +113,14 @@ jobs:
               run: |
                   gh repo clone kuumoneko/musicapp-bin bin -- --depth 1
 
-            - name: Write API keys
+            - name: Write credentials
               if: steps.compare.outputs.should_release == 'true'
               shell: bash
               env:
-                  YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-                  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-                  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
                   DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
               run: |
                   mkdir -p apikeys
-                  jq -n --arg key "$YOUTUBE_API_KEY" --arg cid "$GOOGLE_CLIENT_ID" --arg secret "$GOOGLE_CLIENT_SECRET" \
-                    '{api_keys: [$key], google: {client_id: $cid, client_secret: $secret}}' > apikeys/release.json
+                  echo '{"api_keys": [], "google": {}}' > apikeys/release.json
                   jq -n --arg id "$DISCORD_CLIENT_ID" '{client_id: $id}' > apikeys/discord.json
 
             - name: Install dependencies
