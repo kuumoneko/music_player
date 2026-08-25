@@ -20,6 +20,7 @@ jobs:
                   path: ~/.bun/install/cache
                   key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
                   restore-keys: bun-${{ runner.os }}-
+            - run: bun install
             - run: bun run typecheck:bun
     typecheck-winui3:
         runs-on: windows-latest
