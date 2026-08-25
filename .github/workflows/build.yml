@@ -10,13 +10,14 @@ on:
 
 permissions:
     contents: write
-    workflows: write
 
 jobs:
     release:
         runs-on: windows-latest
         steps:
             - uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.GH_PAT }}
 
             - name: Setup Bun
               uses: oven-sh/setup-bun@v2
