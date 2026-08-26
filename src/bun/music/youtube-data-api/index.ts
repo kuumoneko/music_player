@@ -11,6 +11,56 @@ const YT_DATA_API_BASE = "https://www.googleapis.com/youtube/v3";
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
+function extractContinuationToken(data: any): string | null {
+    try {
+        // Standard path: onResponseReceivedActions → appendContinuationItemsAction
+        const actions = data?.onResponseReceivedActions;
+        if (Array.isArray(actions)) {
+            for (const action of actions) {
+                const items = action?.appendContinuationItemsAction?.continuationItems;
+                if (Array.isArray(items)) {
+                    for (const item of items) {
+                        const token = item?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
+                        if (token) return token;
+                    }
+                }
+            }
+        }
+        // Fallback: content tabs path
+        const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs;
+        if (tabs) {
+            const continuationItems = tabs[0]?.tabRenderer?.content?.sectionListRenderer?.contents;
+            if (Array.isArray(continuationItems)) {
+                for (const section of continuationItems) {
+                    const items = section?.itemSectionRenderer?.contents;
+                    if (Array.isArray(items)) {
+                        for (const item of items) {
+                            const token = item?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
+                            if (token) return token;
+                        }
+                    }
+                }
+            }
+        }
+    } catch {}
+    return null;
+}
+
+function extractContinuationContents(data: any): any[] {
+    try {
+        const actions = data?.onResponseReceivedActions;
+        if (Array.isArray(actions)) {
+            for (const action of actions) {
+                const items = action?.appendContinuationItemsAction?.continuationItems;
+                if (Array.isArray(items)) {
+                    return items.filter((item: any) => !item?.continuationItemRenderer);
+                }
+            }
+        }
+    } catch {}
+    return [];
+}
+
 async function withRetries<T>(fn: () => Promise<T | null>, attempts: number, label: string): Promise<T | null> {
     for (let i = 1; i <= attempts; i++) {
         try {
@@ -581,6 +631,25 @@ export class YoutubeDataAPI {
             const parsed = parsePlaylistItem(item, idx);
             if (parsed) tracks.push(itemToTrack(parsed));
         });
+
+        // Pagination: follow continuation tokens
+        let continuationToken = extractContinuationToken(data);
+        let paginationAttempts = 0;
+        const MAX_PAGINATION = 15;
+        while (continuationToken && paginationAttempts < MAX_PAGINATION) {
+            const nextData = await this.youtube.browseContinuation(continuationToken);
+            if (!nextData) break;
+
+            const nextContents = extractContinuationContents(nextData);
+            if (nextContents.length === 0) break;
+
+            for (const item of nextContents) {
+                const parsed = parsePlaylistItem(item, tracks.length);
+                if (parsed) tracks.push(itemToTrack(parsed));
+            }
+            continuationToken = extractContinuationToken(nextData);
+            paginationAttempts++;
+        }
 
         // Try to read playlist title/thumbnail from header for nicer cards.
         const header = data?.header?.playlistHeaderRenderer;

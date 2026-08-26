@@ -44,12 +44,33 @@ export function extractPlaylistContents(data: any): any[] {
         // Try richGridRenderer path (channel uploads / artist pages)
         const rg = tab?.richGridRenderer?.contents;
         if (rg?.length) {
-            return rg
-                .map((item: any) => {
-                    if (item?.richItemRenderer?.content) return item.richItemRenderer.content;
-                    return item;
-                })
-                .filter(Boolean);
+            const items: any[] = [];
+            for (const item of rg) {
+                const richItem = item?.richItemRenderer?.content;
+                if (richItem) {
+                    items.push(richItem);
+                    continue;
+                }
+                const richSection = item?.richSectionRenderer;
+                if (richSection) {
+                    const shelf = richSection?.content?.shelfRenderer;
+                    if (shelf) {
+                        const content = shelf.content;
+                        let subItems: any[] = [];
+                        if (content?.expandedShelfContentsRenderer?.items) {
+                            subItems = content.expandedShelfContentsRenderer.items;
+                        } else if (content?.horizontalListRenderer?.items) {
+                            subItems = content.horizontalListRenderer.items;
+                        } else if (content?.richGridRenderer?.contents) {
+                            subItems = content.richGridRenderer.contents.map(
+                                (si: any) => si?.richItemRenderer?.content ?? si
+                            );
+                        }
+                        items.push(...subItems);
+                    }
+                }
+            }
+            if (items.length > 0) return items;
         }
 
         return [];

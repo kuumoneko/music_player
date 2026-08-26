@@ -313,6 +313,39 @@ export default class Youtube {
         return this.browse(`VL${playlistId}`);
     }
 
+    async browseContinuation(continuationToken: string): Promise<any | null> {
+        const url = new URL(`${INNERTUBE_BASE}/browse`);
+        url.searchParams.set("prettyPrint", "false");
+
+        const body = JSON.stringify({
+            continuation: continuationToken,
+            context: {
+                client: {
+                    clientName: "WEB",
+                    clientVersion: INNERTUBE_CLIENT_VERSION,
+                    hl: "en",
+                    gl: "US",
+                },
+            },
+        });
+
+        const res = await fetch(url.toString(), {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                "accept": "application/json",
+                "user-agent": INNERTUBE_USER_AGENT,
+            },
+            body,
+            signal: AbortSignal.timeout(10_000),
+        });
+        if (!res.ok) {
+            console.error(`browseContinuation: HTTP ${res.status}`);
+            return null;
+        }
+        return res.json();
+    }
+
     async getChannelInfo(channelId: string): Promise<{ name: string; thumbnail: string } | null> {
         const data = await this.browse(channelId);
         if (!data) return null;

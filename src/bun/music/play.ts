@@ -2,7 +2,7 @@ import EventEmitter from "node:events";
 import { dlopen, read, CString } from "bun:ffi";
 import { writeLogs, getUserData } from "../db";
 
-import { SleepMode } from "../../shared/types.ts";
+import { Repeat, SleepMode } from "../../shared/types.ts";
 import { resolve } from "node:path";
 import { INNERTUBE_USER_AGENT } from "../../shared/constants.ts";
 
@@ -103,6 +103,11 @@ export default class Play extends EventEmitter {
 
             this.startEventLoop();
             this.startTimePolling();
+
+            const savedRepeat = getUserData("repeat");
+            if (savedRepeat === Repeat.One) {
+                this.setRepeat(true);
+            }
 
             this.isReady = true;
             this.emit("ready");
