@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+    <DisableXbfLineInfo>true</DisableXbfLineInfo>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <EnableXBindDiagnostics>false</EnableXBindDiagnostics>
+    <PRIResourceMerging>false</PRIResourceMerging>
+  </PropertyGroup>
+</Project>

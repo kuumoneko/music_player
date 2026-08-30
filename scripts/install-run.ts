@@ -46,13 +46,13 @@ function run(cmd: string, args: string[], cwd: string = root) {
 //   - KuumoApp by name: covers installed + dev app exes (both are KuumoApp.exe)
 //   - bun only when backend.js is on the command line: dev backend; unrelated
 //     bun processes (e.g. other apps built on Bun) are left alone
-//   - backend.exe only when KuumoApp is on the command line: release backend
+//   - bun only when index.js + KuumoApp is on the command line: release backend
 // Order: app first, then backends — otherwise BunHostService.OnExited
 // auto-restarts the backend while the app is still alive.
 const KILL_SCRIPT = [
     "Get-Process -Name KuumoApp -ErrorAction SilentlyContinue | Stop-Process -Force",
     "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^bun' -and $_.CommandLine -match 'backend\\.js' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
-    "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^backend' -and $_.CommandLine -match 'KuumoApp' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+    "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^bun' -and $_.CommandLine -match 'index\\.js' -and $_.CommandLine -match 'KuumoApp' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
     "exit 0",
 ].join("; ");
 

@@ -89,6 +89,9 @@ public sealed class RpcApi
     public Task<object?> RefreshPlaylistAsync(string id) => Call<object?>("refreshPlaylist", new { id });
     public Task<object?> RefreshArtistAsync(string id) => Call<object?>("refreshArtist", new { id });
 
+    // --- Local files ---
+    public Task RehashLocalFilesAsync() => Call<object?>("rehashLocalFiles");
+
     // --- Discord ---
     public Task<object?> IsHasDiscordRpcAsync() => Call<object?>("isHasDiscordRPC");
     public Task<string?> ConnectDiscordRpcAsync() => Call<string?>("connectDiscordRPC");

@@ -12,6 +12,7 @@ import { YoutubeResolver } from "./youtube-resolver.ts";
 import { YoutubeDataAPI } from "./youtube-data-api/index.ts";
 import { GoogleAuth } from "../auth/google.ts";
 import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
+import { ensurePopulated } from "../lib/hash.ts";
 
 export enum AudioFormat {
     aac = "aac",
@@ -319,6 +320,7 @@ export default class Player {
             }
 
             await Promise.all(executing);
+            ensurePopulated();
             writeLogs([{ type: "info", message: "All downloads finished successfully!" }]);
             this.status = { data: Status.done, track: "" };
         } catch (error) {

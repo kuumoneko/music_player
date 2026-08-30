@@ -1,7 +1,9 @@
 import type { Track } from "../../shared/types.ts";
+import { getAllLocalFileIds } from "../db/index.ts";
 
 const pathToHash = new Map<string, string>();
 const hashToPath = new Map<string, string>();
+let populated = false;
 
 export function getHash(filePath: string): string {
   let h = pathToHash.get(filePath);
@@ -18,7 +20,12 @@ export function getPath(hash: string): string | undefined {
 }
 
 export function resolveId(id: string): string {
-  return hashToPath.get(id) ?? id;
+  if (hashToPath.has(id)) return hashToPath.get(id)!;
+  if (!populated) {
+    ensurePopulated();
+    return hashToPath.get(id) ?? id;
+  }
+  return id;
 }
 
 export function trackToFront(track: Track): Track {
@@ -27,4 +34,19 @@ export function trackToFront(track: Track): Track {
 
 export function tracksToFront(tracks: Track[]): Track[] {
   return tracks.map(trackToFront);
+}
+
+export function ensurePopulated(): void {
+  if (populated) return;
+  populated = true;
+  const ids = getAllLocalFileIds();
+  for (const id of ids) {
+    getHash(id);
+  }
+}
+
+export function clearHashes(): void {
+  pathToHash.clear();
+  hashToPath.clear();
+  populated = false;
 }

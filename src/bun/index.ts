@@ -82,13 +82,6 @@ purgeExpiredSearchCache();
 const cachePurgeTimer = setInterval(purgeExpiredSearchCache, 6 * 60 * 60 * 1000);
 (cachePurgeTimer as any).unref?.();
 
-// Pre-populate hash map so persisted session data (playQueue, currentPlaying) resolves
-if (isLocal) {
-	for (const track of getAllLocalFiles()) {
-		getHash(track.id);
-	}
-}
-
 // --- State ---
 const firstLoadCurrent = getUserData("current");
 class PlayerState {

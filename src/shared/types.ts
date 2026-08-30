@@ -222,6 +222,10 @@ export type AppRPCType = {
             writeLog: {
                 params: { type: "info" | "error", source?: string, message: string },
                 response: void
+            },
+            rehashLocalFiles: {
+                params: null,
+                response: void
             }
         },
         messages: {

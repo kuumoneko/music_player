@@ -38,6 +38,18 @@ public sealed partial class LocalPage : Page
 
     private void OnRefreshClick(object sender, RoutedEventArgs e) => _ = LoadAsync();
 
+    private async void OnReloadClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await App.Services.Api.RehashLocalFilesAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("local", $"rehash failed: {ex.Message}");
+        }
+    }
+
     private async Task LoadAsync()
     {
         try

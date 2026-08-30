@@ -392,6 +392,18 @@ public sealed partial class SettingsPage : Page
         }
     }
 
+    private async void OnRehashClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await App.Services.Api.RehashLocalFilesAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("settings", $"rehash failed: {ex.Message}");
+        }
+    }
+
     private async void OnDiscordConnectClick(object sender, RoutedEventArgs e)
     {
         try

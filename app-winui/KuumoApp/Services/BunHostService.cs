@@ -68,10 +68,16 @@ public sealed class BunHostService
 
     private ProcessStartInfo? ResolveReleaseProcessInfo()
     {
-        var entry = Path.Combine(AppContext.BaseDirectory, "backend.exe");
-        if (!File.Exists(entry))
+        var bunExe = Path.Combine(AppContext.BaseDirectory, "bun.exe");
+        if (!File.Exists(bunExe))
         {
-            Log($"backend.exe not found at {entry}");
+            Log($"bun.exe not found at {bunExe}");
+            return null;
+        }
+        var script = Path.Combine(AppContext.BaseDirectory, "backend", "index.js");
+        if (!File.Exists(script))
+        {
+            Log($"index.js not found at {script}");
             return null;
         }
         var includeDir = Path.Combine(AppContext.BaseDirectory, "include");
@@ -79,7 +85,9 @@ public sealed class BunHostService
         {
             Log($"include dir not found at {includeDir}");
         }
-        return NewStartInfo(entry, includeDir);
+        var psi = NewStartInfo(bunExe, includeDir);
+        psi.ArgumentList.Add(script);
+        return psi;
     }
 
     public void Start()

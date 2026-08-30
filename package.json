@@ -17,7 +17,7 @@
         "install-run": "bun ./scripts/install-run.ts",
         "register-shortcut": "bun ./scripts/register-shortcut.ts",
         "typecheck:bun": "bunx tsc --noEmit",
-        "typecheck:dotnet": "dotnet build app-winui/YourSolution.sln -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:RunAnalyzersDuringBuild=false /p:DisableXbfLineInfo=true /p:WindowsAppSDKSelfContained=false /p:ProduceReferenceAssembly=false /p:EnableXBindDiagnostics=false /p:PRIResourceMerging=false -clp:ErrorsOnly -nologo",
+        "typecheck:dotnet": "dotnet build app-winui/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:WindowsAppSDKSelfContained=false -clp:ErrorsOnly -nologo",
         "typecheck": "bun run typecheck:bun && bun run typecheck:dotnet"
     },
     "dependencies": {

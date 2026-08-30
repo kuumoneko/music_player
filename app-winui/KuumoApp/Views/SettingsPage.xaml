@@ -41,7 +41,10 @@
             <StackPanel Spacing="8">
                 <TextBlock Text="Local music folder" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
                 <TextBlock x:Name="FolderText" FontSize="12" Opacity="0.7" Text="Not set" />
-                <Button Content="Choose folder..." Click="OnChooseFolderClick" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Choose folder..." Click="OnChooseFolderClick" />
+                    <Button Content="Rehash" Click="OnRehashClick" />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel Spacing="8">

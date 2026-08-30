@@ -46,7 +46,8 @@ app-winui/KuumoApp/      WinUI 3 frontend
   Views/                 ShellPage, HomePage, SearchPage, DetailPage, DownloadsPage, LocalPage, SettingsPage...
 app-winui/Launcher/      Tiny launcher exe (single-file, framework-dependent). Installed layout:
                          root = launcher KuumoApp.exe + app\ folder holding the full flat payload
-                         (real apphost, backend.exe, DLLs, include\, Assets\, data\). The .NET host
+                         (real apphost, DLLs, include\, Assets\, data\) + app\backend\ holding
+                         bun.exe + index.js (shared Bun runtime + JS bundle). The .NET host
                          resolves everything relative to app\KuumoApp.exe, so the payload is untouched.
 scripts/                 dev.ts, winui-dev.ts, build.ts, package.ts, release.ts, encrypt-credentials.ts...
 ```

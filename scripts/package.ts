@@ -4,7 +4,7 @@
 // Pipeline (per profile):
 //   encrypt-credentials --profile X -> data/system.json with profile X's keys
 //   bun run build:prod              -> build/backend.js + build/*.dll
-//   bun build --compile             -> build/backend.exe (compiled Bun backend)
+//   copy bun.exe + backend.js       -> build/package/app/backend/ (shared Bun runtime + JS bundle)
 //   dotnet publish                  -> WinUI publish output (framework-dependent WinAppSDK)
 //   dotnet publish launcher         -> build/launcher/ (single-file root launcher exe)
 //   assemble                        -> build/package/ (launcher KuumoApp.exe + app/ payload)
@@ -20,7 +20,7 @@
 //   bun run package --profile myown -> builds only that profile (dev testing)
 //   bun run package --cached        -> skips profile-independent builds if outputs exist (CI)
 import { spawnSync } from "node:child_process";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
@@ -85,7 +85,7 @@ function installerBaseName(profile: string): string {
 // Microsoft.WinUI is loaded at JIT time before Main's AssemblyResolve handler
 // can attach). The install root only holds the launcher (see
 // app-winui/Launcher) plus the app\ folder, so the proven flat layout stays
-// untouched. The backend's native libs (dlopen'd by backend.exe from its CWD)
+// untouched. The backend's native libs (dlopen'd by bun.exe from its CWD)
 // live in app\include\.
 
 // WASDK package files with no code references (verified: no C#/Bun usage of
@@ -136,25 +136,14 @@ const PUBLISH_TRIM = new Set([
 const buildDir = resolve(root, "build");
 const binDir = resolve(buildDir, "bin");
 const backendJs = resolve(buildDir, "backend.js");
-const backendExe = resolve(buildDir, "backend.exe");
 const publishDir = resolve(root, "build", "publish");
+const launcherDir = resolve(buildDir, "launcher");
 
-if (useCache && existsSync(backendJs) && existsSync(backendExe) && existsSync(publishDir)) {
+if (useCache && existsSync(backendJs) && existsSync(publishDir) && existsSync(resolve(launcherDir, "KuumoApp.exe"))) {
     console.log("\n Skipping profile-independent builds (--cached, outputs exist)");
 } else {
     run("bun", ["run", "build:prod"]);
     requireDir(buildDir, "backend build output");
-
-    // 1b) Compile the backend into a standalone exe (release entrypoint at app root)
-    run("bun", [
-        "build",
-        "--compile",
-        "--target=bun",
-        "--minify",
-        "--outfile",
-        backendExe,
-        resolve(root, "src", "bun", "index.ts"),
-    ]);
 
     // 2) Publish the WinUI app (framework-dependent WinAppSDK — the runtime is an
     // installer prerequisite, not part of the app folder; profile-independent)
@@ -165,9 +154,20 @@ if (useCache && existsSync(backendJs) && existsSync(backendExe) && existsSync(pu
     // 2b) Ensure the app's Assets (titlebar/tray/SMTC icons) land in the payload —
     // the publish pipeline can drop Content items on incremental runs.
     cpSync(resolve(root, "app-winui", "KuumoApp", "Assets"), resolve(publishDir, "Assets"), { recursive: true });
+
+    // 2c) Publish the launcher (profile-independent single-file root exe)
+    rmSync(launcherDir, { recursive: true, force: true });
+    run("dotnet", [
+        "publish",
+        resolve(root, "app-winui", "Launcher", "Launcher.csproj"),
+        "-c",
+        "Release",
+        "-o",
+        launcherDir,
+    ], resolve(root, "app-winui"));
 }
 
-// 2c) Runtime prerequisites are NOT bundled — setup.iss downloads and installs
+// 2d) Runtime prerequisites are NOT bundled — setup.iss downloads and installs
 // .NET Desktop Runtime + Windows App SDK runtime at install time via
 // scripts/install-prereqs.ps1 (see scripts/install-prereqs.ps1 for the pins).
 
@@ -202,8 +202,43 @@ for (const profile of profiles) {
         cpSync(resolve(publishDir, entry), resolve(appDir, entry), { recursive: true });
     }
 
-    // backend.exe at app\ (compiled Bun backend; BunHostService launches it there)
-    copyFileSync(resolve(buildDir, "backend.exe"), resolve(appDir, "backend.exe"));
+    // app\backend\ — JS bundle only
+    const appBackendDir = resolve(appDir, "backend");
+    mkdirSync(appBackendDir, { recursive: true });
+    copyFileSync(backendJs, resolve(appBackendDir, "index.js"));
+
+    // bun.exe at app\ root (same dir as KuumoApp.exe)
+    const bunExeSrc = resolve(root, "bin", "bun.exe");
+    const bunExePath = existsSync(bunExeSrc)
+        ? bunExeSrc
+        : (() => {
+            const r = spawnSync("where", ["bun"], { encoding: "utf8" });
+            if (r.status !== 0 || !r.stdout?.trim()) {
+                console.error("bun.exe not found in PATH or bin/");
+                process.exit(1);
+            }
+            const candidates = r.stdout.trim().split(/\r?\n/).filter(Boolean);
+            const MIN_BUN_SIZE = 80 * 1024 * 1024;
+            const resolved = candidates
+                .map(p => ({ path: p.trim(), size: (() => { try { return statSync(p.trim()).size } catch { return 0 } })() }))
+                .filter(c => c.size >= MIN_BUN_SIZE)
+                .sort((a, b) => b.size - a.size)[0];
+            if (!resolved) {
+                console.error(`No valid bun.exe found (tried ${candidates.join(", ")})`);
+                process.exit(1);
+            }
+            return resolved.path;
+        })();
+
+    // copyFileSync uses CopyFileEx which only copies mapped pages of the running exe → stub.
+    // readFileSync + writeFileSync reads the full content via ReadFile and writes a brand-new file.
+    const bunDest = resolve(appDir, "bun.exe");
+    writeFileSync(bunDest, readFileSync(bunExePath));
+    const bunSize = statSync(bunDest).size;
+    if (bunSize < 1024 * 1024) {
+        console.error(`bun.exe copy failed: only ${bunSize} bytes (expected ~85MB)`);
+        process.exit(1);
+    }
 
     // app\include\ holds the backend's native libs (dlopen'd from CWD = include dir)
     const includeDir = resolve(appDir, "include");
@@ -218,17 +253,8 @@ for (const profile of profiles) {
     requireDir(resolve(root, "data", "system.json"), "data/system.json");
     copyFileSync(resolve(root, "data", "system.json"), resolve(dataDir, "system.json"));
 
-    // 3b) Root launcher: single-file exe that spawns app\KuumoApp.exe
-    const launcherDir = resolve(buildDir, "launcher");
-    rmSync(launcherDir, { recursive: true, force: true });
-    run("dotnet", [
-        "publish",
-        resolve(root, "app-winui", "Launcher", "Launcher.csproj"),
-        "-c",
-        "Release",
-        "-o",
-        launcherDir,
-    ], resolve(root, "app-winui"));
+    // 3b) Root launcher: copy from cached publish output
+    requireDir(resolve(launcherDir, "KuumoApp.exe"), "launcher exe");
     for (const entry of readdirSync(launcherDir)) {
         if (entry.endsWith(".pdb")) continue;
         copyFileSync(resolve(launcherDir, entry), resolve(pkg, entry));

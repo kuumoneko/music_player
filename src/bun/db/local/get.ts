@@ -60,6 +60,13 @@ export function getAllLocalFiles(): Track[] {
   return results.map(mapRowToTrack);
 }
 
+const getAllLocalIdsStmt = db.prepare(`SELECT id FROM tracks WHERE source = 'local';`);
+
+export function getAllLocalFileIds(): string[] {
+  const rows = getAllLocalIdsStmt.all() as { id: string }[];
+  return rows.map(r => r.id);
+}
+
 export function getLocalFileById(id: string): Track | null {
   const row = getLocalByIdStmt.get({ $id: id }) as LocalFileRow | null;
   if (!row) return null;

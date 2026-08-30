@@ -83,6 +83,8 @@ Type: filesandordirs; Name: "{app}\include"
 Type: filesandordirs; Name: "{app}\Assets"
 Type: filesandordirs; Name: "{app}\data"
 Type: files; Name: "{app}\backend.exe"
+Type: files; Name: "{app}\app\backend.exe"
+Type: files; Name: "{app}\app\backend\bun.exe"
 Type: files; Name: "{app}\KuumoApp.dll"
 Type: files; Name: "{app}\KuumoApp.pri"
 Type: files; Name: "{app}\KuumoApp.deps.json"
@@ -161,5 +163,5 @@ Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 ;    (downloaded and installed by install-prereqs.ps1; requires internet)
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\install-prereqs.ps1"""; StatusMsg: "Installing runtime prerequisites..."; Flags: waituntilterminated
 ; 2) Seed app data, then launch
-Filename: "{app}\app\backend.exe"; Parameters: "--seed --data-dir ""{userappdata}\KuumoApp"" --assets ""{app}\app"""; StatusMsg: "Configuring app data..."; Flags: runhidden waituntilterminated
+Filename: "{app}\app\bun.exe"; Parameters: "{app}\app\backend\index.js --seed --data-dir ""{userappdata}\KuumoApp"" --assets ""{app}\app"""; StatusMsg: "Configuring app data..."; Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent

@@ -64,6 +64,7 @@ const appExe = resolve(
     "KuumoApp.exe",
 );
 const skipBackend = process.argv.includes("--skip-backend");
+const skipWinui = process.argv.includes("--skip-winui");
 const stopOnly = process.argv.includes("--stop");
 const isTTY = process.stdin.isTTY === true;
 
@@ -110,19 +111,23 @@ async function runDevCycle(): Promise<boolean> {
         run("bun", ["run", "--silent", "build:prod"], { cwd: root });
     }
 
-    console.log("[winui:dev] building WinUI app...");
-    run(
-        "dotnet",
-        [
-            "build",
-            "app-winui\\KuumoApp\\KuumoApp.csproj",
-            "-p:Platform=x64",
-            "-p:RunAnalyzersDuringBuild=false",
-            "-p:DisableXbfLineInfo=true",
-            "-p:WindowsAppSDKSelfContained=false",
-        ],
-        { cwd: root },
-    );
+    if (skipWinui) {
+        console.log("[winui:dev] skipping WinUI build (--skip-winui)");
+    } else {
+        console.log("[winui:dev] building WinUI app...");
+        run(
+            "dotnet",
+            [
+                "build",
+                "--no-restore",
+                "-m",
+                "app-winui\\KuumoApp\\KuumoApp.csproj",
+                "-p:Platform=x64",
+                "-p:WindowsAppSDKSelfContained=false",
+            ],
+            { cwd: root },
+        );
+    }
 
     if (!existsSync(appExe)) {
         console.error(`\n[winui:dev] exe not found: ${appExe}`);

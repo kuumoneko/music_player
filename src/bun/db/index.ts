@@ -9,7 +9,7 @@ import getTracks, { getTrackByName, getAllTracks } from "./tracks/get.ts";
 import writeTracks from "./tracks/write.ts";
 import deleteTracks, { deleteStaleTrackArtists } from "./tracks/delete.ts";
 import writePlaylist from './playlists/write.ts';
-import { getLocalFileById, getAllLocalFiles, searchLocalFiles } from './local/get.ts';
+import { getLocalFileById, getAllLocalFiles, getAllLocalFileIds, searchLocalFiles } from './local/get.ts';
 import writeLocalFiles from './local/write.ts';
 import getArtistById, { getArtistByPlaylistId } from './artists/get.ts';
 import writeArtist from './artists/write.ts';
@@ -36,6 +36,7 @@ export {
     removeTrackFromPlaylist,
     getLocalFileById,
     getAllLocalFiles,
+    getAllLocalFileIds,
     searchLocalFiles,
     writeLocalFiles,
     getArtistById,

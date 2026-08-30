@@ -21,10 +21,10 @@
                 FontWeight="SemiBold"
                 Style="{StaticResource AppAccentTitleStyle}"
                 VerticalAlignment="Center" />
-            <Button
-                Grid.Column="1"
-                Content="Refresh"
-                Click="OnRefreshClick" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Button Content="Refresh" Click="OnRefreshClick" />
+                <Button Content="Reload" Click="OnReloadClick" />
+            </StackPanel>
         </Grid>
 
         <ListView

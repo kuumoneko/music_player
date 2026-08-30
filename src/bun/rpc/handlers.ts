@@ -27,7 +27,7 @@ import {
   getArtistById,
   getArtistByPlaylistId,
 } from "../db/index.ts";
-import { getHash, resolveId, tracksToFront } from "../lib/hash.ts";
+import { getHash, resolveId, tracksToFront, clearHashes, ensurePopulated } from "../lib/hash.ts";
 import { isValidContextEntry } from "../lib/nextfrom.ts";
 import db from "../db/setup.ts";
 import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
@@ -800,6 +800,12 @@ writeLogs([{
 
     getUserYoutubePlaylistTracks: withErrorLogEmit("getUserYoutubePlaylistTracks", async ({ playlistId }: { playlistId: string }) => {
       return player.youtubeDataAPI.getPlaylistTracks(playlistId);
+    }),
+
+    rehashLocalFiles: withErrorLogEmit("rehashLocalFiles", async () => {
+      clearHashes();
+      ensurePopulated();
+      emitToFrontend("local-files-changed", null);
     }),
   };
 }

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { copyFileSync, mkdirSync, readdirSync } from "node:fs";
+import { copyFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 
 const root = resolve(import.meta.dir, "..");
 
@@ -16,6 +16,7 @@ for (const log of result.logs) console.error(log);
 if (!result.success) process.exit(1);
 
 const binDir = resolve(root, "build", "bin");
+rmSync(binDir, { recursive: true, force: true });
 mkdirSync(binDir, { recursive: true });
 for (const file of readdirSync(resolve(root, "bin")).filter(f => f !== ".git")) {
     copyFileSync(resolve(root, "bin", file), resolve(binDir, file));
