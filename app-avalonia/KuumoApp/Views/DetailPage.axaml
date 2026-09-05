@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="KuumoApp.Views.DetailPage">
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="12">
+            <!-- Header -->
+            <Grid ColumnDefinitions="160,*">
+                <Border Width="160" Height="160" CornerRadius="8"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        ClipToBounds="True">
+                    <Image x:Name="HeaderThumb" Width="160" Height="160" Stretch="UniformToFill"/>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                    <TextBlock x:Name="HeaderKind" Text="" FontSize="12" Opacity="0.7"/>
+                    <TextBlock x:Name="HeaderTitle" Text="Loading..." FontSize="28" FontWeight="Bold"
+                               Foreground="{DynamicResource AppAccentBrush}"/>
+                    <TextBlock x:Name="HeaderSubtitle" Text="" FontSize="13" Opacity="0.7"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Action Buttons -->
+            <StackPanel x:Name="ButtonPanel" Orientation="Horizontal" Spacing="8"/>
+            <TextBlock x:Name="ErrorText" Text="" FontSize="14"
+                       Foreground="{DynamicResource SystemFillColorCriticalBrush}" IsVisible="False"/>
+            <TextBlock x:Name="TrackCountText" Text="" FontSize="14" Opacity="0.7"/>
+            <StackPanel x:Name="TrackPanel" Spacing="2"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:KuumoApp.Controls"
+             x:Class="KuumoApp.Controls.PlayerBar">
+    <Border Padding="12,8" Background="{DynamicResource LayerFillColorDefaultBrush}">
+        <Grid ColumnDefinitions="300,Auto,*,Auto">
+            <!-- Track Info -->
+            <Grid ColumnDefinitions="Auto,*">
+                <Border Width="56" Height="56" CornerRadius="6"
+                        Background="{DynamicResource CardBackgroundFillColorDefaultBrush}"
+                        ClipToBounds="True"
+                        VerticalAlignment="Center" Margin="0,0,12,0">
+                    <Image x:Name="Thumb" Width="56" Height="56" Stretch="UniformToFill"/>
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock x:Name="TrackTitle" Text="Nothing playing" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" PointerPressed="OnTrackTitlePressed"
+                               ToolTip.Tip="Open track"/>
+                    <TextBlock x:Name="TrackArtist" Text="" FontSize="12" Opacity="0.7"
+                               TextTrimming="CharacterEllipsis" PointerPressed="OnTrackArtistPressed"
+                               ToolTip.Tip="Open artist"/>
+                    <TextBlock x:Name="TrackFrom" Text="" FontSize="11"
+                               Foreground="{DynamicResource AppAccentBrush}"
+                               TextTrimming="CharacterEllipsis" IsVisible="False"
+                               PointerPressed="OnTrackFromPressed"
+                               ToolTip.Tip="Open source"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Transport Controls -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button x:Name="ShuffleButton" Classes="icon-button" Click="OnShuffleClick" ToolTip.Tip="Shuffle">
+                    <TextBlock x:Name="ShuffleIcon" Text="&#xE8A9;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                </Button>
+                <Button x:Name="RepeatButton" Classes="icon-button" Click="OnRepeatClick" ToolTip.Tip="Repeat">
+                    <TextBlock x:Name="RepeatIcon" Text="&#xE8EE;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                </Button>
+                <Button x:Name="PrevButton" Classes="icon-button" Click="OnPrevClick" ToolTip.Tip="Previous">
+                    <TextBlock Text="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                </Button>
+                <Button x:Name="PlayPauseButton" Classes="icon-button" Click="OnPlayPauseClick" ToolTip.Tip="Play/Pause">
+                    <TextBlock x:Name="PlayPauseIcon" Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
+                </Button>
+                <Button x:Name="NextButton" Classes="icon-button" Click="OnNextClick" ToolTip.Tip="Next">
+                    <TextBlock Text="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                </Button>
+            </StackPanel>
+
+            <!-- Seek Slider -->
+            <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center" Margin="16,0">
+                <Slider x:Name="SeekSlider" Minimum="0" Maximum="1" Value="0"
+                        IsEnabled="False" ValueChanged="OnSeekValueChanged"/>
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock x:Name="CurrentTime" Text="0:00" FontSize="11" Opacity="0.7"/>
+                    <TextBlock x:Name="LiveBadge" Grid.Column="1" Text="LIVE" FontSize="10"
+                               Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                               HorizontalAlignment="Center" IsVisible="False"/>
+                    <TextBlock x:Name="TotalTime" Grid.Column="2" Text="0:00" FontSize="11" Opacity="0.7"/>
+                </Grid>
+            </StackPanel>
+
+            <!-- Volume & Sleep -->
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button x:Name="SleepButton" Classes="icon-button" ToolTip.Tip="Sleep timer" Click="OnSleepButtonClick">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock x:Name="SleepIcon" Text="&#xE8B2;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                        <TextBlock x:Name="SleepModeText" Text="" FontSize="11" VerticalAlignment="Center" IsVisible="False"/>
+                    </StackPanel>
+                </Button>
+                <Button x:Name="MuteButton" Classes="icon-button" Click="OnMuteClick" ToolTip.Tip="Mute">
+                    <TextBlock x:Name="VolumeIcon" Text="&#xE767;" FontFamily="Segoe MDL2 Assets" FontSize="14"/>
+                </Button>
+                <Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Value="50" Width="120"
+                        PointerPressed="OnVolumePointerPressed" PointerReleased="OnVolumePointerReleased"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

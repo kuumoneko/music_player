@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="KuumoApp.Views.QueuePage">
+    <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+            <TextBlock x:Name="QueueTitle"
+                       Text="Play queue"
+                       FontSize="24" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" Content="Clear queue" Click="OnClearQueueClick"/>
+            <Button Grid.Column="2" Content="Clear next from" Click="OnClearNextfromClick"/>
+        </Grid>
+
+        <TextBlock x:Name="FromText"
+                   Grid.Row="1"
+                   Text="" FontSize="14" Opacity="0.7"
+                   IsVisible="False" Margin="0,4,0,0"/>
+
+        <TextBlock x:Name="QueueSectionTitle"
+                   Grid.Row="2"
+                   Text="Play Queue"
+                   FontSize="16" FontWeight="SemiBold" Opacity="0.8"
+                   IsVisible="False" Margin="0,8,0,4"/>
+
+        <ScrollViewer Grid.Row="3">
+            <StackPanel x:Name="ContentPanel" Spacing="4"/>
+        </ScrollViewer>
+
+        <TextBlock x:Name="EmptyText"
+                   Grid.Row="4"
+                   Text="Queue is empty"
+                   Opacity="0.7" FontSize="14"
+                   HorizontalAlignment="Center" Margin="0,12"/>
+    </Grid>
+</UserControl>

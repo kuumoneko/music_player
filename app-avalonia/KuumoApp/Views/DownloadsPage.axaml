@@ -1,0 +1,40 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="KuumoApp.Views.DownloadsPage">
+    <Grid Margin="24" RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Text="Download queue"
+                       FontSize="24" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"
+                       VerticalAlignment="Center"/>
+            <Button x:Name="DownloadButton" Grid.Column="1"
+                    Content="Download" Click="OnDownloadClick"
+                    Background="{DynamicResource AppAccentBrush}"
+                    Foreground="{DynamicResource AppAccentTextBrush}"
+                    FontWeight="SemiBold"/>
+            <Button x:Name="ClearButton" Grid.Column="2"
+                    Content="Clear queue" Click="OnClearClick"/>
+        </Grid>
+
+        <TextBlock x:Name="StatusText"
+                   Grid.Row="1"
+                   Text="Idle" FontSize="14" Opacity="0.8"
+                   Margin="0,4,0,0"/>
+
+        <ProgressBar x:Name="Progress"
+                     Grid.Row="2"
+                     IsIndeterminate="True"
+                     IsVisible="False" Margin="0,4,0,0"/>
+
+        <TextBlock x:Name="EmptyText"
+                   Grid.Row="3"
+                   Text="Download queue is empty"
+                   Opacity="0.7" FontSize="14"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+
+        <ScrollViewer Grid.Row="3">
+            <StackPanel x:Name="QueuePanel" Spacing="8"/>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

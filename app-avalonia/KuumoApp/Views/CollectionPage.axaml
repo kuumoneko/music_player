@@ -1,0 +1,10 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="KuumoApp.Views.CollectionPage">
+    <ScrollViewer>
+        <StackPanel Margin="16" Spacing="16">
+            <TextBlock x:Name="TitleText" Text="Collection" FontSize="24" FontWeight="Bold"/>
+            <Panel x:Name="ContentPanel"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

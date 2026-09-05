@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="KuumoApp.Views.SearchPage">
+    <Grid Margin="16" RowDefinitions="Auto,Auto,Auto,*,Auto">
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBox x:Name="SearchBox"
+                     Watermark="Search or paste YouTube link..."
+                     KeyDown="OnSearchKeyDown"/>
+            <Button Grid.Column="1"
+                    Content="Search"
+                    Click="OnSearchClick"
+                    Margin="8,0,0,0"
+                    VerticalAlignment="Center"/>
+        </Grid>
+
+        <StackPanel x:Name="TypeTabs" Grid.Row="1"
+                    Orientation="Horizontal" Spacing="4" Margin="0,8,0,8"/>
+
+        <ProgressBar x:Name="SearchingRing" Grid.Row="2"
+                     IsIndeterminate="True" IsVisible="False" Margin="0,0,0,8"/>
+
+        <TextBlock x:Name="StatusText"
+                   Grid.Row="3"
+                   Text="Type to search..."
+                   Opacity="0.7"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+
+        <StackPanel x:Name="ResultPanel" Grid.Row="3" Spacing="2"/>
+    </Grid>
+</UserControl>

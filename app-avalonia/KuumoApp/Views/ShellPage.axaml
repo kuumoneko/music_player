@@ -1,0 +1,111 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:KuumoApp.Views"
+             xmlns:controls="using:KuumoApp.Controls"
+             x:Class="KuumoApp.Views.ShellPage"
+             KeyDown="OnKeyDown">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Overlay wrapper: SplitView + hamburger button always visible -->
+        <Grid>
+            <SplitView x:Name="NavSplit"
+                       IsPaneOpen="True"
+                       DisplayMode="Inline"
+                       OpenPaneLength="220"
+                       PanePlacement="Left"
+                       Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}">
+                <SplitView.Pane>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Header -->
+                        <TextBlock Text="Kuumo App"
+                                   FontSize="16" FontWeight="SemiBold"
+                                   Margin="16,16,16,8"/>
+
+                        <!-- Navigation items -->
+                        <ListBox x:Name="NavList"
+                                 Grid.Row="1"
+                                 Background="Transparent"
+                                 SelectionChanged="OnNavSelectionChanged">
+                            <ListBoxItem Tag="home" IsSelected="True">
+                                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4">
+                                    <TextBlock Text="&#xE80F;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                               VerticalAlignment="Center" Width="24" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Home" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </ListBoxItem>
+                            <ListBoxItem Tag="search">
+                                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4">
+                                    <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                               VerticalAlignment="Center" Width="24" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Search" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </ListBoxItem>
+                            <ListBoxItem Tag="local">
+                                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4">
+                                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                               VerticalAlignment="Center" Width="24" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Local" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </ListBoxItem>
+                            <ListBoxItem Tag="downloads">
+                                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4">
+                                    <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                               VerticalAlignment="Center" Width="24" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Downloads" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </ListBoxItem>
+                            <ListBoxItem Tag="queue">
+                                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4">
+                                    <TextBlock Text="&#xE7FC;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                               VerticalAlignment="Center" Width="24" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Play queue" VerticalAlignment="Center" FontSize="14"/>
+                                </StackPanel>
+                            </ListBoxItem>
+                        </ListBox>
+                    </Grid>
+                </SplitView.Pane>
+            <SplitView.Content>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Button x:Name="HamburgerButton"
+                                Classes="icon-button"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Top"
+                                Margin="8,8,0,0"
+                                Click="OnHamburgerClick"
+                                ToolTip.Tip="Toggle navigation (Ctrl+B)">
+                            <TextBlock Text="&#xE700;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
+                        </Button>
+                        <ContentControl x:Name="ContentArea" Grid.Row="1"/>
+                    </Grid>
+                </SplitView.Content>
+        </SplitView>
+        </Grid>
+
+        <!-- Bottom Bar: PlayerBar + Status -->
+        <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+            <Grid RowDefinitions="Auto,Auto">
+                <controls:PlayerBar x:Name="PlayerBar"/>
+                <TextBlock x:Name="StatusText"
+                           Grid.Row="1"
+                           Text="starting..."
+                           FontSize="12"
+                           Opacity="0.7"
+                           Margin="12,4"
+                           VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

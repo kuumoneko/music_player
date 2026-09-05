@@ -1,0 +1,44 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="KuumoApp.App"
+             RequestedThemeVariant="Default">
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- Icon button: transparent, no border, 36x36 -->
+        <Style Selector="Button.icon-button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.icon-button:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+        </Style>
+        <Style Selector="Button.icon-button:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}"/>
+        </Style>
+
+        <!-- Flat button for sleep timer menu -->
+        <Style Selector="Button.flat">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="Button.flat:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}"/>
+        </Style>
+    </Application.Styles>
+
+    <Application.Resources>
+        <!-- Accent brushes -->
+        <SolidColorBrush x:Key="AppAccentBrush" Color="#6366f1"/>
+        <SolidColorBrush x:Key="AppAccentHoverBrush" Color="#4f46e5"/>
+        <SolidColorBrush x:Key="AppAccentTextBrush" Color="#ffffff"/>
+    </Application.Resources>
+</Application>
