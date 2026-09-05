@@ -1,4 +1,4 @@
-; KuumoApp installer — compile with: ISCC.exe setup.iss /DMyAppVersion=<version>
+﻿; KuumoApp installer — compile with: ISCC.exe setup.iss /DMyAppVersion=<version>
 ; Staging payload expected at: build\package\
 
 #ifndef MyAppVersion
@@ -31,7 +31,7 @@ LZMANumBlockThreads=4
 LZMAUseSeparateProcess=yes
 WizardStyle=modern
 WizardSizePercent=110
-SetupIconFile=app-avalonia\KuumoApp\Assets\AppIcon.ico
+SetupIconFile=app-winui\KuumoApp\Assets\AppIcon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 LicenseFile=
 CloseApplications=yes

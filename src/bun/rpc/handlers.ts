@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+﻿import { resolve } from "node:path";
 import { stat } from "node:fs/promises";
 import type DiscordRPC from "../discord/index.ts";
 import type Player from "../music/index.ts";
@@ -205,14 +205,6 @@ export function createRpcHandlers(ctx: RpcContext) {
 
     getDownloadStatus: async () => {
       return !isLocal ? null : player.status;
-    },
-
-    close: async () => {
-      return null;
-    },
-
-    minimize: async () => {
-      return null;
     },
 
     toggleQuitOnClose: async () => {
@@ -446,14 +438,6 @@ writeLogs([{
 
     setSleep: withErrorLogEmit("setSleep", async (mode: SleepMode) => { player.player?.setSleep(mode); }),
 
-    checkUpdate: async () => {
-      return null;
-    },
-
-    update: async () => {
-      return null;
-    },
-
     isHasDiscordRPC: async () => {
       if (isDiscord) {
         return ctx.discordRPC.instance?.username ?? false;
@@ -524,10 +508,6 @@ writeLogs([{
         Bun.gc(false);
       }
       return true;
-    },
-
-    openDevTools: () => {
-      return null;
     },
 
     getImageDataUri: withErrorLogEmit("getImageDataUri", async (url: string) => {

@@ -1,4 +1,4 @@
-{
+﻿{
     "compilerOptions": {
         /* Base Language & Environment */
         "target": "ESNext",
@@ -44,7 +44,7 @@
         "node_modules",
         "dist",
         "build",
-        "electrobun",
+
         "backup/**/*"
     ]
 }

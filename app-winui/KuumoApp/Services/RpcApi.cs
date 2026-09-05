@@ -20,13 +20,8 @@ public sealed class RpcApi
     public Task SetUiVisibilityAsync(bool visible) => Call<object?>("setUiVisibility", visible, timeoutMs: 5000);
     public Task<string> DownloadMusicAsync() => Call<string>("downloadMusic");
     public Task<DownloadStatusDto?> GetDownloadStatusAsync() => Call<DownloadStatusDto?>("getDownloadStatus");
-    public Task CloseAsync() => Call<object?>("close");
-    public Task MinimizeAsync() => Call<object?>("minimize");
     public Task ToggleQuitOnCloseAsync() => Call<object?>("toggleQuitOnClose");
     public Task<bool?> IsQuitOnCloseAsync() => Call<bool?>("isQuitOnClose");
-    public Task<object?> CheckUpdateAsync() => Call<object?>("checkUpdate");
-    public Task UpdateAsync() => Call<object?>("update");
-    public Task<object?> OpenDevToolsAsync() => Call<object?>("openDevTools");
     public Task SendErrorAsync(string message) => Call<object?>("sendError", new { message });
     public Task WriteLogAsync(string type, string source, string message)
         => Call<object?>("writeLog", new { type, source, message }, timeoutMs: 5000);
