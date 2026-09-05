@@ -1,4 +1,4 @@
-export type AppRPCType = {
+﻿export type AppRPCType = {
     requests: {
             getMusicData: {
                 params: {
@@ -36,14 +36,6 @@ export type AppRPCType = {
             getDownloadStatus: {
                 params: null,
                 response: { data: string, track: string }
-            },
-            close: {
-                params: null,
-                response: null
-            },
-            minimize: {
-                params: null,
-                response: null
             },
             toggleQuitOnClose: {
                 params: null,
@@ -91,14 +83,6 @@ export type AppRPCType = {
                 response: null
             },
             setSleep: { params: SleepMode, response: null },
-            checkUpdate: {
-                params: null,
-                response: boolean | string
-            },
-            update: {
-                params: null,
-                response: null
-            },
             isHasDiscordRPC: {
                 params: null,
                 response: boolean | string
@@ -115,16 +99,8 @@ export type AppRPCType = {
                 params: string[],
                 response: (Track | Playlist | Artist | null)[]
             },
-            setFolder: {
-                params: null,
-                response: string // folder full path
-            },
             sendError: {
                 params: Error,
-                response: void
-            },
-            openDevTools: {
-                params: null,
                 response: void
             },
             addToBatchQueue: {
@@ -398,28 +374,6 @@ export interface EqualizerBand {
     freq: number;
     gain: number;
 }
-
-export const DEFAULT_EQ_BANDS: EqualizerBand[] = [
-    { freq: 31, gain: 0 },
-    { freq: 62, gain: 0 },
-    { freq: 125, gain: 0 },
-    { freq: 250, gain: 0 },
-    { freq: 500, gain: 0 },
-    { freq: 1000, gain: 0 },
-    { freq: 2000, gain: 0 },
-    { freq: 4000, gain: 0 },
-    { freq: 8000, gain: 0 },
-    { freq: 16000, gain: 0 },
-];
-
-export const EQ_PRESETS: Record<string, number[]> = {
-    "Flat":         [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    "Bass Boost":   [ 6, 5, 4, 2, 0, 0, 0, 0, 0, 0],
-    "Treble Boost": [ 0, 0, 0, 0, 0, 0, 2, 4, 5, 6],
-    "Rock":         [ 5, 4, 2, 1, 0, 0, 1, 3, 4, 5],
-    "Pop":          [ 0, 0, 0, 2, 3, 4, 3, 2, 1, 1],
-    "Classical":    [ 4, 3, 2, 1, 0, 0, 0, 2, 3, 4],
-};
 
 export interface DownloadItem {
     id: string[],

@@ -1,4 +1,4 @@
-node_modules
+﻿node_modules
 .vscode/*
 /test
 /dist
@@ -11,13 +11,10 @@ bin/
 obj/
 *.pfx
 .env
-electrobun.config.ts
 artifacts
-electrobun
 release
 .zigversion
 tsconfig.tsbuildinfo
-temp_electrobun.config.ts
 .vite-dev-url
 /apikeys
 bun.lock

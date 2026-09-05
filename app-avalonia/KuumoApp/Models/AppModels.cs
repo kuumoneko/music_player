@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 
 namespace KuumoApp.Models;
 
@@ -137,8 +137,6 @@ public record GoogleAuthStateDto(bool IsSignedIn, bool HasOAuth = true, string? 
 public record SignInResultDto(bool Success, string? AuthUrl = null, int? Port = null);
 
 public record EqualizerBandDto(int Freq, int Gain);
-
-public record ApiKeyListItemDto(string Raw, string Masked);
 
 // --- Events ---
 
