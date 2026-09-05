@@ -96,7 +96,7 @@ public sealed partial class DetailPage : Page
                 ShellPage.SetTitle(track.Name);
                 HeaderSubtitle.Text = string.Join(", ", track.Artist.Select(a => a.Name));
                 await ImageAttach.LoadAsync(HeaderThumb, track.Thumbnail);
-                _entry = $"{_nav.Source}:{MusicType.Track}:{track.Id}";
+                _entry = EntryFormat.Build(_nav.Source, MusicType.Track, track.Id);
                 var row = TrackRow.FromTrack(track);
                 TrackList.ItemsSource = new[] { row };
                 PlayAllButton.Visibility = Visibility.Visible;
@@ -113,7 +113,7 @@ public sealed partial class DetailPage : Page
                 ShellPage.SetTitle(playlist.Name);
                 HeaderSubtitle.Text = $"{playlist.Tracks?.Length ?? 0} tracks";
                 await ImageAttach.LoadAsync(HeaderThumb, playlist.Thumbnail);
-                _entry = $"{_nav.Source}:{MusicType.Playlist}:{playlist.Id}";
+                _entry = EntryFormat.Build(_nav.Source, MusicType.Playlist, playlist.Id);
                 var tracks = playlist.Tracks ?? [];
                 if (tracks.Length == 0 && playlist.Ids is { Length: > 0 } ids)
                 {
@@ -135,7 +135,7 @@ public sealed partial class DetailPage : Page
                 ShellPage.SetTitle(artist.Name);
                 HeaderSubtitle.Text = "Artist";
                 await ImageAttach.LoadAsync(HeaderThumb, artist.Thumbnail);
-                _entry = $"{_nav.Source}:{MusicType.Artist}:{artist.Id}";
+                _entry = EntryFormat.Build(_nav.Source, MusicType.Artist, artist.Id);
                 PopulateTracks(artist.Tracks ?? []);
                 PlayAllButton.Visibility = artist.Tracks is { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
             }
@@ -170,11 +170,18 @@ public sealed partial class DetailPage : Page
     {
         if (e.ClickedItem is TrackRow row)
         {
-            var track = row.Payload ?? new TrackDto(row.Title, row.Id, [new TrackArtistDto("", row.Artist)], row.Source, row.Thumbnail, 0, "");
-            var context = _nav is { Type: not null } && _nav.Type != MusicType.Track
-                ? (_nav.Source, _nav.Type, _nav.Id)
-                : (row.Source, row.Type, row.Id);
-            await Playback.PlayTrackAsync(track, context.Source, context.Type, context.Id);
+            try
+            {
+                var track = row.Payload ?? new TrackDto(row.Title, row.Id, [new TrackArtistDto("", row.Artist)], row.Source, row.Thumbnail, 0, "");
+                var context = _nav is { Type: not null } && _nav.Type != MusicType.Track
+                    ? (_nav.Source, _nav.Type, _nav.Id)
+                    : (row.Source, row.Type, row.Id);
+                await Playback.PlayTrackAsync(track, context.Source, context.Type, context.Id);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("detail", $"track click failed: {ex.Message}");
+            }
         }
     }
 
@@ -203,13 +210,20 @@ public sealed partial class DetailPage : Page
         {
             return;
         }
-        var shuffle = await App.Services.Api.GetUserDataAsync<int>(UserDataKeys.Shuffle);
-        var first = shuffle == (int)Shuffle.Enable
-            ? rows[Random.Shared.Next(rows.Length)].Payload
-            : rows[0].Payload;
-        if (first is not null)
+        try
         {
-            await Playback.PlayTrackAsync(first, _nav?.Source, _nav?.Type, _nav?.Id);
+            var shuffle = await App.Services.Api.GetUserDataAsync<int>(UserDataKeys.Shuffle);
+            var first = shuffle == (int)Shuffle.Enable
+                ? rows[Random.Shared.Next(rows.Length)].Payload
+                : rows[0].Payload;
+            if (first is not null)
+            {
+                await Playback.PlayTrackAsync(first, _nav?.Source, _nav?.Type, _nav?.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("detail", $"play all failed: {ex.Message}");
         }
     }
 
@@ -219,7 +233,7 @@ public sealed partial class DetailPage : Page
         {
             return;
         }
-        var isPinned = await new PinService().IsPinnedAsync(_nav.Source, _nav.Type, _nav.Id);
+        var isPinned = await App.Services.Pins.IsPinnedAsync(_nav.Source, _nav.Type, _nav.Id);
         PinButton.Content = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -238,8 +252,15 @@ public sealed partial class DetailPage : Page
         {
             return;
         }
-        await new PinService().TogglePinAsync(_nav.Source, _nav.Type, _nav.Id);
-        await UpdatePinStateAsync();
+        try
+        {
+            await App.Services.Pins.TogglePinAsync(_nav.Source, _nav.Type, _nav.Id);
+            await UpdatePinStateAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("detail", $"pin click failed: {ex.Message}");
+        }
     }
 
     private void OnShareClick(object sender, RoutedEventArgs e)
@@ -268,7 +289,14 @@ public sealed partial class DetailPage : Page
         {
             return;
         }
-        await new DownloadQueueService().AddAsync(_nav.Source, _nav.Type, _nav.Id);
+        try
+        {
+            await App.Services.Downloads.AddAsync(_nav.Source, _nav.Type, _nav.Id);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("detail", $"download click failed: {ex.Message}");
+        }
     }
 
     private async void OnRefreshClick(object sender, RoutedEventArgs e)

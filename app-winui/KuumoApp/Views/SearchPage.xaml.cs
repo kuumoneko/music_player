@@ -1,5 +1,6 @@
 ﻿using KuumoApp.Models;
 using KuumoApp.Services;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -12,10 +13,15 @@ public sealed partial class SearchPage : Page
     private string _selectedType = MusicType.Track;
     private SearchResultDto? _result;
     private int _searchVersion;
+    private readonly DispatcherQueueTimer _debounceTimer;
 
     public SearchPage()
     {
         InitializeComponent();
+        _debounceTimer = DispatcherQueue.CreateTimer();
+        _debounceTimer.Interval = TimeSpan.FromMilliseconds(300);
+        _debounceTimer.IsRepeating = false;
+        _debounceTimer.Tick += (_, _) => _ = SearchAsync();
         TypeTabs.ItemsSource = Types.Select(t => t == MusicType.Track ? "Tracks" : t == MusicType.Playlist ? "Playlists" : "Artists").ToArray();
         TypeTabs.SelectedIndex = 0;
         ItemMenu.AttachMoreButton(ResultList);
@@ -33,6 +39,15 @@ public sealed partial class SearchPage : Page
         if (SearchBox.Text.Trim().Length > 0)
         {
             _ = SearchAsync();
+        }
+    }
+
+    private void OnSearchTextChanged(object sender, TextChangedEventArgs e)
+    {
+        _debounceTimer.Stop();
+        if (SearchBox.Text.Trim().Length > 0)
+        {
+            _debounceTimer.Start();
         }
     }
 
@@ -57,7 +72,7 @@ public sealed partial class SearchPage : Page
         {
             if (type == MusicType.Track)
             {
-                await Playback.PlayEntryAsync($"{source}:{type}:{id}");
+                await Playback.PlayEntryAsync(EntryFormat.Build(source, MusicType.Track, id));
             }
             else
             {
@@ -258,7 +273,7 @@ public sealed partial class SearchPage : Page
         {
             if (card.Kind == "track")
             {
-                await Playback.PlayEntryAsync($"{card.Source}:{card.Type}:{card.Id}");
+                await Playback.PlayEntryAsync(EntryFormat.Build(card.Source, card.Type, card.Id));
             }
             else
             {

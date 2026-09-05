@@ -12,7 +12,6 @@ public sealed partial class MainWindow : Window
     private readonly SmtcService _smtc;
     private readonly TrayService _tray;
     private readonly UiMemoryManager _memory;
-    private readonly DispatcherQueueTimer _showFallbackTimer;
     private bool _smtcInitialized;
     private int _lastTimeMs;
     private int _lastDurationMs;
@@ -37,11 +36,14 @@ public sealed partial class MainWindow : Window
 
         _windowService.WindowHidden += () =>
         {
+            _smtc.IsPaused = true;
+            App.Services.Theme.SetBackground(true);
             _memory.OnWindowHidden();
         };
         _windowService.WindowShown += () =>
         {
-            _showFallbackTimer.Stop();
+            _smtc.IsPaused = false;
+            App.Services.Theme.SetBackground(false);
             _memory.OnWindowShown();
             if (_lastSmtc is not null)
             {
@@ -49,23 +51,20 @@ public sealed partial class MainWindow : Window
             }
         };
 
-        _showFallbackTimer = DispatcherQueue.CreateTimer();
-        _showFallbackTimer.Interval = TimeSpan.FromSeconds(12);
-        _showFallbackTimer.IsRepeating = false;
-        _showFallbackTimer.Tick += (_, _) =>
-        {
-            if (!_windowService.IsWindowVisible)
-            {
-                AppLog.Write("window", "backend not ready in time, showing window at default bounds");
-                _windowService.Activate();
-            }
-        };
-        _showFallbackTimer.Start();
-
         App.Services.Events.OpenApp += () => _windowService.Activate();
         App.Services.Events.AppExit += App.ShutdownApp;
         App.Services.SingleInstanceDetected += () => DispatcherQueue.TryEnqueue(App.ShutdownApp);
-        App.Services.Events.MessageReceived += data => AppLog.Write("app", $"showMessage: {data.Title} - {data.Message}");
+        App.Services.Events.MessageReceived += data => DispatcherQueue.TryEnqueue(() =>
+        {
+            AppLog.Write("app", $"showMessage: {data.Title} - {data.Message}");
+            Shell.SetStatus($"{data.Title}: {data.Message}");
+        });
+        App.Services.Events.TrackUnavailable += () => DispatcherQueue.TryEnqueue(() =>
+        {
+            AppLog.Write("app", "track unavailable");
+            Shell.SetStatus("Track unavailable, skipping...");
+            _ = App.Services.Api.NextAsync();
+        });
         App.Services.Events.SmtcUpdated += data =>
         {
             _lastSmtc = data;
@@ -94,12 +93,16 @@ public sealed partial class MainWindow : Window
         {
             _smtc.Dispose();
             _tray.Dispose();
+            AppLog.Stop();
         };
 
         Shell.SetStatus("starting backend...");
         App.Services.Bun.LogLine += line => AppLog.Write("main", line);
         App.Services.Bun.EndpointReady += url => AppLog.Write("main", $"backend endpoint: {url}");
         App.Services.Rpc.Connected += OnRpcConnected;
+
+        AppWindow.Show();
+        Activate();
     }
 
     private async void OnRpcConnected()
@@ -122,7 +125,6 @@ public sealed partial class MainWindow : Window
                 DispatcherQueue.TryEnqueue(() => _smtc.Update(new SmtcUpdateDto(current.Title, current.Artist, current.Thumbnail, false, playing?.IsPlaying ?? false)));
             }
             await _windowService.InitializeAsync();
-            _showFallbackTimer.Stop();
             DispatcherQueue.TryEnqueue(() => Shell.SetStatus($"connected | isLocal={isLocal}"));
         }
         catch (Exception ex)

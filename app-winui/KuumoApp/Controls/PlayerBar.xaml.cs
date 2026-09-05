@@ -323,16 +323,12 @@ public sealed partial class PlayerBar : UserControl
             TrackFrom.Visibility = Visibility.Collapsed;
             return;
         }
-        var parts = nextfrom.Split(':');
-        if (parts.Length < 3)
+        if (!EntryFormat.TryParse(nextfrom, out var source, out var type, out var id))
         {
             _resolvedNextfrom = nextfrom;
             TrackFrom.Visibility = Visibility.Collapsed;
             return;
         }
-        var source = parts[0];
-        var type = parts[1];
-        var id = parts[2];
         if (type == MusicType.Track || type == MusicType.Local)
         {
             _resolvedNextfrom = nextfrom;
@@ -371,10 +367,9 @@ public sealed partial class PlayerBar : UserControl
 
     private void OnTrackFromTapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
     {
-        var parts = _nextfrom.Split(':');
-        if (parts.Length >= 3)
+        if (EntryFormat.TryParse(_nextfrom, out var source, out var type, out var id))
         {
-            ShellPage.NavigateDetail(parts[0], parts[1], parts[2]);
+            ShellPage.NavigateDetail(source, type, id);
         }
     }
 

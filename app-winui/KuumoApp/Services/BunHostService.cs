@@ -107,11 +107,11 @@ public sealed class BunHostService
         psi.ArgumentList.Add(DataDir);
         psi.ArgumentList.Add("--assets");
         psi.ArgumentList.Add(AssetsDir);
+        psi.ArgumentList.Add("--port");
+        psi.ArgumentList.Add("0");
         if (IsDev)
         {
             psi.ArgumentList.Add("--no-lock");
-            psi.ArgumentList.Add("--port");
-            psi.ArgumentList.Add("0");
         }
 
         _process = Process.Start(psi);

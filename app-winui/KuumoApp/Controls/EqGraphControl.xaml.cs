@@ -20,6 +20,7 @@ public sealed partial class EqGraphControl : UserControl
 
     private readonly double[] _gains = new double[Freqs.Length];
     private readonly Ellipse[] _handles = new Ellipse[Freqs.Length];
+    private Polyline? _polyline;
     private int _dragIndex = -1;
     private DateTime _lastEmit = DateTime.MinValue;
 
@@ -98,6 +99,7 @@ public sealed partial class EqGraphControl : UserControl
             poly.Points.Add(new Point(xs[i], midY - (_gains[i] / MaxGain) * amp));
         }
         Root.Children.Add(poly);
+        _polyline = poly;
 
         for (var i = 0; i < Freqs.Length; i++)
         {
@@ -147,7 +149,7 @@ public sealed partial class EqGraphControl : UserControl
             return;
         }
         SetGainFromY(_dragIndex, e.GetCurrentPoint(Root).Position.Y);
-        Redraw();
+        UpdateDragPosition();
         EmitThrottled();
     }
 
@@ -183,6 +185,32 @@ public sealed partial class EqGraphControl : UserControl
         var amp = Math.Max(midY - top - 8, 20);
         var gain = ((midY - y) / amp) * MaxGain;
         _gains[index] = Math.Round(Math.Clamp(gain, MinGain, MaxGain));
+    }
+
+    private void UpdateDragPosition()
+    {
+        if (_dragIndex < 0 || _handles[_dragIndex] is null)
+        {
+            return;
+        }
+        var w = Math.Max(Root.ActualWidth, 320);
+        var h = Math.Max(Root.ActualHeight, 160);
+        const double left = 24;
+        const double right = 24;
+        const double top = 12;
+        const double labelH = 18;
+        const double bottom = 12;
+        var midY = top + (h - top - labelH - bottom) / 2;
+        var amp = Math.Max(midY - top - 8, 20);
+        var span = w - left - right;
+        var x = left + _dragIndex * span / (Freqs.Length - 1);
+        var y = midY - (_gains[_dragIndex] / MaxGain) * amp;
+        Canvas.SetLeft(_handles[_dragIndex], x - HandleRadius);
+        Canvas.SetTop(_handles[_dragIndex], y - HandleRadius);
+        if (_polyline is not null && _dragIndex < _polyline.Points.Count)
+        {
+            _polyline.Points[_dragIndex] = new Point(x, y);
+        }
     }
 
     private int HitTest(Point pt)

@@ -51,11 +51,14 @@ const RATE_LIMIT_MS = 500;
 
 const imageCache = new Map<string, { data: string; at: number }>();
 const IMAGE_TTL_MS = 30 * 60_000;
-const IMAGE_CACHE_MAX = 200;
+const IMAGE_CACHE_MAX = 80;
 
 function purgeImageCache() {
   imageCache.clear();
 }
+
+let uiVisible = true;
+export function isUiVisible() { return uiVisible; }
 
 let downloadInFlight = false;
 
@@ -509,6 +512,7 @@ writeLogs([{
     },
 
     setUiVisibility: async (visible: boolean) => {
+      uiVisible = visible;
       if (!visible) {
         purgeImageCache();
         clearHomeCaches();

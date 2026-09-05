@@ -32,9 +32,11 @@ public sealed class ThemeService
     private bool _dynamicAccent;
     private string? _lastUrl;
     private int _accentVersion;
+    private bool _isBackground;
 
     public ThemeMode Mode => _mode;
     public bool DynamicAccent => _dynamicAccent;
+    public bool IsBackground => _isBackground;
 
     public ThemeService(AppEvents events, RpcClient rpc, DispatcherQueue dispatcher)
     {
@@ -128,8 +130,17 @@ public sealed class ThemeService
 
     private Task OnTrackChangedAsync(CurrentTrackChangedDto data)
     {
+        if (_isBackground)
+        {
+            return Task.CompletedTask;
+        }
         SetTrackId(data.Id);
         return Task.CompletedTask;
+    }
+
+    public void SetBackground(bool isBackground)
+    {
+        _isBackground = isBackground;
     }
 
     private async Task ApplyAccentAsync()

@@ -11,6 +11,7 @@
 
             <SolidColorBrush x:Key="AppAccentBrush" Color="{ThemeResource SystemAccentColor}" />
             <SolidColorBrush x:Key="AppAccentHoverBrush" Color="{ThemeResource SystemAccentColorLight2}" />
+            <SolidColorBrush x:Key="AppAccentTextBrush" Color="White" />
 
             <Style x:Key="AppAccentTitleStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{StaticResource AppAccentBrush}" />

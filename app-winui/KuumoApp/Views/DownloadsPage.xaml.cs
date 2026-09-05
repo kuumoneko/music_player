@@ -50,10 +50,10 @@ public sealed partial class DownloadsPage : Page
 
             foreach (var entry in entries)
             {
-                var parts = entry.Split(':');
-                var source = parts.Length > 0 ? parts[0] : MusicSource.Youtube;
-                var mode = parts.Length > 1 ? parts[1] : MusicType.Track;
-                var id = parts.Length > 2 ? parts[2] : (parts.Length > 1 ? parts[1] : "");
+                if (!EntryFormat.TryParse(entry, out var source, out var mode, out var id))
+                {
+                    continue;
+                }
                 if (mode == MusicType.Artist)
                 {
                     try
@@ -84,84 +84,91 @@ public sealed partial class DownloadsPage : Page
             }
 
             var items = new List<DownloadQueueItem>();
-            foreach (var (source, mode, id) in playlists)
+            var playlistTasks = playlists.Select(async sp =>
             {
                 try
                 {
-                    var data = await App.Services.Api.GetMusicDataAsync(source, MusicType.Playlist, id);
+                    var data = await App.Services.Api.GetMusicDataAsync(sp.Source, MusicType.Playlist, sp.Id);
                     if (data is not JsonElement el || el.ValueKind != JsonValueKind.Object)
                     {
-                        allResolved = false;
+                        return (Item: new DownloadQueueItem(sp.Source, MusicType.Playlist, sp.Id, "Unavailable", "", "Playlist", "", []), Resolved: false, RemovedTrackIds: (HashSet<string>?)null);
                     }
-                    else
+                    var playlist = JsonSerializer.Deserialize<PlaylistDto>(el, RpcClient.Json);
+                    if (playlist is null)
                     {
-                        var playlist = JsonSerializer.Deserialize<PlaylistDto>(el, RpcClient.Json);
-                        if (playlist is null)
-                        {
-                            allResolved = false;
-                        }
-                        else
-                        {
-                            var nested = new List<TrackRow>();
-                            var playlistTrackIds = new HashSet<string>();
-                            foreach (var t in playlist.Tracks ?? [])
-                            {
-                                playlistTrackIds.Add(t.Id);
-                                nested.Add(TrackRow.FromTrack(t));
-                            }
-                            tracks = tracks.Where(t => !playlistTrackIds.Contains(t.Id)).ToList();
-                            items.Add(new DownloadQueueItem(
-                                source, MusicType.Playlist, id, playlist.Name, playlist.Thumbnail,
-                                "Playlist", $"{nested.Count} tracks", nested.ToArray()));
-                            continue;
-                        }
+                        return (Item: new DownloadQueueItem(sp.Source, MusicType.Playlist, sp.Id, "Unavailable", "", "Playlist", "", []), Resolved: false, RemovedTrackIds: (HashSet<string>?)null);
                     }
+                    var nested = new List<TrackRow>();
+                    var playlistTrackIds = new HashSet<string>();
+                    foreach (var t in playlist.Tracks ?? [])
+                    {
+                        playlistTrackIds.Add(t.Id);
+                        nested.Add(TrackRow.FromTrack(t));
+                    }
+                    return (Item: new DownloadQueueItem(
+                        sp.Source, MusicType.Playlist, sp.Id, playlist.Name, playlist.Thumbnail,
+                        "Playlist", $"{nested.Count} tracks", nested.ToArray()), Resolved: true, RemovedTrackIds: playlistTrackIds);
                 }
                 catch (Exception ex)
                 {
-                    AppLog.Write("downloads", $"resolve playlist {id} failed: {ex.Message}");
+                    AppLog.Write("downloads", $"resolve playlist {sp.Id} failed: {ex.Message}");
+                    return (Item: new DownloadQueueItem(sp.Source, MusicType.Playlist, sp.Id, "Unavailable", "", "Playlist", "", []), Resolved: false, RemovedTrackIds: (HashSet<string>?)null);
+                }
+            }).ToArray();
+            await Task.WhenAll(playlistTasks);
+            foreach (var task in playlistTasks)
+            {
+                var result = task.Result;
+                if (!result.Resolved)
+                {
                     allResolved = false;
                 }
-                items.Add(new DownloadQueueItem(source, MusicType.Playlist, id, "Unavailable", "", "Playlist", "", []));
+                if (result.RemovedTrackIds is { Count: > 0 } removedIds)
+                {
+                    tracks = tracks.Where(t => !removedIds.Contains(t.Id)).ToList();
+                }
+                items.Add(result.Item);
             }
 
-            foreach (var (source, mode, id) in tracks)
+            var trackTasks = tracks.Select(async tr =>
             {
                 try
                 {
-                    var data = await App.Services.Api.GetMusicDataAsync(source, mode, id);
+                    var data = await App.Services.Api.GetMusicDataAsync(tr.Source, tr.Mode, tr.Id);
                     if (data is not JsonElement el || el.ValueKind != JsonValueKind.Object)
                     {
-                        allResolved = false;
+                        return (Item: new DownloadQueueItem(tr.Source, tr.Mode, tr.Id, "Unavailable", "", "Track", "", []), Resolved: false);
                     }
-                    else
+                    var track = JsonSerializer.Deserialize<TrackDto>(el, RpcClient.Json);
+                    if (track is null)
                     {
-                        var track = JsonSerializer.Deserialize<TrackDto>(el, RpcClient.Json);
-                        if (track is null)
-                        {
-                            allResolved = false;
-                        }
-                        else
-                        {
-                            items.Add(new DownloadQueueItem(
-                                source, mode, id, track.Name, track.Thumbnail,
-                                "Track", string.Join(", ", track.Artist.Select(a => a.Name)), []));
-                            continue;
-                        }
+                        return (Item: new DownloadQueueItem(tr.Source, tr.Mode, tr.Id, "Unavailable", "", "Track", "", []), Resolved: false);
                     }
+                    return (Item: new DownloadQueueItem(
+                        tr.Source, tr.Mode, tr.Id, track.Name, track.Thumbnail,
+                        "Track", string.Join(", ", track.Artist.Select(a => a.Name)), []), Resolved: true);
                 }
                 catch (Exception ex)
                 {
-                    AppLog.Write("downloads", $"resolve track {id} failed: {ex.Message}");
+                    AppLog.Write("downloads", $"resolve track {tr.Id} failed: {ex.Message}");
+                    return (Item: new DownloadQueueItem(tr.Source, tr.Mode, tr.Id, "Unavailable", "", "Track", "", []), Resolved: false);
+                }
+            }).ToArray();
+            await Task.WhenAll(trackTasks);
+            foreach (var task in trackTasks)
+            {
+                var result = task.Result;
+                if (!result.Resolved)
+                {
                     allResolved = false;
                 }
-                items.Add(new DownloadQueueItem(source, mode, id, "Unavailable", "", "Track", "", []));
+                items.Add(result.Item);
             }
 
             var normalized = new List<string>();
             foreach (var item in items)
             {
-                normalized.Add($"{item.Source}:{item.Type}:{item.Id}");
+                normalized.Add(EntryFormat.Build(item.Source, item.Type, item.Id));
             }
             _queue = normalized.ToArray();
             var current = (await App.Services.Api.GetUserDataAsync<string[]>(UserDataKeys.DownloadQueue))?.ToList() ?? [];
@@ -211,7 +218,7 @@ public sealed partial class DownloadsPage : Page
         {
             return;
         }
-        var entry = $"{item.Source}:{item.Type}:{item.Id}";
+        var entry = EntryFormat.Build(item.Source, item.Type, item.Id);
         var remaining = _queue.Where(q => q != entry).ToArray();
         _queue = remaining;
         await App.Services.Api.SetUserDataAsync(UserDataKeys.DownloadQueue, remaining);

@@ -1,5 +1,6 @@
 using KuumoApp.Models;
 using Microsoft.UI.Xaml;
+using System.IO;
 using System.Runtime.InteropServices;
 using Windows.Media;
 using Windows.Storage.Streams;
@@ -18,10 +19,17 @@ public sealed class SmtcService : IDisposable
     private int _thumbnailVersion;
     private string? _pendingThumbnailUrl;
     private bool _disposed;
+    private bool _isPaused;
 
     public SmtcService(Window window)
     {
         _window = window;
+    }
+
+    public bool IsPaused
+    {
+        get => _isPaused;
+        set => _isPaused = value;
     }
 
     public void Initialize()
@@ -49,6 +57,7 @@ public sealed class SmtcService : IDisposable
         {
             _updater = _smtc.DisplayUpdater;
             _updater.Type = MediaPlaybackType.Music;
+            _ = LoadDefaultIconAsync();
             _smtc.IsEnabled = true;
             _smtc.IsPlayEnabled = true;
             _smtc.IsPauseEnabled = true;
@@ -156,7 +165,10 @@ public sealed class SmtcService : IDisposable
             _updater.MusicProperties.Artist = data.Artist ?? "";
             _smtc.PlaybackStatus = data.IsPlaying ? MediaPlaybackStatus.Playing : MediaPlaybackStatus.Paused;
             _updater.Update();
-            _ = LoadThumbnailAsync(data.Thumbnail);
+            if (!_isPaused)
+            {
+                _ = LoadThumbnailAsync(data.Thumbnail);
+            }
         }
         catch (Exception ex)
         {
@@ -201,6 +213,41 @@ public sealed class SmtcService : IDisposable
         catch (Exception ex)
         {
             AppLog.Write("smtc", $"clear failed: {ex.Message}");
+        }
+    }
+
+    private async Task LoadDefaultIconAsync()
+    {
+        if (_updater is null)
+        {
+            return;
+        }
+        try
+        {
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
+            if (!File.Exists(iconPath))
+            {
+                return;
+            }
+            var bytes = await File.ReadAllBytesAsync(iconPath);
+            var stream = new InMemoryRandomAccessStream();
+            using (var writer = new DataWriter(stream))
+            {
+                writer.WriteBytes(bytes);
+                await writer.StoreAsync();
+                writer.DetachStream();
+            }
+            stream.Seek(0);
+            _thumbnailStream?.Dispose();
+            _thumbnailStream = stream;
+            _thumbnailReference = RandomAccessStreamReference.CreateFromStream(stream);
+            _updater.Thumbnail = _thumbnailReference;
+            _updater.Update();
+            AppLog.Write("smtc", "default app icon loaded");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("smtc", $"default icon failed: {ex.Message}");
         }
     }
 

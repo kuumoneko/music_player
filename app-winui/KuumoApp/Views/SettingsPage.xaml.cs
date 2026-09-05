@@ -162,6 +162,7 @@ public sealed partial class SettingsPage : Page
         {
             return;
         }
+        var previousState = QuitOnCloseSwitch.IsOn;
         try
         {
             await App.Services.Rpc.CallAsync<object?>("toggleQuitOnClose");
@@ -173,6 +174,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"toggleQuitOnClose failed: {ex.Message}");
+            QuitOnCloseSwitch.IsOn = !previousState;
         }
     }
 
@@ -182,6 +184,7 @@ public sealed partial class SettingsPage : Page
         {
             return;
         }
+        var previousState = CloseToTraySwitch.IsOn;
         try
         {
             await App.Services.Api.SetUserDataAsync(UserDataKeys.CloseToTray, CloseToTraySwitch.IsOn);
@@ -193,6 +196,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"closeToTray failed: {ex.Message}");
+            CloseToTraySwitch.IsOn = !previousState;
         }
     }
 
@@ -244,7 +248,7 @@ public sealed partial class SettingsPage : Page
         _presets.Remove("Custom");
         try
         {
-            var gains = new[] { 0, 6, 5, 4, 2, 0, 0, 0, 0, 0 };
+            var gains = new[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             if (preset == "Bass Boost") gains = new[] { 6, 5, 4, 2, 0, 0, 0, 0, 0, 0 };
             else if (preset == "Treble Boost") gains = new[] { 0, 0, 0, 0, 0, 0, 2, 4, 5, 6 };
             else if (preset == "Rock") gains = new[] { 5, 4, 2, 1, 0, 0, 1, 3, 4, 5 };

@@ -1,7 +1,8 @@
 ﻿<Page
     x:Class="KuumoApp.Views.QueuePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    NavigationCacheMode="Disabled">
 
     <Grid Padding="24" RowSpacing="12">
         <Grid.RowDefinitions>

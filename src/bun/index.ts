@@ -5,7 +5,7 @@ import { MusicSource, MusicType, Repeat, type System, type Track } from "../shar
 import { parseAppArgs } from "./lib/args.ts";
 import { RpcWsServer } from "./rpc/ws-server.ts";
 import { QueueManager } from "./queue/manager.ts";
-import { createRpcHandlers } from "./rpc/handlers.ts";
+import { createRpcHandlers, isUiVisible } from "./rpc/handlers.ts";
 import getLocalIPv4 from "./lib/ipv4.ts";
 import CheckUserData from "./lib/env.ts";
 import Player from "./music/index.ts";
@@ -92,7 +92,9 @@ class PlayerState {
 
 	update(partial: Partial<Pick<PlayerState, "time" | "duration" | "isLived" | "isPlaying">>) {
 		Object.assign(this, partial);
-		emitToFrontend("timeUpdate", { time: this.time, isPlaying: this.isPlaying });
+		if (isUiVisible()) {
+			emitToFrontend("timeUpdate", { time: this.time, isPlaying: this.isPlaying });
+		}
 		if (partial.isPlaying !== undefined) {
 			setDiscordRPC();
 		}
@@ -343,9 +345,6 @@ player.player?.on("playing", async (data) => {
 		...currentPlaying,
 		id: isYoutube ? currentPlaying.id : getHash(currentPlaying.id),
 	});
-	if (isDiscord) {
-		discordRPC.instance?.setMusic(currentPlaying, player, { time: 0, duration: track.duration });
-	}
 	player.player?.getQueue();
 });
 

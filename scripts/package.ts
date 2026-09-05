@@ -115,14 +115,6 @@ const PUBLISH_TRIM = new Set([
     "Microsoft.Windows.Media.Capture.Projection.dll",
     "Microsoft.Windows.Management.Deployment.Projection.dll",
     "Microsoft.Windows.Security.AccessControl.Projection.dll",
-    "Microsoft.Windows.ApplicationModel.Background.Projection.dll",
-    "Microsoft.Windows.ApplicationModel.Background.UniversalBGTask.dll",
-    "Microsoft.Windows.ApplicationModel.WindowsAppRuntime.Projection.dll",
-    "Microsoft.Windows.AppLifecycle.Projection.dll",
-    "Microsoft.Windows.System.Power.Projection.dll",
-    "Microsoft.Windows.System.Projection.dll",
-    "Microsoft.Windows.Storage.Pickers.Projection.dll",
-    "Microsoft.Windows.Storage.Projection.dll",
     "Microsoft.Graphics.Imaging.Projection.dll",
     "Microsoft.Web.WebView2.Core.dll",
     "Microsoft.Web.WebView2.Core.Projection.dll",
@@ -145,26 +137,28 @@ if (useCache && existsSync(backendJs) && existsSync(publishDir) && existsSync(re
     run("bun", ["run", "build:prod"]);
     requireDir(buildDir, "backend build output");
 
-    // 2) Publish the WinUI app (framework-dependent WinAppSDK — the runtime is an
-    // installer prerequisite, not part of the app folder; profile-independent)
+    // 2) Publish the WinUI app + launcher in parallel (independent projects, no shared output)
+    run("dotnet", ["restore", resolve(root, "app-winui", "KuumoApp", "KuumoApp.csproj"), "-r", "win-x64"], resolve(root, "app-winui"));
     rmSync(publishDir, { recursive: true, force: true });
-    run("dotnet", ["publish", resolve(root, "app-winui", "KuumoApp", "KuumoApp.csproj"), "-c", "Release", "-r", "win-x64", "-o", publishDir, "-p:WindowsAppSDKSelfContained=false"], resolve(root, "app-winui"));
+    rmSync(launcherDir, { recursive: true, force: true });
+
+    const kuumoArgs = ["publish", resolve(root, "app-winui", "KuumoApp", "KuumoApp.csproj"), "-c", "Release", "-r", "win-x64", "-o", publishDir, "--no-restore", "-p:WindowsAppSDKSelfContained=false", "-p:PublishReadyToRun=false", "-p:DebugType=none", "-p:DebugSymbols=false"];
+    const launcherArgs = ["publish", resolve(root, "app-winui", "Launcher", "Launcher.csproj"), "-c", "Release", "-o", launcherDir];
+    console.log(`\n> dotnet ${kuumoArgs.join(" ")}`);
+    console.log(`> dotnet ${launcherArgs.join(" ")}\n`);
+    const kuumo = Bun.spawn(["dotnet", ...kuumoArgs], { cwd: resolve(root, "app-winui"), stdio: ["inherit", "inherit", "inherit"] });
+    const launcher = Bun.spawn(["dotnet", ...launcherArgs], { cwd: resolve(root, "app-winui"), stdio: ["inherit", "inherit", "inherit"] });
+    const [kuumoExit, launcherExit] = await Promise.all([kuumo.exited, launcher.exited]);
+    if (kuumoExit !== 0) { console.error(`KuumoApp publish failed (exit ${kuumoExit})`); process.exit(kuumoExit ?? 1); }
+    if (launcherExit !== 0) { console.error(`Launcher publish failed (exit ${launcherExit})`); process.exit(launcherExit ?? 1); }
+
     requireDir(publishDir, "dotnet publish output");
+    requireDir(launcherDir, "launcher publish output");
+    run("dotnet", ["run", "--project", resolve(root, "scripts", "StampIcon", "StampIcon.csproj"), "--", resolve(publishDir, "KuumoApp.exe"), resolve(root, "app-winui", "KuumoApp", "Assets", "AppIcon.ico")], root);
 
     // 2b) Ensure the app's Assets (titlebar/tray/SMTC icons) land in the payload —
     // the publish pipeline can drop Content items on incremental runs.
     cpSync(resolve(root, "app-winui", "KuumoApp", "Assets"), resolve(publishDir, "Assets"), { recursive: true });
-
-    // 2c) Publish the launcher (profile-independent single-file root exe)
-    rmSync(launcherDir, { recursive: true, force: true });
-    run("dotnet", [
-        "publish",
-        resolve(root, "app-winui", "Launcher", "Launcher.csproj"),
-        "-c",
-        "Release",
-        "-o",
-        launcherDir,
-    ], resolve(root, "app-winui"));
 }
 
 // 2d) Runtime prerequisites are NOT bundled — setup.iss downloads and installs

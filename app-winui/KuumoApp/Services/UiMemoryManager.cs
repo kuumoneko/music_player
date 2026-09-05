@@ -35,7 +35,8 @@ public sealed class UiMemoryManager
         {
             WalkAndUnload(_window.Content, _captured);
         }
-        AppLog.Write("mem", $"hidden: unloaded {_captured.Count} image(s), ws before trim scheduled");
+        ImageCache.Clear();
+        AppLog.Write("mem", $"hidden: unloaded {_captured.Count} image(s), image cache cleared");
         _ = NotifyBackendAsync(false);
         _ = ScheduleTrimAsync(gen);
     }

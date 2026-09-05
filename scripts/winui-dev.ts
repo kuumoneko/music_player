@@ -108,7 +108,7 @@ async function runDevCycle(): Promise<boolean> {
         console.log("[winui:dev] skipping backend rebuild (--skip-backend)");
     } else {
         console.log("[winui:dev] rebuilding backend bundle...");
-        run("bun", ["run", "--silent", "build:prod"], { cwd: root });
+        run("bun", ["run", "--silent", "build:prod", "--", "--dev"], { cwd: root });
     }
 
     if (skipWinui) {
@@ -133,6 +133,9 @@ async function runDevCycle(): Promise<boolean> {
         console.error(`\n[winui:dev] exe not found: ${appExe}`);
         process.exit(1);
     }
+
+    console.log("[winui:dev] ensuring Start Menu shortcut with AUMID...");
+    run("dotnet", ["run", "--project", "scripts\\CheckShortcut\\CheckShortcut.csproj", "--", "write"], { cwd: root });
 
     console.log("[winui:dev] launching app...");
     Bun.spawn([appExe, "--data-dir", dataDir], {

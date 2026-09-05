@@ -44,18 +44,32 @@ public static class Program
     private static int Main()
     {
         var baseDir = AppContext.BaseDirectory;
-        var includeDir = Path.Combine(baseDir, "include");
+        var crashLog = Path.Combine(baseDir, "crash.log");
+        try
+        {
+            return InnerMain(baseDir, crashLog);
+        }
+        catch (Exception ex)
+        {
+            File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} FATAL: {ex}\r\n");
+            return 1;
+        }
+    }
 
-        // Backend native libs (ffmpeg/mpv) live in include\; adding it to the
-        // LoadLibrary search is harmless when the dir is absent (flat dev run).
+    private static int InnerMain(string baseDir, string crashLog)
+    {
+        File.WriteAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Main() started, baseDir={baseDir}\r\n");
+
+        var includeDir = Path.Combine(baseDir, "include");
+        File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} includeDir={includeDir}, exists={Directory.Exists(includeDir)}\r\n");
+
         if (Directory.Exists(includeDir))
         {
             SetDefaultDllDirectories(LoadLibrarySearchDefaultDirs);
             AddDllDirectory(includeDir);
+            File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Added DLL directory: {includeDir}\r\n");
         }
 
-        // Safety net for loose assemblies; the flat payload resolves everything
-        // through deps.json, so this normally never fires.
         AssemblyLoadContext.Default.Resolving += (ctx, name) =>
         {
             if (!Directory.Exists(includeDir)) return null;
@@ -63,16 +77,23 @@ public static class Program
             return File.Exists(path) ? ctx.LoadFromAssemblyPath(path) : null;
         };
 
+        var bootstrapDll = Path.Combine(baseDir, "Microsoft.WindowsAppRuntime.Bootstrap.dll");
+        File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Bootstrap DLL: {bootstrapDll}, exists={File.Exists(bootstrapDll)}\r\n");
+
         var hr = MddBootstrapInitialize(WindowsAppSdkVersion, IntPtr.Zero, IntPtr.Zero);
+        File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} MddBootstrapInitialize hr=0x{hr:X8}\r\n");
         if (hr < 0)
         {
+            File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} WinAppSDK bootstrap FAILED. Reinstall KuumoApp to install the Windows App Runtime.\r\n");
             throw new InvalidOperationException(
                 $"Windows App SDK bootstrap failed (0x{hr:X8}). Reinstall KuumoApp to install the Windows App Runtime.");
         }
         AppDomain.CurrentDomain.ProcessExit += (_, _) => MddBootstrapShutdown();
 
         XamlCheckProcessRequirements();
+        File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Starting XAML application...\r\n");
         Application.Start(_ => new App());
+        File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Application.Start returned\r\n");
         return 0;
     }
 }

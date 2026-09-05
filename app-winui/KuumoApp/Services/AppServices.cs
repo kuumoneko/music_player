@@ -15,6 +15,8 @@ public sealed class AppServices
     public AppEvents Events { get; }
     public ThemeService Theme { get; }
     public WindowService? Window { get; set; }
+    public PinService Pins { get; } = new();
+    public DownloadQueueService Downloads { get; } = new();
 
     public event Action? SingleInstanceDetected;
 

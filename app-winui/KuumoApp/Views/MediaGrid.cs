@@ -12,7 +12,7 @@ public static class MediaGrid
     {
         if (card.Kind == "track")
         {
-            await Playback.PlayEntryAsync($"{card.Source}:{card.Type}:{card.Id}");
+            await Playback.PlayEntryAsync(EntryFormat.Build(card.Source, card.Type, card.Id));
         }
         else
         {

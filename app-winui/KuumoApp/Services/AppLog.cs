@@ -10,16 +10,22 @@ public static class AppLog
     private static readonly ConcurrentQueue<(string Type, string Source, string Message)> Pending = new();
     private static volatile Func<string, string, string, Task>? _sink;
     private static int _flushing;
+    private static readonly CancellationTokenSource _cts = new();
 
     static AppLog()
     {
-        _ = Task.Run(FlushLoop);
+        _ = Task.Run(() => FlushLoop(_cts.Token));
     }
 
     public static void SetSink(Func<string, string, string, Task> sink)
     {
         _sink = sink;
         _ = FlushAsync();
+    }
+
+    public static void Stop()
+    {
+        _cts.Cancel();
     }
 
     public static void Write(string source, string message)
@@ -33,11 +39,18 @@ public static class AppLog
         _ = FlushAsync();
     }
 
-    private static async Task FlushLoop()
+    private static async Task FlushLoop(CancellationToken ct)
     {
-        while (true)
+        while (!ct.IsCancellationRequested)
         {
-            await Task.Delay(250);
+            try
+            {
+                await Task.Delay(250, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
             await FlushAsync();
         }
     }

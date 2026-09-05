@@ -10,6 +10,8 @@ namespace KuumoApp.Controls;
 
 public static class ImageAttach
 {
+    private const int DefaultDecodeSize = 200;
+
     public static readonly DependencyProperty SourceUrlProperty = DependencyProperty.RegisterAttached(
         "SourceUrl", typeof(string), typeof(ImageAttach), new PropertyMetadata(null, OnSourceUrlChanged));
 
@@ -45,6 +47,19 @@ public static class ImageAttach
         image.Tag = url;
         try
         {
+            if (ImageCache.TryGet(url, out var cached) && cached is not null)
+            {
+                if (image.Tag as string == url)
+                {
+                    image.Source = cached;
+                    if (GetSquareCrop(image))
+                    {
+                        ApplySquareCrop(image, cached);
+                    }
+                }
+                return;
+            }
+
             var dataUri = url.StartsWith("data:image", StringComparison.Ordinal)
                 ? url
                 : await App.Services.Api.GetImageDataUriAsync(url) ?? "";
@@ -63,10 +78,17 @@ public static class ImageAttach
                 writer.DetachStream();
             }
             stream.Seek(0);
-            var bitmap = new BitmapImage();
+            var decodeWidth = !double.IsNaN(image.Width) && image.Width > 0
+                ? (int)image.Width
+                : (int)DefaultDecodeSize;
+            var bitmap = new BitmapImage
+            {
+                DecodePixelWidth = decodeWidth,
+            };
             await bitmap.SetSourceAsync(stream);
             if (image.Tag as string == url)
             {
+                ImageCache.Set(url, bitmap);
                 image.Source = bitmap;
                 if (GetSquareCrop(image))
                 {

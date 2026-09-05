@@ -85,7 +85,7 @@ public static class ItemMenu
         var flyout = new MenuFlyout();
         if (card.Kind == "track")
         {
-            flyout.Items.Add(PlayItem("Play now", () => _ = Playback.PlayEntryAsync($"{card.Source}:{card.Type}:{card.Id}")));
+            flyout.Items.Add(PlayItem("Play now", () => _ = Playback.PlayEntryAsync(EntryFormat.Build(card.Source, card.Type, card.Id))));
             flyout.Items.Add(QueueItem("Add to queue", () => _ = AddToQueueAsync(card)));
         }
         else
@@ -148,8 +148,7 @@ public static class ItemMenu
 
     private static async Task<MenuFlyoutItem> PinItemAsync(string source, string type, string id)
     {
-        var service = new PinService();
-        var isPinned = await service.IsPinnedAsync(source, type, id);
+        var isPinned = await App.Services.Pins.IsPinnedAsync(source, type, id);
         var item = new MenuFlyoutItem
         {
             Text = isPinned ? "Unpin" : "Pin",
@@ -157,14 +156,14 @@ public static class ItemMenu
         };
         item.Click += async (_, _) =>
         {
-            var pins = await service.TogglePinAsync(source, type, id);
+            var pins = await App.Services.Pins.TogglePinAsync(source, type, id);
             item.Text = pins.Contains(PinService.EntryFor(source, type, id)) ? "Unpin" : "Pin";
         };
         return item;
     }
 
     private static MenuFlyoutItem DownloadItem(string source, string type, string id)
-        => NewItem("Download", "\uE896", () => _ = new DownloadQueueService().AddAsync(source, type, id));
+        => NewItem("Download", "\uE896", () => _ = App.Services.Downloads.AddAsync(source, type, id));
 
     private static MenuFlyoutItem CopyItem(string type, string id)
         => NewItem("Copy link", "\uE8C8", () =>
@@ -193,7 +192,7 @@ public static class ItemMenu
             if (type == MusicType.Track)
             {
                 var queue = (await App.Services.Api.GetUserDataAsync<string[]>(UserDataKeys.PlayQueue))?.ToList() ?? [];
-                var entry = $"{source}:{type}:{id}";
+                var entry = EntryFormat.Build(source, type, id);
                 if (!queue.Contains(entry))
                 {
                     queue.Add(entry);

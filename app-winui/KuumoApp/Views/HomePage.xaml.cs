@@ -188,13 +188,21 @@ public sealed partial class HomePage : Page
             AppLog.Write("home", $"load failed: {ex.GetType().Name}: {ex}");
             if (version == _loadVersion)
             {
-                Root.Children.Add(new TextBlock { Text = $"Failed to load home: {ex.GetType().Name}: {ex.Message}" });
+                ErrorBar.Title = "Failed to load home";
+                ErrorBar.Message = ex.Message;
+                ErrorBar.IsOpen = true;
             }
         }
         if (version == _loadVersion)
         {
             LoadingRing.IsActive = false;
         }
+    }
+
+    private void OnRetryClick(object sender, RoutedEventArgs e)
+    {
+        ErrorBar.IsOpen = false;
+        _ = LoadAsync();
     }
 
     private async Task<(HomeFeedSectionDto[] Sections, List<MediaCard> Playlists, List<MediaCard> Artists)> LoadCardsAsync()
@@ -268,7 +276,7 @@ public sealed partial class HomePage : Page
         {
             foreach (var card in group)
             {
-                if (seen.Add($"{card.Source}:{card.Type}:{card.Id}"))
+                if (seen.Add(EntryFormat.Build(card.Source, card.Type, card.Id)))
                 {
                     result.Add(card);
                 }

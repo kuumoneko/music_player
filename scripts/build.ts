@@ -2,14 +2,15 @@ import { resolve } from "node:path";
 import { copyFileSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 
 const root = resolve(import.meta.dir, "..");
+const dev = process.argv.includes("--dev");
 
 const result = await Bun.build({
     entrypoints: [resolve(root, "src", "bun", "index.ts")],
     target: "bun",
     outdir: resolve(root, "build"),
     naming: "backend.js",
-    minify: true,
-    sourcemap: "linked",
+    minify: !dev,
+    sourcemap: dev ? "none" : "linked",
 });
 
 for (const log of result.logs) console.error(log);

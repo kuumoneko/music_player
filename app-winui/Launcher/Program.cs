@@ -19,6 +19,10 @@ internal static class Program
     {
         var appDir = Path.Combine(AppContext.BaseDirectory, "app");
         var appExe = Path.Combine(appDir, "KuumoApp.exe");
+        var logFile = Path.Combine(AppContext.BaseDirectory, "launcher-error.log");
+
+        File.WriteAllText(logFile, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Launcher started, appExe={appExe}\r\n");
+
         if (!File.Exists(appExe))
         {
             Fail($"app\\KuumoApp.exe not found at {appExe}");
@@ -30,6 +34,8 @@ internal static class Program
             WorkingDirectory = appDir,
             UseShellExecute = false,
             CreateNoWindow = true,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
         };
         foreach (var arg in args)
         {
@@ -38,14 +44,52 @@ internal static class Program
 
         try
         {
-            Process.Start(psi);
+            var proc = Process.Start(psi);
+            if (proc is null)
+            {
+                Fail($"Process.Start returned null for {appExe}");
+                return 1;
+            }
+
+            File.AppendAllText(logFile, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Child process started (pid={proc.Id})\r\n");
+
+            var stderr = proc.StandardError.ReadToEndAsync();
+            var stdout = proc.StandardOutput.ReadToEndAsync();
+
+            if (!proc.WaitForExit(15000))
+            {
+                File.AppendAllText(logFile, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Child process did not exit within 15s, assuming OK\r\n");
+                return 0;
+            }
+
+            var errText = stderr.Result;
+            var outText = stdout.Result;
+
+            if (!string.IsNullOrWhiteSpace(errText))
+            {
+                File.AppendAllText(logFile, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} child stderr: {errText}\r\n");
+            }
+            if (!string.IsNullOrWhiteSpace(outText))
+            {
+                File.AppendAllText(logFile, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} child stdout: {outText}\r\n");
+            }
+
+            if (proc.ExitCode != 0 && proc.ExitCode != 42)
+            {
+                File.AppendAllText(logFile, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Child exited with code {proc.ExitCode}\r\n");
+            }
+            else
+            {
+                File.AppendAllText(logFile, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} Child exited normally (code={proc.ExitCode})\r\n");
+            }
+
+            return proc.ExitCode;
         }
         catch (Exception ex)
         {
             Fail($"failed to start {appExe}: {ex.Message}");
             return 1;
         }
-        return 0;
     }
 
     private static void Fail(string message)

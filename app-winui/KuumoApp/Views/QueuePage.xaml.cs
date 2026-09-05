@@ -53,48 +53,53 @@ public sealed partial class QueuePage : Page
         {
             if (!string.IsNullOrEmpty(_nextfrom))
             {
-                var parts = _nextfrom.Split(':');
-                var source = parts.Length > 0 ? parts[0] : MusicSource.Youtube;
-                var type = parts.Length > 1 ? parts[1] : MusicType.Track;
-                var id = parts.Length > 2 ? parts[2] : (parts.Length > 1 ? parts[1] : "");
-                var data = await App.Services.Api.GetMusicDataAsync(source, type, id);
-                if (data is JsonElement el && el.ValueKind == JsonValueKind.Object)
-                {
-                    var title = "";
-                    var upcoming = new List<TrackRow>();
-                    if (type == MusicType.Track)
-                    {
-                        var track = JsonSerializer.Deserialize<TrackDto>(el, RpcClient.Json);
-                        if (track is not null)
-                        {
-                            title = track.Name;
-                            upcoming.Add(TrackRow.FromTrack(track));
-                        }
-                    }
-                    else
-                    {
-                        var name = el.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : "";
-                        title = name ?? "";
-                        var tracks = new List<TrackDto>();
-                        if (el.TryGetProperty("tracks", out var tracksEl) && tracksEl.ValueKind == JsonValueKind.Array)
-                        {
-                            tracks.AddRange(tracksEl.EnumerateArray()
-                                .Select(t => JsonSerializer.Deserialize<TrackDto>(t, RpcClient.Json))
-                                .Where(t => t is not null)
-                                .Cast<TrackDto>());
-                        }
-                        upcoming.AddRange(tracks.Take(100).Select(TrackRow.FromTrack));
-                    }
-                    FromText.Text = $"From: {title}";
-                    FromText.Visibility = Visibility.Visible;
-                    UpcomingList.ItemsSource = upcoming.ToArray();
-                    UpcomingTitle.Visibility = upcoming.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-                }
-                else
+                if (!EntryFormat.TryParse(_nextfrom, out var source, out var type, out var id))
                 {
                     FromText.Visibility = Visibility.Collapsed;
                     UpcomingList.ItemsSource = null;
                     UpcomingTitle.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    var data = await App.Services.Api.GetMusicDataAsync(source, type, id);
+                    if (data is JsonElement el && el.ValueKind == JsonValueKind.Object)
+                    {
+                        var title = "";
+                        var upcoming = new List<TrackRow>();
+                        if (type == MusicType.Track)
+                        {
+                            var track = JsonSerializer.Deserialize<TrackDto>(el, RpcClient.Json);
+                            if (track is not null)
+                            {
+                                title = track.Name;
+                                upcoming.Add(TrackRow.FromTrack(track));
+                            }
+                        }
+                        else
+                        {
+                            var name = el.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : "";
+                            title = name ?? "";
+                            var tracks = new List<TrackDto>();
+                            if (el.TryGetProperty("tracks", out var tracksEl) && tracksEl.ValueKind == JsonValueKind.Array)
+                            {
+                                tracks.AddRange(tracksEl.EnumerateArray()
+                                    .Select(t => JsonSerializer.Deserialize<TrackDto>(t, RpcClient.Json))
+                                    .Where(t => t is not null)
+                                    .Cast<TrackDto>());
+                            }
+                            upcoming.AddRange(tracks.Take(100).Select(TrackRow.FromTrack));
+                        }
+                        FromText.Text = $"From: {title}";
+                        FromText.Visibility = Visibility.Visible;
+                        UpcomingList.ItemsSource = upcoming.ToArray();
+                        UpcomingTitle.Visibility = upcoming.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+                    }
+                    else
+                    {
+                        FromText.Visibility = Visibility.Collapsed;
+                        UpcomingList.ItemsSource = null;
+                        UpcomingTitle.Visibility = Visibility.Collapsed;
+                    }
                 }
             }
             else
@@ -126,8 +131,10 @@ public sealed partial class QueuePage : Page
                         }
                         else
                         {
-                            var parts = _playQueue[i].Split(':');
-                            var kind = parts.Length > 1 ? parts[1] : MusicType.Track;
+                            if (!EntryFormat.TryParse(_playQueue[i], out _, out var kind, out _))
+                            {
+                                continue;
+                            }
                             if (kind == MusicType.Playlist)
                             {
                                 var playlist = JsonSerializer.Deserialize<PlaylistDto>(el, RpcClient.Json);
@@ -164,7 +171,7 @@ public sealed partial class QueuePage : Page
 
     private void RemoveFromQueue(TrackRow row)
     {
-        var entry = $"{row.Source}:{row.Type}:{row.Id}";
+        var entry = EntryFormat.Build(row.Source, row.Type, row.Id);
         var remaining = _playQueue
             .Where(e => e != entry && !e.EndsWith($":{row.Id}"))
             .ToArray();
@@ -189,11 +196,11 @@ public sealed partial class QueuePage : Page
 
     private (string Source, string Type, string Id) QueueContext()
     {
-        var parts = _nextfrom.Split(':');
-        var source = parts.Length > 0 ? parts[0] : MusicSource.Youtube;
-        var type = parts.Length > 1 ? parts[1] : MusicType.Track;
-        var id = parts.Length > 2 ? parts[2] : (parts.Length > 1 ? parts[1] : "");
-        return (source, type, id);
+        if (EntryFormat.TryParse(_nextfrom, out var source, out var type, out var id))
+        {
+            return (source, type, id);
+        }
+        return (MusicSource.Youtube, MusicType.Track, "");
     }
 
     private async void OnQueueItemClick(object sender, ItemClickEventArgs e)
@@ -202,7 +209,7 @@ public sealed partial class QueuePage : Page
         {
             var (source, type, id) = QueueContext();
             (string Source, string Type, string Id) ctx = type == MusicType.Track ? (row.Source, row.Type, row.Id) : (source, type, id);
-            await Playback.PlayEntryAsync($"{ctx.Source}:{ctx.Type}:{ctx.Id}", row.Payload);
+            await Playback.PlayEntryAsync(EntryFormat.Build(ctx.Source, ctx.Type, ctx.Id), row.Payload);
         }
     }
 

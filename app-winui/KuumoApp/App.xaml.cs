@@ -17,9 +17,13 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        var crashLog = Path.Combine(AppContext.BaseDirectory, "crash.log");
+        File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} App() constructor\r\n");
         UnhandledException += (_, e) =>
         {
-            AppLog.Write("app", $"UNHANDLED: {e.Exception}");
+            var full = e.Exception.ToString();
+            AppLog.Write("app", $"UNHANDLED: {full}");
+            File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} UNHANDLED: {full}\r\n");
         };
     }
 
@@ -33,7 +37,7 @@ public partial class App : Application
 
     public static void ShutdownApp()
     {
-        AppLog.Write("app", "shutdown requested");
+        AppLog.Write("app", $"shutdown requested (stack trace: {Environment.StackTrace})");
         Services.Shutdown();
         if (Current is App app)
         {
