@@ -19,7 +19,8 @@
         "typecheck:bun": "bunx tsc --noEmit",
         "typecheck:dotnet": "dotnet build app-winui/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:WindowsAppSDKSelfContained=false -clp:ErrorsOnly -nologo",
         "typecheck": "bun run typecheck:bun && bun run typecheck:dotnet",
-        "test:rpc": "bun run scripts/test-rpc.ts"
+        "test:rpc": "bun run scripts/test-rpc.ts",
+        "build:setup": "bun run scripts/build-setup.ts"
     },
     "dependencies": {
         "bun": "^1.4.0"

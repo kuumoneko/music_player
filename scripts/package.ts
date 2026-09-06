@@ -165,12 +165,6 @@ if (useCache && existsSync(backendJs) && existsSync(publishDir) && existsSync(re
 // .NET Desktop Runtime + Windows App SDK runtime at install time via
 // scripts/install-prereqs.ps1 (see scripts/install-prereqs.ps1 for the pins).
 
-const iscc = findIscc();
-if (!iscc) {
-    console.error("ISCC.exe not found. Install Inno Setup 6 and retry, or cancel.");
-    process.exit(1);
-}
-
 const profiles = resolveProfiles();
 const artifactsDir = resolve(root, "artifacts");
 mkdirSync(artifactsDir, { recursive: true });
@@ -247,6 +241,10 @@ for (const profile of profiles) {
     requireDir(resolve(root, "data", "system.json"), "data/system.json");
     copyFileSync(resolve(root, "data", "system.json"), resolve(dataDir, "system.json"));
 
+    // app\setup.js + app\install-prereqs.ps1 — post-extraction setup scripts
+    copyFileSync(resolve(root, "scripts", "setup.ts"), resolve(appDir, "setup.js"));
+    copyFileSync(resolve(root, "scripts", "install-prereqs.ps1"), resolve(appDir, "install-prereqs.ps1"));
+
     // 3b) Root launcher: copy from cached publish output
     requireDir(resolve(launcherDir, "KuumoApp.exe"), "launcher exe");
     for (const entry of readdirSync(launcherDir)) {
@@ -256,9 +254,28 @@ for (const profile of profiles) {
 
     console.log(`Payload assembled at ${pkg}`);
 
-    // 4) Inno Setup compile
-    run(iscc, [resolve(root, "setup.iss"), `/DMyAppVersion=${version}`, `/DMyAppBaseName=${installerBaseName(profile)}`]);
-    requireDir(resolve(artifactsDir, `${installerBaseName(profile)}.exe`), "setup.exe output");
+    // 4) Create installer — try SFX first, fall back to Inno Setup
+    const sfxResult = spawnSync("bun", [
+        "./scripts/build-setup.ts",
+        "--version", version,
+        "--profile", profile,
+    ], { cwd: root, encoding: "utf8", stdio: "inherit" });
+
+    if (sfxResult.status === 0 && existsSync(resolve(artifactsDir, `${installerBaseName(profile)}.exe`))) {
+        console.log(`SFX installer created: ${installerBaseName(profile)}.exe`);
+    } else {
+        // Fallback to Inno Setup
+        const iscc = findIscc();
+        if (iscc) {
+            console.log("\nSFX build failed or not available, falling back to Inno Setup...");
+            run(iscc, [resolve(root, "setup.iss"), `/DMyAppVersion=${version}`, `/DMyAppBaseName=${installerBaseName(profile)}`]);
+            requireDir(resolve(artifactsDir, `${installerBaseName(profile)}.exe`), "setup.exe output");
+        } else {
+            console.error("Neither SFX build nor Inno Setup (ISCC.exe) available.");
+            console.error("Install NanaZip or Inno Setup 6 and retry.");
+            process.exit(1);
+        }
+    }
 }
 
 // 5) Update manifest for scripts/release.ts
