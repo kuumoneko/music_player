@@ -2,11 +2,11 @@
 // Called by the SFX module after extraction: bun.exe app\setup.js --install-dir <path> [--seed] [--silent]
 //
 // Responsibilities:
-//   1. Install runtime prerequisites (.NET Desktop Runtime + Windows App SDK)
-//   2. Seed app data (system.json → app_data.sqlite)
-//   3. Create Start Menu + Desktop shortcuts
-//   4. Register uninstaller in Windows registry
-//   5. Write uninstall.js to install dir
+//   1. Write uninstall.js to install dir (first, so it always exists)
+//   2. Install runtime prerequisites (.NET Desktop Runtime + Windows App SDK)
+//   3. Seed app data (system.json → app_data.sqlite)
+//   4. Create Start Menu + Desktop shortcuts
+//   5. Register uninstaller in Windows registry
 import { existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { spawnSync, spawn } from "node:child_process";
@@ -126,7 +126,7 @@ async function createShortcuts() {
 // --- 4. Register uninstaller ---
 function registerUninstaller() {
     log("Registering uninstaller...");
-    const uninstallExe = join(appDir, "uninstall.js");
+    const uninstallExe = join(installDir, "uninstall.js");
 
     const commands = [
         `New-Item -Path "Registry::${regKey}" -Force | Out-Null`,
@@ -161,7 +161,7 @@ function getVersion(): string {
 // --- 5. Write uninstall script ---
 function writeUninstallScript() {
     log("Writing uninstall script...");
-    const uninstallJs = join(appDir, "uninstall.js");
+    const uninstallJs = join(installDir, "uninstall.js");
     const script = `// Auto-generated uninstaller for KuumoApp
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -207,11 +207,13 @@ async function main() {
     // Ensure install dir exists
     mkdirSync(installDir, { recursive: true });
 
-    await installPrereqs();
-    seedAppData();
-    await createShortcuts();
-    registerUninstaller();
-    writeUninstallScript();
+    // Write uninstall script FIRST so it always exists even if later steps fail
+    try { writeUninstallScript(); } catch (e) { console.error(`Warning: failed to write uninstall script: ${e instanceof Error ? e.message : String(e)}`); }
+
+    try { await installPrereqs(); } catch (e) { console.error(`Warning: prerequisite install failed: ${e instanceof Error ? e.message : String(e)}`); }
+    try { seedAppData(); } catch (e) { console.error(`Warning: seeding failed: ${e instanceof Error ? e.message : String(e)}`); }
+    try { await createShortcuts(); } catch (e) { console.error(`Warning: shortcut creation failed: ${e instanceof Error ? e.message : String(e)}`); }
+    try { registerUninstaller(); } catch (e) { console.error(`Warning: uninstaller registration failed: ${e instanceof Error ? e.message : String(e)}`); }
 
     // Set EstimatedSize in registry (KB)
     try {
