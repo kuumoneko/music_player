@@ -3,6 +3,7 @@ using System.Threading;
 using KuumoApp.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 
 namespace KuumoApp;
 
@@ -19,11 +20,28 @@ public partial class App : Application
         InitializeComponent();
         var crashLog = Path.Combine(AppContext.BaseDirectory, "crash.log");
         File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} App() constructor\r\n");
-        UnhandledException += (_, e) =>
+        UnhandledException += async (_, e) =>
         {
             var full = e.Exception.ToString();
             AppLog.Write("app", $"UNHANDLED: {full}");
             File.AppendAllText(crashLog, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} UNHANDLED: {full}\r\n");
+            try
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "KuumoApp crashed",
+                    Content = e.Exception.Message,
+                    PrimaryButtonText = "OK",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = MainWindow?.Content?.XamlRoot
+                };
+                if (dialog.XamlRoot is not null)
+                {
+                    await dialog.ShowAsync();
+                }
+            }
+            catch { }
+            e.Handled = true;
         };
     }
 

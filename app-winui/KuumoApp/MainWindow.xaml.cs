@@ -65,6 +65,11 @@ public sealed partial class MainWindow : Window
             Shell.SetStatus("Track unavailable, skipping...");
             _ = App.Services.Api.NextAsync();
         });
+        App.Services.Events.ErrorReceived += error => DispatcherQueue.TryEnqueue(() =>
+        {
+            AppLog.Write("app", $"backend error: {error.Message}");
+            Shell.SetStatus($"Error: {error.Message}");
+        });
         App.Services.Events.SmtcUpdated += data =>
         {
             _lastSmtc = data;
