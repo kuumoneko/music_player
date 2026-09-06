@@ -45,7 +45,7 @@ const writeTrack = db.transaction((track: Track) => {
 
   for (const artist of track.artist) {
     insertArtistStmt.run(track.id, artist.id);
-    if (artist.id) {
+    if (artist.id != null) {
       upsertArtistStmt.run({
         $id: artist.id,
         $name: artist.name || "Unknown Artist",

@@ -238,6 +238,15 @@ const playContextStart = async (excludeId?: string): Promise<boolean> => {
 	}
 
 	const isYoutube = source === MusicSource.Youtube;
+	writeLogs([{
+		type: "info",
+		message: JSON.stringify(track)
+	}])
+	if (!formatArtists(track.artist) && isYoutube) {
+		deleteTracks([track.id]);
+		const refetched = await player.youtubeDataAPI.refetchTrack(track.id);
+		if (refetched) track = refetched;
+	}
 	const currentPlaying = {
 		source: isYoutube ? MusicSource.Youtube : MusicSource.Local,
 		id: isYoutube ? track.id : getHash(track.id),
@@ -290,6 +299,9 @@ player.player?.on("change-playState", (data: { isPlaying: boolean; time: number 
 	if (Object.keys(update).length > 0) {
 		current.update(update);
 	}
+	if (data.time === 0 && current.isPlaying) {
+		setDiscordRPC();
+	}
 });
 
 player.player?.on("playing", async (data) => {
@@ -301,7 +313,7 @@ player.player?.on("playing", async (data) => {
 		id = data;
 		isYoutube = false;
 	}
-	const track = getTracks([id])[0] ?? null;
+	let track = getTracks([id])[0] ?? null;
 	if (track === null) {
 		discordRPC.instance?.clearMusic();
 		return;
@@ -330,6 +342,15 @@ player.player?.on("playing", async (data) => {
 		}
 	}
 
+	writeLogs([{
+		type: "info",
+		message: JSON.stringify(track)
+	}])
+	if (!formatArtists(track.artist) && isYoutube) {
+		deleteTracks([track.id]);
+		const refetched = await player.youtubeDataAPI.refetchTrack(track.id);
+		if (refetched) track = refetched;
+	}
 	const currentPlaying = {
 		source: isYoutube ? MusicSource.Youtube : MusicSource.Local,
 		title: track.name,
