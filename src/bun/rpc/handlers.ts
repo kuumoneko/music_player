@@ -430,6 +430,7 @@ writeLogs([{
       current.time = time;
       player.player?.seekTo(time);
       emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
+      setDiscordRPC();
     }),
 
     getCurrentPlaying: async () => {

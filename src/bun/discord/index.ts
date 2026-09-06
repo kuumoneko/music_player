@@ -149,6 +149,8 @@ export default class DiscordRPC {
             return;
         }
 
+        writeLogs([{ type: "info", message: `Discord RPC setMusic: title="${track.title}" artist="${track.artist}" source="${track.source}" id="${track.id}" artist.length=${track.artist.length}` }]);
+
         if (track.source === MusicSource.Local) {
             const { title } = track;
             const ytbTracks = getTrackByName(title, true)
@@ -180,12 +182,11 @@ export default class DiscordRPC {
                 pid: process.pid,
                 activity: {
                     type: 2,
-                    status_display_type: 0,
+                    status_display_type: 1,
                     details: track.title,
                     state: track.artist.length > 0 ? track.artist : "Kuumo App",
                     assets: {
                         large_image: track.thumbnail,
-                        large_text: track.title
                     },
                     timestamps: {
                         start: Date.now(),
