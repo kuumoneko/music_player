@@ -104,6 +104,11 @@ public sealed partial class MainWindow : Window
         Shell.SetStatus("starting backend...");
         App.Services.Bun.LogLine += line => AppLog.Write("main", line);
         App.Services.Bun.EndpointReady += url => AppLog.Write("main", $"backend endpoint: {url}");
+        App.Services.Bun.StartupError += message => DispatcherQueue.TryEnqueue(() =>
+        {
+            AppLog.Write("main", $"startup error: {message}");
+            Shell.SetStatus($"Startup failed: {message}");
+        });
         App.Services.Rpc.Connected += OnRpcConnected;
 
         AppWindow.Show();

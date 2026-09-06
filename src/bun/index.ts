@@ -32,7 +32,17 @@ const APP_ROOT = resolve("./");
 const appArgs = parseAppArgs(process.argv);
 const assetsDir = appArgs.assetsDir || APP_ROOT;
 const userData = appArgs.dataDir || resolve(APP_ROOT, "data");
-mkdirSync(userData, { recursive: true });
+
+function startupError(message: string): never {
+	process.stdout.write(`KUUMO_ERROR=${message}\n`);
+	process.exit(1);
+}
+
+try {
+	mkdirSync(userData, { recursive: true });
+} catch (e) {
+	startupError(`Failed to create data directory "${userData}": ${e instanceof Error ? e.message : String(e)}`);
+}
 
 // Installer-run seeding mode: copies data/system.json into the app_data.sqlite
 // system table, then deletes system.json and the now-empty data folder.
@@ -60,25 +70,28 @@ if (process.argv.includes("--seed")) {
 
 const { isLocal, isDiscord, appPort, DiscordClientId } = await seedSystemFromAssets(assetsDir) as System;
 if ([isLocal, isDiscord, appPort].includes(null)) {
-	writeLogs([{ type: "error", message: "Null Object, please reinstall app." }]);
-	process.exit(1);
+	startupError("System configuration is incomplete. Please reinstall the app.");
 }
 
-CheckUserData();
-// Drop stale/invalid auto-play contexts (e.g. a video id stored as an artist id
-// by an older version) so the queue refill can't fail on them every track start.
-if (!isValidContextEntry(getUserData("nextfrom"))) {
-	const staleNextfrom = getUserData("nextfrom");
-	writeLogs([{ type: "info", message: `nextfrom is invalid, clearing: "${staleNextfrom}"` }]);
-	writeUserData("nextfrom", "");
+try {
+	CheckUserData();
+	// Drop stale/invalid auto-play contexts (e.g. a video id stored as an artist id
+	// by an older version) so the queue refill can't fail on them every track start.
+	if (!isValidContextEntry(getUserData("nextfrom"))) {
+		const staleNextfrom = getUserData("nextfrom");
+		writeLogs([{ type: "info", message: `nextfrom is invalid, clearing: "${staleNextfrom}"` }]);
+		writeUserData("nextfrom", "");
+	}
+	const staleBatch = getUserData("batchQueue") ?? [];
+	const cleanBatch = staleBatch.filter(isValidContextEntry);
+	if (cleanBatch.length !== staleBatch.length) {
+		writeLogs([{ type: "info", message: `batchQueue had ${staleBatch.length - cleanBatch.length} invalid entries, cleared` }]);
+		writeUserData("batchQueue", cleanBatch);
+	}
+	purgeExpiredSearchCache();
+} catch (e) {
+	startupError(`Failed to initialize user data: ${e instanceof Error ? e.message : String(e)}`);
 }
-const staleBatch = getUserData("batchQueue") ?? [];
-const cleanBatch = staleBatch.filter(isValidContextEntry);
-if (cleanBatch.length !== staleBatch.length) {
-	writeLogs([{ type: "info", message: `batchQueue had ${staleBatch.length - cleanBatch.length} invalid entries, cleared` }]);
-	writeUserData("batchQueue", cleanBatch);
-}
-purgeExpiredSearchCache();
 const cachePurgeTimer = setInterval(purgeExpiredSearchCache, 6 * 60 * 60 * 1000);
 (cachePurgeTimer as any).unref?.();
 
@@ -137,7 +150,11 @@ let folder = getUserData("folder") ?? "";
 // --- Managers ---
 let rpcServer: RpcWsServer | null = null;
 const player = new Player(userData, APP_ROOT, folder);
-await player.init();
+try {
+	await player.init();
+} catch (e) {
+	startupError(`Failed to initialize player: ${e instanceof Error ? e.message : String(e)}`);
+}
 player.onStatusChange = (status) => emitToFrontend("download-status-changed", status);
 let resolveMpvReady: () => void;
 const mpvReady = new Promise<void>((resolve) => { resolveMpvReady = resolve; });
@@ -415,18 +432,23 @@ if (isDiscord && String(DiscordClientId).length > 0) {
 }
 
 // --- RPC ---
-const handlers = createRpcHandlers({
-	player,
-	current,
-	isLocal: isLocal ?? false,
-	isDiscord: isDiscord ?? false,
-	DiscordClientId,
-	discordRPC,
-	emitToFrontend,
-	emitError,
-	play,
-	setDiscordRPC,
-}) as any;
+let handlers: any;
+try {
+	handlers = createRpcHandlers({
+		player,
+		current,
+		isLocal: isLocal ?? false,
+		isDiscord: isDiscord ?? false,
+		DiscordClientId,
+		discordRPC,
+		emitToFrontend,
+		emitError,
+		play,
+		setDiscordRPC,
+	});
+} catch (e) {
+	startupError(`Failed to create RPC handlers: ${e instanceof Error ? e.message : String(e)}`);
+}
 
 // --- Cleanup local-only resources ---
 if (!isLocal) {
@@ -470,8 +492,7 @@ rpcServer = new RpcWsServer(handlers, {
 try {
 	rpcServer.start(host, port);
 } catch (e) {
-	emitError(`Failed to start server: ${e instanceof Error ? e.message : String(e)}`);
-	process.exit(1);
+	startupError(`Failed to start server: ${e instanceof Error ? e.message : String(e)}`);
 }
 
 const endpointLine = `KUUMO_WS=ws://${rpcServer.hostname}:${rpcServer.port}/ws`;

@@ -11,6 +11,7 @@ public sealed class BunHostService
     public event Action<string>? EndpointReady;
     public event Action<string>? LogLine;
     public event Action? SingleInstanceDetected;
+    public event Action<string>? StartupError;
 
     public bool IsDev => Environment.GetEnvironmentVariable("KUUMO_DEV") == "1";
 
@@ -141,6 +142,10 @@ public sealed class BunHostService
         {
             _restartCount = 0;
             EndpointReady?.Invoke(line["KUUMO_WS=".Length..]);
+        }
+        else if (line.StartsWith("KUUMO_ERROR=", StringComparison.Ordinal))
+        {
+            StartupError?.Invoke(line["KUUMO_ERROR=".Length..]);
         }
         Log(line);
     }
