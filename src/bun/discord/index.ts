@@ -144,7 +144,7 @@ export default class DiscordRPC {
         }
     }
 
-    async setMusic(track: { source: string, id: string, title: string, thumbnail: string, artist: string } | null, player: Player, current: { time: number, duration: number }) {
+    async setMusic(track: { source: string, id: string, title: string, thumbnail: string, artist: string, artistId?: string } | null, player: Player, current: { time: number, duration: number }) {
         if (!this.isReady || track === null) {
             return;
         }
@@ -184,9 +184,12 @@ export default class DiscordRPC {
                     type: 2,
                     status_display_type: 1,
                     details: track.title,
+                    details_url: `https://www.youtube.com/watch?v=${track.id}`,
                     state: track.artist.length > 0 ? track.artist : "Kuumo App",
+                    state_url: track.artistId ? `https://www.youtube.com/channel/${track.artistId}` : undefined,
                     assets: {
                         large_image: track.thumbnail,
+                        large_url: `https://www.youtube.com/watch?v=${track.id}`,
                     },
                     timestamps: {
                         start: Date.now(),

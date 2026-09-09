@@ -10,8 +10,9 @@ namespace KuumoApp;
 
 internal sealed class Program
 {
-    private const string AppUserModelId = "KuumoApp";
-    private const string DisplayName = "Kuumo App";
+    private static readonly bool IsDev = Environment.GetEnvironmentVariable("KUUMO_DEV") == "1";
+    private static readonly string AppUserModelId = IsDev ? "KuumoAvalonia.dev" : "KuumoAvalonia";
+    private static readonly string DisplayName = IsDev ? "Kuumo Avalonia Test" : "Kuumo Avalonia App";
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
     private static extern void SetCurrentProcessExplicitAppUserModelID(string appId);

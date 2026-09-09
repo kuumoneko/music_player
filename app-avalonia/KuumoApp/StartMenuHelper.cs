@@ -5,8 +5,9 @@ namespace KuumoApp;
 
 internal static class StartMenuHelper
 {
-    private const string AppUserModelId = "KuumoApp";
-    private const string DisplayName = "Kuumo App";
+    private static readonly bool IsDev = Environment.GetEnvironmentVariable("KUUMO_DEV") == "1";
+    private static readonly string AppUserModelId = IsDev ? "KuumoAvalonia.dev" : "KuumoAvalonia";
+    private static readonly string DisplayName = IsDev ? "Kuumo Avalonia Test" : "Kuumo Avalonia App";
 
     [ComImport]
     [Guid("00021401-0000-0000-c000-000000000046")]

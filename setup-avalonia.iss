@@ -9,7 +9,7 @@
   #define MyAppBaseName "kuumoapp-avalonia_{#MyAppVersion}-setup"
 #endif
 
-#define MyAppName "KuumoApp"
+#define MyAppName "Kuumo Avalonia App"
 #define MyAppPublisher "kuumoneko"
 #define MyAppExeName "KuumoApp.exe"
 
@@ -91,8 +91,8 @@ Source: "build\avalonia-package\*"; DestDir: "{app}"; Flags: ignoreversion recur
 Source: "scripts\install-prereqs-avalonia.ps1"; DestDir: "{tmp}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUserModelID: "KuumoApp"
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; AppUserModelID: "KuumoApp"
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; AppUserModelID: "KuumoAvalonia"
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; AppUserModelID: "KuumoAvalonia"
 
 [Run]
 ; 1) Runtime prerequisite: .NET Desktop Runtime only (no WASDK)
