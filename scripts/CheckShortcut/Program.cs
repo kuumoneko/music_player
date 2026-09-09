@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 
@@ -7,6 +8,7 @@ using System.Runtime.InteropServices;
 //   CheckShortcut write [path] Create shortcut (optional custom path)
 //   CheckShortcut read  [path] Read AUMID from shortcut
 //   CheckShortcut <exePath> <iconPath>  Create shortcut with explicit exe/icon paths
+//   Optional flags: --aumid <value> --name <value>
 
 var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
 var winuiBin = Path.Combine(root, "app-winui", "KuumoApp", "bin", "x64", "Debug", "net10.0-windows10.0.22621.0", "win-x64");
@@ -18,36 +20,46 @@ string shortcutPath;
 string exePath = defaultExe;
 string iconPath = defaultIcon;
 string aumid = "kuumo.app";
+string shortcutName = "Kuumo App";
 
-if (args.Length >= 2 && args[0] == "read")
+// Parse named flags from args
+var positional = new List<string>();
+for (int i = 0; i < args.Length; i++)
+{
+    if (args[i] == "--aumid" && i + 1 < args.Length) { aumid = args[++i]; }
+    else if (args[i] == "--name" && i + 1 < args.Length) { shortcutName = args[++i]; }
+    else { positional.Add(args[i]); }
+}
+
+if (positional.Count >= 2 && positional[0] == "read")
 {
     mode = "read";
-    shortcutPath = args[1];
+    shortcutPath = positional[1];
 }
-else if (args.Length >= 2 && args[0] == "write")
+else if (positional.Count >= 2 && positional[0] == "write")
 {
     mode = "write";
-    shortcutPath = args.Length > 1 ? args[1] : Path.Combine(
+    shortcutPath = positional.Count > 1 ? positional[1] : Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        @"Microsoft\Windows\Start Menu\Programs\Kuumo App.lnk");
-    exePath = args.Length > 2 ? args[2] : defaultExe;
-    iconPath = args.Length > 3 ? args[3] : defaultIcon;
+        $@"Microsoft\Windows\Start Menu\Programs\{shortcutName}.lnk");
+    exePath = positional.Count > 2 ? positional[2] : defaultExe;
+    iconPath = positional.Count > 3 ? positional[3] : defaultIcon;
 }
-else if (args.Length >= 2)
+else if (positional.Count >= 2)
 {
     mode = "write";
-    exePath = args[0];
-    iconPath = args[1];
+    exePath = positional[0];
+    iconPath = positional[1];
     shortcutPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        @"Microsoft\Windows\Start Menu\Programs\Kuumo App.lnk");
+        $@"Microsoft\Windows\Start Menu\Programs\{shortcutName}.lnk");
 }
 else
 {
     mode = "write";
     shortcutPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        @"Microsoft\Windows\Start Menu\Programs\Kuumo App.lnk");
+        $@"Microsoft\Windows\Start Menu\Programs\{shortcutName}.lnk");
     exePath = defaultExe;
     iconPath = defaultIcon;
 }
@@ -64,7 +76,7 @@ if (mode == "write")
     if (File.Exists(shortcutPath)) File.Delete(shortcutPath);
 
     link.SetPath(exePath);
-    link.SetDescription("Kuumo App");
+    link.SetDescription(shortcutName);
     link.SetIconLocation(iconPath, 0);
 
     pf.Save(shortcutPath, true);

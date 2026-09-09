@@ -135,7 +135,7 @@ async function runDevCycle(): Promise<boolean> {
     }
 
     console.log("[winui:dev] ensuring Start Menu shortcut with AUMID...");
-    run("dotnet", ["run", "--project", "scripts\\CheckShortcut\\CheckShortcut.csproj", "--", "write"], { cwd: root });
+    run("dotnet", ["run", "--project", "scripts\\CheckShortcut\\CheckShortcut.csproj", "--", "write", "--aumid", "kuumo.app.dev", "--name", "KuumoApp WinUI Test"], { cwd: root });
 
     console.log("[winui:dev] launching app...");
     Bun.spawn([appExe, "--data-dir", dataDir], {

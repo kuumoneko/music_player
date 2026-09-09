@@ -48,7 +48,8 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
-        SetCurrentProcessExplicitAppUserModelID("kuumo.app");
+        var aumid = Environment.GetEnvironmentVariable("KUUMO_DEV") == "1" ? "kuumo.app.dev" : "kuumo.app";
+        SetCurrentProcessExplicitAppUserModelID(aumid);
         MainWindow = new MainWindow();
         Services.Start();
     }
