@@ -26,7 +26,7 @@
                         </Grid.RowDefinitions>
 
                         <!-- Header -->
-                        <TextBlock Text="Kuumo App"
+                        <TextBlock Text="Kuumo Avalonia App"
                                    FontSize="16" FontWeight="SemiBold"
                                    Margin="16,16,16,8"/>
 

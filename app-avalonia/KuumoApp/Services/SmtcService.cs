@@ -20,11 +20,12 @@ public sealed class SmtcService : IDisposable
     public void Pause()
     {
         _isPaused = true;
-        _thumbnailStream?.Dispose();
-        _thumbnailStream = null;
-        _thumbnailReference = null;
     }
-    public void Unpause() => _isPaused = false;
+
+    public void Unpause()
+    {
+        _isPaused = false;
+    }
 
     public void Initialize(IntPtr hwnd)
     {
@@ -34,21 +35,26 @@ public sealed class SmtcService : IDisposable
             if (_smtc is not null)
             {
                 AppLog.Write("smtc", "initialized via GetForWindow");
+                Console.Error.WriteLine("[smtc] initialized via GetForWindow");
             }
         }
         catch (Exception ex)
         {
-            AppLog.Write("smtc", $"GetForWindow failed: {ex.Message}");
+            var msg = $"GetForWindow failed: {ex.Message}";
+            AppLog.Write("smtc", msg);
+            Console.Error.WriteLine($"[smtc] {msg}");
         }
         if (_smtc is null)
         {
             AppLog.Write("smtc", "init failed: no SMTC instance");
+            Console.Error.WriteLine("[smtc] init failed: no SMTC instance");
             return;
         }
         try
         {
             _updater = _smtc.DisplayUpdater;
             _updater.Type = MediaPlaybackType.Music;
+            _updater.AppMediaId = "KuumoAvaloniaApp";
             _smtc.IsEnabled = true;
             _smtc.IsPlayEnabled = true;
             _smtc.IsPauseEnabled = true;
@@ -57,10 +63,13 @@ public sealed class SmtcService : IDisposable
             _smtc.PlaybackStatus = MediaPlaybackStatus.Closed;
             _smtc.ButtonPressed += OnButtonPressed;
             AppLog.Write("smtc", "configured: buttons, updater, event handler");
+            Console.Error.WriteLine($"[smtc] configured: buttons, AppMediaId=KuumoAvaloniaApp");
         }
         catch (Exception ex)
         {
-            AppLog.Write("smtc", $"init failed: {ex.Message}");
+            var msg = $"init failed: {ex.Message}";
+            AppLog.Write("smtc", msg);
+            Console.Error.WriteLine($"[smtc] {msg}");
             _smtc = null;
             _updater = null;
         }
@@ -90,7 +99,9 @@ public sealed class SmtcService : IDisposable
                     AppLog.Write("smtc", $"GetForWindow failed: 0x{hr:X8}");
                     return null;
                 }
-                return WinRT.MarshalInterface<SystemMediaTransportControls>.FromAbi(smtcPtr);
+                var smtc = WinRT.MarshalInterface<SystemMediaTransportControls>.FromAbi(smtcPtr);
+                Marshal.Release(smtcPtr);
+                return smtc;
             }
             finally
             {

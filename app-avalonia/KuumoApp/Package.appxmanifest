@@ -9,7 +9,7 @@
     <Identity Name="musicapp.kuumo.dev" Publisher="CN=KuumoApp" Version="6.0.0.0" />
 
     <Properties>
-        <DisplayName>Kuumo App</DisplayName>
+        <DisplayName>Kuumo Avalonia App</DisplayName>
         <PublisherDisplayName>kuumoneko</PublisherDisplayName>
     </Properties>
 
@@ -25,7 +25,7 @@
     <Applications>
         <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
             <uap:VisualElements
-                DisplayName="Kuumo App"
+                DisplayName="Kuumo Avalonia App"
                 Description="Music player"
                 BackgroundColor="transparent">
                 <uap:SplashScreen Image="Assets\SplashScreen.png" />

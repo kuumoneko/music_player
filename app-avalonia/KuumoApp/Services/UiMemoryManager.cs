@@ -14,6 +14,7 @@ public sealed class UiMemoryManager
     private readonly Window _window;
     private readonly RpcClient _rpc;
     private readonly List<(Image Image, string Url)> _captured = [];
+    private object? _savedContent;
     private int _transitionGen;
     private bool _isBackground;
 
@@ -37,8 +38,13 @@ public sealed class UiMemoryManager
             WalkAndUnload(visual, _captured);
         }
         ImageCache.Clear();
+        _savedContent = _window.Content;
+        _window.Content = null;
+        ShellPage.ClearInstance();
+        AppLog.Suppress(true);
         StopRendering();
-        AppLog.Write("mem", $"hidden: unloaded {_captured.Count} image(s), image cache cleared, rendering stopped");
+        AppLog.Write("mem", $"hidden: unloaded {_captured.Count} image(s), content detached, rendering stopped");
+        AppLog.Suppress(false);
         GC.Collect(2, GCCollectionMode.Forced, true);
         GC.WaitForPendingFinalizers();
         GC.Collect(2, GCCollectionMode.Forced, true);
@@ -50,8 +56,20 @@ public sealed class UiMemoryManager
     {
         _isBackground = false;
         _transitionGen++;
+        AppLog.Suppress(false);
+        if (_savedContent is null)
+        {
+            StartRendering();
+            _ = NotifyBackendAsync(true);
+            return;
+        }
         var captured = _captured.ToArray();
         _captured.Clear();
+        _window.Content = _savedContent;
+        if (_savedContent is ShellPage shell) ShellPage.SetInstance(shell);
+        _savedContent = null;
+        ShellPage.Instance?.RestoreNavContent();
+        ShellPage.Instance?.RestoreContent();
         StartRendering();
         foreach (var (image, url) in captured)
         {

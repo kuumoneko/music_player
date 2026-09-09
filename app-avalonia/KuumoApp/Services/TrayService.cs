@@ -135,7 +135,7 @@ public sealed class TrayService : IDisposable
                 uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
                 uCallbackMessage = TRAY_CALLBACK,
                 hIcon = hIcon,
-                szTip = "Kuumo App",
+                szTip = "Kuumo Avalonia App",
             };
 
             Shell_NotifyIcon(NIM_ADD, ref nid);
@@ -222,7 +222,7 @@ public sealed class TrayService : IDisposable
     {
         if (_windowService.IsWindowVisible)
         {
-            _window.Hide();
+            _windowService.HideWindow();
         }
         else
         {

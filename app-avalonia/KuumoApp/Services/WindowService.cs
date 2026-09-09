@@ -25,6 +25,7 @@ public sealed class WindowService
     private bool _applying;
     private bool _visible;
     private CancellationTokenSource? _saveCts;
+    private CancellationTokenSource? _visibilityCts;
     private int _lastSavedWidth;
     private int _lastSavedHeight;
     private bool _lastSavedMaximized;
@@ -154,6 +155,36 @@ public sealed class WindowService
         {
             return;
         }
+        _visibilityCts?.Cancel();
+        _visibilityCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _visibilityCts = cts;
+        _ = CommitVisibilityChangeAsync(visible, cts.Token);
+    }
+
+    private async Task CommitVisibilityChangeAsync(bool visible, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(250, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        if (token.IsCancellationRequested)
+        {
+            return;
+        }
+        var currentVisible = _window.IsVisible && _window.WindowState != WindowState.Minimized;
+        if (currentVisible != visible)
+        {
+            return;
+        }
+        if (visible == _visible)
+        {
+            return;
+        }
         _visible = visible;
         AppLog.Write("window", $"visibility: {(visible ? "shown" : "hidden")}");
         if (visible)
@@ -275,7 +306,7 @@ public sealed class WindowService
         if (IsCloseToTray)
         {
             AppLog.Write("window", "close-to-tray, hiding window");
-            _window.Hide();
+            HideWindow();
         }
         else if (IsQuitOnClose)
         {
@@ -285,7 +316,7 @@ public sealed class WindowService
         else
         {
             AppLog.Write("window", "close hides window (quit-on-close off)");
-            _window.Hide();
+            HideWindow();
         }
     }
 
@@ -298,6 +329,22 @@ public sealed class WindowService
     {
         _window.Show();
         _window.Activate();
+    }
+
+    public void HideWindow()
+    {
+        if (!_visible) return;
+        _visible = false;
+        _window.Hide();
+        AppLog.Write("window", "visibility: hidden (hideWindow)");
+        try
+        {
+            WindowHidden?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("window", $"WindowHidden invoke failed: {ex.Message}");
+        }
     }
 
     public async Task ToggleQuitOnCloseAsync()

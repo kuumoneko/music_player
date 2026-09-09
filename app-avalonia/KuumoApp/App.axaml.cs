@@ -42,6 +42,7 @@ public partial class App : Application
         try
         {
             _services!.Window = new WindowService(mainWindow, _services.Rpc);
+            mainWindow.SubscribeToWindowEvents(_services.Window);
             await _services.InitializeAsync();
             await _services.Window.InitializeAsync();
             AppLog.Write("app", "Application initialized successfully");

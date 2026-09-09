@@ -10,6 +10,7 @@ public static class AppLog
     private static readonly ConcurrentQueue<(string Type, string Source, string Message)> Pending = new();
     private static volatile Func<string, string, string, Task>? _sink;
     private static int _flushing;
+    private static volatile bool _suppressed;
     private static readonly CancellationTokenSource _cts = new();
 
     static AppLog()
@@ -28,8 +29,14 @@ public static class AppLog
         _cts.Cancel();
     }
 
+    public static void Suppress(bool suppressed)
+    {
+        _suppressed = suppressed;
+    }
+
     public static void Write(string source, string message)
     {
+        if (_suppressed) return;
         var line = $"{DateTime.Now:HH:mm:ss.fff} [{source}] {message}";
         Pending.Enqueue(("info", source, line));
         while (Pending.Count > MaxQueued && Pending.TryDequeue(out _))
@@ -68,6 +75,7 @@ public static class AppLog
             {
                 return;
             }
+            List<(string Type, string Source, string Message)>? failed = null;
             while (Pending.TryDequeue(out var entry))
             {
                 try
@@ -76,7 +84,16 @@ public static class AppLog
                 }
                 catch
                 {
-                    // Backend unreachable — drop rather than retry forever.
+                    failed ??= new();
+                    failed.Add(entry);
+                }
+            }
+            if (failed is not null)
+            {
+                foreach (var entry in failed)
+                {
+                    if (Pending.Count < MaxQueued)
+                        Pending.Enqueue(entry);
                 }
             }
         }

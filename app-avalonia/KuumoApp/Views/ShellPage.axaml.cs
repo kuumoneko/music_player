@@ -35,6 +35,9 @@ public partial class ShellPage : UserControl
 
     public static ShellPage? Instance { get; private set; }
 
+    public static void ClearInstance() => Instance = null;
+    public static void SetInstance(ShellPage page) => Instance = page;
+
     public ShellPage()
     {
         InitializeComponent();
@@ -46,7 +49,7 @@ public partial class ShellPage : UserControl
     {
         if (App.MainWindow is { } window)
         {
-            window.Title = string.IsNullOrWhiteSpace(page) ? "Kuumo App" : $"Kuumo App - {page}";
+            window.Title = string.IsNullOrWhiteSpace(page) ? "Kuumo Avalonia App" : $"Kuumo Avalonia App - {page}";
         }
     }
 

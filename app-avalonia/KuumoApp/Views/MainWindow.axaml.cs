@@ -12,7 +12,7 @@ namespace KuumoApp.Views;
 
 public partial class MainWindow : Window
 {
-    private const string Aumid = "KuumoApp";
+    private const string Aumid = "KuumoAvaloniaApp";
 
     private const int WM_SETICON = 0x0080;
     private const int ICON_SMALL = 0;
@@ -139,13 +139,11 @@ public partial class MainWindow : Window
         {
             if (!_smtcInitialized)
             {
-                _smtcInitialized = true;
                 var hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-                if (hwnd != IntPtr.Zero)
-                {
-                    StampAumidOnWindow(hwnd);
-                    SetWindowIcons(hwnd);
-                }
+                if (hwnd == IntPtr.Zero) return;
+                _smtcInitialized = true;
+                StampAumidOnWindow(hwnd);
+                SetWindowIcons(hwnd);
                 _smtc = new SmtcService();
                 App.Services.Smtc = _smtc;
                 _smtc.Initialize(hwnd);
@@ -163,26 +161,6 @@ public partial class MainWindow : Window
             AppLog.Stop();
         };
 
-        if (App.Services.Window is { } ws)
-        {
-            ws.WindowHidden += () =>
-            {
-                _smtc?.Pause();
-                App.Services.Theme.SetBackground(true);
-                _memory.OnWindowHidden();
-                ShellPage.Instance?.DetachContent();
-                ShellPage.Instance?.DetachNavContent();
-            };
-            ws.WindowShown += () =>
-            {
-                ShellPage.Instance?.RestoreNavContent();
-                ShellPage.Instance?.RestoreContent();
-                _smtc?.Unpause();
-                App.Services.Theme.SetBackground(false);
-                _memory.OnWindowShown();
-            };
-        }
-
         App.Services.Rpc.Connected += OnRpcConnected;
 
         Shell.SetStatus("starting backend...");
@@ -191,6 +169,36 @@ public partial class MainWindow : Window
 
     public void PauseRendering() => StopRendering();
     public void ResumeRendering() => StartRendering();
+
+    public void SubscribeToWindowEvents(WindowService ws)
+    {
+        ws.WindowHidden += () =>
+        {
+            try
+            {
+                _smtc?.Pause();
+                App.Services.Theme.SetBackground(true);
+                _memory.OnWindowHidden();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("mem", $"WindowHidden handler failed: {ex}");
+            }
+        };
+        ws.WindowShown += () =>
+        {
+            try
+            {
+                _smtc?.Unpause();
+                App.Services.Theme.SetBackground(false);
+                _memory.OnWindowShown();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("mem", $"WindowShown handler failed: {ex}");
+            }
+        };
+    }
 
     private static void SetWindowIcons(IntPtr hwnd)
     {
@@ -214,6 +222,9 @@ public partial class MainWindow : Window
         {
             var iid = typeof(IPropertyStore).GUID;
             var hr = SHGetPropertyStoreForWindow(hwnd, ref iid, out var psPtr);
+            var msg1 = $"StampAumid: SHGetPropertyStoreForWindow hr=0x{hr:X8} psPtr={psPtr}";
+            AppLog.Write("smtc", msg1);
+            Console.Error.WriteLine($"[smtc] {msg1}");
             if (hr != 0 || psPtr == IntPtr.Zero) return;
             var propertyStore = (IPropertyStore)Marshal.GetObjectForIUnknown(psPtr);
             Marshal.Release(psPtr);
@@ -224,6 +235,9 @@ public partial class MainWindow : Window
             {
                 propertyStore.SetValue(ref key, ref pv);
                 propertyStore.Commit();
+                var msg2 = $"StampAumid: SetValue+Commit OK for '{Aumid}'";
+                AppLog.Write("smtc", msg2);
+                Console.Error.WriteLine($"[smtc] {msg2}");
             }
             finally
             {
@@ -231,9 +245,11 @@ public partial class MainWindow : Window
                 Marshal.ReleaseComObject(propertyStore);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort
+            var msg = $"StampAumid failed: {ex.Message}";
+            AppLog.Write("smtc", msg);
+            Console.Error.WriteLine($"[smtc] {msg}");
         }
     }
 

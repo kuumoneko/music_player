@@ -6,7 +6,7 @@ namespace KuumoApp.Services;
 
 public static class ImageCache
 {
-    private const int MaxEntries = 60;
+    private const int MaxEntries = 20;
 
     private static ConcurrentDictionary<string, Bitmap> Cache = new();
     private static readonly ConcurrentQueue<string> AccessOrder = new();
@@ -45,10 +45,7 @@ public static class ImageCache
     {
         while (Cache.Count > MaxEntries && AccessOrder.TryDequeue(out var oldest))
         {
-            if (Cache.TryRemove(oldest, out var bitmap))
-            {
-                bitmap.Dispose();
-            }
+            Cache.TryRemove(oldest, out _);
         }
     }
 }

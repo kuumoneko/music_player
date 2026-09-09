@@ -104,79 +104,6 @@ internal static class StartMenuHelper
     private static readonly PropertyKey AppUserModelIdKey = new(
         new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 5);
 
-    [UnmanagedFunctionPointer(System.Runtime.InteropServices.CallingConvention.Winapi)]
-    private delegate int SetValueFn(IntPtr thisPtr, IntPtr keyPtr, IntPtr pvPtr);
-
-    [UnmanagedFunctionPointer(System.Runtime.InteropServices.CallingConvention.Winapi)]
-    private delegate int GetValueFn(IntPtr thisPtr, IntPtr keyPtr, IntPtr pvPtr);
-
-    [UnmanagedFunctionPointer(System.Runtime.InteropServices.CallingConvention.Winapi)]
-    private delegate int CommitFn(IntPtr thisPtr);
-
-    private static int RawSetValueOnMta(object comObject, string value)
-    {
-        int result = -1;
-        Exception? threadEx = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                var psPtr = Marshal.GetComInterfaceForObject(comObject, typeof(IPropertyStore));
-                try
-                {
-                    var key = AppUserModelIdKey;
-                    var pkPtr = Marshal.AllocHGlobal(20);
-                    try
-                    {
-                        Marshal.StructureToPtr(key, pkPtr, false);
-                        var strPtr = Marshal.StringToCoTaskMemUni(value);
-                        try
-                        {
-                            var pvPtr = Marshal.AllocHGlobal(16);
-                            try
-                            {
-                                Marshal.WriteInt16(pvPtr, 0, 31);
-                                Marshal.WriteIntPtr(pvPtr, 8, strPtr);
-                                var vtable = Marshal.ReadIntPtr(psPtr);
-                                var setValueAddr = Marshal.ReadIntPtr(vtable, 6 * IntPtr.Size);
-                                var setValue = Marshal.GetDelegateForFunctionPointer<SetValueFn>(setValueAddr);
-                                result = setValue(psPtr, pkPtr, pvPtr);
-                                var commitAddr = Marshal.ReadIntPtr(vtable, 7 * IntPtr.Size);
-                                var commit = Marshal.GetDelegateForFunctionPointer<CommitFn>(commitAddr);
-                                commit(psPtr);
-                            }
-                            finally
-                            {
-                                Marshal.FreeHGlobal(pvPtr);
-                            }
-                        }
-                        finally
-                        {
-                            Marshal.FreeCoTaskMem(strPtr);
-                        }
-                    }
-                    finally
-                    {
-                        Marshal.FreeHGlobal(pkPtr);
-                    }
-                }
-                finally
-                {
-                    Marshal.Release(psPtr);
-                }
-            }
-            catch (Exception ex)
-            {
-                threadEx = ex;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.MTA);
-        thread.Start();
-        thread.Join();
-        if (threadEx != null) throw threadEx;
-        return result;
-    }
-
     public static void EnsureShortcut()
     {
         if (!OperatingSystem.IsWindows()) return;
@@ -208,7 +135,13 @@ internal static class StartMenuHelper
             }
 
             CreateShortcut(shortcutPath, exePath, iconPath);
-            Console.Error.WriteLine($"[shortcut] created: exists={File.Exists(shortcutPath)}");
+            var exists = File.Exists(shortcutPath);
+            AppLog.Write("shortcut", $"created: exists={exists}");
+            if (exists)
+            {
+                var verifyHr = VerifyAumidOnShortcut(shortcutPath);
+                AppLog.Write("shortcut", $"verify after create: hr=0x{verifyHr:X8}");
+            }
         }
         catch (Exception ex)
         {
@@ -225,7 +158,9 @@ internal static class StartMenuHelper
                 if (string.Equals(lnk, keepPath, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (HasMatchingAumid(lnk))
+                var fileName = Path.GetFileNameWithoutExtension(lnk);
+                if (string.Equals(fileName, "Kuumo App", StringComparison.OrdinalIgnoreCase) ||
+                    HasMatchingAumid(lnk))
                 {
                     AppLog.Write("shortcut", $"deleting stale shortcut: {Path.GetFileName(lnk)}");
                     File.Delete(lnk);
@@ -337,30 +272,95 @@ internal static class StartMenuHelper
 
     private static void CreateShortcut(string shortcutPath, string exePath, string iconPath)
     {
-        var shellLink = (IShellLinkW)new ShellLink();
+        Exception? threadEx = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var shellLink = (IShellLinkW)new ShellLink();
+                try
+                {
+                    shellLink.SetPath(exePath);
+                    shellLink.SetDescription(DisplayName);
+                    shellLink.SetWorkingDirectory(Path.GetDirectoryName(exePath) ?? "");
+
+                    if (File.Exists(iconPath))
+                    {
+                        shellLink.SetIconLocation(iconPath, 0);
+                    }
+
+                    var persistFile = (IPersistFile)shellLink;
+                    persistFile.Save(shortcutPath, true);
+                    persistFile.Load(shortcutPath, 0);
+
+                    var propertyStore = (IPropertyStore)shellLink;
+                    var key = AppUserModelIdKey;
+                    var pv = new PropVariant();
+                    pv.SetString(AppUserModelId);
+                    try
+                    {
+                        propertyStore.SetValue(ref key, ref pv);
+                        propertyStore.Commit();
+                    }
+                    finally
+                    {
+                        pv.Clear();
+                    }
+
+                    persistFile.Save(shortcutPath, true);
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(shellLink);
+                }
+            }
+            catch (Exception ex)
+            {
+                threadEx = ex;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.MTA);
+        thread.Start();
+        thread.Join();
+        if (threadEx != null) throw threadEx;
+    }
+
+    private static int VerifyAumidOnShortcut(string shortcutPath)
+    {
+        object? link = null;
         try
         {
-            shellLink.SetPath(exePath);
-            shellLink.SetDescription(DisplayName);
-            shellLink.SetWorkingDirectory(Path.GetDirectoryName(exePath) ?? "");
+            link = new ShellLink();
+            var persistFile = (IPersistFile)link;
+            persistFile.Load(shortcutPath, 0);
 
-            if (File.Exists(iconPath))
+            var propertyStore = (IPropertyStore)link;
+            var aumidKey = AppUserModelIdKey;
+            propertyStore.GetValue(ref aumidKey, out var pv);
+            try
             {
-                shellLink.SetIconLocation(iconPath, 0);
+                if (pv.vt != 31)
+                {
+                    AppLog.Write("shortcut", $"verify: AUMID vt={pv.vt} (expected 31)");
+                    return -1;
+                }
+                var currentAumid = Marshal.PtrToStringUni(pv.val);
+                AppLog.Write("shortcut", $"verify: AUMID='{currentAumid}'");
+                return 0;
             }
-
-            var persistFile = (IPersistFile)shellLink;
-            persistFile.Save(shortcutPath, true);
-
-            var hr = RawSetValueOnMta(shellLink, AppUserModelId);
-            Console.Error.WriteLine($"[shortcut] raw SetValue: 0x{hr:X8}");
-
-            persistFile.Save(shortcutPath, true);
-            Console.Error.WriteLine($"[shortcut] created with AUMID");
+            finally
+            {
+                pv.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("shortcut", $"verify error: {ex.Message}");
+            return -2;
         }
         finally
         {
-            Marshal.ReleaseComObject(shellLink);
+            if (link != null) Marshal.ReleaseComObject(link);
         }
     }
 }

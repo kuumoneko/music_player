@@ -8,10 +8,10 @@
     <LangVersion>latest</LangVersion>
     <Platforms>x86;x64;ARM64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <Product>Kuumo App</Product>
-    <AssemblyTitle>Kuumo App</AssemblyTitle>
+    <Product>Kuumo Avalonia App</Product>
+    <AssemblyTitle>Kuumo Avalonia App</AssemblyTitle>
     <Company>kuumoneko</Company>
-    <Description>Kuumo App music player</Description>
+    <Description>Kuumo Avalonia App music player</Description>
     <Version>6.0.0</Version>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -34,8 +34,4 @@
     <Content Include="SparsePackage\Assets\*.png" CopyToOutputDirectory="PreserveNewest" Link="Assets\%(Filename)%(Extension)" />
     <Content Include="..\..\build\kuumo-identity.msix" CopyToOutputDirectory="PreserveNewest" Link="kuumo-identity.msix" Condition="Exists('..\..\build\kuumo-identity.msix')" />
   </ItemGroup>
-
-  <Target Name="StampExeIcon" AfterTargets="Build">
-    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\..\scripts\StampIcon\StampIcon.csproj&quot; -- &quot;$(OutputPath)KuumoApp.exe&quot; &quot;$(ProjectDir)Assets\AppIcon.ico&quot;" />
-  </Target>
 </Project>
