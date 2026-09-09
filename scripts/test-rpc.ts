@@ -27,6 +27,24 @@ const failures: { test: string; error: string }[] = [];
 let ws: WebSocket;
 let nextId = 1;
 const pending = new Map<number, { resolve: (v: any) => void; reject: (e: Error) => void }>();
+const pushListeners = new Map<string, { resolve: (v: any) => void; timer: ReturnType<typeof setTimeout> }[]>();
+
+function waitForEvent(event: string, timeoutMs = 5000): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const arr = pushListeners.get(event);
+      if (arr) {
+        const idx = arr.findIndex((l) => l.resolve === onEvent);
+        if (idx !== -1) arr.splice(idx, 1);
+      }
+      reject(new Error(`waitForEvent "${event}" timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    const onEvent = (v: any) => { clearTimeout(timer); resolve(v); };
+    const arr = pushListeners.get(event) ?? [];
+    arr.push({ resolve: onEvent, timer });
+    pushListeners.set(event, arr);
+  });
+}
 
 function call(method: string, params?: unknown, timeoutMs = 30000): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -218,7 +236,7 @@ function defineGroups(): TestGroup[] {
     name: "playlists",
     tests: [
       () => test("createPlaylist", async () => {
-        const result = await call("createPlaylist", "Test Playlist " + Date.now());
+        const result = await call("createPlaylist", { name: "Test Playlist " + Date.now() });
         if (result === null || result === undefined) throw new Error("got null/undefined");
         if (typeof result === "string") createdPlaylistId = result;
         else if (result?.id) createdPlaylistId = result.id;
@@ -232,7 +250,7 @@ function defineGroups(): TestGroup[] {
           skip("addToPlaylist", "no playlist created");
           return;
         }
-        await call("addToPlaylist", { playlistId: createdPlaylistId, trackId: "dQw4w9WgXcQ", source: "youtube" });
+        await call("addToPlaylist", { playlistId: createdPlaylistId, track: { id: "dQw4w9WgXcQ", source: "youtube", name: "Test Track", artist: [], thumbnail: "", duration: 0, releasedDate: "" } });
       }),
       () => test("removeFromPlaylist", async () => {
         if (!createdPlaylistId) {
@@ -246,7 +264,7 @@ function defineGroups(): TestGroup[] {
           skip("deletePlaylist", "no playlist created");
           return;
         }
-        await call("deletePlaylist", createdPlaylistId);
+        await call("deletePlaylist", { id: createdPlaylistId });
       }),
     ],
   });
@@ -260,7 +278,7 @@ function defineGroups(): TestGroup[] {
       }),
       () => test("setUserData (volume)", async () => {
         const current = await call("getUserData", "volume");
-        await call("setUserData", { key: "volume", value: current ?? 80 });
+        await call("setUserData", { key: "volume", data: current ?? 80 });
       }),
       () => test("getUserData (repeat)", async () => {
         await call("getUserData", "repeat");
@@ -345,8 +363,8 @@ function defineGroups(): TestGroup[] {
   groups.push({
     name: "sleep",
     tests: [
-      () => test("setSleep (off)", async () => {
-        await call("setSleep", "off");
+      () => test("setSleep (nosleep)", async () => {
+        await call("setSleep", "nosleep");
       }),
     ],
   });
@@ -364,18 +382,6 @@ function defineGroups(): TestGroup[] {
     ],
   });
 
-  // --- local ---
-  groups.push({
-    name: "local",
-    tests: [
-      () => test("getLocalfile", async () => {
-        const result = await call("getLocalfile");
-        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
-        if (verbose) console.log(`    ${dim}files: ${result.length}${reset}`);
-      }),
-    ],
-  });
-
   // --- ui ---
   groups.push({
     name: "ui",
@@ -385,6 +391,349 @@ function defineGroups(): TestGroup[] {
       }),
       () => test("setUiVisibility (false)", async () => {
         await call("setUiVisibility", false);
+      }),
+    ],
+  });
+
+  // --- youtube-api (key management) ---
+  groups.push({
+    name: "youtube-api",
+    tests: [
+      () => test("getYoutubeApiKeys (baseline)", async () => {
+        const result = await call("getYoutubeApiKeys");
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+      }),
+      () => test("addYoutubeApiKey", async () => {
+        const testKey = "test-key-" + Date.now();
+        const result = await call("addYoutubeApiKey", { key: testKey });
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+        if (!result.includes(testKey)) throw new Error("added key not found in result");
+      }),
+      () => test("removeYoutubeApiKey", async () => {
+        const keys = await call("getYoutubeApiKeys");
+        const testKey = keys.find((k: string) => k.startsWith("test-key-"));
+        if (!testKey) {
+          skip("removeYoutubeApiKey", "no test key to remove");
+          return;
+        }
+        const result = await call("removeYoutubeApiKey", { key: testKey });
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+        if (result.includes(testKey)) throw new Error("removed key still present");
+      }),
+      () => test("importYoutubeApiKeys", async () => {
+        const testKeys = ["import-key-a-" + Date.now(), "import-key-b-" + Date.now()];
+        const result = await call("importYoutubeApiKeys", { keys: testKeys });
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+        for (const k of testKeys) {
+          if (!result.includes(k)) throw new Error(`imported key ${k} not found`);
+        }
+      }),
+      () => test("importYoutubeApiKeys (dedup + trim)", async () => {
+        const dupeKey = "dedup-key-" + Date.now();
+        const result = await call("importYoutubeApiKeys", { keys: [dupeKey, "  " + dupeKey + "  ", dupeKey] });
+        const count = result.filter((k: string) => k === dupeKey).length;
+        if (count !== 1) throw new Error(`expected 1 occurrence, got ${count}`);
+        if (result.includes("  " + dupeKey + "  ")) throw new Error("whitespace not trimmed");
+      }),
+      () => test("cleanup imported keys", async () => {
+        const keys = await call("getYoutubeApiKeys");
+        const testKeys = keys.filter((k: string) => k.startsWith("import-key-") || k.startsWith("test-key-") || k.startsWith("dedup-key-"));
+        for (const k of testKeys) {
+          await call("removeYoutubeApiKey", { key: k });
+        }
+      }),
+    ],
+  });
+
+  // --- youtube-cookies ---
+  let originalCookies: string = "";
+  groups.push({
+    name: "youtube-cookies",
+    tests: [
+      () => test("getYtCookies (baseline)", async () => {
+        const result = await call("getYtCookies");
+        if (typeof result !== "string") throw new Error(`expected string, got ${typeof result}`);
+        originalCookies = result;
+      }),
+      () => test("setYtCookies", async () => {
+        const testCookie = "test-cookie-" + Date.now();
+        const result = await call("setYtCookies", { cookies: testCookie });
+        if (result !== testCookie) throw new Error(`expected "${testCookie}", got "${result}"`);
+      }),
+      () => test("clearYtCookies", async () => {
+        const result = await call("clearYtCookies");
+        if (result !== "") throw new Error(`expected empty string, got "${result}"`);
+      }),
+      () => test("restore original cookies", async () => {
+        if (originalCookies) await call("setYtCookies", { cookies: originalCookies });
+      }),
+    ],
+  });
+
+  // --- discord (connect/disconnect) ---
+  groups.push({
+    name: "discord-rpc",
+    tests: [
+      () => test("connectDiscordRPC", async () => {
+        const result = await call("connectDiscordRPC");
+        // returns username string, false (Discord not running), or null (module missing)
+        if (verbose) console.log(`    ${dim}result: ${JSON.stringify(result)}${reset}`);
+      }),
+      () => test("disconnectDiscordRPC", async () => {
+        await call("disconnectDiscordRPC");
+      }),
+    ],
+  });
+
+  // --- youtube-user (authenticated resources) ---
+  groups.push({
+    name: "youtube-user",
+    tests: [
+      () => test("getUserYoutubePlaylists", async () => {
+        const result = await call("getUserYoutubePlaylists");
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+        if (verbose) console.log(`    ${dim}playlists: ${result.length}${reset}`);
+      }),
+      () => test("getUserYoutubeSubscriptions", async () => {
+        const result = await call("getUserYoutubeSubscriptions");
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+        if (verbose) console.log(`    ${dim}subscriptions: ${result.length}${reset}`);
+      }),
+      () => test("getUserYoutubePlaylistTracks", async () => {
+        const playlists = await call("getUserYoutubePlaylists");
+        if (!Array.isArray(playlists) || playlists.length === 0) {
+          skip("getUserYoutubePlaylistTracks", "no playlists available");
+          return;
+        }
+        const result = await call("getUserYoutubePlaylistTracks", { playlistId: playlists[0].id });
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+      }),
+    ],
+  });
+
+  // --- local (rehash) ---
+  groups.push({
+    name: "local",
+    tests: [
+      () => test("getLocalfile", async () => {
+        const result = await call("getLocalfile");
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+        if (verbose) console.log(`    ${dim}files: ${result.length}${reset}`);
+      }),
+      () => test("rehashLocalFiles", async () => {
+        await call("rehashLocalFiles");
+      }),
+    ],
+  });
+
+  // --- download (guard conditions) ---
+  groups.push({
+    name: "download-guard",
+    tests: [
+      () => test("downloadMusic (guard: not local)", async () => {
+        const isLocal = await call("getIsLocal");
+        if (isLocal) {
+          skip("downloadMusic guard", "app is in local mode, cannot test not-local guard");
+          return;
+        }
+        const result = await call("downloadMusic");
+        // should return an error message string about not being local mode
+        if (verbose) console.log(`    ${dim}result: ${JSON.stringify(result)}${reset}`);
+      }),
+      () => test("downloadMusic (guard: empty queue)", async () => {
+        const isLocal = await call("getIsLocal");
+        if (!isLocal) {
+          skip("downloadMusic guard", "app is not in local mode");
+          return;
+        }
+        // clear download queue first
+        await call("setUserData", { key: "downloadQueue", data: [] });
+        const result = await call("downloadMusic");
+        if (verbose) console.log(`    ${dim}result: ${JSON.stringify(result)}${reset}`);
+      }),
+    ],
+  });
+
+  // --- edge-cases: invalid inputs ---
+  groups.push({
+    name: "edge-cases",
+    tests: [
+      () => test("nonexistent method", async () => {
+        let threw = false;
+        try {
+          await call("thisMethodDoesNotExist");
+        } catch {
+          threw = true;
+        }
+        if (!threw) throw new Error("expected error for nonexistent method");
+      }),
+      () => test("missing params (searchMusic)", async () => {
+        let threw = false;
+        try {
+          await call("searchMusic");
+        } catch {
+          threw = true;
+        }
+        if (!threw) throw new Error("expected error for missing params");
+      }),
+      () => test("wrong-type param (seekTo string)", async () => {
+        let threw = false;
+        try {
+          await call("seekTo", "not-a-number");
+        } catch {
+          threw = true;
+        }
+        if (!threw) throw new Error("expected error for wrong-type param");
+      }),
+      () => test("seekTo boundary (0)", async () => {
+        // should not throw even if not playing
+        await call("seekTo", 0);
+      }),
+      () => test("seekTo boundary (negative)", async () => {
+        // should handle gracefully
+        let threw = false;
+        try {
+          await call("seekTo", -1);
+        } catch {
+          threw = true;
+        }
+        // either throws or handles gracefully — both acceptable
+        if (verbose) console.log(`    ${dim}threw: ${threw}${reset}`);
+      }),
+      () => test("searchMusic empty query", async () => {
+        const result = await call("searchMusic", { type: "track", source: "youtube", query: "" });
+        // should return empty or error — just verify no crash
+        if (verbose) console.log(`    ${dim}result: ${JSON.stringify(result).substring(0, 80)}${reset}`);
+      }),
+      () => test("searchMusic long query", async () => {
+        const longQuery = "a".repeat(500);
+        const result = await call("searchMusic", { type: "track", source: "youtube", query: longQuery });
+        // should return empty or error — just verify no crash
+        if (verbose) console.log(`    ${dim}result: ${JSON.stringify(result).substring(0, 80)}${reset}`);
+      }),
+      () => test("searchMusic unicode query", async () => {
+        const result = await call("searchMusic", { type: "track", source: "youtube", query: "音楽 テスト 🎵" });
+        if (verbose) console.log(`    ${dim}result: ${JSON.stringify(result).substring(0, 80)}${reset}`);
+      }),
+      () => test("setSleep (valid: nosleep)", async () => {
+        await call("setSleep", "nosleep");
+      }),
+      () => test("setSleep (valid: end of this track)", async () => {
+        await call("setSleep", "end of this track");
+      }),
+      () => test("setSleep (restore: nosleep)", async () => {
+        await call("setSleep", "nosleep");
+      }),
+    ],
+  });
+
+  // --- edge-cases: rate limiting ---
+  groups.push({
+    name: "rate-limit",
+    tests: [
+      () => test("rate limit (getMusicData x2 rapid)", async () => {
+        const p1 = call("getMusicData", { source: "youtube", type: "track", id: "dQw4w9WgXcQ" });
+        const p2 = call("getMusicData", { source: "youtube", type: "track", id: "dQw4w9WgXcQ" });
+        const results = await Promise.allSettled([p1, p2]);
+        const rejected = results.filter((r) => r.status === "rejected");
+        // at least one should be rate-limited or both succeed (server may allow)
+        if (verbose) console.log(`    ${dim}rejected: ${rejected.length}, fulfilled: ${results.length - rejected.length}${reset}`);
+      }),
+    ],
+  });
+
+  // --- edge-cases: getImageDataUri ---
+  groups.push({
+    name: "image-cache",
+    tests: [
+      () => test("getImageDataUri (cache hit)", async () => {
+        const url = "https://img.youtube.com/vi/dQw4w9WgXcQ/0.jpg";
+        const t1 = Date.now();
+        await call("getImageDataUri", url);
+        const elapsed1 = Date.now() - t1;
+        const t2 = Date.now();
+        await call("getImageDataUri", url);
+        const elapsed2 = Date.now() - t2;
+        if (verbose) console.log(`    ${dim}first: ${elapsed1}ms, second: ${elapsed2}ms${reset}`);
+      }),
+      () => test("getImageDataUri (invalid URL)", async () => {
+        const result = await call("getImageDataUri", "https://invalid.example.com/noimage.jpg");
+        // should return null or error — just verify no crash
+        if (verbose) console.log(`    ${dim}result: ${JSON.stringify(result)}${reset}`);
+      }),
+    ],
+  });
+
+  // --- queue: populated ---
+  groups.push({
+    name: "queue-populated",
+    tests: [
+      () => test("addToBatchQueue + getQueueData", async () => {
+        await call("addToBatchQueue", { source: "youtube", type: "track", id: "dQw4w9WgXcQ" });
+        const result = await call("getQueueData", ["dQw4w9WgXcQ"]);
+        if (!Array.isArray(result)) throw new Error(`expected array, got ${typeof result}`);
+        if (verbose) console.log(`    ${dim}queue items: ${result.length}${reset}`);
+      }),
+    ],
+  });
+
+  // --- edge-cases: concurrency ---
+  groups.push({
+    name: "concurrency",
+    tests: [
+      () => test("concurrent getIsLocal x3", async () => {
+        const results = await Promise.all([
+          call("getIsLocal"),
+          call("getIsLocal"),
+          call("getIsLocal"),
+        ]);
+        for (const r of results) {
+          if (typeof r !== "boolean") throw new Error(`expected boolean, got ${typeof r}`);
+        }
+      }),
+    ],
+  });
+
+  // --- server-push validation ---
+  groups.push({
+    name: "server-push",
+    tests: [
+      () => test("play triggers currentTrackChanged", async () => {
+        const trackId = "dQw4w9WgXcQ";
+        const eventPromise = waitForEvent("currentTrackChanged", 5000);
+        await call("play", { item: "youtube:track:" + trackId, source: "youtube", type: "track", id: trackId });
+        const data = await eventPromise;
+        if (!data || typeof data !== "object") throw new Error(`expected object, got ${typeof data}`);
+        if (!data.id && !data.source) throw new Error("missing id/source in currentTrackChanged");
+        if (verbose) console.log(`    ${dim}track: ${JSON.stringify(data).substring(0, 100)}${reset}`);
+      }),
+      () => test("togglePlayPause triggers playerStateChange", async () => {
+        const eventPromise = waitForEvent("playerStateChange", 3000);
+        await call("togglePlayPause");
+        const data = await eventPromise;
+        if (!data || typeof data !== "object") throw new Error(`expected object, got ${typeof data}`);
+        if (typeof data.isPlaying !== "boolean") throw new Error("missing isPlaying");
+        if (verbose) console.log(`    ${dim}state: ${JSON.stringify(data)}${reset}`);
+        // toggle back
+        await call("togglePlayPause");
+      }),
+      () => test("setUserData(volume) triggers settingsChanged", async () => {
+        const current = await call("getUserData", "volume");
+        const testVolume = (current ?? 80) === 80 ? 75 : 80;
+        const eventPromise = waitForEvent("settingsChanged", 3000);
+        await call("setUserData", { key: "volume", data: testVolume });
+        const data = await eventPromise;
+        if (!data || typeof data !== "object") throw new Error(`expected object, got ${typeof data}`);
+        if (typeof data.volume !== "number") throw new Error("missing volume in settingsChanged");
+        // restore original
+        await call("setUserData", { key: "volume", data: current ?? 80 });
+      }),
+      () => test("addToBatchQueue triggers queueChanged", async () => {
+        const eventPromise = waitForEvent("queueChanged", 3000);
+        await call("addToBatchQueue", { source: "youtube", type: "track", id: "dQw4w9WgXcQ" });
+        const data = await eventPromise;
+        if (!data || typeof data !== "object") throw new Error(`expected object, got ${typeof data}`);
+        if (verbose) console.log(`    ${dim}queue: ${JSON.stringify(data).substring(0, 100)}${reset}`);
       }),
     ],
   });
@@ -495,6 +844,12 @@ async function main() {
             p.reject(new Error(data.error.message ?? JSON.stringify(data.error)));
           } else {
             p.resolve(data.result);
+          }
+        } else if (data.event) {
+          const listeners = pushListeners.get(data.event);
+          if (listeners && listeners.length > 0) {
+            const l = listeners.shift()!;
+            l.resolve(data.data);
           }
         }
       } catch { /* ignore parse errors */ }

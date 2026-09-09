@@ -19,6 +19,8 @@
 //   bun run package                 -> builds ALL profiles found in apikeys/ (myown first, release last)
 //   bun run package --profile myown -> builds only that profile (dev testing)
 //   bun run package --cached        -> skips profile-independent builds if outputs exist (CI)
+//   bun run package --skip-winui   -> skips dotnet publish (backend-only testing)
+//   bun run package --skip-inno    -> assembles payload only, skips ISCC.exe
 import { spawnSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -26,6 +28,8 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dir, "..");
 const { version } = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
 const useCache = process.argv.includes("--cached");
+const skipWinui = process.argv.includes("--skip-winui");
+const skipInno = process.argv.includes("--skip-inno");
 
 function run(cmd: string, args: string[], cwd: string = root) {
     console.log(`\n> ${cmd} ${args.join(" ")}`);
@@ -131,13 +135,19 @@ const backendJs = resolve(buildDir, "backend.js");
 const publishDir = resolve(root, "build", "publish");
 const launcherDir = resolve(buildDir, "launcher");
 
-if (useCache && existsSync(backendJs) && existsSync(publishDir) && existsSync(resolve(launcherDir, "KuumoApp.exe"))) {
-    console.log("\n Skipping profile-independent builds (--cached, outputs exist)");
+// Backend build — skip if --cached and output exists
+if (useCache && existsSync(backendJs)) {
+    console.log("\n Skipping backend build (--cached, output exists)");
 } else {
     run("bun", ["run", "build:prod"]);
     requireDir(buildDir, "backend build output");
+}
 
-    // 2) Publish the WinUI app + launcher in parallel (independent projects, no shared output)
+// WinUI publish — skip if --skip-winui and outputs exist
+const winuiReady = skipWinui && existsSync(publishDir) && existsSync(resolve(launcherDir, "KuumoApp.exe"));
+if (winuiReady) {
+    console.log("\n Skipping WinUI publish (--skip-winui, outputs exist)");
+} else {
     run("dotnet", ["restore", resolve(root, "app-winui", "KuumoApp", "KuumoApp.csproj"), "-r", "win-x64"], resolve(root, "app-winui"));
     rmSync(publishDir, { recursive: true, force: true });
     rmSync(launcherDir, { recursive: true, force: true });
@@ -241,10 +251,6 @@ for (const profile of profiles) {
     requireDir(resolve(root, "data", "system.json"), "data/system.json");
     copyFileSync(resolve(root, "data", "system.json"), resolve(dataDir, "system.json"));
 
-    // app\setup.js + app\install-prereqs.ps1 — post-extraction setup scripts
-    copyFileSync(resolve(root, "scripts", "setup.ts"), resolve(appDir, "setup.js"));
-    copyFileSync(resolve(root, "scripts", "install-prereqs.ps1"), resolve(appDir, "install-prereqs.ps1"));
-
     // 3b) Root launcher: copy from cached publish output
     requireDir(resolve(launcherDir, "KuumoApp.exe"), "launcher exe");
     for (const entry of readdirSync(launcherDir)) {
@@ -254,27 +260,17 @@ for (const profile of profiles) {
 
     console.log(`Payload assembled at ${pkg}`);
 
-    // 4) Create installer — try SFX first, fall back to Inno Setup
-    const sfxResult = spawnSync("bun", [
-        "./scripts/build-setup.ts",
-        "--version", version,
-        "--profile", profile,
-    ], { cwd: root, encoding: "utf8", stdio: "inherit" });
-
-    if (sfxResult.status === 0 && existsSync(resolve(artifactsDir, `${installerBaseName(profile)}.exe`))) {
-        console.log(`SFX installer created: ${installerBaseName(profile)}.exe`);
+    // 4) Inno Setup compile
+    if (skipInno) {
+        console.log(`\nSkipping Inno Setup (--skip-inno)`);
     } else {
-        // Fallback to Inno Setup
         const iscc = findIscc();
-        if (iscc) {
-            console.log("\nSFX build failed or not available, falling back to Inno Setup...");
-            run(iscc, [resolve(root, "setup.iss"), `/DMyAppVersion=${version}`, `/DMyAppBaseName=${installerBaseName(profile)}`]);
-            requireDir(resolve(artifactsDir, `${installerBaseName(profile)}.exe`), "setup.exe output");
-        } else {
-            console.error("Neither SFX build nor Inno Setup (ISCC.exe) available.");
-            console.error("Install NanaZip or Inno Setup 6 and retry.");
+        if (!iscc) {
+            console.error("ISCC.exe not found. Install Inno Setup 6 and retry.");
             process.exit(1);
         }
+        run(iscc, [resolve(root, "setup.iss"), `/DMyAppVersion=${version}`, `/DMyAppBaseName=${installerBaseName(profile)}`]);
+        requireDir(resolve(artifactsDir, `${installerBaseName(profile)}.exe`), "setup.exe output");
     }
 }
 

@@ -34,12 +34,6 @@
   <ItemGroup>
     <Content Include="Assets\AppIcon.ico" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Assets\SplashScreen.png" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="Assets\Square150x150Logo.png" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="Assets\Square310x310Logo.png" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="Assets\Square44x44Logo.png" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="Assets\Square71x71Logo.png" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="Assets\StoreLogo.png" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="Assets\Wide310x150Logo.png" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

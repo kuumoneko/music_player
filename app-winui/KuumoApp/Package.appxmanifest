@@ -11,7 +11,6 @@
     <Properties>
         <DisplayName>Kuumo App</DisplayName>
         <PublisherDisplayName>kuumoneko</PublisherDisplayName>
-        <Logo>Assets\StoreLogo.png</Logo>
     </Properties>
 
     <Dependencies>
@@ -28,13 +27,7 @@
             <uap:VisualElements
                 DisplayName="Kuumo App"
                 Description="Music player"
-                BackgroundColor="transparent"
-                Square150x150Logo="Assets\Square150x150Logo.png"
-                Square44x44Logo="Assets\Square44x44Logo.png">
-                <uap:DefaultTile
-                    Wide310x150Logo="Assets\Wide310x150Logo.png"
-                    Square71x71Logo="Assets\Square71x71Logo.png"
-                    Square310x310Logo="Assets\Square310x310Logo.png" />
+                BackgroundColor="transparent">
                 <uap:SplashScreen Image="Assets\SplashScreen.png" />
             </uap:VisualElements>
         </Application>
