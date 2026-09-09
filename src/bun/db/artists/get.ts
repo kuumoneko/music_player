@@ -11,22 +11,14 @@ const getArtistByPlaylistIdStmt = db.prepare(`
   FROM artists WHERE playlistId = ?;
 `);
 
-const getArtistWithTracksStmt = db.prepare(`
-  SELECT 
-    a.id, a.name, a.source, a.thumbnail, a.playlistId, a.lastFetched, a.cacheTtl, a.etag,
-    t.id as track_id, t.name as track_name, t.source as track_source,
-    t.thumbnail as track_thumbnail, t.duration, t.releasedDate,
-    json_group_array(
-      json_object('id', ta2.artist_id, 'name', COALESCE(a2.name, ''))
-    ) as track_artists_json
-  FROM artists a
-  LEFT JOIN track_artists ta ON a.id = ta.artist_id
-  LEFT JOIN tracks t ON ta.track_id = t.id
-  LEFT JOIN track_artists ta2 ON t.id = ta2.track_id
-  LEFT JOIN artists a2 ON ta2.artist_id = a2.id
-  WHERE a.id = $id
-  GROUP BY t.id, a.id;
+const getTrackIdsFromBothSourcesStmt = db.prepare(`
+  SELECT track_id FROM track_artists WHERE artist_id = ?
+  UNION
+  SELECT pt.track_id FROM playlist_tracks pt
+  JOIN artists a2 ON a2.playlistId = pt.playlist_id WHERE a2.id = ?
 `);
+
+const linkTrackToArtistStmt = db.prepare(`INSERT OR IGNORE INTO track_artists (track_id, artist_id) VALUES (?, ?);`);
 
 export function getArtistByPlaylistId(playlistId: string): Artist | null {
   const row = getArtistByPlaylistIdStmt.get(playlistId) as { id: string; name: string; source: MusicSource; thumbnail: string; playlistId: string; lastFetched: number | null; cacheTtl: number | null; etag: string | null } | null;
@@ -41,41 +33,62 @@ export default function getArtistById(id: string, includeTracks: boolean = true)
     return { id: row.id, name: row.name, source: row.source, thumbnail: row.thumbnail, playlistId: row.playlistId, tracks: [], lastFetched: row.lastFetched ?? undefined, cacheTtl: row.cacheTtl ?? undefined, etag: row.etag ?? undefined };
   }
 
-  const rows = getArtistWithTracksStmt.all({ $id: id }) as {
-    id: string, name: string, source: MusicSource,
-    playlistId: string, thumbnail: string, lastFetched: number | null, cacheTtl: number | null, etag: string | null,
-    track_id: string | null, track_name: string | null,
-    track_source: MusicSource | null, track_thumbnail: string | null,
-    duration: number | null, releasedDate: string | null,
-    track_artists_json: string,
-  }[];
-
-  if (!rows || rows.length === 0) return null;
+  const artistRow = getArtistStmt.get(id) as { id: string; name: string; source: MusicSource; thumbnail: string; playlistId: string; lastFetched: number | null; cacheTtl: number | null; etag: string | null } | null;
+  if (!artistRow) return null;
 
   const artist: Artist = {
-    id: rows[0].id,
-    name: rows[0].name,
-    source: rows[0].source,
-    thumbnail: rows[0].thumbnail,
-    playlistId: rows[0].playlistId,
-    lastFetched: rows[0].lastFetched ?? undefined,
-    cacheTtl: rows[0].cacheTtl ?? undefined,
-    etag: rows[0].etag ?? undefined,
+    id: artistRow.id,
+    name: artistRow.name,
+    source: artistRow.source,
+    thumbnail: artistRow.thumbnail,
+    playlistId: artistRow.playlistId,
+    lastFetched: artistRow.lastFetched ?? undefined,
+    cacheTtl: artistRow.cacheTtl ?? undefined,
+    etag: artistRow.etag ?? undefined,
     tracks: [],
   };
 
-  for (const row of rows) {
-    if (!row.track_id) continue;
-    let parsedArtists = JSON.parse(row.track_artists_json);
-    parsedArtists = parsedArtists.filter((a: any) => a.id !== null);
+  if (!artistRow.playlistId) return artist;
+
+  const trackIdRows = getTrackIdsFromBothSourcesStmt.all(id, id) as { track_id: string }[];
+  if (trackIdRows.length === 0) return artist;
+
+  const trackIds = trackIdRows.map(r => r.track_id);
+  const placeholders = trackIds.map(() => '?').join(',');
+
+  const trackRows = db.prepare(
+    `SELECT id, name, source, thumbnail, duration, releasedDate FROM tracks WHERE id IN (${placeholders}) ORDER BY releasedDate DESC`
+  ).all(...trackIds) as { id: string; name: string; source: MusicSource; thumbnail: string; duration: number | null; releasedDate: string | null }[];
+
+  const taRows = db.prepare(
+    `SELECT ta.track_id, ta.artist_id, COALESCE(a.name, '') as artist_name FROM track_artists ta LEFT JOIN artists a ON ta.artist_id = a.id WHERE ta.track_id IN (${placeholders})`
+  ).all(...trackIds) as { track_id: string; artist_id: string; artist_name: string }[];
+
+  const taMap = new Map<string, { id: string; name: string }[]>();
+  for (const ta of taRows) {
+    let arr = taMap.get(ta.track_id);
+    if (!arr) { arr = []; taMap.set(ta.track_id, arr); }
+    arr.push({ id: ta.artist_id, name: ta.artist_name });
+  }
+
+  for (const tid of trackIds) {
+    const arr = taMap.get(tid) || [];
+    if (!arr.some(a => a.id === id)) {
+      linkTrackToArtistStmt.run(tid, id);
+      arr.push({ id, name: artistRow.name });
+      taMap.set(tid, arr);
+    }
+  }
+
+  for (const t of trackRows) {
     artist.tracks.push({
-      id: row.track_id,
-      name: row.track_name ?? "",
-      source: row.track_source,
-      thumbnail: row.track_thumbnail ?? "",
-      duration: row.duration ?? 0,
-      releasedDate: row.releasedDate ?? "",
-      artist: parsedArtists,
+      id: t.id,
+      name: t.name,
+      source: t.source,
+      thumbnail: t.thumbnail ?? "",
+      duration: t.duration ?? 0,
+      releasedDate: t.releasedDate ?? "",
+      artist: taMap.get(t.id) || [],
     } as Track);
   }
 

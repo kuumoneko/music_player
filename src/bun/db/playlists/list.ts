@@ -5,7 +5,7 @@ import getTracks from "../tracks/get.ts";
 const listStmt = db.prepare(`
   SELECT 
     p.id, p.name, p.source, p.thumbnail, p.duration,
-    json_group_array(pt.track_id) as track_ids_json
+    json_group_array(pt.track_id ORDER BY pt.addedAt DESC) as track_ids_json
   FROM playlists p
   LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id
   WHERE p.source = 'local'
