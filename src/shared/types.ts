@@ -266,6 +266,7 @@ export interface Playlist {
     source: MusicSource,
     tracks?: Track[],
     ids?: string[],
+    addedAt?: string[],
     thumbnail: string,
     duration: number,
     itemCount?: number,

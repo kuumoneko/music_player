@@ -17,8 +17,8 @@ const upsertPlaylistStmt = db.prepare(`
 const clearPlaylistTracksStmt = db.prepare(`DELETE FROM playlist_tracks WHERE playlist_id = ?;`);
 
 const insertPlaylistTrackStmt = db.prepare(`
-  INSERT INTO playlist_tracks (playlist_id, track_id) 
-  SELECT ?, id FROM tracks WHERE id = ?;
+  INSERT INTO playlist_tracks (playlist_id, track_id, addedAt) 
+  SELECT ?, id, ? FROM tracks WHERE id = ?;
 `);
 
 const writePlaylist = db.transaction((playlist: Playlist) => {
@@ -42,8 +42,8 @@ const writePlaylist = db.transaction((playlist: Playlist) => {
                 ? playlist.tracks.map(t => t.id)
                 : (playlist.ids || []);
             clearPlaylistTracksStmt.run(playlist.id);
-            for (const trackId of trackIdsToSave) {
-                insertPlaylistTrackStmt.run(playlist.id, trackId);
+            for (let i = 0; i < trackIdsToSave.length; i++) {
+                insertPlaylistTrackStmt.run(playlist.id, playlist.addedAt?.[i] ?? null, trackIdsToSave[i]);
             }
         }
     } catch (e) {

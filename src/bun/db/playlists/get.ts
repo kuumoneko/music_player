@@ -6,7 +6,7 @@ const getPlaylistStmt = db.prepare(`
   SELECT 
     p.id, p.name, p.source, p.thumbnail, p.duration, p.lastFetched, p.etag,
     -- Group all connected track IDs into a JSON array: '["id1", "id2"]'
-    json_group_array(pt.track_id) as track_ids_json
+    json_group_array(pt.track_id ORDER BY pt.addedAt DESC) as track_ids_json
   FROM playlists p
   LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id
   WHERE p.id = $id

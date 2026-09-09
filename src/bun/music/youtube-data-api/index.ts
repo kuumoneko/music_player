@@ -1,6 +1,6 @@
 import type { Track, Playlist, Artist, SearchResult } from "../../../shared/types.ts";
 import { MusicSource, MusicType } from "../../../shared/types.ts";
-import { getTracks, writeTracks, deleteTracks, deleteStaleTrackArtists, getPlaylist, writePlaylist, getArtistById, writeArtist, writeLogs, getSearchCache, setSearchCache, getUserData, writeUserData } from "../../db/index.ts";
+import { getTracks, writeTracks, deleteTracks, deleteStaleTrackArtists, getPlaylist, writePlaylist, getArtistById, writeArtist, writeLogs, getSearchCache, setSearchCache, getUserData, writeUserData, linkTrackToArtist } from "../../db/index.ts";
 import { Resource, type ResourceState } from "../../cache/resource.ts";
 import type { GoogleAuth } from "../../auth/google.ts";
 import iso8601DurationToMilliseconds from "../../../shared/time.ts";
@@ -226,7 +226,7 @@ export class YoutubeDataAPI {
 
     // ── Fetch tracks ──
 
-    async fetchTrack(ids: string[]): Promise<Track[]> {
+    async fetchTrack(ids: string[], forceRefresh: boolean = false): Promise<Track[]> {
         ids = [...new Set(ids.filter(Boolean))];
         if (ids.length === 0) return [];
 
@@ -276,7 +276,7 @@ export class YoutubeDataAPI {
                 const { data, error, notModified, etag: respEtag } = await this.fetch<{ items: any[] }>("videos", {
                     part: "snippet,contentDetails",
                     id: batch.join(","),
-                }, false, 2, etag ?? undefined);
+                }, false, 2, forceRefresh ? undefined : (etag ?? undefined));
 
                 if (notModified) {
                     writeLogs([{ type: "info", message: `DataAPI fetchTrack: batch of ${batch.length} unchanged (304), keeping cached rows` }]);
@@ -462,7 +462,7 @@ export class YoutubeDataAPI {
                 return pl;
             }
 
-            return await this.fetchPlaylistData(id, cached);
+            return await this.fetchPlaylistData(id, cached, forceRefresh);
         })()
             .catch((e) => { writeLogs([{ type: "error", message: `DataAPI fetchPlaylist: ${e}` }]); throw e; })
             .finally(() => this.inflight.delete(key));
@@ -471,7 +471,7 @@ export class YoutubeDataAPI {
         return promise;
     }
 
-    private async fetchPlaylistData(id: string, existing: Playlist | null = null): Promise<Playlist> {
+    private async fetchPlaylistData(id: string, existing: Playlist | null = null, forceRefresh: boolean = false): Promise<Playlist> {
         // InnerTube-only mode when no API keys configured
         if (!this.hasApiKeys) {
             const inner = await withRetries(
@@ -488,6 +488,7 @@ export class YoutubeDataAPI {
         }
 
         const allTracks: Track[] = [];
+        const allAddedAt: string[] = [];
         let pageToken: string | undefined;
         let plName = existing?.name ?? "";
         let plThumbnail = existing?.thumbnail ?? "";
@@ -510,12 +511,12 @@ export class YoutubeDataAPI {
                 params,
                 false,
                 2,
-                pageIndex === 0 && existing?.ids?.length ? existing.etag : undefined
+                !forceRefresh && pageIndex === 0 && existing?.ids?.length ? existing.etag : undefined
             );
 
             if (notModified) {
                 writeLogs([{ type: "info", message: `DataAPI fetchPlaylistData: ${id} unchanged (304), serving cached playlist` }]);
-                const tracks = existing?.ids?.length ? await this.fetchTrack(existing.ids) : [];
+                const tracks = existing?.ids?.length ? await this.fetchTrack(existing.ids, forceRefresh) : [];
                 return {
                     source: MusicSource.Youtube,
                     name: existing?.name ?? "",
@@ -523,6 +524,7 @@ export class YoutubeDataAPI {
                     thumbnail: existing?.thumbnail ?? "",
                     duration: tracks.reduce((sum, t) => sum + (t.duration ?? 0), 0),
                     ids: existing?.ids ?? [],
+                    addedAt: existing?.addedAt ?? [],
                     tracks,
                     etag: existing?.etag,
                 } as Playlist;
@@ -547,6 +549,7 @@ export class YoutubeDataAPI {
                         duration: 0,
                         releasedDate: item.snippet?.publishedAt?.split("T")[0] ?? "",
                     });
+                    allAddedAt.push(item.snippet?.publishedAt ?? "");
                 }
             }
 
@@ -564,6 +567,7 @@ export class YoutubeDataAPI {
                 thumbnail: plThumbnail || existing.thumbnail,
                 duration: tracks.reduce((sum, t) => sum + (t.duration ?? 0), 0),
                 ids: existing.ids,
+                addedAt: existing.addedAt ?? [],
                 tracks,
                 etag: existing.etag,
             } as Playlist;
@@ -577,7 +581,7 @@ export class YoutubeDataAPI {
         }
 
         const trackIds = allTracks.map(t => t.id);
-        const fetched = trackIds.length > 0 ? await this.fetchTrack(trackIds) : [];
+        const fetched = trackIds.length > 0 ? await this.fetchTrack(trackIds, forceRefresh) : [];
 
         // InnerTube fallback: API key path returned nothing — pull the playlist via browse (max 3 attempts).
         if (fetched.length === 0 && this.youtube) {
@@ -609,6 +613,7 @@ export class YoutubeDataAPI {
             thumbnail: plThumbnail,
             duration: ordered.reduce((sum, t) => sum + (t.duration ?? 0), 0),
             ids: trackIds,
+            addedAt: allAddedAt,
             tracks: ordered,
             etag: playlistEtag,
         };
@@ -717,11 +722,15 @@ export class YoutubeDataAPI {
                     playlistId: uploadsPlaylistId,
                     tracks: isHomeData ? [] : artistTracks,
                 };
-                writeArtist(thisArtist);
+            writeArtist(thisArtist);
+
+            for (const t of artistTracks) {
+                linkTrackToArtist(t.id, id);
+            }
                 return thisArtist;
             }
 
-            const { data, error, notModified, etag } = await this.fetch<any>("channels", { part: "snippet", id }, false, 2, cached && cached.tracks.length > 0 ? cached.etag : undefined);
+            const { data, error, notModified, etag } = await this.fetch<any>("channels", { part: "snippet", id }, false, 2, !forceRefresh && cached && cached.tracks.length > 0 ? cached.etag : undefined);
             if (notModified && cached) {
                 writeLogs([{ type: "info", message: `DataAPI fetchArtist: ${id} unchanged (304), serving cached artist` }]);
                 return cached;
@@ -745,7 +754,7 @@ export class YoutubeDataAPI {
             let artistTracks: Track[] = [];
             if (!isHomeData) {
                 try {
-                    const pl = await this.fetchPlaylistData(uploadsPlaylistId);
+                    const pl = await this.fetchPlaylistData(uploadsPlaylistId, null, forceRefresh);
                     artistTracks = pl.tracks ?? [];
                 } catch {
                     artistTracks = [];
@@ -771,6 +780,10 @@ export class YoutubeDataAPI {
                 etag,
             };
             writeArtist(thisArtist);
+
+            for (const t of artistTracks) {
+                linkTrackToArtist(t.id, id);
+            }
 
             return {
                 source: MusicSource.Youtube,

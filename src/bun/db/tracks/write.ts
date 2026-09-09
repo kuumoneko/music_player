@@ -61,4 +61,10 @@ const writeTracks = db.transaction((tracks: Track[]) => {
   }
 });
 
+const linkTrackToArtistStmt = db.prepare(`INSERT OR IGNORE INTO track_artists (track_id, artist_id) VALUES (?, ?);`);
+
+export function linkTrackToArtist(trackId: string, artistId: string): void {
+  linkTrackToArtistStmt.run(trackId, artistId);
+}
+
 export default writeTracks
