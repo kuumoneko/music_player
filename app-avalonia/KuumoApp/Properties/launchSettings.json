@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "KuumoApp": {
+      "commandName": "Project",
+      "commandLineArgs": "",
+      "environmentVariables": {
+        "KUUMO_DEV": "1",
+        "KUUMO_BACKEND_DIR": "E:\\coding\\musicapp\\build",
+        "KUUMO_ASSETS_DIR": "E:\\coding\\musicapp"
+      }
+    }
+  }
+}

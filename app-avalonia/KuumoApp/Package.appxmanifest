@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+    xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+    xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+    xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+    xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+    IgnorableNamespaces="uap rescap desktop">
+
+    <Identity Name="musicapp.kuumo.dev" Publisher="CN=KuumoApp" Version="6.0.0.0" />
+
+    <Properties>
+        <DisplayName>Kuumo App</DisplayName>
+        <PublisherDisplayName>kuumoneko</PublisherDisplayName>
+    </Properties>
+
+    <Dependencies>
+        <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+        <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.22621.0" />
+    </Dependencies>
+
+    <Resources>
+        <Resource Language="x-generate" />
+    </Resources>
+
+    <Applications>
+        <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+            <uap:VisualElements
+                DisplayName="Kuumo App"
+                Description="Music player"
+                BackgroundColor="transparent">
+                <uap:SplashScreen Image="Assets\SplashScreen.png" />
+            </uap:VisualElements>
+        </Application>
+    </Applications>
+
+    <Capabilities>
+        <rescap:Capability Name="runFullTrust" />
+    </Capabilities>
+</Package>

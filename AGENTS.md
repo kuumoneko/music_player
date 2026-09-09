@@ -4,8 +4,8 @@ Agent instructions for KuumoApp. Read fully before working — this file exists 
 
 ## Overview
 
-- KuumoApp v6: Windows-only music player (find/play/download YouTube songs, local files).
-- **Stack**: Bun/TypeScript backend (`src/bun/`) + WinUI 3 C# frontend (`app-winui/KuumoApp/`). No React, no Electrobun — `README.md` is stale, don't trust it.
+- KuumoApp v7: Windows-only music player (find/play/download YouTube songs, local files).
+- **Stack**: Bun/TypeScript backend (`src/bun/`) + two C# frontends: WinUI 3 (`app-winui/KuumoApp/`) and Avalonia (`app-avalonia/KuumoApp/`). No React, no Electrobun — `README.md` is stale, don't trust it.
 - IPC: WebSocket JSON-RPC (not HTTP). RPC contract lives in `src/shared/types.ts` (`AppRPCType`) — the single source of truth for method names, request/response/message types.
 - Audio: `libmpv.dll` via `bun:ffi` `dlopen`. FFmpeg shared libs (avcodec/avformat) via FFI. No yt-dlp, no ffmpeg CLI.
 - State persistence: sqlite (`bun:sqlite`) with `user_data`/`system` key-value tables — not in-memory.
@@ -15,12 +15,16 @@ Agent instructions for KuumoApp. Read fully before working — this file exists 
 | Command | Purpose |
 |---|---|
 | `bun run dev` | Backend-only dev; **requires `apikeys/myown.json`**; encrypts credentials into `data/system.json`; data dir `data/dev/` |
-| `bun run winui:dev` | Full loop: build backend + dotnet x64 + launch app (`KUUMO_DEV=1`, data dir `%APPDATA%\KuumoApp`) |
-| `bun run typecheck` | `typecheck:bun` (`bunx tsc --noEmit`) + `typecheck:dotnet` (dotnet msbuild, ErrorsOnly) |
+| `bun run winui:dev` | Full loop: build backend + dotnet x64 + launch WinUI app (`KUUMO_DEV=1`, data dir `%APPDATA%\KuumoApp`) |
+| `bun run avalonia:dev` | Full loop: build backend + dotnet x64 + launch Avalonia app (`KUUMO_DEV=1`, data dir `%APPDATA%\KuumoApp`) |
+| `bun run typecheck` | `typecheck:bun` + `typecheck:dotnet` (both WinUI and Avalonia) |
 | `bun run build:prod` | `Bun.build` → `build/backend.js` + copies `bin/` DLLs |
-| `bun run package` | Full release pipeline per profile in `apikeys/` (myown, then release) → `artifacts/*.exe` |
+| `bun run winui:package` | Full release pipeline per profile → `artifacts/*.exe` (WinUI installer) |
+| `bun run avalonia:package` | Full release pipeline per profile → `artifacts/*.exe` (Avalonia installer) |
 | `bun run release` | GitHub draft release from `artifacts/` (needs `GH_TOKEN`/`GHUSERNAME`/`REPO` from `.env`) |
 | `bun run encrypt-credentials` | Bake encrypted `apikeys/<profile>.json` into `data/system.json` |
+| `bun run build-sparse-package` | Build sparse MSIX package for Avalonia (gives Store-like integration) |
+| `bun run compare-packaging` | Benchmark WinUI vs Avalonia packaging speed |
 
 **No tests exist.** Typecheck is the verification path — run `bun run typecheck` after changes.
 
@@ -49,7 +53,13 @@ app-winui/Launcher/      Tiny launcher exe (single-file, framework-dependent). I
                          (real apphost, DLLs, include\, Assets\, data\) + app\backend\ holding
                          bun.exe + index.js (shared Bun runtime + JS bundle). The .NET host
                          resolves everything relative to app\KuumoApp.exe, so the payload is untouched.
-scripts/                 dev.ts, winui-dev.ts, build.ts, package.ts, release.ts, encrypt-credentials.ts...
+app-avalonia/KuumoApp/   Avalonia frontend (alternative to WinUI)
+  Program.cs             Entry point, AUMID registration, sparse package registration
+  StartMenuHelper.cs     Creates Start Menu shortcut with AUMID via COM IPropertyStore
+  Services/              Same services as WinUI (RpcClient, RpcApi, BunHostService, etc.)
+  Views/                 Same pages as WinUI but in .axaml format
+  SparsePackage/         Sparse MSIX identity for Windows Store-like integration
+scripts/                 dev.ts, winui-dev.ts, avalonia-dev.ts, build.ts, package.ts, avalonia-package.ts, release.ts, encrypt-credentials.ts...
 ```
 
 ### IPC protocol
@@ -75,7 +85,7 @@ scripts/                 dev.ts, winui-dev.ts, build.ts, package.ts, release.ts,
 ## Critical gotchas
 
 - **Secrets — never commit or log**: `apikeys/*.json` (gitignored), `.env` (gitignored), `data/system.json` (encrypted creds, gitignored). Credentials are AES-256-GCM obfuscated with hardcoded key `kuumoapp::ship-credentials::v1` in `src/bun/lib/crypto.ts` (`ENC:` prefix) — obfuscation, not real security.
-- **Gitignored runtime dirs — do not edit**: `bin/` (native DLLs: libmpv, avcodec-62, avformat-62, avutil-60, swresample-6, libssp-0), `build/` (bundle/package output), `artifacts/`, `assets/`, `app-winui/KuumoApp/bin/` + `obj/`, `app-winui/Launcher/bin/` + `obj/`, `data/`.
+- **Gitignored runtime dirs — do not edit**: `bin/` (native DLLs: libmpv, avcodec-62, avformat-62, avutil-60, swresample-6, libssp-0), `build/` (bundle/package output), `artifacts/`, `assets/`, `app-winui/KuumoApp/bin/` + `obj/`, `app-winui/Launcher/bin/` + `obj/`, `app-avalonia/KuumoApp/bin/` + `obj/`, `data/`.
 - **Interlocking version pins — keep in sync**: WinAppSDK 2.3.1 (csproj) ↔ Bootstrap `0x00020003` (`Program.cs`) ↔ WindowsAppRuntime 2.3.1 (`install-prereqs.ps1`) ↔ .NET Desktop Runtime 10.0.9.
 - **PUBLISH_TRIM in `scripts/package.ts`**: only remove DLLs also listed in `setup.iss` `[InstallDelete]`. `Microsoft.InteractiveExperiences.Projection.dll` must NOT be trimmed (0xC000027B crash).
 - `package.json` `dependencies: {"bun": "^1.3.14"}` is a runtime marker placeholder — do not remove.
@@ -83,3 +93,8 @@ scripts/                 dev.ts, winui-dev.ts, build.ts, package.ts, release.ts,
 - `--seed` mode is installer-only (imports system.json, best-effort exit 0).
 - Windows-only; shell is PowerShell 5.1 — no `&&` in chained commands.
 - Git commit style: conventional-ish (`fix(...)`, `feat(winui): ...`, `refactor: ...`). There may be uncommitted work in the worktree — check `git status` before assuming a clean state.
+- **Avalonia dev AUMID**: `KuumoAvalonia.dev` (vs WinUI's `kuumo.app.dev`). Shortcut name: "Kuumo Avalonia Test" (vs "KuumoApp WinUI Test"). Both check `KUUMO_DEV=1` env var.
+- **Avalonia installer AUMID**: `KuumoAvalonia` (vs WinUI's `kuumo.app`). Different AppIds in Inno Setup.
+- **Avalonia sparse package**: `scripts/build-sparse-package.ts` generates a self-signed MSIX for Store-like integration without full MSIX deployment.
+- **Avalonia has no Launcher project**: the Avalonia exe IS the entry point (flat layout). WinUI needs a separate Launcher exe to resolve paths.
+- **Avalonia installs .NET only**: `scripts/install-prereqs-avalonia.ps1` installs just .NET Desktop Runtime (no WASDK). WinUI's `install-prereqs.ps1` installs both .NET + WASDK.

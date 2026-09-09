@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:KuumoApp.Controls"
+             x:Class="KuumoApp.Views.SettingsPage">
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="24">
+            <TextBlock Text="Settings" FontSize="24" FontWeight="Bold"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+
+            <!-- General -->
+            <TextBlock Text="General" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Quit on close" VerticalAlignment="Center"/>
+                    <ToggleSwitch x:Name="QuitOnCloseSwitch" IsCheckedChanged="OnQuitOnCloseToggled"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Close to tray" VerticalAlignment="Center"/>
+                    <ToggleSwitch x:Name="CloseToTraySwitch" IsCheckedChanged="OnCloseToTrayToggled"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Theme -->
+            <TextBlock Text="Theme" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <RadioButton x:Name="DarkThemeRadio" Content="Dark" GroupName="Theme"
+                                 Checked="OnThemeModeChanged"/>
+                    <RadioButton x:Name="LightThemeRadio" Content="Light" GroupName="Theme"
+                                 Checked="OnThemeModeChanged"/>
+                    <RadioButton x:Name="SystemThemeRadio" Content="System" GroupName="Theme"
+                                 IsChecked="True" Checked="OnThemeModeChanged"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Dynamic accent from artwork" VerticalAlignment="Center"/>
+                    <ToggleSwitch x:Name="DynamicAccentSwitch" IsCheckedChanged="OnDynamicAccentToggled"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Equalizer -->
+            <TextBlock Text="Equalizer" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+            <StackPanel Spacing="8">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Enable equalizer" VerticalAlignment="Center"/>
+                    <ToggleSwitch x:Name="EqualizerSwitch" IsCheckedChanged="OnEqualizerToggled"/>
+                </StackPanel>
+                <TextBlock Text="Preset" FontSize="13" Opacity="0.7"/>
+                <ComboBox x:Name="PresetBox" Width="200" SelectionChanged="OnPresetChanged"/>
+                <TextBlock Text="Drag a handle up/down to change the gain for that frequency band. Double-tap a handle to reset it."
+                           FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <controls:EqGraphControl x:Name="EqGraph" Height="200" BandsChanged="OnEqBandsChanged"/>
+                <Button Content="Reset all" Click="OnEqResetClick"/>
+            </StackPanel>
+
+            <!-- Local Files -->
+            <TextBlock Text="Local Files" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+            <StackPanel Spacing="8">
+                <TextBlock x:Name="FolderText" Text="Not set" Opacity="0.7" FontSize="13"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Choose folder..." Click="OnChooseFolderClick"/>
+                    <Button Content="Rehash" Click="OnRehashClick"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Discord -->
+            <TextBlock Text="Discord RPC" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+            <StackPanel Spacing="8">
+                <TextBlock x:Name="DiscordText" Text="Not connected" Opacity="0.7" FontSize="13"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Connect" Click="OnDiscordConnectClick"/>
+                    <Button Content="Disconnect" Click="OnDiscordDisconnectClick"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Google -->
+            <TextBlock Text="Google Account" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+            <StackPanel x:Name="GoogleSection" Spacing="8">
+                <TextBlock x:Name="GoogleText" Text="" Opacity="0.7" FontSize="13"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="SignInButton" Content="Sign in" Click="OnSignInClick"/>
+                    <Button x:Name="SignOutButton" Content="Sign out" Click="OnSignOutClick" IsVisible="False"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- YouTube API Keys -->
+            <TextBlock Text="YouTube API Keys" FontSize="20" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppAccentBrush}"/>
+            <StackPanel Spacing="8">
+                <TextBlock Text="Optional. Improves metadata quality when added."
+                           FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                <TextBlock x:Name="ApiKeysStatusText" Text="No API keys configured" Opacity="0.7" FontSize="13"/>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBox x:Name="ApiKeyTextBox" Width="300" Watermark="Enter YouTube Data API key"/>
+                    <Button Content="Add" Click="OnAddApiKeyClick"/>
+                </StackPanel>
+                <Button x:Name="RemoveApiKeyButton" Content="Remove API Key" Click="OnRemoveApiKeyClick" IsVisible="False"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

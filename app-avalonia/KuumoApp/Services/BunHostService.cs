@@ -1,0 +1,209 @@
+using System.Diagnostics;
+
+namespace KuumoApp.Services;
+
+public sealed class BunHostService
+{
+    private Process? _process;
+    private int _restartCount;
+    private bool _stopping;
+
+    public event Action<string>? EndpointReady;
+    public event Action<string>? LogLine;
+    public event Action? SingleInstanceDetected;
+    public event Action<string>? StartupError;
+
+    public bool IsDev => Environment.GetEnvironmentVariable("KUUMO_DEV") == "1";
+
+    public string BackendDir { get; }
+    public string DataDir { get; }
+    public string AssetsDir { get; }
+
+    public BunHostService()
+    {
+        BackendDir = Environment.GetEnvironmentVariable("KUUMO_BACKEND_DIR")
+            ?? Path.Combine(AppContext.BaseDirectory, "backend");
+        DataDir = Environment.GetEnvironmentVariable("KUUMO_DATA_DIR")
+            ?? GetDefaultDataDir();
+        AssetsDir = Environment.GetEnvironmentVariable("KUUMO_ASSETS_DIR")
+            ?? AppContext.BaseDirectory;
+    }
+
+    private static string GetDefaultDataDir()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "KuumoApp");
+    }
+
+    private static string ResolveBunExe()
+    {
+        var bundled = Path.Combine(AppContext.BaseDirectory, "bun.exe");
+        return File.Exists(bundled) ? bundled : "bun";
+    }
+
+    private static ProcessStartInfo NewStartInfo(string fileName, string workingDirectory)
+    {
+        return new ProcessStartInfo(fileName)
+        {
+            WorkingDirectory = workingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+    }
+
+    private ProcessStartInfo? ResolveDevProcessInfo()
+    {
+        var entry = Path.Combine(BackendDir, "backend.js");
+        if (!File.Exists(entry))
+        {
+            Log($"backend.js not found at {entry}");
+            return null;
+        }
+        var psi = NewStartInfo(ResolveBunExe(), BackendDir);
+        psi.ArgumentList.Add(entry);
+        return psi;
+    }
+
+    private ProcessStartInfo? ResolveReleaseProcessInfo()
+    {
+        var bunExe = Path.Combine(AppContext.BaseDirectory, "bun.exe");
+        if (!File.Exists(bunExe))
+        {
+            Log($"bun.exe not found at {bunExe}");
+            return null;
+        }
+        var script = Path.Combine(AppContext.BaseDirectory, "backend", "index.js");
+        if (!File.Exists(script))
+        {
+            Log($"index.js not found at {script}");
+            return null;
+        }
+        var includeDir = Path.Combine(AppContext.BaseDirectory, "include");
+        if (!Directory.Exists(includeDir))
+        {
+            Log($"include dir not found at {includeDir}");
+        }
+        var psi = NewStartInfo(bunExe, includeDir);
+        psi.ArgumentList.Add(script);
+        return psi;
+    }
+
+    public void Start()
+    {
+        if (_process is { HasExited: false })
+        {
+            return;
+        }
+
+        var psi = IsDev ? ResolveDevProcessInfo() : ResolveReleaseProcessInfo();
+        if (psi is null)
+        {
+            return;
+        }
+
+        psi.ArgumentList.Add("--data-dir");
+        psi.ArgumentList.Add(DataDir);
+        psi.ArgumentList.Add("--assets");
+        psi.ArgumentList.Add(AssetsDir);
+        if (IsDev)
+        {
+            psi.ArgumentList.Add("--no-lock");
+            psi.ArgumentList.Add("--port");
+            psi.ArgumentList.Add("0");
+        }
+
+        _process = Process.Start(psi);
+        if (_process is null)
+        {
+            Log("failed to start bun process");
+            return;
+        }
+        Log($"args: {psi.FileName} {string.Join(' ', psi.ArgumentList)}");
+        _process.EnableRaisingEvents = true;
+        _process.OutputDataReceived += OnOutput;
+        _process.ErrorDataReceived += OnError;
+        _process.Exited += OnExited;
+        _process.BeginOutputReadLine();
+        _process.BeginErrorReadLine();
+        Log($"started (pid={_process.Id}, dir={BackendDir}, dev={IsDev})");
+    }
+
+    private void OnOutput(object? sender, DataReceivedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(e.Data))
+        {
+            return;
+        }
+        var line = e.Data;
+        if (line.StartsWith("KUUMO_WS=", StringComparison.Ordinal))
+        {
+            _restartCount = 0;
+            EndpointReady?.Invoke(line["KUUMO_WS=".Length..]);
+        }
+        else if (line.StartsWith("KUUMO_ERROR=", StringComparison.Ordinal))
+        {
+            StartupError?.Invoke(line["KUUMO_ERROR=".Length..]);
+        }
+        Log(line);
+    }
+
+    private void OnError(object? sender, DataReceivedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(e.Data))
+        {
+            Log($"stderr: {e.Data}");
+        }
+    }
+
+    private void OnExited(object? sender, EventArgs e)
+    {
+        var exitCode = _process?.ExitCode;
+        if (_stopping)
+        {
+            return;
+        }
+        if (exitCode == 42)
+        {
+            Log("another instance is already running (exit 42), not restarting");
+            SingleInstanceDetected?.Invoke();
+            return;
+        }
+        _restartCount++;
+        var delay = Math.Min(_restartCount * 2, 10);
+        Log($"backend exited (code={exitCode}), restarting in {delay}s (attempt {_restartCount})");
+        Task.Delay(TimeSpan.FromSeconds(delay)).ContinueWith(_ =>
+        {
+            if (!_stopping)
+            {
+                Start();
+            }
+        });
+    }
+
+    public void Stop()
+    {
+        _stopping = true;
+        if (_process is { HasExited: false })
+        {
+            try
+            {
+                _process.Kill(entireProcessTree: true);
+            }
+            catch
+            {
+            }
+        }
+        _process?.Dispose();
+        _process = null;
+        Log("stopped");
+    }
+
+    private void Log(string message)
+    {
+        AppLog.Write("bun-host", message);
+        LogLine?.Invoke(message);
+    }
+}
