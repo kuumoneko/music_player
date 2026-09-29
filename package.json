@@ -8,9 +8,6 @@
         "url": "https://github.com/kuumoneko"
     },
     "scripts": {
-        "dev": "bun ./scripts/dev.ts",
-        "winui:dev": "bun run --silent ./scripts/winui-dev.ts",
-        "avalonia:dev": "bun run --silent ./scripts/avalonia-dev.ts",
         "build:prod": "bun ./scripts/build.ts",
         "release": "bun ./scripts/release.ts",
         "winui:package": "bun run ./scripts/package.ts",
@@ -20,6 +17,9 @@
         "register-shortcut": "bun ./scripts/register-shortcut.ts",
         "compare-packaging": "bun run ./scripts/compare-packaging.ts",
         "build-sparse-package": "bun run ./scripts/build-sparse-package.ts",
+        "sandbox:prepare": "bun ./scripts/sandbox-prepare.ts",
+        "sandbox:run": "bun ./scripts/sandbox-run.ts",
+        "sandbox:sync": "bun ./scripts/sandbox-run.ts --sync",
         "typecheck:bun": "bunx tsc --noEmit",
         "typecheck:dotnet:winui": "dotnet build app-winui/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:WindowsAppSDKSelfContained=false -clp:ErrorsOnly -nologo",
         "typecheck:dotnet:avalonia": "dotnet build app-avalonia/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug -clp:ErrorsOnly -nologo",

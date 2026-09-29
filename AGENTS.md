@@ -14,9 +14,6 @@ Agent instructions for KuumoApp. Read fully before working — this file exists 
 
 | Command | Purpose |
 |---|---|
-| `bun run dev` | Backend-only dev; **requires `apikeys/myown.json`**; encrypts credentials into `data/system.json`; data dir `data/dev/` |
-| `bun run winui:dev` | Full loop: build backend + dotnet x64 + launch WinUI app (`KUUMO_DEV=1`, data dir `%APPDATA%\KuumoApp`) |
-| `bun run avalonia:dev` | Full loop: build backend + dotnet x64 + launch Avalonia app (`KUUMO_DEV=1`, data dir `%APPDATA%\KuumoApp`) |
 | `bun run typecheck` | `typecheck:bun` + `typecheck:dotnet` (both WinUI and Avalonia) |
 | `bun run build:prod` | `Bun.build` → `build/backend.js` + copies `bin/` DLLs |
 | `bun run winui:package` | Full release pipeline per profile → `artifacts/*.exe` (WinUI installer) |
@@ -25,6 +22,17 @@ Agent instructions for KuumoApp. Read fully before working — this file exists 
 | `bun run encrypt-credentials` | Bake encrypted `apikeys/<profile>.json` into `data/system.json` |
 | `bun run build-sparse-package` | Build sparse MSIX package for Avalonia (gives Store-like integration) |
 | `bun run compare-packaging` | Benchmark WinUI vs Avalonia packaging speed |
+| `bun run sandbox:prepare` | One-time Windows Sandbox setup: feature check, dep cache, generate `.wsb` |
+| `bun run sandbox:run` | Boot a sandbox: build + stage dev artifacts, launch the VM (`--target winui\|avalonia\|both`, `--launch winui\|avalonia`, `--skip-build`, `--smoke`, `--fresh`) |
+| `bun run sandbox:sync` | Restage into an **already-open** sandbox (no VM restart); same build flags as `sandbox:run` |
+
+**No host-side dev loop.** `dev`, `winui:dev`, and `avalonia:dev` were removed — the app only runs for development inside Windows Sandbox. The loop is:
+
+1. `bun run sandbox:run` once → boots the VM, provisions runtimes, starts the app.
+2. Edit code → `bun run sandbox:sync` (or `sandbox:run`, which syncs instead of opening a second window when one is already up) → the guest's `launch.ts` sees a new `stage/manifest.json` nonce, incremental-`robocopy`s the payload in place and relaunches the app. DB, shortcut and installed runtimes survive.
+3. `--fresh` forces a new VM (also needed when switching `--target`/`--launch`, or after changing Bun itself — `bun\` is excluded from in-place sync).
+
+RPC smoke test is opt-in: `sandbox:run --smoke`, the guest console `s` command, or `sandbox:sync --smoke`. A lingering VM locks `build/sandbox/stage` — close the window; `sandbox:run` will otherwise request elevated cleanup.
 
 **No tests exist.** Typecheck is the verification path — run `bun run typecheck` after changes.
 
@@ -59,7 +67,8 @@ app-avalonia/KuumoApp/   Avalonia frontend (alternative to WinUI)
   Services/              Same services as WinUI (RpcClient, RpcApi, BunHostService, etc.)
   Views/                 Same pages as WinUI but in .axaml format
   SparsePackage/         Sparse MSIX identity for Windows Store-like integration
-scripts/                 dev.ts, winui-dev.ts, avalonia-dev.ts, build.ts, package.ts, avalonia-package.ts, release.ts, encrypt-credentials.ts...
+scripts/                 build.ts, package.ts, avalonia-package.ts, release.ts, encrypt-credentials.ts...
+scripts/sandbox/         sandbox-prepare.ts, sandbox-run.ts (host); provision.ps1, launch.ts, sync.ps1 (guest)
 ```
 
 ### IPC protocol
@@ -70,7 +79,7 @@ scripts/                 dev.ts, winui-dev.ts, avalonia-dev.ts, build.ts, packag
 - Single instance: HTTP GET to own port before bind → success means `process.exit(42)`.
 
 ### Data dirs
-- Dev backend: `data/dev/`. Installed/winui-dev app: `%APPDATA%\KuumoApp\app_data.sqlite`. Default repo `data/` if no `--data-dir`.
+- App data: `%APPDATA%\KuumoApp\app_data.sqlite` (sandbox guest seeds it from a host snapshot via `sandbox-run.ts`). `data/dev/` survives only as the `test-rpc.ts` data dir / seed fallback. Default repo `data/` if no `--data-dir`.
 - `data/system.json` is seeded into sqlite at startup; deleted in production, kept in dev (`KUUMO_DEV !== "1"`).
 
 ## Conventions
@@ -89,12 +98,13 @@ scripts/                 dev.ts, winui-dev.ts, avalonia-dev.ts, build.ts, packag
 - **Interlocking version pins — keep in sync**: WinAppSDK 2.3.1 (csproj) ↔ Bootstrap `0x00020003` (`Program.cs`) ↔ WindowsAppRuntime 2.3.1 (`install-prereqs.ps1`) ↔ .NET Desktop Runtime 10.0.9.
 - **PUBLISH_TRIM in `scripts/package.ts`**: only remove DLLs also listed in `setup.iss` `[InstallDelete]`. `Microsoft.InteractiveExperiences.Projection.dll` must NOT be trimmed (0xC000027B crash).
 - `package.json` `dependencies: {"bun": "^1.3.14"}` is a runtime marker placeholder — do not remove.
-- Dev profile is hardcoded as `"myown"` in dev.ts and winui-dev.ts.
+- Dev profile is hardcoded as `"myown"` in sandbox-run.ts and test-rpc.ts.
 - `--seed` mode is installer-only (imports system.json, best-effort exit 0).
 - Windows-only; shell is PowerShell 5.1 — no `&&` in chained commands.
 - Git commit style: conventional-ish (`fix(...)`, `feat(winui): ...`, `refactor: ...`). There may be uncommitted work in the worktree — check `git status` before assuming a clean state.
-- **Avalonia dev AUMID**: `KuumoAvalonia.dev` (vs WinUI's `kuumo.app.dev`). Shortcut name: "Kuumo Avalonia Test" (vs "KuumoApp WinUI Test"). Both check `KUUMO_DEV=1` env var.
+- **Avalonia dev AUMID**: `KuumoAvalonia.dev` (vs WinUI's `kuumo.app.dev`). Dev shortcut name: "KuumoApp" (both frontends), created in the guest by `scripts/sandbox/launch.ts`. Both check `KUUMO_DEV=1` env var.
 - **Avalonia installer AUMID**: `KuumoAvalonia` (vs WinUI's `kuumo.app`). Different AppIds in Inno Setup.
 - **Avalonia sparse package**: `scripts/build-sparse-package.ts` generates a self-signed MSIX for Store-like integration without full MSIX deployment.
 - **Avalonia has no Launcher project**: the Avalonia exe IS the entry point (flat layout). WinUI needs a separate Launcher exe to resolve paths.
 - **Avalonia installs .NET only**: `scripts/install-prereqs-avalonia.ps1` installs just .NET Desktop Runtime (no WASDK). WinUI's `install-prereqs.ps1` installs both .NET + WASDK.
+- **Sandbox SMTC attribution**: the guest `scripts/sandbox/launch.ts` creates the AUMID Start Menu shortcut (staged `scripts/CheckShortcut`, built by `sandbox-run.ts`) *before* the first app spawn — the Now Playing overlay resolves app name/logo from it. Evidence lands in `build/sandbox/sync/identity.json`. Keep the CheckShortcut staging.

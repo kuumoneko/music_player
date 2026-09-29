@@ -21,8 +21,7 @@ rmSync(binDir, { recursive: true, force: true });
 mkdirSync(binDir, { recursive: true });
 for (const file of readdirSync(resolve(root, "bin")).filter(f => f !== ".git")) {
     copyFileSync(resolve(root, "bin", file), resolve(binDir, file));
-    copyFileSync(resolve(root, "bin", file), resolve(root, "build", file));
 }
 
-console.info("Backend bundle written to build/backend.js (native DLLs copied next to it and to build/bin/).");
+console.info("Backend bundle written to build/backend.js (native DLLs copied to build/bin/).");
 process.exit(0);
