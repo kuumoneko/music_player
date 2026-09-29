@@ -17,9 +17,11 @@ public partial class DetailPage : UserControl
     private DetailNav? _nav;
     private string _entry = "";
     private TrackRow[] _tracks = [];
+    private TrackRow[] _allTracks = [];
     private bool IsLocalPlaylist => _nav is { Source: MusicSource.Local, Type: MusicType.Playlist };
 
     private readonly Button _playAllButton;
+    private readonly Button _addAllButton;
     private readonly Button _refreshButton;
     private readonly Button _deleteButton;
     private readonly Button _pinButton;
@@ -40,6 +42,8 @@ public partial class DetailPage : UserControl
             FontWeight = FontWeight.SemiBold,
         };
         _playAllButton.Click += OnPlayAllClick;
+        _addAllButton = new Button { Content = "Add all to queue" };
+        _addAllButton.Click += OnAddAllClick;
         _refreshButton = new Button { Content = "Refresh" };
         _refreshButton.Click += OnRefreshClick;
         _deleteButton = new Button { Content = "Delete" };
@@ -74,7 +78,15 @@ public partial class DetailPage : UserControl
     {
         if (_nav is null) return;
         TrackPanel.Children.Clear();
+        _allTracks = [];
+        _tracks = [];
+        if (!string.IsNullOrEmpty(FilterBox.Text)) FilterBox.Text = "";
+        FilterBox.IsVisible = false;
+        NoMatchesText.IsVisible = false;
+        TrackCountText.Text = "";
+        ApplyFilter();
         _playAllButton.IsVisible = false;
+        _addAllButton.IsVisible = false;
         HeaderTitle.Text = "Loading...";
         ErrorText.IsVisible = false;
         try
@@ -99,9 +111,10 @@ public partial class DetailPage : UserControl
                 HeaderSubtitle.Text = string.Join(", ", track.Artist.Select(a => a.Name));
                 _ = ImageHelper.LoadAsync(HeaderThumb, track.Thumbnail);
                 _entry = $"{_nav.Source}:{MusicType.Track}:{track.Id}";
-                _tracks = new[] { TrackRow.FromTrack(track) };
-                RenderTracks();
+                _allTracks = new[] { TrackRow.FromTrack(track) };
+                ApplyFilter();
                 _playAllButton.IsVisible = true;
+                _addAllButton.IsVisible = true;
             }
             else if (kind == MusicType.Playlist)
             {
@@ -119,9 +132,10 @@ public partial class DetailPage : UserControl
                     var resolved = await App.Services.Api.GetQueueDataAsync(ids);
                     tracks = resolved?.Where(r => r is not null).Select(r => JsonSerializer.Deserialize<TrackDto>(r!.Value, RpcClient.Json)).Where(t => t is not null).Cast<TrackDto>().ToArray() ?? [];
                 }
-                _tracks = tracks.Select(TrackRow.FromTrack).ToArray();
-                RenderTracks();
+                _allTracks = tracks.Select(TrackRow.FromTrack).ToArray();
+                ApplyFilter();
                 _playAllButton.IsVisible = _tracks.Length > 0;
+                _addAllButton.IsVisible = _tracks.Length > 0;
             }
             else if (kind == MusicType.Artist)
             {
@@ -133,17 +147,18 @@ public partial class DetailPage : UserControl
                 HeaderSubtitle.Text = "Artist";
                 _ = ImageHelper.LoadAsync(HeaderThumb, artist.Thumbnail);
                 _entry = $"{_nav.Source}:{MusicType.Artist}:{artist.Id}";
-                _tracks = (artist.Tracks ?? []).Select(TrackRow.FromTrack).ToArray();
-                RenderTracks();
+                _allTracks = (artist.Tracks ?? []).Select(TrackRow.FromTrack).ToArray();
+                ApplyFilter();
                 _playAllButton.IsVisible = artist.Tracks is { Length: > 0 };
+                _addAllButton.IsVisible = artist.Tracks is { Length: > 0 };
             }
 
+            FilterBox.IsVisible = kind != MusicType.Track;
             _refreshButton.IsVisible = _nav.Source != MusicSource.Local && kind != MusicType.Track;
             _deleteButton.IsVisible = _nav.Source == MusicSource.Local && kind == MusicType.Playlist;
             _pinButton.IsVisible = !_deleteButton.IsVisible;
             _shareButton.IsVisible = _nav.Source == MusicSource.Youtube;
             _downloadButton.IsVisible = _nav.Source == MusicSource.Youtube;
-            TrackCountText.Text = _tracks.Length > 0 ? $"{_tracks.Length} tracks" : "";
             await UpdatePinStateAsync();
             RebuildButtons();
         }
@@ -162,6 +177,34 @@ public partial class DetailPage : UserControl
         foreach (var row in _tracks)
         {
             TrackPanel.Children.Add(BuildTrackItem(row));
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        var query = FilterBox.Text?.Trim() ?? "";
+        _tracks = query.Length == 0
+            ? _allTracks
+            : _allTracks.Where(r => r.Title.Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
+        RenderTracks();
+        NoMatchesText.IsVisible = _allTracks.Length > 0 && _tracks.Length == 0;
+        TrackCountText.Text = _allTracks.Length == 0
+            ? ""
+            : query.Length == 0
+                ? $"{_allTracks.Length} tracks"
+                : $"{_tracks.Length} of {_allTracks.Length} tracks";
+    }
+
+    private void OnFilterTextChanged(object? sender, TextChangedEventArgs e)
+        => ApplyFilter();
+
+    private void OnFilterKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && !string.IsNullOrEmpty(FilterBox.Text))
+        {
+            FilterBox.Text = "";
+            ApplyFilter();
+            e.Handled = true;
         }
     }
 
@@ -199,6 +242,24 @@ public partial class DetailPage : UserControl
         };
 
         var target = row;
+        container.Focusable = true;
+        container.KeyDown += async (_, e) =>
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Space)
+            {
+                e.Handled = true;
+                var track = target.Payload ?? new TrackDto(target.Title, target.Id, [new TrackArtistDto("", target.Artist)], target.Source, target.Thumbnail, 0, "");
+                var context = _nav is { Type: not null } && _nav.Type != MusicType.Track
+                    ? (_nav.Source, _nav.Type, _nav.Id)
+                    : (target.Source, target.Type, target.Id);
+                await Playback.PlayTrackAsync(track, context.Source, context.Type, context.Id);
+            }
+            else if (e.Key == Key.F10 && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                var menu = ItemMenu.Build(target, IsLocalPlaylist ? LocalRemoveAction : null, "Remove from playlist", _nav);
+                menu.Open(container);
+            }
+        };
         container.PointerPressed += async (_, e) =>
         {
             if (e.GetCurrentPoint(container).Properties.IsLeftButtonPressed)
@@ -248,6 +309,7 @@ public partial class DetailPage : UserControl
     {
         ButtonPanel.Children.Clear();
         if (_playAllButton.IsVisible) ButtonPanel.Children.Add(_playAllButton);
+        if (_addAllButton.IsVisible) ButtonPanel.Children.Add(_addAllButton);
         if (_refreshButton.IsVisible) ButtonPanel.Children.Add(_refreshButton);
         if (_deleteButton.IsVisible) ButtonPanel.Children.Add(_deleteButton);
         if (_pinButton.IsVisible) ButtonPanel.Children.Add(_pinButton);
@@ -265,6 +327,30 @@ public partial class DetailPage : UserControl
         if (first is not null)
         {
             await Playback.PlayTrackAsync(first, _nav?.Source, _nav?.Type, _nav?.Id);
+        }
+    }
+
+    private async void OnAddAllClick(object? sender, RoutedEventArgs e)
+    {
+        if (_tracks.Length == 0) return;
+        try
+        {
+            var currentQueue = await App.Services.Api.GetUserDataAsync<string[]>(UserDataKeys.PlayQueue);
+            var queue = new List<string>(currentQueue ?? []);
+            foreach (var row in _tracks)
+            {
+                var entry = $"{row.Source}:{row.Type}:{row.Id}";
+                if (!queue.Contains(entry))
+                {
+                    queue.Add(entry);
+                }
+            }
+            await App.Services.Api.SetUserDataAsync(UserDataKeys.PlayQueue, queue.ToArray());
+            AppLog.Write("detail", $"added {_tracks.Length} tracks to queue");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("detail", $"add all failed: {ex.Message}");
         }
     }
 

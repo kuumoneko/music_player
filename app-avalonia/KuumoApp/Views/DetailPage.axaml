@@ -23,6 +23,12 @@
             <TextBlock x:Name="ErrorText" Text="" FontSize="14"
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}" IsVisible="False"/>
             <TextBlock x:Name="TrackCountText" Text="" FontSize="14" Opacity="0.7"/>
+            <TextBox x:Name="FilterBox"
+                     Watermark="Search videos..."
+                     IsVisible="False"
+                     TextChanged="OnFilterTextChanged"
+                     KeyDown="OnFilterKeyDown"/>
+            <TextBlock x:Name="NoMatchesText" Text="No matching videos" FontSize="14" Opacity="0.7" IsVisible="False"/>
             <StackPanel x:Name="TrackPanel" Spacing="2"/>
         </StackPanel>
     </ScrollViewer>
