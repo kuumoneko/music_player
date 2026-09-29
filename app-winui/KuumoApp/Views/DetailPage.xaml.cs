@@ -15,6 +15,7 @@ public sealed partial class DetailPage : Page
 {
     private DetailNav? _nav;
     private string _entry = "";
+    private TrackRow[] _allRows = [];
 
     public DetailPage()
     {
@@ -59,6 +60,7 @@ public sealed partial class DetailPage : Page
         catch (Exception ex)
         {
             AppLog.Write("detail", $"remove from playlist failed: {ex.Message}");
+            ToastService.ShowError($"Remove failed: {ex.Message}");
         }
     }
 
@@ -68,10 +70,17 @@ public sealed partial class DetailPage : Page
         {
             return;
         }
-        TrackList.ItemsSource = null;
+        _allRows = [];
+        if (FilterBox.Text.Length > 0)
+        {
+            FilterBox.Text = "";
+        }
+        ApplyFilter();
+        FilterBox.Visibility = Visibility.Collapsed;
         PlayAllButton.Visibility = Visibility.Collapsed;
         HeaderTitle.Text = "Loading...";
         ErrorText.Visibility = Visibility.Collapsed;
+        LoadingRing.IsActive = true;
         try
         {
             var data = await App.Services.Api.GetMusicDataAsync(_nav.Source, _nav.Type, _nav.Id);
@@ -98,8 +107,10 @@ public sealed partial class DetailPage : Page
                 await ImageAttach.LoadAsync(HeaderThumb, track.Thumbnail);
                 _entry = EntryFormat.Build(_nav.Source, MusicType.Track, track.Id);
                 var row = TrackRow.FromTrack(track);
-                TrackList.ItemsSource = new[] { row };
+                _allRows = [row];
+                ApplyFilter();
                 PlayAllButton.Visibility = Visibility.Visible;
+                AddAllButton.Visibility = Visibility.Visible;
             }
             else if (kind == MusicType.Playlist)
             {
@@ -122,6 +133,7 @@ public sealed partial class DetailPage : Page
                 }
                 PopulateTracks(tracks);
                 PlayAllButton.Visibility = tracks.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+                AddAllButton.Visibility = tracks.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
             }
             else if (kind == MusicType.Artist)
             {
@@ -138,7 +150,11 @@ public sealed partial class DetailPage : Page
                 _entry = EntryFormat.Build(_nav.Source, MusicType.Artist, artist.Id);
                 PopulateTracks(artist.Tracks ?? []);
                 PlayAllButton.Visibility = artist.Tracks is { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+                AddAllButton.Visibility = artist.Tracks is { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
             }
+            FilterBox.Visibility = kind == MusicType.Track
+                ? Visibility.Collapsed
+                : Visibility.Visible;
             RefreshButton.Visibility = _nav.Source != MusicSource.Local && kind != MusicType.Track
                 ? Visibility.Visible
                 : Visibility.Collapsed;
@@ -159,11 +175,42 @@ public sealed partial class DetailPage : Page
             ErrorText.Visibility = Visibility.Visible;
             ShellPage.SetTitle(null);
         }
+        finally
+        {
+            LoadingRing.IsActive = false;
+        }
     }
 
     private void PopulateTracks(TrackDto[] tracks)
     {
-        TrackList.ItemsSource = tracks.Select(TrackRow.FromTrack).ToArray();
+        _allRows = tracks.Select(TrackRow.FromTrack).ToArray();
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        var query = FilterBox.Text.Trim();
+        var rows = query.Length == 0
+            ? _allRows
+            : _allRows.Where(r => r.Title.Contains(query, StringComparison.OrdinalIgnoreCase)).ToArray();
+        TrackList.ItemsSource = rows;
+        NoMatchesText.Visibility = _allRows.Length > 0 && rows.Length == 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void OnFilterTextChanged(object sender, TextChangedEventArgs e)
+    {
+        ApplyFilter();
+    }
+
+    private void OnFilterKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (e.Key == Windows.System.VirtualKey.Escape && FilterBox.Text.Length > 0)
+        {
+            FilterBox.Text = "";
+            e.Handled = true;
+        }
     }
 
     private async void OnTrackClick(object sender, ItemClickEventArgs e)
@@ -181,6 +228,7 @@ public sealed partial class DetailPage : Page
             catch (Exception ex)
             {
                 AppLog.Write("detail", $"track click failed: {ex.Message}");
+                ToastService.ShowError($"Play track failed: {ex.Message}");
             }
         }
     }
@@ -224,6 +272,35 @@ public sealed partial class DetailPage : Page
         catch (Exception ex)
         {
             AppLog.Write("detail", $"play all failed: {ex.Message}");
+            ToastService.ShowError($"Play all failed: {ex.Message}");
+        }
+    }
+
+    private async void OnAddAllClick(object sender, RoutedEventArgs e)
+    {
+        if (TrackList.ItemsSource is not TrackRow[] rows || rows.Length == 0)
+        {
+            return;
+        }
+        try
+        {
+            var currentQueue = await App.Services.Api.GetUserDataAsync<string[]>(UserDataKeys.PlayQueue);
+            var queue = new List<string>(currentQueue ?? []);
+            foreach (var row in rows)
+            {
+                var entry = EntryFormat.Build(row.Source, row.Type, row.Id);
+                if (!queue.Contains(entry))
+                {
+                    queue.Add(entry);
+                }
+            }
+            await App.Services.Api.SetUserDataAsync(UserDataKeys.PlayQueue, queue.ToArray());
+            ToastService.ShowInfo($"Added {rows.Length} tracks to queue");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("detail", $"add all failed: {ex.Message}");
+            ToastService.ShowError($"Add all failed: {ex.Message}");
         }
     }
 
@@ -244,6 +321,7 @@ public sealed partial class DetailPage : Page
                 new TextBlock { Text = isPinned ? "Unpin" : "Pin" },
             },
         };
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(PinButton, isPinned ? "Unpin" : "Pin");
     }
 
     private async void OnPinClick(object sender, RoutedEventArgs e)
@@ -260,6 +338,7 @@ public sealed partial class DetailPage : Page
         catch (Exception ex)
         {
             AppLog.Write("detail", $"pin click failed: {ex.Message}");
+            ToastService.ShowError($"Pin failed: {ex.Message}");
         }
     }
 
@@ -281,6 +360,7 @@ public sealed partial class DetailPage : Page
         {
             ClipboardService.CopyTrack(_nav.Source, _nav.Id);
         }
+        ToastService.ShowInfo("Link copied to clipboard");
     }
 
     private async void OnDownloadClick(object sender, RoutedEventArgs e)
@@ -292,10 +372,12 @@ public sealed partial class DetailPage : Page
         try
         {
             await App.Services.Downloads.AddAsync(_nav.Source, _nav.Type, _nav.Id);
+            ToastService.ShowInfo("Added to download queue");
         }
         catch (Exception ex)
         {
             AppLog.Write("detail", $"download click failed: {ex.Message}");
+            ToastService.ShowError($"Download failed: {ex.Message}");
         }
     }
 
@@ -321,6 +403,7 @@ public sealed partial class DetailPage : Page
         catch (Exception ex)
         {
             AppLog.Write("detail", $"refresh failed: {ex.Message}");
+            ToastService.ShowError($"Refresh failed: {ex.Message}");
         }
         finally
         {
@@ -358,6 +441,7 @@ public sealed partial class DetailPage : Page
         catch (Exception ex)
         {
             AppLog.Write("detail", $"delete failed: {ex.Message}");
+            ToastService.ShowError($"Delete failed: {ex.Message}");
         }
     }
 }

@@ -9,6 +9,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -51,31 +52,43 @@
                         x:Name="ShareButton"
                         Content="Copy link"
                         Click="OnShareClick"
+                        AutomationProperties.Name="Copy link"
                         Visibility="Collapsed" />
                     <Button
                         x:Name="DownloadButton"
                         Content="Download"
                         Click="OnDownloadClick"
+                        AutomationProperties.Name="Download"
                         Visibility="Collapsed" />
                     <Button
                         x:Name="RefreshButton"
                         Content="Refresh"
                         Click="OnRefreshClick"
+                        AutomationProperties.Name="Refresh"
                         Visibility="Collapsed" />
                     <Button
                         x:Name="PinButton"
                         Click="OnPinClick"
+                        AutomationProperties.Name="Pin"
                         Visibility="Collapsed" />
                     <Button
                         x:Name="DeleteButton"
                         Content="Delete"
                         Click="OnDeleteClick"
+                        AutomationProperties.Name="Delete"
                         Visibility="Collapsed" />
                     <Button
                         x:Name="PlayAllButton"
                         Content="Play"
                         Style="{StaticResource AppAccentButtonStyle}"
                         Click="OnPlayAllClick"
+                        AutomationProperties.Name="Play"
+                        Visibility="Collapsed" />
+                    <Button
+                        x:Name="AddAllButton"
+                        Content="Add all to queue"
+                        Click="OnAddAllClick"
+                        AutomationProperties.Name="Add all to queue"
                         Visibility="Collapsed" />
                 </StackPanel>
             </StackPanel>
@@ -88,13 +101,39 @@
             Foreground="{ThemeResource SystemFillColorCriticalBrush}"
             Visibility="Collapsed" />
 
-        <ListView
+        <TextBox
             Grid.Row="2"
-            x:Name="TrackList"
-            ItemTemplate="{StaticResource TrackRowTemplate}"
-            IsItemClickEnabled="True"
-            ItemClick="OnTrackClick"
-            RightTapped="OnTrackRightTapped"
-            SelectionMode="None" />
+            x:Name="FilterBox"
+            PlaceholderText="Search videos..."
+            KeyDown="OnFilterKeyDown"
+            TextChanged="OnFilterTextChanged"
+            AutomationProperties.Name="Search videos" />
+
+        <Grid Grid.Row="3">
+            <ListView
+                x:Name="TrackList"
+                ItemTemplate="{StaticResource TrackRowTemplate}"
+                IsItemClickEnabled="True"
+                ItemClick="OnTrackClick"
+                RightTapped="OnTrackRightTapped"
+                SelectionMode="None" />
+
+            <ProgressRing
+                x:Name="LoadingRing"
+                IsActive="False"
+                Width="48"
+                Height="48"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center" />
+
+            <TextBlock
+                x:Name="NoMatchesText"
+                Text="No matching videos"
+                Opacity="0.7"
+                FontSize="14"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Visibility="Collapsed" />
+        </Grid>
     </Grid>
 </Page>
