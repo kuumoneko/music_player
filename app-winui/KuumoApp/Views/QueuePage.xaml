@@ -26,11 +26,13 @@
                 <Button
                     Grid.Column="1"
                     Content="Clear queue"
-                    Click="OnClearQueueClick" />
+                    Click="OnClearQueueClick"
+                    AutomationProperties.Name="Clear queue" />
                 <Button
                     Grid.Column="2"
                     Content="Clear next from"
-                    Click="OnClearNextfromClick" />
+                    Click="OnClearNextfromClick"
+                    AutomationProperties.Name="Clear next from" />
             </Grid>
             <TextBlock
                 x:Name="FromText"
@@ -46,7 +48,18 @@
             Text="Queue is empty"
             Opacity="0.7"
             FontSize="14"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
             Visibility="Collapsed" />
+
+        <ProgressRing
+            Grid.Row="1"
+            x:Name="LoadingRing"
+            IsActive="False"
+            Width="48"
+            Height="48"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center" />
 
         <ScrollViewer
             Grid.Row="1"

@@ -157,6 +157,7 @@ public sealed partial class PlayerBar : UserControl
         {
             VolumeSlider.Value = data.Volume;
         }
+        VolumeText.Text = $"{(int)VolumeSlider.Value}%";
         UpdateVolumeIcon();
     }
 
@@ -250,6 +251,7 @@ public sealed partial class PlayerBar : UserControl
         catch (Exception ex)
         {
             AppLog.Write("playerbar", $"shuffle failed: {ex.Message}");
+            ToastService.ShowError($"Shuffle failed: {ex.Message}");
         }
     }
 
@@ -262,6 +264,7 @@ public sealed partial class PlayerBar : UserControl
         catch (Exception ex)
         {
             AppLog.Write("playerbar", $"repeat failed: {ex.Message}");
+            ToastService.ShowError($"Repeat failed: {ex.Message}");
         }
     }
 
@@ -278,6 +281,7 @@ public sealed partial class PlayerBar : UserControl
             catch (Exception ex)
             {
                 AppLog.Write("playerbar", $"sleep failed: {ex.Message}");
+                ToastService.ShowError($"Sleep mode failed: {ex.Message}");
             }
         }
     }
@@ -421,6 +425,7 @@ public sealed partial class PlayerBar : UserControl
         catch (Exception ex)
         {
             AppLog.Write("playerbar", $"togglePlayPause failed: {ex.Message}");
+            ToastService.ShowError($"Play/pause failed: {ex.Message}");
         }
     }
 
@@ -440,6 +445,7 @@ public sealed partial class PlayerBar : UserControl
         catch (Exception ex)
         {
             AppLog.Write("playerbar", $"previous failed: {ex.Message}");
+            ToastService.ShowError($"Previous track failed: {ex.Message}");
         }
     }
 
@@ -459,6 +465,7 @@ public sealed partial class PlayerBar : UserControl
         catch (Exception ex)
         {
             AppLog.Write("playerbar", $"next failed: {ex.Message}");
+            ToastService.ShowError($"Next track failed: {ex.Message}");
         }
     }
 
@@ -507,6 +514,7 @@ public sealed partial class PlayerBar : UserControl
         catch (Exception ex)
         {
             AppLog.Write("playerbar", $"seekTo failed: {ex.Message}");
+            ToastService.ShowError($"Seek failed: {ex.Message}");
         }
     }
 
@@ -539,6 +547,7 @@ public sealed partial class PlayerBar : UserControl
 
     private async Task SetVolumeAsync(int value)
     {
+        VolumeText.Text = $"{value}%";
         try
         {
             await App.Services.Api.SetUserDataAsync("volume", value);
@@ -546,6 +555,7 @@ public sealed partial class PlayerBar : UserControl
         catch (Exception ex)
         {
             AppLog.Write("playerbar", $"volume failed: {ex.Message}");
+            ToastService.ShowError($"Volume failed: {ex.Message}");
         }
     }
 }

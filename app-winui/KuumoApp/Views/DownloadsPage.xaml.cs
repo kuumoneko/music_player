@@ -184,6 +184,7 @@ public sealed partial class DownloadsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("downloads", $"load failed: {ex.Message}");
+            ToastService.ShowError($"Failed to load downloads: {ex.Message}");
         }
     }
 
@@ -205,6 +206,7 @@ public sealed partial class DownloadsPage : Page
         catch (Exception ex)
         {
             StatusText.Text = ex.Message;
+            ToastService.ShowError($"Download failed: {ex.Message}");
         }
         finally
         {
@@ -243,6 +245,7 @@ public sealed partial class DownloadsPage : Page
         {
             ClipboardService.CopyTrack(item.Source, item.Id);
         }
+        ToastService.ShowInfo("Link copied to clipboard");
     }
 
     private async void OnClearClick(object sender, RoutedEventArgs e)

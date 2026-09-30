@@ -24,7 +24,8 @@
             <Button
                 Grid.Column="1"
                 Content="Search"
-                Click="OnSearchClick" />
+                Click="OnSearchClick"
+                AutomationProperties.Name="Search" />
         </Grid>
 
         <ListView
@@ -63,6 +64,14 @@
                 Height="48"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center" />
+            <TextBlock
+                x:Name="NoResultsText"
+                Text="No results found"
+                Opacity="0.7"
+                FontSize="14"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Visibility="Collapsed" />
         </Grid>
     </Grid>
 </Page>

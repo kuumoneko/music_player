@@ -84,6 +84,7 @@ public static class MediaGrid
             Child = content,
         };
         var root = new Grid();
+        root.IsTabStop = true;
         root.Children.Add(border);
         root.SizeChanged += (_, _) => image.Height = Math.Min(root.ActualWidth * 9.0 / 16.0, 150);
         border.Tapped += (_, _) => _ = onOpen(card);
@@ -91,6 +92,14 @@ public static class MediaGrid
         {
             var flyout = await ItemMenu.BuildAsync(card);
             ItemMenu.Show(flyout, border, args.GetPosition(border));
+        };
+        root.KeyDown += (_, e) =>
+        {
+            if (e.Key == Windows.System.VirtualKey.Enter || e.Key == Windows.System.VirtualKey.Space)
+            {
+                _ = onOpen(card);
+                e.Handled = true;
+            }
         };
         CardStrip.WireHover(root, b => border.Background = b);
         return root;

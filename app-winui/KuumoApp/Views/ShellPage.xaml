@@ -26,7 +26,26 @@
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="True"
             PaneDisplayMode="Left"
-            ItemInvoked="OnNavItemInvoked">
+            ItemInvoked="OnNavItemInvoked"
+            BackRequested="OnNavBackRequested">
+            <NavigationView.PaneHeader>
+                <StackPanel Orientation="Horizontal" Spacing="4" Padding="4,4,4,0">
+                    <Button x:Name="BackButton" Click="OnBackClick"
+                            Style="{StaticResource IconButtonStyle}"
+                            ToolTipService.ToolTip="Back (Alt+Left)"
+                            AutomationProperties.Name="Back"
+                            IsEnabled="False">
+                        <FontIcon Glyph="&#xE72B;" FontSize="14" />
+                    </Button>
+                    <Button x:Name="ForwardButton" Click="OnForwardClick"
+                            Style="{StaticResource IconButtonStyle}"
+                            ToolTipService.ToolTip="Forward (Alt+Right)"
+                            AutomationProperties.Name="Forward"
+                            IsEnabled="False">
+                        <FontIcon Glyph="&#xE72A;" FontSize="14" />
+                    </Button>
+                </StackPanel>
+            </NavigationView.PaneHeader>
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Home" Tag="home">
                     <NavigationViewItem.Icon>
@@ -58,6 +77,23 @@
             <Frame x:Name="ContentFrame" CacheSize="0" />
         </NavigationView>
 
+        <Popup x:Name="ToastPopup"
+               IsLightDismissEnabled="True"
+               ShouldConstrainToRootBounds="True"
+               HorizontalOffset="500"
+               VerticalOffset="16">
+            <Border x:Name="ToastBorder"
+                    CornerRadius="8"
+                    Padding="16,10"
+                    MaxWidth="500"
+                    MinWidth="200">
+                <TextBlock x:Name="ToastText"
+                           TextWrapping="Wrap"
+                           Foreground="White"
+                           FontSize="13" />
+            </Border>
+        </Popup>
+
         <Grid
             Grid.Row="1"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
@@ -66,16 +102,16 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <controls:PlayerBar x:Name="PlayerBar" />
-            <Grid
-                Grid.Row="1"
-                Padding="12,4">
-                <TextBlock
-                    x:Name="StatusText"
-                    Text="starting..."
-                    FontSize="12"
-                    Opacity="0.7"
-                    VerticalAlignment="Center" />
-            </Grid>
+                <Grid
+                    Grid.Row="1"
+                    Padding="12,4">
+                    <TextBlock
+                        x:Name="StatusText"
+                        Text="starting..."
+                        FontSize="12"
+                        Opacity="0.7"
+                        VerticalAlignment="Center" />
+                </Grid>
         </Grid>
     </Grid>
 </Page>

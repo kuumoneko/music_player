@@ -85,7 +85,8 @@
                 Padding="8"
                 Background="Transparent"
                 BorderThickness="0"
-                ToolTipService.ToolTip="More options">
+                ToolTipService.ToolTip="More options"
+                AutomationProperties.Name="More options">
                 <FontIcon
                     Glyph="&#xE712;"
                     FontSize="14"

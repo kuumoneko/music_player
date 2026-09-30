@@ -207,6 +207,7 @@ public static class ItemMenu
         catch (Exception ex)
         {
             AppLog.Write("menu", $"add to queue failed: {ex.Message}");
+            ToastService.ShowError($"Add to queue failed: {ex.Message}");
         }
     }
 }

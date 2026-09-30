@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using KuumoApp.Models;
 using KuumoApp.Services;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
@@ -11,10 +12,15 @@ public sealed partial class HomePage : Page
 {
     private const int MaxRowItems = 10;
     private int _loadVersion;
+    private readonly DispatcherQueueTimer _dataChangeTimer;
 
     public HomePage()
     {
         InitializeComponent();
+        _dataChangeTimer = DispatcherQueue.CreateTimer();
+        _dataChangeTimer.Interval = TimeSpan.FromMilliseconds(300);
+        _dataChangeTimer.IsRepeating = false;
+        _dataChangeTimer.Tick += (_, _) => _ = LoadAsync();
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -43,7 +49,8 @@ public sealed partial class HomePage : Page
     {
         if (key is "userPlaylists" or "userSubscriptions" or "homeFeed")
         {
-            _ = LoadAsync();
+            _dataChangeTimer.Stop();
+            _dataChangeTimer.Start();
         }
     }
 
@@ -385,11 +392,13 @@ public sealed partial class HomePage : Page
                 await App.Services.Api.CreatePlaylistAsync(name);
                 nameBox.Text = "";
                 createRow.Visibility = Visibility.Collapsed;
+                ToastService.ShowInfo("Playlist created");
                 _ = LoadAsync();
             }
             catch (Exception ex)
             {
                 AppLog.Write("home", $"create playlist failed: {ex.Message}");
+                ToastService.ShowError($"Failed to create playlist: {ex.Message}");
             }
         }
 

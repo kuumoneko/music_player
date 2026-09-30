@@ -11,5 +11,12 @@
                 Padding="24"
                 Spacing="16" />
         </ScrollViewer>
+        <ProgressRing
+            x:Name="LoadingRing"
+            IsActive="False"
+            Width="48"
+            Height="48"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center" />
     </Grid>
 </Page>

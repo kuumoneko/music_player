@@ -59,6 +59,7 @@ public sealed partial class CollectionPage : Page
     private async Task ReloadAsync()
     {
         if (_nav?.Reload is null) return;
+        LoadingRing.IsActive = true;
         try
         {
             var cards = await _nav.Reload();
@@ -68,6 +69,11 @@ public sealed partial class CollectionPage : Page
         catch (Exception ex)
         {
             AppLog.Write("collection", $"reload failed: {ex.Message}");
+            ToastService.ShowError($"Failed to reload: {ex.Message}");
+        }
+        finally
+        {
+            LoadingRing.IsActive = false;
         }
     }
 }

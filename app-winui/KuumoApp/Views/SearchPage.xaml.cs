@@ -99,8 +99,10 @@ public sealed partial class SearchPage : Page
                 return;
             }
             AppLog.Write("search", $"search failed: {ex.Message}");
+            ToastService.ShowError($"Search failed: {ex.Message}");
             _result = null;
             ResultList.ItemsSource = null;
+            NoResultsText.Visibility = Visibility.Visible;
             ShellPage.SetTitle("Search");
         }
         finally
@@ -265,6 +267,7 @@ public sealed partial class SearchPage : Page
                 break;
         }
         ResultList.ItemsSource = rows;
+        NoResultsText.Visibility = rows.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private async void OnResultClick(object sender, ItemClickEventArgs e)

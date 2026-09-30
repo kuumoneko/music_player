@@ -16,7 +16,7 @@
             Grid.Row="0"
             Margin="24,24,24,0">
             <InfoBar.ActionButton>
-                <Button Content="Retry" Click="OnRetryClick" />
+                <Button Content="Retry" Click="OnRetryClick" AutomationProperties.Name="Retry" />
             </InfoBar.ActionButton>
         </InfoBar>
         <ScrollViewer Grid.Row="1">

@@ -174,6 +174,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"toggleQuitOnClose failed: {ex.Message}");
+            ToastService.ShowError($"Quit on close failed: {ex.Message}");
             QuitOnCloseSwitch.IsOn = !previousState;
         }
     }
@@ -196,6 +197,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"closeToTray failed: {ex.Message}");
+            ToastService.ShowError($"Close to tray failed: {ex.Message}");
             CloseToTraySwitch.IsOn = !previousState;
         }
     }
@@ -215,6 +217,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"theme mode failed: {ex.Message}");
+            ToastService.ShowError($"Theme save failed: {ex.Message}");
         }
     }
 
@@ -232,6 +235,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"dynamic accent failed: {ex.Message}");
+            ToastService.ShowError($"Accent save failed: {ex.Message}");
         }
     }
 
@@ -263,6 +267,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"preset failed: {ex.Message}");
+            ToastService.ShowError($"EQ preset failed: {ex.Message}");
         }
     }
 
@@ -279,6 +284,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"equalizer toggle failed: {ex.Message}");
+            ToastService.ShowError($"Equalizer toggle failed: {ex.Message}");
         }
     }
 
@@ -300,6 +306,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"equalizer bands failed: {ex.Message}");
+            ToastService.ShowError($"EQ bands save failed: {ex.Message}");
         }
     }
 
@@ -316,6 +323,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"equalizer reset failed: {ex.Message}");
+            ToastService.ShowError($"EQ reset failed: {ex.Message}");
         }
     }
 
@@ -393,6 +401,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"folder failed: {ex.Message}");
+            ToastService.ShowError($"Folder selection failed: {ex.Message}");
         }
     }
 
@@ -405,6 +414,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"rehash failed: {ex.Message}");
+            ToastService.ShowError($"Rehash failed: {ex.Message}");
         }
     }
 
@@ -418,6 +428,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"discord connect failed: {ex.Message}");
+            ToastService.ShowError($"Discord connect failed: {ex.Message}");
         }
     }
 
@@ -431,6 +442,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"discord disconnect failed: {ex.Message}");
+            ToastService.ShowError($"Discord disconnect failed: {ex.Message}");
         }
     }
 
@@ -454,6 +466,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"sign in failed: {ex.Message}");
+            ToastService.ShowError($"Sign-in failed: {ex.Message}");
         }
     }
 
@@ -468,6 +481,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"sign out failed: {ex.Message}");
+            ToastService.ShowError($"Sign-out failed: {ex.Message}");
         }
     }
 
@@ -487,6 +501,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"add api key failed: {ex.Message}");
+            ToastService.ShowError($"Add API key failed: {ex.Message}");
         }
     }
 
@@ -506,6 +521,7 @@ public sealed partial class SettingsPage : Page
         catch (Exception ex)
         {
             AppLog.Write("settings", $"remove api key failed: {ex.Message}");
+            ToastService.ShowError($"Remove API key failed: {ex.Message}");
         }
     }
 }

@@ -23,6 +23,7 @@ public static class CardStrip
                 continue;
             }
             cardRoot.DataContext = card;
+            cardRoot.IsTabStop = true;
             var target = card;
             cardRoot.Tapped += (_, _) =>
             {
@@ -31,6 +32,14 @@ public static class CardStrip
                     return;
                 }
                 _ = onOpen(target);
+            };
+            cardRoot.KeyDown += (_, e) =>
+            {
+                if (e.Key == Windows.System.VirtualKey.Enter || e.Key == Windows.System.VirtualKey.Space)
+                {
+                    _ = onOpen(target);
+                    e.Handled = true;
+                }
             };
             cardRoot.RightTapped += async (_, args) =>
             {

@@ -69,6 +69,7 @@ public sealed partial class MainWindow : Window
         {
             AppLog.Write("app", $"backend error: {error.Message}");
             Shell.SetStatus($"Error: {error.Message}");
+            Services.ToastService.ShowError(error.Message);
         });
         App.Services.Events.SmtcUpdated += data =>
         {

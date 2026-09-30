@@ -66,6 +66,7 @@ public static class Playback
         catch (Exception ex)
         {
             AppLog.Write("playback", $"play failed: {ex.Message}");
+            ToastService.ShowError($"Play failed: {ex.Message}");
         }
     }
 
@@ -84,6 +85,7 @@ public static class Playback
         catch (Exception ex)
         {
             AppLog.Write("playback", $"play entry failed: {ex.Message}");
+            ToastService.ShowError($"Play failed: {ex.Message}");
         }
     }
 }

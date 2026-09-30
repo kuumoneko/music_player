@@ -28,12 +28,14 @@
                     Grid.Column="1"
                     Content="Download"
                     Style="{StaticResource AppAccentButtonStyle}"
-                    Click="OnDownloadClick" />
+                    Click="OnDownloadClick"
+                    AutomationProperties.Name="Download" />
                 <Button
                     x:Name="ClearButton"
                     Grid.Column="2"
                     Content="Clear queue"
-                    Click="OnClearClick" />
+                    Click="OnClearClick"
+                    AutomationProperties.Name="Clear queue" />
             </Grid>
             <TextBlock
                 x:Name="StatusText"
@@ -81,7 +83,8 @@
                             Background="Transparent"
                             BorderThickness="0"
                             Click="OnRemoveClick"
-                            ToolTipService.ToolTip="Remove from queue">
+                            ToolTipService.ToolTip="Remove from queue"
+                            AutomationProperties.Name="Remove from queue">
                             <FontIcon
                                 Glyph="&#xE711;"
                                 FontSize="12"
@@ -127,7 +130,8 @@
                             Background="Transparent"
                             BorderThickness="0"
                             Click="OnCopyClick"
-                            ToolTipService.ToolTip="Copy link">
+                            ToolTipService.ToolTip="Copy link"
+                            AutomationProperties.Name="Copy link">
                             <FontIcon
                                 Glyph="&#xE8C8;"
                                 FontSize="14"

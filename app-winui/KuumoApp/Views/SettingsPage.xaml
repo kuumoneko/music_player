@@ -35,15 +35,15 @@
                     PlaceholderText="Flat" />
                 <controls:EqGraphControl x:Name="EqGraph" Height="200" BandsChanged="OnEqBandsChanged" />
                 <TextBlock FontSize="12" Opacity="0.7" Text="Drag a handle up/down to boost or cut that band (-12 to +12 dB). Double-tap a handle to reset it." TextWrapping="Wrap" />
-                <Button Content="Reset all" Click="OnEqResetClick" />
+                <Button Content="Reset all" Click="OnEqResetClick" AutomationProperties.Name="Reset all" />
             </StackPanel>
 
             <StackPanel Spacing="8">
                 <TextBlock Text="Local music folder" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
                 <TextBlock x:Name="FolderText" FontSize="12" Opacity="0.7" Text="Not set" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="Choose folder..." Click="OnChooseFolderClick" />
-                    <Button Content="Rehash" Click="OnRehashClick" />
+                    <Button Content="Choose folder..." Click="OnChooseFolderClick" AutomationProperties.Name="Choose folder" />
+                    <Button Content="Rehash" Click="OnRehashClick" AutomationProperties.Name="Rehash" />
                 </StackPanel>
             </StackPanel>
 
@@ -51,8 +51,8 @@
                 <TextBlock Text="Discord RPC" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
                 <TextBlock x:Name="DiscordText" FontSize="12" Opacity="0.7" Text="Not connected" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Content="Connect" Click="OnDiscordConnectClick" />
-                    <Button Content="Disconnect" Click="OnDiscordDisconnectClick" />
+                    <Button Content="Connect" Click="OnDiscordConnectClick" AutomationProperties.Name="Connect to Discord" />
+                    <Button Content="Disconnect" Click="OnDiscordDisconnectClick" AutomationProperties.Name="Disconnect from Discord" />
                 </StackPanel>
             </StackPanel>
 
@@ -60,8 +60,8 @@
                 <TextBlock Text="Google account" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
                 <TextBlock x:Name="GoogleText" FontSize="12" Opacity="0.7" Text="Not signed in" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button x:Name="SignInButton" Content="Sign in" Click="OnSignInClick" />
-                    <Button x:Name="SignOutButton" Content="Sign out" Click="OnSignOutClick" Visibility="Collapsed" />
+                    <Button x:Name="SignInButton" Content="Sign in" Click="OnSignInClick" AutomationProperties.Name="Sign in to Google" />
+                    <Button x:Name="SignOutButton" Content="Sign out" Click="OnSignOutClick" AutomationProperties.Name="Sign out of Google" Visibility="Collapsed" />
                 </StackPanel>
             </StackPanel>
 
@@ -71,9 +71,9 @@
                 <TextBlock x:Name="ApiKeysStatusText" FontSize="12" Opacity="0.7" Text="No API keys configured" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBox x:Name="ApiKeyTextBox" PlaceholderText="Enter YouTube Data API key" Width="300" />
-                    <Button Content="Add" Click="OnAddApiKeyClick" />
+                    <Button Content="Add" Click="OnAddApiKeyClick" AutomationProperties.Name="Add API key" />
                 </StackPanel>
-                <Button x:Name="RemoveApiKeyButton" Content="Remove API Key" Click="OnRemoveApiKeyClick" Visibility="Collapsed" />
+                <Button x:Name="RemoveApiKeyButton" Content="Remove API Key" Click="OnRemoveApiKeyClick" AutomationProperties.Name="Remove API key" Visibility="Collapsed" />
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

@@ -40,6 +40,7 @@ public sealed partial class LocalPage : Page
 
     private async void OnReloadClick(object sender, RoutedEventArgs e)
     {
+        LoadingRing.IsActive = true;
         try
         {
             await App.Services.Api.RehashLocalFilesAsync();
@@ -47,20 +48,34 @@ public sealed partial class LocalPage : Page
         catch (Exception ex)
         {
             AppLog.Write("local", $"rehash failed: {ex.Message}");
+            ToastService.ShowError($"Rehash failed: {ex.Message}");
+        }
+        finally
+        {
+            LoadingRing.IsActive = false;
         }
     }
 
     private async Task LoadAsync()
     {
+        LoadingRing.IsActive = true;
+        EmptyText.Visibility = Visibility.Collapsed;
         try
         {
             var tracks = await App.Services.Api.GetLocalfileAsync();
             LocalList.ItemsSource = tracks?.Select(TrackRow.FromTrack).ToArray();
             LocalTitle.Text = $"Local files ({tracks?.Length ?? 0})";
+            EmptyText.Visibility = tracks == null || tracks.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            LocalList.Visibility = tracks is { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
         }
         catch (Exception ex)
         {
             AppLog.Write("local", $"load failed: {ex.Message}");
+            ToastService.ShowError($"Failed to load local files: {ex.Message}");
+        }
+        finally
+        {
+            LoadingRing.IsActive = false;
         }
     }
 

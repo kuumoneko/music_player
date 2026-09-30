@@ -49,6 +49,7 @@ public sealed partial class QueuePage : Page
 
     private async Task LoadAsync()
     {
+        LoadingRing.IsActive = true;
         try
         {
             if (!string.IsNullOrEmpty(_nextfrom))
@@ -166,6 +167,11 @@ public sealed partial class QueuePage : Page
         catch (Exception ex)
         {
             AppLog.Write("queue", $"load failed: {ex.Message}");
+            ToastService.ShowError($"Failed to load queue: {ex.Message}");
+        }
+        finally
+        {
+            LoadingRing.IsActive = false;
         }
     }
 

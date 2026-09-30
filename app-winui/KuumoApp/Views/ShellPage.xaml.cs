@@ -1,3 +1,4 @@
+using KuumoApp.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -42,6 +43,7 @@ public sealed partial class ShellPage : Page
     public ShellPage()
     {
         InitializeComponent();
+        ToastService.Initialize(ToastPopup, ToastBorder, ToastText);
         MainFrame = ContentFrame;
         Nav.SelectedItem = Nav.MenuItems[0];
         ContentFrame.Navigated += OnNavigated;
@@ -61,6 +63,14 @@ public sealed partial class ShellPage : Page
             e.Handled = true;
             PlayerBar.TogglePlayPause();
         }
+        else if (e.Key == VirtualKey.Escape)
+        {
+            if (ContentFrame.CanGoBack)
+            {
+                e.Handled = true;
+                ContentFrame.GoBack();
+            }
+        }
     }
 
     private void OnNavigated(object sender, NavigationEventArgs e)
@@ -69,6 +79,7 @@ public sealed partial class ShellPage : Page
         {
             Nav.SelectedItem = Nav.SettingsItem;
             SetTitle(PageTitles[typeof(SettingsPage)]);
+            UpdateNavButtons();
             return;
         }
         var tag = Pages.FirstOrDefault(kv => kv.Value == e.SourcePageType).Key;
@@ -87,6 +98,7 @@ public sealed partial class ShellPage : Page
         {
             SetTitle(null);
         }
+        UpdateNavButtons();
     }
 
     private void AddAltAccelerator(VirtualKey key, TypedEventHandler<KeyboardAccelerator, KeyboardAcceleratorInvokedEventArgs> handler)
@@ -108,6 +120,36 @@ public sealed partial class ShellPage : Page
     public static void NavigateDetail(string source, string type, string id)
     {
         MainFrame?.Navigate(typeof(DetailPage), new DetailNav(source, type, id));
+    }
+
+    private void OnNavBackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args)
+    {
+        if (ContentFrame.CanGoBack)
+        {
+            ContentFrame.GoBack();
+        }
+    }
+
+    private void OnBackClick(object sender, RoutedEventArgs e)
+    {
+        if (ContentFrame.CanGoBack)
+        {
+            ContentFrame.GoBack();
+        }
+    }
+
+    private void OnForwardClick(object sender, RoutedEventArgs e)
+    {
+        if (ContentFrame.CanGoForward)
+        {
+            ContentFrame.GoForward();
+        }
+    }
+
+    private void UpdateNavButtons()
+    {
+        BackButton.IsEnabled = ContentFrame.CanGoBack;
+        ForwardButton.IsEnabled = ContentFrame.CanGoForward;
     }
 
     private void OnNavItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
