@@ -44,3 +44,27 @@ jobs:
                       msbuild-${{ runner.os }}-
             - run: dotnet restore app-winui/KuumoApp.slnx -p:RestoreUseStaticGraphEvaluation=true --verbosity quiet
             - run: dotnet build app-winui/KuumoApp.slnx -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:RunAnalyzersDuringBuild=false /p:DisableXbfLineInfo=true /p:WindowsAppSDKSelfContained=false /p:ProduceReferenceAssembly=false /p:EnableXBindDiagnostics=false /p:PRIResourceMerging=false -clp:ErrorsOnly -nologo
+
+    typecheck-avalonia:
+        runs-on: windows-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "10.0.x"
+            - name: Cache NuGet
+              uses: actions/cache@v4
+              with:
+                  path: ~\.nuget\packages
+                  key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+                  restore-keys: nuget-${{ runner.os }}-
+            - name: Cache MSBuild outputs
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      app-avalonia/**/obj
+                      app-avalonia/**/bin
+                  key: msbuild-avalonia-${{ runner.os }}-${{ hashFiles('app-avalonia/**/*.cs', 'app-avalonia/**/*.csproj') }}
+                  restore-keys: msbuild-avalonia-${{ runner.os }}-
+            - run: dotnet restore app-avalonia/KuumoApp/KuumoApp.csproj -p:RestoreUseStaticGraphEvaluation=true --verbosity quiet
+            - run: dotnet build app-avalonia/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug /p:RunAnalyzersDuringBuild=false /p:ProduceReferenceAssembly=false -clp:ErrorsOnly -nologo

@@ -81,6 +81,20 @@ jobs:
                   key: musicapp-bin-${{ hashFiles('.github/workflows/build.yml') }}
                   restore-keys: musicapp-bin-
 
+            - name: Cache Avalonia .NET build
+              uses: actions/cache@v4
+              with:
+                  path: app-avalonia/**/obj
+                  key: dotnet-avalonia-${{ runner.os }}-${{ hashFiles('app-avalonia/**/*.cs', 'app-avalonia/**/*.csproj') }}
+                  restore-keys: dotnet-avalonia-${{ runner.os }}-
+
+            - name: Cache Avalonia dotnet publish
+              uses: actions/cache@v4
+              with:
+                  path: build/avalonia-publish
+                  key: publish-avalonia-${{ runner.os }}-${{ hashFiles('app-avalonia/**/*.cs', 'app-avalonia/**/*.csproj') }}
+                  restore-keys: publish-avalonia-${{ runner.os }}-
+
             - name: Clone musicapp-bin
               if: steps.cache-bin.outputs.cache-hit != 'true'
               shell: bash
@@ -161,6 +175,10 @@ jobs:
             - name: Package release
               if: steps.check.outputs.should_release == 'true'
               run: bun run package --cached --profile release
+
+            - name: Package Avalonia release
+              if: steps.check.outputs.should_release == 'true'
+              run: bun run avalonia:package --cached --profile release
 
             - name: Create tag
               if: steps.check.outputs.should_release == 'true'
