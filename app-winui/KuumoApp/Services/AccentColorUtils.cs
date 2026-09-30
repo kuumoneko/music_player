@@ -155,6 +155,7 @@ public static class AccentColorUtils
             var comma = dataUri.IndexOf(',');
             var base64 = comma >= 0 ? dataUri[(comma + 1)..] : dataUri;
             var bytes = Convert.FromBase64String(base64);
+            bytes = await ThumbTrim.TrimAsync(bytes) ?? bytes;
 
             using var stream = new InMemoryRandomAccessStream();
             using (var writer = new DataWriter(stream))

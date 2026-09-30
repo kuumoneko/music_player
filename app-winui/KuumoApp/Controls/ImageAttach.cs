@@ -70,6 +70,7 @@ public static class ImageAttach
             }
             var comma = dataUri.IndexOf(',');
             var bytes = Convert.FromBase64String(dataUri[(comma + 1)..]);
+            bytes = await ThumbTrim.TrimAsync(bytes) ?? bytes;
             using var stream = new InMemoryRandomAccessStream();
             using (var writer = new DataWriter(stream))
             {
