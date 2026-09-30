@@ -153,6 +153,7 @@ public partial class ShellPage : UserControl
         Instance._currentTag = "__collection";
         Instance.ClearNavSelection();
         SetTitle(null);
+        Instance.UpdateNavButtons();
     }
 
     public void NavigateToDetail(string source, string type, string id)
@@ -165,6 +166,7 @@ public partial class ShellPage : UserControl
         _currentTag = "__detail";
         ClearNavSelection();
         SetTitle(null);
+        UpdateNavButtons();
     }
 
     private void ClearNavSelection()
@@ -189,6 +191,7 @@ public partial class ShellPage : UserControl
         }
         PageTitles.TryGetValue(tag, out var title);
         SetTitle(title);
+        UpdateNavButtons();
     }
 
     public void GoBack()
@@ -214,6 +217,7 @@ public partial class ShellPage : UserControl
                 SyncNavSelection("home");
             }
         }
+        UpdateNavButtons();
     }
 
     public void GoForward()
@@ -239,6 +243,7 @@ public partial class ShellPage : UserControl
                 SyncNavSelection("home");
             }
         }
+        UpdateNavButtons();
     }
 
     private void OnNavSelectionChanged(object? sender, SelectionChangedEventArgs e)
@@ -253,6 +258,28 @@ public partial class ShellPage : UserControl
     private void OnHamburgerClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         NavSplit.IsPaneOpen = !NavSplit.IsPaneOpen;
+    }
+
+    private void OnBackClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        GoBack();
+    }
+
+    private void OnForwardClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        GoForward();
+    }
+
+    private void UpdateNavButtons()
+    {
+        if (BackButton is not null)
+        {
+            BackButton.IsVisible = _backStack.Count > 0;
+        }
+        if (ForwardButton is not null)
+        {
+            ForwardButton.IsVisible = _forwardStack.Count > 0;
+        }
     }
 
     private void SyncNavSelection(string tag)

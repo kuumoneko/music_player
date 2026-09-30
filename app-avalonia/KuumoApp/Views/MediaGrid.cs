@@ -105,6 +105,20 @@ public static class MediaGrid
             Width = cardWidth,
             Margin = new Thickness(0, 0, 12, 12),
         };
+        border.Focusable = true;
+        border.KeyDown += async (_, e) =>
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Space)
+            {
+                e.Handled = true;
+                await onOpen(card);
+            }
+            else if (e.Key == Key.F10 && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                var menu = ItemMenu.Build(card);
+                menu.Open(border);
+            }
+        };
         border.PointerPressed += async (_, e) =>
         {
             if (e.GetCurrentPoint(border).Properties.IsLeftButtonPressed)

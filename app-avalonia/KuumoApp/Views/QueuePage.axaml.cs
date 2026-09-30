@@ -237,6 +237,31 @@ public partial class QueuePage : UserControl
         };
 
         var target = row;
+        container.Focusable = true;
+        container.KeyDown += async (_, e) =>
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Space)
+            {
+                e.Handled = true;
+                if (isUpcoming)
+                {
+                    var (source, type, id) = QueueContext();
+                    (string Source, string Type, string Id) ctx = type == MusicType.Track ? (target.Source, target.Type, target.Id) : (source, type, id);
+                    await Playback.PlayTrackAsync(target.Payload!, ctx.Source, ctx.Type, ctx.Id);
+                }
+                else
+                {
+                    var (source, type, id) = QueueContext();
+                    (string Source, string Type, string Id) ctx = type == MusicType.Track ? (target.Source, target.Type, target.Id) : (source, type, id);
+                    await Playback.PlayEntryAsync($"{ctx.Source}:{ctx.Type}:{ctx.Id}", target.Payload);
+                }
+            }
+            else if (e.Key == Key.F10 && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                var menu = ItemMenu.Build(target, extraAction);
+                menu.Open(container);
+            }
+        };
         container.PointerPressed += async (_, e) =>
         {
             if (e.GetCurrentPoint(container).Properties.IsLeftButtonPressed)

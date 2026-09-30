@@ -262,6 +262,23 @@ public partial class SearchPage : UserControl
         };
 
         var target = card;
+        container.Focusable = true;
+        container.KeyDown += async (_, e) =>
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Space)
+            {
+                e.Handled = true;
+                if (target.Kind == "track")
+                    await Playback.PlayEntryAsync($"{target.Source}:{target.Type}:{target.Id}");
+                else
+                    ShellPage.NavigateDetail(target.Source, target.Type, target.Id);
+            }
+            else if (e.Key == Key.F10 && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                var menu = ItemMenu.Build(target);
+                menu.Open(container);
+            }
+        };
         container.PointerPressed += async (_, e) =>
         {
             if (e.GetCurrentPoint(container).Properties.IsLeftButtonPressed)
@@ -320,6 +337,20 @@ public partial class SearchPage : UserControl
         };
 
         var target = row;
+        container.Focusable = true;
+        container.KeyDown += async (_, e) =>
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Space)
+            {
+                e.Handled = true;
+                await Playback.PlayTrackAsync(target.Payload!, target.Source, target.Type, target.Id);
+            }
+            else if (e.Key == Key.F10 && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                var menu = ItemMenu.Build(target);
+                menu.Open(container);
+            }
+        };
         container.PointerPressed += async (_, e) =>
         {
             if (e.GetCurrentPoint(container).Properties.IsLeftButtonPressed)

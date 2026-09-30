@@ -12,7 +12,7 @@ internal sealed class Program
 {
     private static readonly bool IsDev = Environment.GetEnvironmentVariable("KUUMO_DEV") == "1";
     private static readonly string AppUserModelId = IsDev ? "KuumoAvalonia.dev" : "KuumoAvalonia";
-    private static readonly string DisplayName = IsDev ? "Kuumo Avalonia Test" : "Kuumo Avalonia App";
+    private static readonly string DisplayName = IsDev ? "KuumoApp" : "Kuumo Avalonia App";
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
     private static extern void SetCurrentProcessExplicitAppUserModelID(string appId);

@@ -73,25 +73,39 @@
                         </ListBox>
                     </Grid>
                 </SplitView.Pane>
-            <SplitView.Content>
+                <SplitView.Content>
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <Button x:Name="HamburgerButton"
-                                Classes="icon-button"
-                                HorizontalAlignment="Left"
-                                VerticalAlignment="Top"
-                                Margin="8,8,0,0"
-                                Click="OnHamburgerClick"
-                                ToolTip.Tip="Toggle navigation (Ctrl+B)">
-                            <TextBlock Text="&#xE700;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
-                        </Button>
-                        <ContentControl x:Name="ContentArea" Grid.Row="1"/>
+                        <ContentControl x:Name="ContentArea"/>
+                        <!-- Overlay buttons on top of content -->
+                        <StackPanel Orientation="Horizontal" Margin="8,8,0,0" Spacing="4"
+                                    VerticalAlignment="Top" HorizontalAlignment="Left">
+                            <Button x:Name="HamburgerButton"
+                                    Classes="icon-button"
+                                    Click="OnHamburgerClick"
+                                    ToolTip.Tip="Toggle navigation (Ctrl+B)"
+                                    AutomationProperties.Name="Toggle navigation">
+                                <TextBlock Text="&#xE700;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
+                            </Button>
+                            <Button x:Name="BackButton"
+                                    Classes="icon-button"
+                                    Click="OnBackClick"
+                                    IsVisible="True"
+                                    ToolTip.Tip="Back (Alt+Left)"
+                                    AutomationProperties.Name="Back">
+                                <TextBlock Text="&#xE72B;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
+                            </Button>
+                            <Button x:Name="ForwardButton"
+                                    Classes="icon-button"
+                                    Click="OnForwardClick"
+                                    IsVisible="True"
+                                    ToolTip.Tip="Forward (Alt+Right)"
+                                    AutomationProperties.Name="Forward">
+                                <TextBlock Text="&#xE8B8;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
+                            </Button>
+                        </StackPanel>
                     </Grid>
                 </SplitView.Content>
-        </SplitView>
+            </SplitView>
         </Grid>
 
         <!-- Bottom Bar: PlayerBar + Status -->

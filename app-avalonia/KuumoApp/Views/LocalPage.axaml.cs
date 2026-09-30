@@ -131,6 +131,20 @@ public partial class LocalPage : UserControl
         };
 
         var target = row;
+        container.Focusable = true;
+        container.KeyDown += async (_, e) =>
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Space)
+            {
+                e.Handled = true;
+                await Playback.PlayTrackAsync(target.Payload!, target.Source, MusicType.Local, target.Id);
+            }
+            else if (e.Key == Key.F10 && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                var menu = ItemMenu.Build(target);
+                menu.Open(container);
+            }
+        };
         container.PointerPressed += async (_, e) =>
         {
             if (e.GetCurrentPoint(container).Properties.IsLeftButtonPressed)
