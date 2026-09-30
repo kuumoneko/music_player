@@ -94,6 +94,7 @@ const commands = [
   `ALTER TABLE log ADD COLUMN source TEXT;`,
   `ALTER TABLE playlist_tracks ADD COLUMN position INTEGER;`,
   `ALTER TABLE playlist_tracks ADD COLUMN addedAt TEXT;`,
+  `ALTER TABLE tracks ADD COLUMN deleted INTEGER;`,
 ];
 for (const sql of commands) {
   try { db.run(sql); } catch (e) {

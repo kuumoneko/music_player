@@ -285,7 +285,8 @@ export interface Track {
     index?: number,
     fileModifiedAt?: number,
     youtubeTrackId?: string,
-    etag?: string
+    etag?: string,
+    deleted?: boolean
 }
 
 export interface SearchResult {

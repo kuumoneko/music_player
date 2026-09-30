@@ -20,12 +20,13 @@ import {
 	writeTracks,
 	writeUserData,
 	writeUserDatas,
-	deleteTracks,
+	markTracksDeleted,
 	purgeExpiredSearchCache,
 	seedSystemFromAssets,
 } from "./db/index.ts";
 import { getHash, getPath } from "./lib/hash.ts";
 import { isValidContextEntry } from "./lib/nextfrom.ts";
+import { isPermanentUnavailable } from "./lib/unavailable.ts";
 import { setHomeEmitDataChanged } from "./controllers/home.ts";
 // --- Config ---
 const APP_ROOT = resolve("./");
@@ -260,7 +261,7 @@ const playContextStart = async (excludeId?: string): Promise<boolean> => {
 		message: JSON.stringify(track)
 	}])
 	if (!formatArtists(track.artist) && isYoutube) {
-		deleteTracks([track.id]);
+		markTracksDeleted([track.id]);
 		const refetched = await player.youtubeDataAPI.refetchTrack(track.id);
 		if (refetched) track = refetched;
 	}
@@ -288,8 +289,8 @@ player.player?.on("track-error", (data: any) => {
 	const playedTrack = getUserData("playedTrack") ?? [];
 	writeUserData("playedTrack", playedTrack.filter((t: string) => t !== id));
 	discordRPC.instance?.clearMusic();
-	if (typeof data !== "string") {
-		deleteTracks([id]);
+	if (typeof data !== "string" && isPermanentUnavailable(error)) {
+		markTracksDeleted([id]);
 	}
 	player.player?.next();
 	player.player?.getQueue();
@@ -364,7 +365,7 @@ player.player?.on("playing", async (data) => {
 		message: JSON.stringify(track)
 	}])
 	if (!formatArtists(track.artist) && isYoutube) {
-		deleteTracks([track.id]);
+		markTracksDeleted([track.id]);
 		const refetched = await player.youtubeDataAPI.refetchTrack(track.id);
 		if (refetched) track = refetched;
 	}
@@ -384,6 +385,7 @@ player.player?.on("playing", async (data) => {
 		id: isYoutube ? currentPlaying.id : getHash(currentPlaying.id),
 	});
 	player.player?.getQueue();
+	setDiscordRPC();
 });
 
 player.player?.on("queue", async (data: { filename: string; playing: boolean }[]) => {

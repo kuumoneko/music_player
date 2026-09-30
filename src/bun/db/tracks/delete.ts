@@ -15,6 +15,15 @@ const deleteTracks = db.transaction((ids) => {
     }
 })
 
+const markDeletedStmt = db.prepare("UPDATE tracks SET deleted = 1 WHERE id = ? AND source = 'youtube'");
+
+export const markTracksDeleted = db.transaction((ids: (string | undefined | null)[]) => {
+    for (const id of ids) {
+        if (id === undefined || id === null) continue;
+        markDeletedStmt.run(id);
+    }
+})
+
 export function deleteStaleTrackArtists(artistId: string, validTrackIds: string[]) {
     if (validTrackIds.length === 0) {
         // No valid tracks — remove all links for this artist

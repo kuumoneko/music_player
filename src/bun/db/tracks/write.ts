@@ -17,7 +17,8 @@ const upsertTrackStmt = db.prepare(`
     duration = excluded.duration,
     releasedDate = excluded.releasedDate,
     youtubeTrackId = excluded.youtubeTrackId,
-    etag = COALESCE(excluded.etag, tracks.etag)
+    etag = COALESCE(excluded.etag, tracks.etag),
+    deleted = 0
 `);
 
 const deleteArtistsStmt = db.prepare(`DELETE FROM track_artists WHERE track_id = ?;`);

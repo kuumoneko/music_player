@@ -7,7 +7,7 @@ import removeTrackFromPlaylist from "./playlists/removeTrack.ts";
 import setupSQLite from "./setup.ts";
 import getTracks, { getTrackByName, getAllTracks } from "./tracks/get.ts";
 import writeTracks, { linkTrackToArtist } from "./tracks/write.ts";
-import deleteTracks, { deleteStaleTrackArtists } from "./tracks/delete.ts";
+import deleteTracks, { deleteStaleTrackArtists, markTracksDeleted } from "./tracks/delete.ts";
 import writePlaylist from './playlists/write.ts';
 import { getLocalFileById, getAllLocalFiles, getAllLocalFileIds, searchLocalFiles } from './local/get.ts';
 import writeLocalFiles from './local/write.ts';
@@ -54,6 +54,7 @@ export {
     getTrackByName,
     getAllTracks,
     deleteTracks,
+    markTracksDeleted,
     deleteStaleTrackArtists,
     writeLogs,
     deleteLogs,

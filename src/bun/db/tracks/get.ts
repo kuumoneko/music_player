@@ -11,7 +11,7 @@ const getMultipleTracksStmt = db.prepare(`
   FROM tracks t
   LEFT JOIN track_artists ta ON t.id = ta.track_id 
   LEFT JOIN artists a ON ta.artist_id = a.id
-  WHERE t.id IN (SELECT value FROM json_each($ids))
+  WHERE t.id IN (SELECT value FROM json_each($ids)) AND IFNULL(t.deleted, 0) = 0
   GROUP BY t.id;
 `);
 
@@ -25,11 +25,11 @@ const getTracksByNameStmt = db.prepare(`
   FROM tracks t
   LEFT JOIN track_artists ta ON t.id = ta.track_id
   LEFT JOIN artists a ON ta.artist_id = a.id
-  WHERE t.name LIKE $query
+  WHERE t.name LIKE $query AND IFNULL(t.deleted, 0) = 0
   GROUP BY t.id;
 `);
 
-const getAllTracksIdsStmt = db.prepare("SELECT id FROM tracks");
+const getAllTracksIdsStmt = db.prepare("SELECT id FROM tracks WHERE IFNULL(deleted, 0) = 0");
 
 export default function getTracks(ids: string[]): Track[] {
   if (!ids || ids.length === 0) return [];

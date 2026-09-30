@@ -1,9 +1,10 @@
 import type { Track, Playlist, Artist, SearchResult } from "../../../shared/types.ts";
 import { MusicSource, MusicType } from "../../../shared/types.ts";
-import { getTracks, writeTracks, deleteTracks, deleteStaleTrackArtists, getPlaylist, writePlaylist, getArtistById, writeArtist, writeLogs, getSearchCache, setSearchCache, getUserData, writeUserData, linkTrackToArtist } from "../../db/index.ts";
+import { getTracks, writeTracks, markTracksDeleted, deleteStaleTrackArtists, getPlaylist, writePlaylist, getArtistById, writeArtist, writeLogs, getSearchCache, setSearchCache, getUserData, writeUserData, linkTrackToArtist } from "../../db/index.ts";
 import { Resource, type ResourceState } from "../../cache/resource.ts";
 import type { GoogleAuth } from "../../auth/google.ts";
 import iso8601DurationToMilliseconds from "../../../shared/time.ts";
+import { isPermanentUnavailable } from "../../lib/unavailable.ts";
 import type Youtube from "../youtube/index.ts";
 import { extractPlaylistContents, parsePlaylistItem, itemToTrack } from "../youtube/InnerTube/parser.ts";
 
@@ -245,11 +246,15 @@ export class YoutubeDataAPI {
                 3,
                 `InnerTube video metadata`
             );
-            if (inner && inner.length > 0) {
-                const innerMap = new Map(inner.map(t => [t.id, t]));
+            if (inner !== null) {
+                const innerMap = new Map(inner.tracks.map(t => [t.id, t]));
                 for (const id of uncached) {
                     const t = innerMap.get(id);
                     if (t) cachedMap.set(id, t);
+                }
+                if (inner.dead.length > 0) {
+                    markTracksDeleted(inner.dead);
+                    for (const id of inner.dead) cachedMap.delete(id);
                 }
             }
             const fetched = [...cachedMap.values()];
@@ -309,18 +314,24 @@ export class YoutubeDataAPI {
                         3,
                         `InnerTube video metadata fallback`
                     );
-                    if (inner && inner.length > 0) {
-                        const innerMap = new Map(inner.map(t => [t.id, t]));
-                        for (const id of remaining) {
-                            const t = innerMap.get(id);
-                            if (t) fetched.push(t);
+                    if (inner) {
+                        if (inner.dead.length > 0) {
+                            markTracksDeleted(inner.dead);
+                            for (const id of inner.dead) cachedMap.delete(id);
+                        }
+                        if (inner.tracks.length > 0) {
+                            const innerMap = new Map(inner.tracks.map(t => [t.id, t]));
+                            for (const id of remaining) {
+                                const t = innerMap.get(id);
+                                if (t) fetched.push(t);
+                            }
                         }
                     }
                 }
 
                 const missing = batch.filter((id: string) => !returnedIds.has(id) && !fetched.some(f => f.id === id));
-                if (missing.length > 0) {
-                    deleteTracks(missing);
+                if (missing.length > 0 && !error && Array.isArray(data?.items)) {
+                    markTracksDeleted(missing);
                     for (const id of missing) cachedMap.delete(id);
                 }
             }
@@ -337,13 +348,19 @@ export class YoutubeDataAPI {
         return tracks[0] ?? null;
     }
 
-    private async fetchTracksViaInnerTube(ids: string[]): Promise<Track[]> {
-        if (!this.youtube || ids.length === 0) return [];
+    private async fetchTracksViaInnerTube(ids: string[]): Promise<{ tracks: Track[]; dead: string[] } | null> {
+        if (!this.youtube || ids.length === 0) return { tracks: [], dead: [] };
         const tracks: Track[] = [];
+        const dead: string[] = [];
         for (const id of ids) {
             const data = await this.youtube.getVideoDetails(id);
+            if (!data) return null;
             const vd = data?.videoDetails;
-            if (!vd?.videoId) continue;
+            if (!vd?.videoId) {
+                const ps = data?.playabilityStatus;
+                if (ps && isPermanentUnavailable(ps.reason || ps.status || "")) dead.push(id);
+                continue;
+            }
             tracks.push({
                 source: MusicSource.Youtube,
                 id: vd.videoId,
@@ -354,7 +371,7 @@ export class YoutubeDataAPI {
                 releasedDate: "",
             });
         }
-        return tracks;
+        return { tracks, dead };
     }
 
     // ── Search ──

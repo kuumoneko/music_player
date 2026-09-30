@@ -1,10 +1,11 @@
 import EventEmitter from "node:events";
 import { dlopen, read, CString } from "bun:ffi";
-import { writeLogs, getUserData } from "../db";
+import { writeLogs, getUserData, markTracksDeleted } from "../db";
 
 import { Repeat, SleepMode } from "../../shared/types.ts";
 import { resolve } from "node:path";
 import { INNERTUBE_USER_AGENT } from "../../shared/constants.ts";
+import { isPermanentUnavailable } from "../lib/unavailable.ts";
 
 const MPV_EVENT_SHUTDOWN = 1;
 const MPV_EVENT_START_FILE = 6;
@@ -417,6 +418,7 @@ export default class Play extends EventEmitter {
                     }
                     const reason = result?.error || "unavailable";
                     writeLogs([{ type: "error", message: `addTracks: failed to resolve ${videoId} (${reason}), skipping` }]);
+                    if (isPermanentUnavailable(reason)) markTracksDeleted([videoId]);
                     return;
                 }
                 resolved.push({ url: data.url, original: data.url });
