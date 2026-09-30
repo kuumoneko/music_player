@@ -41,6 +41,7 @@ export default function getPlaylist(id: string, includeTracks: boolean = true): 
 
     if (includeTracks && trackIds.length > 0) {
         playlist.tracks = getTracks(trackIds);
+        playlist.ids = playlist.tracks.map(t => t.id);
     }
 
     return playlist;
