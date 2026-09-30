@@ -1,11 +1,11 @@
 // Builds the Avalonia + Bun payload, assembles a setup.exe with Inno Setup.
 //
-// Pipeline (per profile):
-//   encrypt-credentials --profile X -> data/system.json with profile X's keys
-//   bun run build:prod              -> build/backend.js + build/bin/*.dll
-//   dotnet publish                  -> Avalonia publish output (framework-dependent .NET)
-//   assemble                        -> build/avalonia-package/ (flat layout)
-//   ISCC.exe setup-avalonia.iss     -> artifacts/kuumoapp-avalonia[_<profile>]_{version}-setup.exe
+// Pipeline (profile-independent steps run once, in parallel):
+//   bun run build:prod + dotnet publish   -> build/backend.js + build/avalonia-publish/
+//   assemble payload                      -> build/avalonia-package/ (flat layout)
+// Per profile:
+//   encrypt-credentials --profile X       -> data/system.json with profile X's keys
+//   ISCC.exe setup-avalonia.iss           -> artifacts/kuumoapp-avalonia[_<profile>]_{version}-setup.exe
 //
 // Unlike the WinUI build, there is NO launcher exe and NO Windows App SDK
 // dependency — the Avalonia exe IS the main entry point, kept flat at the
@@ -17,7 +17,7 @@
 //   bun run avalonia:package --profile myown     -> builds only that profile
 //   bun run avalonia:package --cached            -> skips profile-independent builds if outputs exist
 import { spawnSync } from "node:child_process";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
@@ -85,21 +85,21 @@ const publishDir = resolve(buildDir, "avalonia-publish");
 if (useCache && existsSync(backendJs) && existsSync(publishDir)) {
     console.log("\n Skipping profile-independent builds (--cached, outputs exist)");
 } else {
-    run("bun", ["run", "build:prod"]);
-    requireDir(buildDir, "backend build output");
-
-    // 2) Publish the Avalonia app (framework-dependent .NET — no WASDK)
-    rmSync(publishDir, { recursive: true, force: true });
-    run("dotnet", [
-        "publish",
+    // Run backend build and dotnet publish in parallel — they are independent
+    const backendProc = Bun.spawn(["bun", "run", "build:prod"], { cwd: root, stdio: ["inherit", "inherit", "inherit"] });
+    const dotnetProc = Bun.spawn([
+        "dotnet", "publish",
         resolve(root, "app-avalonia", "KuumoApp", "KuumoApp.csproj"),
-        "-c", "Release",
-        "-r", "win-x64",
-        "-o", publishDir,
-    ]);
+        "-c", "Release", "-r", "win-x64", "-o", publishDir,
+    ], { cwd: root, stdio: ["inherit", "inherit", "inherit"] });
+    const [backendExit, dotnetExit] = await Promise.all([backendProc.exited, dotnetProc.exited]);
+    if (backendExit !== 0) { console.error(`Backend build failed (exit ${backendExit})`); process.exit(backendExit ?? 1); }
+    if (dotnetExit !== 0) { console.error(`Dotnet publish failed (exit ${dotnetExit})`); process.exit(dotnetExit ?? 1); }
+
+    requireDir(buildDir, "backend build output");
     requireDir(publishDir, "dotnet publish output");
 
-    // 2b) Ensure Assets land in the publish output (icon stamping needs them)
+    // Ensure Assets land in the publish output (icon stamping needs them)
     const assetsSrc = resolve(root, "app-avalonia", "KuumoApp", "Assets");
     const assetsDst = resolve(publishDir, "Assets");
     if (existsSync(assetsSrc)) {
@@ -113,6 +113,61 @@ if (!iscc) {
     process.exit(1);
 }
 
+// Assemble payload once (profile-independent)
+const pkg = resolve(buildDir, "avalonia-package");
+rmSync(pkg, { recursive: true, force: true });
+mkdirSync(pkg, { recursive: true });
+
+// Copy publish output (the Avalonia exe + managed DLLs)
+for (const entry of readdirSync(publishDir)) {
+    if (entry === "KuumoApp.pdb") continue;
+    cpSync(resolve(publishDir, entry), resolve(pkg, entry), { recursive: true });
+}
+
+// backend/ — JS bundle
+const backendDir = resolve(pkg, "backend");
+mkdirSync(backendDir, { recursive: true });
+copyFileSync(backendJs, resolve(backendDir, "index.js"));
+
+// bun.exe at root
+const bunExeSrc = resolve(root, "bin", "bun.exe");
+const bunExePath = existsSync(bunExeSrc)
+    ? bunExeSrc
+    : (() => {
+        const r = spawnSync("where", ["bun"], { encoding: "utf8" });
+        if (r.status !== 0 || !r.stdout?.trim()) {
+            console.error("bun.exe not found in PATH or bin/");
+            process.exit(1);
+        }
+        const candidates = r.stdout.trim().split(/\r?\n/).filter(Boolean);
+        const MIN_BUN_SIZE = 80 * 1024 * 1024;
+        const resolved = candidates
+            .map(p => ({ path: p.trim(), size: (() => { try { return statSync(p.trim()).size } catch { return 0 } })() }))
+            .filter(c => c.size >= MIN_BUN_SIZE)
+            .sort((a, b) => b.size - a.size)[0];
+        if (!resolved) {
+            console.error(`No valid bun.exe found (tried ${candidates.join(", ")})`);
+            process.exit(1);
+        }
+        return resolved.path;
+    })();
+
+cpSync(bunExePath, resolve(pkg, "bun.exe"));
+const bunSize = statSync(resolve(pkg, "bun.exe")).size;
+if (bunSize < 1024 * 1024) {
+    console.error(`bun.exe copy failed: only ${bunSize} bytes (expected ~85MB)`);
+    process.exit(1);
+}
+
+// include/ — native libs (dlopen'd by bun from CWD = include dir)
+const includeDir = resolve(pkg, "include");
+mkdirSync(includeDir, { recursive: true });
+for (const dll of readdirSync(binDir)) {
+    copyFileSync(resolve(binDir, dll), resolve(includeDir, dll));
+}
+
+console.log(`Payload assembled at ${pkg}`);
+
 const profiles = resolveProfiles();
 const artifactsDir = resolve(root, "artifacts");
 mkdirSync(artifactsDir, { recursive: true });
@@ -122,71 +177,13 @@ for (const profile of profiles) {
     console.log(`\n===== Packaging profile: ${profile} =====`);
     run("bun", ["./scripts/encrypt-credentials.ts", "--profile", profile]);
 
-    // 3) Assemble payload — flat layout, no launcher
-    //    Root holds the Avalonia exe + backend + include + data + Assets
-    const pkg = resolve(buildDir, "avalonia-package");
-    rmSync(pkg, { recursive: true, force: true });
-    mkdirSync(pkg, { recursive: true });
-
-    // Copy publish output (the Avalonia exe + managed DLLs)
-    for (const entry of readdirSync(publishDir)) {
-        if (entry === "KuumoApp.pdb") continue;
-        cpSync(resolve(publishDir, entry), resolve(pkg, entry), { recursive: true });
-    }
-
-    // backend/ — JS bundle
-    const backendDir = resolve(pkg, "backend");
-    mkdirSync(backendDir, { recursive: true });
-    copyFileSync(backendJs, resolve(backendDir, "index.js"));
-
-    // bun.exe at root
-    const bunExeSrc = resolve(root, "bin", "bun.exe");
-    const bunExePath = existsSync(bunExeSrc)
-        ? bunExeSrc
-        : (() => {
-            const r = spawnSync("where", ["bun"], { encoding: "utf8" });
-            if (r.status !== 0 || !r.stdout?.trim()) {
-                console.error("bun.exe not found in PATH or bin/");
-                process.exit(1);
-            }
-            const candidates = r.stdout.trim().split(/\r?\n/).filter(Boolean);
-            const MIN_BUN_SIZE = 80 * 1024 * 1024;
-            const resolved = candidates
-                .map(p => ({ path: p.trim(), size: (() => { try { return statSync(p.trim()).size } catch { return 0 } })() }))
-                .filter(c => c.size >= MIN_BUN_SIZE)
-                .sort((a, b) => b.size - a.size)[0];
-            if (!resolved) {
-                console.error(`No valid bun.exe found (tried ${candidates.join(", ")})`);
-                process.exit(1);
-            }
-            return resolved.path;
-        })();
-
-    // readFileSync + writeFileSync: full copy of running exe
-    const bunDest = resolve(pkg, "bun.exe");
-    writeFileSync(bunDest, readFileSync(bunExePath));
-    const bunSize = statSync(bunDest).size;
-    if (bunSize < 1024 * 1024) {
-        console.error(`bun.exe copy failed: only ${bunSize} bytes (expected ~85MB)`);
-        process.exit(1);
-    }
-
-    // include/ — native libs (dlopen'd by bun from CWD = include dir)
-    const includeDir = resolve(pkg, "include");
-    mkdirSync(includeDir, { recursive: true });
-    for (const dll of readdirSync(binDir)) {
-        copyFileSync(resolve(binDir, dll), resolve(includeDir, dll));
-    }
-
-    // data/system.json — encrypted credentials
+    // Only update the profile-specific file
     const dataDir = resolve(pkg, "data");
     mkdirSync(dataDir, { recursive: true });
     requireDir(resolve(root, "data", "system.json"), "data/system.json");
     copyFileSync(resolve(root, "data", "system.json"), resolve(dataDir, "system.json"));
 
-    console.log(`Payload assembled at ${pkg}`);
-
-    // 4) Inno Setup compile
+    // Inno Setup compile
     run(iscc, [
         resolve(root, "setup-avalonia.iss"),
         `/DMyAppVersion=${version}`,

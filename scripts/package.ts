@@ -26,7 +26,8 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync,
 import { resolve } from "node:path";
 
 const root = resolve(import.meta.dir, "..");
-const { version } = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+const packageJson = readFileSync(resolve(root, "package.json"), "utf8");
+const version = packageJson.split("\n").find(value => value.includes("version"))?.split(":")[1].split(",")[0]?.replaceAll("\"", "").trim()
 const useCache = process.argv.includes("--cached");
 const skipWinui = process.argv.includes("--skip-winui");
 const skipInno = process.argv.includes("--skip-inno");
