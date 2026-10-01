@@ -91,6 +91,9 @@
             <Button x:Name="NextButton" Click="OnNextClick" Style="{StaticResource IconButtonStyle}" ToolTipService.ToolTip="Next" AutomationProperties.Name="Next">
                 <FontIcon Glyph="&#xE893;" FontSize="14" />
             </Button>
+            <Button x:Name="QueueButton" Click="OnQueueClick" Style="{StaticResource IconButtonStyle}" ToolTipService.ToolTip="Play queue" AutomationProperties.Name="Play queue">
+                <FontIcon Glyph="&#xE7FC;" FontSize="14" />
+            </Button>
         </StackPanel>
 
         <Grid
@@ -107,6 +110,7 @@
                 Maximum="1"
                 Value="0"
                 IsEnabled="False"
+                AutomationProperties.Name="Seek"
                 ValueChanged="OnSeekValueChanged" />
             <Grid
                 Grid.Row="1"
@@ -167,6 +171,7 @@
                 Minimum="0"
                 Maximum="100"
                 Value="50"
+                AutomationProperties.Name="Volume"
                 PointerPressed="OnVolumePointerPressed"
                 PointerReleased="OnVolumePointerReleased" />
             <TextBlock

@@ -34,6 +34,8 @@ public sealed class RpcApi
     public Task PreviousAsync() => Call<object?>("previous");
     public Task SeekToAsync(int seconds) => Call<object?>("seekTo", seconds);
     public Task SetSleepAsync(string mode) => Call<object?>("setSleep", mode);
+    public Task<string?> GetSleepAsync() => Call<string?>("getSleep");
+    public Task<bool> PlayNextAsync(TrackDto track) => Call<bool>("playNext", new { track });
     public Task PlayAsync(TrackDto item, string source, string type, string id)
         => Call<object?>("play", new { item, source, type, id });
 
@@ -52,6 +54,8 @@ public sealed class RpcApi
         => Call<JsonElement?>("getMusicData", new { source, type, id });
     public Task<SearchResultDto?> SearchMusicAsync(string type, string source, string query)
         => Call<SearchResultDto?>("searchMusic", new { type, source, query });
+    public Task<SearchResultDto?> SearchMoreAsync(string type, string source, string query, string continuation)
+        => Call<SearchResultDto?>("searchMore", new { type, source, query, continuation });
     public Task<HomeDataDto?> GetHomeDataAsync() => Call<HomeDataDto?>("getHomeData");
     public Task<HomeFeedDto?> GetHomeFeedAsync() => Call<HomeFeedDto?>("getHomeFeed");
     public Task<TrackDto[]?> GetLocalfileAsync() => Call<TrackDto[]?>("getLocalfile");

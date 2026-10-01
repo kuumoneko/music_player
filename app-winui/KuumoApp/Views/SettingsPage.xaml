@@ -1,8 +1,9 @@
-﻿<Page
+<Page
     x:Class="KuumoApp.Views.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:KuumoApp.Controls">
+    xmlns:controls="using:KuumoApp.Controls"
+    NavigationCacheMode="Enabled">
 
     <ScrollViewer>
         <StackPanel
@@ -70,10 +71,38 @@
                 <TextBlock FontSize="12" Opacity="0.7" Text="Optional. Improves metadata quality when added." TextWrapping="Wrap" />
                 <TextBlock x:Name="ApiKeysStatusText" FontSize="12" Opacity="0.7" Text="No API keys configured" TextWrapping="Wrap" />
                 <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBox x:Name="ApiKeyTextBox" PlaceholderText="Enter YouTube Data API key" Width="300" />
+                    <TextBox x:Name="ApiKeyTextBox" PlaceholderText="Enter YouTube Data API key" AutomationProperties.Name="YouTube Data API key" Width="300" />
                     <Button Content="Add" Click="OnAddApiKeyClick" AutomationProperties.Name="Add API key" />
                 </StackPanel>
                 <Button x:Name="RemoveApiKeyButton" Content="Remove API Key" Click="OnRemoveApiKeyClick" AutomationProperties.Name="Remove API key" Visibility="Collapsed" />
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="YouTube cookies" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <TextBlock FontSize="12" Opacity="0.7" Text="Optional. Paste the Cookie header from a signed-in youtube.com session to reduce rate-limit errors. Stored locally and never uploaded." TextWrapping="Wrap" />
+                <TextBox
+                    x:Name="CookiesBox"
+                    PlaceholderText="VISITOR_INFO1_LIVE=...; YSC=..."
+                    AcceptsReturn="True"
+                    TextWrapping="Wrap"
+                    Height="84"
+                    IsSpellCheckEnabled="False"
+                    AutomationProperties.Name="YouTube cookies" />
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button Content="Save cookies" Click="OnSaveCookiesClick" AutomationProperties.Name="Save YouTube cookies" />
+                    <Button Content="Clear cookies" Click="OnClearCookiesClick" AutomationProperties.Name="Clear YouTube cookies" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="Data and logs" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <TextBlock FontSize="12" Opacity="0.7" Text="Settings, queue and logs live in the app data folder as app_data.sqlite." TextWrapping="Wrap" />
+                <Button Content="Open data folder" Click="OnOpenDataFolderClick" AutomationProperties.Name="Open app data folder" />
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+                <TextBlock Text="About" FontSize="20" FontWeight="SemiBold" Style="{StaticResource AppAccentTitleStyle}" />
+                <TextBlock x:Name="AboutText" FontSize="12" Opacity="0.7" Text="KuumoApp" TextWrapping="Wrap" />
             </StackPanel>
         </StackPanel>
     </ScrollViewer>

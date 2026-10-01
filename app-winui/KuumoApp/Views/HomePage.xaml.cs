@@ -59,6 +59,7 @@ public sealed partial class HomePage : Page
         var version = ++_loadVersion;
         LoadingRing.IsActive = true;
         Root.Children.Clear();
+        EmptyText.Visibility = Visibility.Collapsed;
         try
         {
             var feedTask = App.Services.Api.GetHomeFeedAsync();
@@ -70,6 +71,19 @@ public sealed partial class HomePage : Page
             if (version != _loadVersion)
             {
                 return;
+            }
+
+            var sections = (await feedTask)?.Sections ?? [];
+            if (version != _loadVersion)
+            {
+                return;
+            }
+
+            // Rendered before any other row so its indices stay correct.
+            var recent = CardsFromSections(sections, "recently_played");
+            if (recent.Length > 0)
+            {
+                InsertRow(0, "Recently Played", recent, withCreate: false);
             }
 
             var playlists = Merge(localPlaylists.Select(MediaCard.FromPlaylist));
@@ -109,12 +123,6 @@ public sealed partial class HomePage : Page
             if (artists.Count > 0)
             {
                 artistsRowStart = InsertRow(Root.Children.Count, "Artists", artists, withCreate: false, sourceKey: "userSubscriptions", reload: LoadMergedArtistsAsync);
-            }
-
-            var sections = (await feedTask)?.Sections ?? [];
-            if (version != _loadVersion)
-            {
-                return;
             }
 
             var pinnedArtists = CardsFromSections(sections, "pinned_artists");
@@ -169,7 +177,7 @@ public sealed partial class HomePage : Page
             {
                 foreach (var section in sections)
                 {
-                    if (section.Type.StartsWith("pinned_"))
+                    if (section.Type.StartsWith("pinned_") || section.Type == "recently_played")
                     {
                         continue;
                     }
@@ -203,6 +211,9 @@ public sealed partial class HomePage : Page
         if (version == _loadVersion)
         {
             LoadingRing.IsActive = false;
+            EmptyText.Visibility = !ErrorBar.IsOpen && Root.Children.Count == 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
     }
 
@@ -390,6 +401,7 @@ public sealed partial class HomePage : Page
             try
             {
                 await App.Services.Api.CreatePlaylistAsync(name);
+                ItemMenu.InvalidatePlaylists();
                 nameBox.Text = "";
                 createRow.Visibility = Visibility.Collapsed;
                 ToastService.ShowInfo("Playlist created");

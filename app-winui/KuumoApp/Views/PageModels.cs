@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using KuumoApp.Models;
 using KuumoApp.Services;
 
@@ -27,12 +28,39 @@ public record MediaCard(string Kind, string Source, string Type, string Id, stri
 
 public record CollectionNav(string Title, MediaCard[] Cards, string SourceKey = "", Func<Task<MediaCard[]>>? Reload = null);
 
-public record TrackRow(string Source, string Type, string Id, string Title, string Artist, string Thumbnail, string DurationText, TrackDto? Payload = null)
+public record TrackRow(string Source, string Type, string Id, string Title, string Artist, string Thumbnail, string DurationText, TrackDto? Payload = null) : INotifyPropertyChanged
 {
-    public static TrackRow FromTrack(TrackDto track) => new(
-        Source: track.Source, Type: MusicType.Track, Id: track.Id,
-        Title: track.Name, Artist: string.Join(", ", track.Artist.Select(a => a.Name)),
-        Thumbnail: track.Thumbnail, DurationText: FormatDuration(track.Duration), Payload: track);
+    private bool _isPlaying;
+
+    public static TrackRow FromTrack(TrackDto track)
+    {
+        var row = new TrackRow(
+            Source: track.Source, Type: MusicType.Track, Id: track.Id,
+            Title: track.Name, Artist: string.Join(", ", track.Artist.Select(a => a.Name)),
+            Thumbnail: track.Thumbnail, DurationText: FormatDuration(track.Duration), Payload: track);
+        row.IsPlaying = NowPlaying.Matches(track.Source, track.Id);
+        return row;
+    }
+
+    public bool IsPlaying
+    {
+        get => _isPlaying;
+        set
+        {
+            if (_isPlaying == value)
+            {
+                return;
+            }
+            _isPlaying = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsPlaying)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NowPlayingOpacity)));
+        }
+    }
+
+    /// <summary>Classic bindings cannot cast a bool to <c>Opacity</c>, so the marker binds this.</summary>
+    public double NowPlayingOpacity => _isPlaying ? 1 : 0;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public static string FormatDuration(int ms)
     {

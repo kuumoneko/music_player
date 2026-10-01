@@ -28,22 +28,65 @@ public static class MediaGrid
             RowSpacing = 12,
             Margin = new Thickness(0, 0, 0, 16),
         };
-        for (var c = 0; c < columns; c++)
+        var currentColumns = columns;
+
+        void Layout(int cols)
         {
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        }
-        for (var i = 0; i < cards.Count; i++)
-        {
-            if (i % columns == 0)
+            grid.ColumnDefinitions.Clear();
+            grid.RowDefinitions.Clear();
+            grid.Children.Clear();
+            for (var c = 0; c < cols; c++)
             {
-                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             }
-            var card = BuildCard(cards[i], onOpen);
-            Grid.SetColumn(card, i % columns);
-            Grid.SetRow(card, i / columns);
-            grid.Children.Add(card);
+            for (var i = 0; i < cards.Count; i++)
+            {
+                if (i % cols == 0)
+                {
+                    grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                }
+                var card = BuildCard(cards[i], onOpen);
+                Grid.SetColumn(card, i % cols);
+                Grid.SetRow(card, i / cols);
+                grid.Children.Add(card);
+            }
         }
+
+        Layout(columns);
+
+        // Cards are re-created only when the bucket changes, so dragging a window does not
+        // thrash the image loader - a few discrete relayouts is the whole cost.
+        grid.SizeChanged += (_, e) =>
+        {
+            var width = e.NewSize.Width;
+            if (width <= 0)
+            {
+                return;
+            }
+            var cols = ColumnsForWidth(width);
+            if (cols == currentColumns)
+            {
+                return;
+            }
+            currentColumns = cols;
+            grid.DispatcherQueue.TryEnqueue(() =>
+            {
+                if (currentColumns == cols)
+                {
+                    Layout(cols);
+                }
+            });
+        };
+
         return grid;
+    }
+
+    private static int ColumnsForWidth(double width)
+    {
+        // ~200px minimum card plus the 12px gap; two columns floor keeps rows readable,
+        // six is the point where a card gets too small to be useful.
+        var fit = (int)((width + 12) / 212);
+        return Math.Clamp(fit, 2, 6);
     }
 
     public static Grid BuildCard(MediaCard card, Func<MediaCard, Task> onOpen)

@@ -20,6 +20,9 @@ public sealed class AppServices
 
     public event Action? SingleInstanceDetected;
 
+    // false = retrying/retrying exhausted; true = socket open. Raised from the RPC thread.
+    public event Action<bool>? ConnectionChanged;
+
     public AppServices()
     {
         Api = new RpcApi(Rpc);
@@ -35,6 +38,7 @@ public sealed class AppServices
         Bun.SingleInstanceDetected += () => SingleInstanceDetected?.Invoke();
         Rpc.EventReceived += Events.OnEvent;
         Rpc.Disconnected += OnRpcDisconnected;
+        Rpc.Connected += () => ConnectionChanged?.Invoke(true);
         Theme.Start();
         Bun.Start();
     }
@@ -49,8 +53,14 @@ public sealed class AppServices
     private async void OnRpcDisconnected()
     {
         AppLog.Write("app", "rpc disconnected, scheduling reconnect");
+        if (!_shuttingDown)
+        {
+            ConnectionChanged?.Invoke(false);
+        }
         await ConnectWithRetryAsync(delayMs: 2000);
     }
+
+    public Task RetryAsync() => ConnectWithRetryAsync(delayMs: 500);
 
     private async Task ConnectWithRetryAsync(int delayMs = 0, int attempts = 5)
     {
@@ -88,6 +98,13 @@ public sealed class AppServices
                         await Task.Delay(delayMs > 0 ? delayMs : 2000);
                     }
                 }
+            }
+
+            // Every attempt failed and nothing else will report it - surface the dead state
+            // so the shell can offer a retry instead of leaving the app silently unresponsive.
+            if (!_shuttingDown && _endpoint is not null && !Rpc.IsConnected)
+            {
+                ConnectionChanged?.Invoke(false);
             }
         }
         finally

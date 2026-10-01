@@ -31,15 +31,26 @@ public sealed partial class DetailPage : Page
             if (!_menuAttached)
             {
                 _menuAttached = true;
-                var navContext = _nav is { Type: not null } && _nav.Type != MusicType.Track ? _nav : null;
-                ItemMenu.AttachMoreButton(TrackList, LocalRemoveAction, "Remove from playlist", navContext);
+                ItemMenu.AttachMoreButton(
+                    TrackList,
+                    () => IsLocalPlaylist ? LocalRemoveAction : null,
+                    "Remove from playlist",
+                    () => NavContext);
             }
+            NowPlaying.Watch(TrackList);
             await LoadAsync();
         }
     }
 
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        NowPlaying.Unwatch(TrackList);
+    }
+
     private bool _menuAttached;
     private bool IsLocalPlaylist => _nav is { Source: MusicSource.Local, Type: MusicType.Playlist };
+    private DetailNav? NavContext => _nav is { Type: not null } && _nav.Type != MusicType.Track ? _nav : null;
 
     private void LocalRemoveAction(TrackRow row)
     {
@@ -244,7 +255,7 @@ public sealed partial class DetailPage : Page
         {
             if (current.DataContext is TrackRow row)
             {
-                var flyout = await ItemMenu.BuildAsync(row, IsLocalPlaylist ? LocalRemoveAction : null, "Remove from playlist");
+                var flyout = await ItemMenu.BuildAsync(row, IsLocalPlaylist ? LocalRemoveAction : null, "Remove from playlist", NavContext);
                 ItemMenu.Show(flyout, current, e.GetPosition(current));
                 return;
             }
@@ -371,8 +382,12 @@ public sealed partial class DetailPage : Page
         }
         try
         {
+            if (!await DownloadQueueService.EnsureEnabledAsync())
+            {
+                return;
+            }
             await App.Services.Downloads.AddAsync(_nav.Source, _nav.Type, _nav.Id);
-            ToastService.ShowInfo("Added to download queue");
+            ToastService.ShowInfo("Added to download queue", 6000, "Start download", StartQueuedDownloads);
         }
         catch (Exception ex)
         {
@@ -380,6 +395,8 @@ public sealed partial class DetailPage : Page
             ToastService.ShowError($"Download failed: {ex.Message}");
         }
     }
+
+    private static void StartQueuedDownloads() => _ = App.Services.Downloads.StartAsync();
 
     private async void OnRefreshClick(object sender, RoutedEventArgs e)
     {
@@ -433,6 +450,7 @@ public sealed partial class DetailPage : Page
         try
         {
             await App.Services.Api.DeletePlaylistAsync(_nav.Id);
+            ItemMenu.InvalidatePlaylists();
             if (ShellPage.MainFrame?.CanGoBack == true)
             {
                 ShellPage.MainFrame.GoBack();

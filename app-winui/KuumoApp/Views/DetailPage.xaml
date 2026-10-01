@@ -116,7 +116,8 @@
                 IsItemClickEnabled="True"
                 ItemClick="OnTrackClick"
                 RightTapped="OnTrackRightTapped"
-                SelectionMode="None" />
+                SelectionMode="Single"
+                AutomationProperties.Name="Tracks" />
 
             <ProgressRing
                 x:Name="LoadingRing"

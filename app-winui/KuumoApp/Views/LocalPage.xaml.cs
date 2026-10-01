@@ -20,6 +20,7 @@ public sealed partial class LocalPage : Page
         base.OnNavigatedTo(e);
         App.Services.Rpc.Connected += OnRpcConnected;
         App.Services.Events.LocalFilesChanged += OnLocalFilesChanged;
+        NowPlaying.Watch(LocalList);
         if (App.Services.Rpc.IsConnected)
         {
             _ = LoadAsync();
@@ -31,6 +32,7 @@ public sealed partial class LocalPage : Page
         base.OnNavigatedFrom(e);
         App.Services.Rpc.Connected -= OnRpcConnected;
         App.Services.Events.LocalFilesChanged -= OnLocalFilesChanged;
+        NowPlaying.Unwatch(LocalList);
     }
 
     private void OnLocalFilesChanged() => _ = LoadAsync();
@@ -63,10 +65,8 @@ public sealed partial class LocalPage : Page
         try
         {
             var tracks = await App.Services.Api.GetLocalfileAsync();
-            LocalList.ItemsSource = tracks?.Select(TrackRow.FromTrack).ToArray();
-            LocalTitle.Text = $"Local files ({tracks?.Length ?? 0})";
-            EmptyText.Visibility = tracks == null || tracks.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-            LocalList.Visibility = tracks is { Length: > 0 } ? Visibility.Visible : Visibility.Collapsed;
+            _tracks = tracks ?? [];
+            ApplyFilter();
         }
         catch (Exception ex)
         {
@@ -77,6 +77,40 @@ public sealed partial class LocalPage : Page
         {
             LoadingRing.IsActive = false;
         }
+    }
+
+    private TrackDto[] _tracks = [];
+
+    private void OnFilterChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        var filter = FilterBox.Text.Trim();
+        var filtered = string.IsNullOrEmpty(filter)
+            ? _tracks
+            : _tracks.Where(t => MatchesFilter(t, filter)).ToArray();
+
+        LocalTitle.Text = string.IsNullOrEmpty(filter)
+            ? $"Local files ({_tracks.Length})"
+            : $"Local files ({filtered.Length} of {_tracks.Length})";
+        LocalList.ItemsSource = filtered.Select(TrackRow.FromTrack).ToArray();
+
+        var hasAny = _tracks.Length > 0;
+        var empty = !hasAny
+            ? "No local files found. Set a music folder in Settings."
+            : $"No local files match \"{filter}\".";
+        EmptyText.Text = empty;
+        EmptyText.Visibility = filtered.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        LocalList.Visibility = filtered.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static bool MatchesFilter(TrackDto track, string filter)
+    {
+        if (track.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        return track.Artist?.Any(a => a.Name.Contains(filter, StringComparison.OrdinalIgnoreCase)) == true;
     }
 
     private async void OnLocalClick(object sender, ItemClickEventArgs e)

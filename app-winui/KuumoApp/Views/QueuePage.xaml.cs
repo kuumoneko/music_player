@@ -16,8 +16,10 @@ public sealed partial class QueuePage : Page
     public QueuePage()
     {
         InitializeComponent();
-        ItemMenu.AttachMoreButton(QueueList, RemoveFromQueue);
-        ItemMenu.AttachMoreButton(UpcomingList, AddToUpcomingFrom);
+        ItemMenu.AttachMoreButton(QueueList, () => RemoveFromQueue, context: NextfromContext);
+        // Upcoming rows are a view of the "next from" context, not the play queue, so they get
+        // no remove action — the header's "Clear next from" is the real control there.
+        ItemMenu.AttachMoreButton(UpcomingList, context: NextfromContext);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -25,6 +27,8 @@ public sealed partial class QueuePage : Page
         base.OnNavigatedTo(e);
         App.Services.Rpc.Connected += OnRpcConnected;
         App.Services.Events.QueueChanged += OnQueueChanged;
+        NowPlaying.Watch(QueueList);
+        NowPlaying.Watch(UpcomingList);
         if (App.Services.Rpc.IsConnected)
         {
             _ = LoadAsync();
@@ -36,6 +40,8 @@ public sealed partial class QueuePage : Page
         base.OnNavigatedFrom(e);
         App.Services.Rpc.Connected -= OnRpcConnected;
         App.Services.Events.QueueChanged -= OnQueueChanged;
+        NowPlaying.Unwatch(QueueList);
+        NowPlaying.Unwatch(UpcomingList);
     }
 
     private void OnRpcConnected() => DispatcherQueue.TryEnqueue(() => _ = LoadAsync());
@@ -187,17 +193,13 @@ public sealed partial class QueuePage : Page
         }
     }
 
-    private void AddToUpcomingFrom(TrackRow row)
+    private DetailNav? NextfromContext()
     {
-        var (source, type, id) = QueueContext();
-        if (type == MusicType.Track)
+        if (!EntryFormat.TryParse(_nextfrom, out var source, out var type, out var id))
         {
-            RemoveFromQueue(row);
+            return null;
         }
-        else
-        {
-            _ = App.Services.Api.AddToBatchQueueAsync(source, type, id);
-        }
+        return new DetailNav(source, type, id);
     }
 
     private (string Source, string Type, string Id) QueueContext()
@@ -233,7 +235,7 @@ public sealed partial class QueuePage : Page
     {
         if (FindRow(e.OriginalSource) is TrackRow row)
         {
-            var flyout = await ItemMenu.BuildAsync(row, RemoveFromQueue);
+            var flyout = await ItemMenu.BuildAsync(row, RemoveFromQueue, context: NextfromContext());
             ItemMenu.Show(flyout, (FrameworkElement)e.OriginalSource, e.GetPosition((FrameworkElement)e.OriginalSource));
         }
     }
@@ -242,7 +244,7 @@ public sealed partial class QueuePage : Page
     {
         if (FindRow(e.OriginalSource) is TrackRow row)
         {
-            var flyout = await ItemMenu.BuildAsync(row, AddToUpcomingFrom);
+            var flyout = await ItemMenu.BuildAsync(row, context: NextfromContext());
             ItemMenu.Show(flyout, (FrameworkElement)e.OriginalSource, e.GetPosition((FrameworkElement)e.OriginalSource));
         }
     }

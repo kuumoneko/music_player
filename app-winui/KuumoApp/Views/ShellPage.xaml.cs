@@ -1,7 +1,9 @@
+using KuumoApp.Models;
 using KuumoApp.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.Foundation;
 using Windows.System;
@@ -43,11 +45,11 @@ public sealed partial class ShellPage : Page
     public ShellPage()
     {
         InitializeComponent();
-        ToastService.Initialize(ToastPopup, ToastBorder, ToastText);
+        ToastService.Initialize(ToastPopup, ToastBorder, ToastText, ToastAction);
         MainFrame = ContentFrame;
         Nav.SelectedItem = Nav.MenuItems[0];
         ContentFrame.Navigated += OnNavigated;
-        ContentFrame.Navigate(typeof(HomePage));
+        App.Services.ConnectionChanged += OnConnectionChanged;
         KeyDown += OnRootKeyDown;
         AddAltAccelerator(VirtualKey.Left, OnBackAccelerator);
         AddAltAccelerator(VirtualKey.Right, OnForwardAccelerator);
@@ -73,6 +75,135 @@ public sealed partial class ShellPage : Page
         }
     }
 
+    private void OnToastActionClick(object sender, RoutedEventArgs e) => ToastService.InvokeAction();
+
+    private static readonly (string Keys, string Action)[] Shortcuts =
+    [
+        ("Space", "Play / pause"),
+        ("Ctrl + F", "Focus the search box"),
+        ("Ctrl + S", "Toggle shuffle"),
+        ("Ctrl + R", "Cycle repeat mode"),
+        ("Ctrl + M", "Mute / unmute"),
+        ("Ctrl + Up / Down", "Volume up / down"),
+        ("Ctrl + Left / Right", "Previous / next track"),
+        ("Alt + Left / Right", "Back / forward"),
+        ("Esc", "Back"),
+    ];
+
+    private void OnHelpClick(object sender, RoutedEventArgs e)
+    {
+        var panel = new StackPanel { Spacing = 8, Padding = new Thickness(4) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Keyboard shortcuts",
+            FontSize = 16,
+            Margin = new Thickness(0, 0, 0, 4),
+        });
+        foreach (var (keys, action) in Shortcuts)
+        {
+            var row = new Grid { ColumnSpacing = 16 };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            row.Children.Add(new TextBlock
+            {
+                Text = keys,
+                FontFamily = new FontFamily("Consolas"),
+                Opacity = 0.85,
+            });
+            var label = new TextBlock { Text = action, TextWrapping = TextWrapping.Wrap };
+            Grid.SetColumn(label, 1);
+            row.Children.Add(label);
+            panel.Children.Add(row);
+        }
+        var flyout = new Flyout
+        {
+            Content = new ScrollViewer
+            {
+                Content = panel,
+                MaxHeight = 420,
+                Padding = new Thickness(4),
+            },
+        };
+        flyout.ShowAt(sender as FrameworkElement ?? HelpButton);
+    }
+
+    private void OnConnectionChanged(bool connected)
+    {
+        DispatcherQueue.TryEnqueue(() => ConnectionBar.IsOpen = !connected);
+    }
+
+    private async void OnConnectionRetryClick(object sender, RoutedEventArgs e)
+    {
+        ConnectionBar.Message = "Retrying...";
+        await App.Services.RetryAsync();
+        if (App.Services.Rpc.IsConnected)
+        {
+            ConnectionBar.IsOpen = false;
+        }
+        else
+        {
+            ConnectionBar.Message = "Reconnecting automatically - playback and downloads are paused until it returns.";
+        }
+    }
+
+    // First navigation waits for the backend so the last-visited page can be restored from sqlite.
+    private bool _restored;
+
+    private async void OnRootLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_restored)
+        {
+            return;
+        }
+        _restored = true;
+        var startTag = "home";
+        try
+        {
+            await WaitForRpcAsync();
+            var saved = await App.Services.Api.GetUserDataAsync<UiStateDto>(UserDataKeys.UiState);
+            if (saved is not null && Pages.ContainsKey(saved.Page))
+            {
+                startTag = saved.Page;
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("shell", $"uiState restore failed: {ex.GetType().Name}: {ex.Message}");
+        }
+        if (Pages.TryGetValue(startTag, out var page))
+        {
+            ContentFrame.Navigate(page);
+        }
+    }
+
+    private static async Task WaitForRpcAsync()
+    {
+        if (App.Services.Rpc.IsConnected)
+        {
+            return;
+        }
+        var tcs = new TaskCompletionSource();
+        Action handler = null!;
+        handler = () => tcs.TrySetResult();
+        App.Services.Rpc.Connected += handler;
+        try
+        {
+            await tcs.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        }
+        catch (TimeoutException)
+        {
+        }
+        finally
+        {
+            App.Services.Rpc.Connected -= handler;
+        }
+    }
+
+    private void PersistUiState(string tag)
+    {
+        _ = App.Services.Api.SetUserDataAsync(UserDataKeys.UiState, new UiStateDto(tag));
+    }
+
     private void OnNavigated(object sender, NavigationEventArgs e)
     {
         if (e.SourcePageType == typeof(SettingsPage))
@@ -80,6 +211,7 @@ public sealed partial class ShellPage : Page
             Nav.SelectedItem = Nav.SettingsItem;
             SetTitle(PageTitles[typeof(SettingsPage)]);
             UpdateNavButtons();
+            PersistUiState("settings");
             return;
         }
         var tag = Pages.FirstOrDefault(kv => kv.Value == e.SourcePageType).Key;
@@ -93,6 +225,7 @@ public sealed partial class ShellPage : Page
         if (tag is not null)
         {
             SetTitle(PageTitles[e.SourcePageType]);
+            PersistUiState(tag);
         }
         else
         {

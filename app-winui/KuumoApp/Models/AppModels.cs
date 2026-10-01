@@ -62,6 +62,8 @@ public static class UserDataKeys
     public const string GoogleClientId = "googleClientId";
     public const string GoogleClientSecret = "googleClientSecret";
     public const string YtCookies = "ytCookies";
+    public const string RecentSearches = "recentSearches";
+    public const string UiState = "uiState";
 }
 
 public enum Shuffle
@@ -112,7 +114,7 @@ public record ArtistDto(
     long? LastFetched = null,
     long? CacheTtl = null);
 
-public record SearchResultDto(TrackDto[] Tracks, PlaylistDto[] Playlists, ArtistDto[] Artists);
+public record SearchResultDto(TrackDto[] Tracks, PlaylistDto[] Playlists, ArtistDto[] Artists, string? Continuation = null);
 
 public record HomeDataDto(ArtistDto[] Artists, PlaylistDto[] Playlists, TrackDto[] Tracks, TrackDto[] NewTracks);
 
@@ -130,7 +132,9 @@ public record PlayingDataDto(
 
 public record PlayingCurrentDto(double Time, double Duration, bool IsLived, bool IsPlaying);
 
-public record DownloadStatusDto(string Data, string Track);
+public record DownloadStatusDto(string Data, string Track, double? Progress = null);
+
+public record UiStateDto(string Page);
 
 public record GoogleAuthStateDto(bool IsSignedIn, bool HasOAuth = true, string? Email = null, long? ExpiresAt = null);
 

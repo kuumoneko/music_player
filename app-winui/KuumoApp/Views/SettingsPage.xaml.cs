@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
@@ -59,6 +59,7 @@ public sealed partial class SettingsPage : Page
     private async Task LoadAsync()
     {
         _loading = true;
+        AboutText.Text = BuildAboutText();
         try
         {
             var bandsTask = App.Services.Api.GetUserDataAsync<JsonElement?>("equalizerBands");
@@ -130,6 +131,16 @@ public sealed partial class SettingsPage : Page
             catch (Exception ex)
             {
                 AppLog.Write("settings", $"api keys load failed: {ex.Message}");
+            }
+
+            try
+            {
+                var cookies = await App.Services.Api.GetYtCookiesAsync();
+                CookiesBox.Text = cookies ?? "";
+            }
+            catch (Exception ex)
+            {
+                AppLog.Write("settings", $"cookies load failed: {ex.Message}");
             }
         }
         catch (Exception ex)
@@ -523,5 +534,56 @@ public sealed partial class SettingsPage : Page
             AppLog.Write("settings", $"remove api key failed: {ex.Message}");
             ToastService.ShowError($"Remove API key failed: {ex.Message}");
         }
+    }
+
+    private async void OnSaveCookiesClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            CookiesBox.Text = await App.Services.Api.SetYtCookiesAsync(CookiesBox.Text.Trim()) ?? "";
+            ToastService.ShowInfo("YouTube cookies saved");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("settings", $"cookies save failed: {ex.Message}");
+            ToastService.ShowError($"Could not save cookies: {ex.Message}");
+        }
+    }
+
+    private async void OnClearCookiesClick(object sender, RoutedEventArgs e)
+    {
+        CookiesBox.Text = "";
+        try
+        {
+            await App.Services.Api.ClearYtCookiesAsync();
+            ToastService.ShowInfo("YouTube cookies cleared");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("settings", $"cookies clear failed: {ex.Message}");
+            ToastService.ShowError($"Could not clear cookies: {ex.Message}");
+        }
+    }
+
+    private void OnOpenDataFolderClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "KuumoApp");
+            Directory.CreateDirectory(path);
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("settings", $"open data folder failed: {ex.Message}");
+            ToastService.ShowError($"Could not open the data folder: {ex.Message}");
+        }
+    }
+
+    private static string BuildAboutText()
+    {
+        var version = typeof(SettingsPage).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+        var backend = App.Services.Rpc.IsConnected ? "connected" : "not connected";
+        return $"KuumoApp {version} - music engine {backend}";
     }
 }

@@ -2,7 +2,8 @@
     x:Class="KuumoApp.Views.ShellPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="using:KuumoApp.Controls">
+    xmlns:controls="using:KuumoApp.Controls"
+    Loaded="OnRootLoaded">
 
     <Page.KeyboardAccelerators>
         <KeyboardAccelerator Key="Left" Modifiers="Control" Invoked="OnPrevAccelerator" />
@@ -17,11 +18,29 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <InfoBar
+            x:Name="ConnectionBar"
+            Grid.Row="0"
+            IsOpen="False"
+            IsClosable="False"
+            Severity="Warning"
+            Title="Connection to the music engine lost"
+            Message="Reconnecting automatically - playback and downloads are paused until it returns.">
+            <InfoBar.ActionButton>
+                <Button
+                    Content="Retry now"
+                    Click="OnConnectionRetryClick"
+                    AutomationProperties.Name="Retry connection" />
+            </InfoBar.ActionButton>
+        </InfoBar>
+
         <NavigationView
+            Grid.Row="1"
             x:Name="Nav"
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="True"
@@ -43,6 +62,12 @@
                             AutomationProperties.Name="Forward"
                             IsEnabled="False">
                         <FontIcon Glyph="&#xE72A;" FontSize="14" />
+                    </Button>
+                    <Button x:Name="HelpButton" Click="OnHelpClick"
+                            Style="{StaticResource IconButtonStyle}"
+                            ToolTipService.ToolTip="Keyboard shortcuts"
+                            AutomationProperties.Name="Keyboard shortcuts">
+                        <FontIcon Glyph="&#xE897;" FontSize="14" />
                     </Button>
                 </StackPanel>
             </NavigationView.PaneHeader>
@@ -74,7 +99,7 @@
                 </NavigationViewItem>
             </NavigationView.MenuItems>
 
-            <Frame x:Name="ContentFrame" CacheSize="0" />
+            <Frame x:Name="ContentFrame" CacheSize="8" />
         </NavigationView>
 
         <Popup x:Name="ToastPopup"
@@ -87,15 +112,28 @@
                     Padding="16,10"
                     MaxWidth="500"
                     MinWidth="200">
-                <TextBlock x:Name="ToastText"
-                           TextWrapping="Wrap"
-                           Foreground="White"
-                           FontSize="13" />
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="ToastText"
+                               TextWrapping="Wrap"
+                               Foreground="White"
+                               FontSize="13"
+                               VerticalAlignment="Center" />
+                    <Button x:Name="ToastAction"
+                            Grid.Column="1"
+                            Visibility="Collapsed"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Toast action"
+                            Click="OnToastActionClick" />
+                </Grid>
             </Border>
         </Popup>
 
         <Grid
-            Grid.Row="1"
+            Grid.Row="2"
             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />

@@ -67,6 +67,7 @@ public sealed partial class PlayerBar : UserControl
                 _repeat = playing.Repeat;
                 UpdatePlayPauseIcon();
                 UpdateStateIcons();
+                SetLoading(playing.IsLoading);
                 SetDuration((int)playing.Current.Duration);
                 SetTime(new TimeUpdateDto(playing.Current.Time, playing.IsPlaying));
             }
@@ -89,8 +90,21 @@ public sealed partial class PlayerBar : UserControl
         }
         catch (Exception ex)
         {
-            AppLog.Write("playerbar", $"initial load failed: {ex.GetType().Name}: {ex}");
+            AppLog.Write("playerbar", $"initial state failed: {ex.GetType().Name}: {ex.Message}");
         }
+
+        // Sleep is held by the backend (and dropped when it restarts), so re-sync last -
+        // a failure here must not hide the state loaded above.
+        try
+        {
+            var sleep = await App.Services.Api.GetSleepAsync();
+            _sleepMode = string.IsNullOrEmpty(sleep) ? SleepMode.No : sleep;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("playerbar", $"getSleep failed: {ex.GetType().Name}: {ex.Message}");
+        }
+        UpdateSleepUi();
     }
 
     public void SetTrack(CurrentTrackChangedDto track)
@@ -130,12 +144,20 @@ public sealed partial class PlayerBar : UserControl
     public void SetPlayerState(PlayerStateChangeDto data)
     {
         _isPlaying = data.IsPlaying;
+        SetLoading(data.IsLoading);
         UpdatePlayPauseIcon();
         SetDuration((int)data.Duration);
         if (!_isLive)
         {
             LiveBadge.Visibility = data.IsLived ? Visibility.Visible : Visibility.Collapsed;
         }
+    }
+
+    // Buffering swaps the play glyph for the spinner inside the same button.
+    private void SetLoading(bool isLoading)
+    {
+        BufferingRing.IsActive = isLoading;
+        PlayPauseIcon.Visibility = isLoading ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void SetDuration(int durationMs)
@@ -409,6 +431,11 @@ public sealed partial class PlayerBar : UserControl
         _isPlaying = !_isPlaying;
         UpdatePlayPauseIcon();
         _ = TogglePlayPauseAsync();
+    }
+
+    private void OnQueueClick(object sender, RoutedEventArgs e)
+    {
+        ShellPage.MainFrame?.Navigate(typeof(QueuePage));
     }
 
     private async void OnPlayPauseClick(object sender, RoutedEventArgs e)

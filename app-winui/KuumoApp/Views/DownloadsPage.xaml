@@ -1,9 +1,10 @@
-﻿<Page
+<Page
     x:Class="KuumoApp.Views.DownloadsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:helpers="using:KuumoApp.Controls"
-    xmlns:local="using:KuumoApp.Views">
+    xmlns:local="using:KuumoApp.Views"
+    NavigationCacheMode="Enabled">
 
     <Grid Padding="24" RowSpacing="12">
         <Grid.RowDefinitions>
@@ -60,7 +61,8 @@
             Grid.Row="1"
             x:Name="QueueList"
             IsItemClickEnabled="False"
-            SelectionMode="None">
+            SelectionMode="Single"
+                AutomationProperties.Name="Download queue">
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="local:DownloadQueueItem">
                     <Grid

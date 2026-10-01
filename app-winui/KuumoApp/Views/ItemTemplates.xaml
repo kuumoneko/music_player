@@ -52,11 +52,25 @@
                 Height="64"
                 CornerRadius="6"
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-                <Image
-                    helpers:ImageAttach.SourceUrl="{Binding Thumbnail}"
-                    Width="64"
-                    Height="64"
-                    Stretch="UniformToFill" />
+                <Grid>
+                    <Image
+                        helpers:ImageAttach.SourceUrl="{Binding Thumbnail}"
+                        Width="64"
+                        Height="64"
+                        Stretch="UniformToFill" />
+                    <Border
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        Opacity="{Binding NowPlayingOpacity}">
+                        <FontIcon
+                            Glyph="&#xE768;"
+                            FontSize="22"
+                            Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
             </Border>
             <StackPanel
                 Grid.Column="1"

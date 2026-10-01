@@ -11,13 +11,20 @@ public static class ToastService
     private static Popup? _popup;
     private static Border? _border;
     private static TextBlock? _text;
+    private static Button? _action;
     private static DispatcherTimer? _timer;
+    private static Action? _pendingAction;
 
-    public static void Initialize(Popup popup, Border border, TextBlock text)
+    public static void Initialize(Popup popup, Border border, TextBlock text, Button? action = null)
     {
         _popup = popup;
         _border = border;
         _text = text;
+        _action = action;
+        if (_action is not null)
+        {
+            _action.Visibility = Visibility.Collapsed;
+        }
         _timer = new DispatcherTimer();
         _timer.Tick += (_, _) =>
         {
@@ -32,10 +39,23 @@ public static class ToastService
     public static void ShowWarning(string message, int autoCloseMs = 3500)
         => Show(message, ToastSeverity.Warning, autoCloseMs);
 
-    public static void ShowInfo(string message, int autoCloseMs = 3000)
-        => Show(message, ToastSeverity.Info, autoCloseMs);
+    public static void ShowInfo(string message, int autoCloseMs = 3000, string? actionLabel = null, Action? action = null)
+        => Show(message, ToastSeverity.Info, autoCloseMs, actionLabel, action);
 
-    private static void Show(string message, ToastSeverity severity, int autoCloseMs)
+    /// <summary>Runs the action button of the currently visible toast, if any.</summary>
+    public static void InvokeAction()
+    {
+        var action = _pendingAction;
+        _pendingAction = null;
+        _timer?.Stop();
+        if (_popup is not null)
+        {
+            _popup.IsOpen = false;
+        }
+        action?.Invoke();
+    }
+
+    private static void Show(string message, ToastSeverity severity, int autoCloseMs, string? actionLabel = null, Action? action = null)
     {
         if (_popup is null || _border is null || _text is null) return;
         _timer?.Stop();
@@ -49,6 +69,17 @@ public static class ToastService
 
         _text.Text = message;
         _text.Foreground = new SolidColorBrush(Colors.White);
+
+        var hasAction = actionLabel is not null && action is not null && _action is not null;
+        _pendingAction = hasAction ? action : null;
+        if (_action is not null)
+        {
+            _action.Visibility = hasAction ? Visibility.Visible : Visibility.Collapsed;
+            if (hasAction)
+            {
+                _action.Content = actionLabel;
+            }
+        }
 
         if (_popup.XamlRoot is { } root)
         {
