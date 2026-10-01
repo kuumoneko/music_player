@@ -1,7 +1,8 @@
 import { MusicSource, MusicType, HomeFeedSection, Track, Artist, Playlist } from "../../shared/types.ts";
 import Player from "../music/index.ts";
 import { parseBrowseResponse } from "../music/youtube/InnerTube/browse-parser";
-import { getPlaylist, getUserData, writeLogs, writeUserData } from "../db/index.ts";
+import { getLocalFileById, getPlaylist, getUserData, writeLogs, writeUserData } from "../db/index.ts";
+import { resolveId, trackToFront } from "../lib/hash.ts";
 import { isPinBroken } from "../music/youtube-data-api/index.ts";
 import { Resource } from "../cache/resource.ts";
 
@@ -37,9 +38,14 @@ export function setHomeEmitDataChanged(fn: (key: string) => void) {
     emitDataChanged = fn;
 }
 
+export function notifyHomeChanged() {
+    emitDataChanged?.("homeFeed");
+}
+
 export function clearHomeCaches() {
     homeResources.clear();
     homeFeedResources.clear();
+    recentCache = null;
 }
 
 async function loadHomeData(player: Player, pin: string[]): Promise<{ data: HomeData; complete?: boolean } | null> {
@@ -156,7 +162,49 @@ function parseBrowseItem(item: { id: string; title: string; type: "video" | "pla
 }
 
 export async function HomeFeedController(player: Player, pin: string[] | null): Promise<{ sections: HomeFeedSection[] }> {
-    return getHomeFeedResource(player, pin).get();
+    const base = await getHomeFeedResource(player, pin).get();
+    const recent = await getRecentlyPlayedSection(player);
+    const sections = recent
+        ? [recent, ...base.sections.filter((s) => s.type !== "recently_played")]
+        : base.sections;
+    return { sections };
+}
+
+const RECENT_LIMIT = 24;
+const RECENT_TTL = 60_000;
+const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+let recentCache: { key: string; at: number; section: HomeFeedSection | null } | null = null;
+
+async function getRecentlyPlayedSection(player: Player): Promise<HomeFeedSection | null> {
+    const ids: string[] = (getUserData("playedTrack") ?? []) as string[];
+    // History is stored most recent last.
+    const latestFirst = [...ids].reverse().slice(0, RECENT_LIMIT);
+    if (latestFirst.length === 0) return null;
+
+    const key = latestFirst.join(",");
+    if (recentCache && recentCache.key === key && Date.now() - recentCache.at < RECENT_TTL) {
+        return recentCache.section;
+    }
+
+    const youtubeIds = latestFirst.filter((id) => YOUTUBE_ID.test(id));
+    const tracks = await player.youtubeDataAPI.fetchTrack(youtubeIds).catch(() => [] as Track[]);
+    const byId = new Map<string, Track>();
+    for (const track of tracks) {
+        if (track?.id) byId.set(track.id, track);
+    }
+    for (const id of latestFirst) {
+        if (YOUTUBE_ID.test(id)) continue;
+        const local = getLocalFileById(resolveId(id));
+        if (local) byId.set(id, trackToFront(local));
+    }
+    const ordered = latestFirst.map((id) => byId.get(id)).filter((t): t is Track => t !== undefined);
+    const items = ordered.length > 0 ? ordered : tracks;
+    const section: HomeFeedSection | null = items.length > 0
+        ? { title: "Recently Played", type: "recently_played", items, itemType: "track" }
+        : null;
+
+    recentCache = { key, at: Date.now(), section };
+    return section;
 }
 
 function getHomeFeedResource(player: Player, pin: string[] | null): Resource<{ sections: HomeFeedSection[] }> {

@@ -8,7 +8,11 @@
             },
             searchMusic: {
                 params: { type: MusicType, source: MusicSource, query: string },
-                response: { tracks: Track[], playlists: Playlist[], artists: Artist[] }
+                response: { tracks: Track[], playlists: Playlist[], artists: Artist[], continuation?: string }
+            },
+            searchMore: {
+                params: { type: MusicType, source: MusicSource, query: string, continuation: string },
+                response: { tracks: Track[], playlists: Playlist[], artists: Artist[], continuation?: string }
             },
             getHomeData: {
                 params: {},
@@ -83,6 +87,7 @@
                 response: null
             },
             setSleep: { params: SleepMode, response: null },
+            getSleep: { params: null, response: SleepMode },
             isHasDiscordRPC: {
                 params: null,
                 response: boolean | string
@@ -106,6 +111,10 @@
             addToBatchQueue: {
                 params: { source: MusicSource, type: MusicType, id: string },
                 response: null
+            },
+            playNext: {
+                params: { track: Track },
+                response: boolean
             },
             getImageDataUri: {
                 params: string,
@@ -292,12 +301,15 @@ export interface Track {
 export interface SearchResult {
     tracks: Track[],
     playlists: Playlist[],
-    artists: Artist[]
+    artists: Artist[],
+    // InnerTube pagination token; omitted when the provider has no further page (or the
+    // result came from cache - cached tokens are deliberately stripped, they go stale).
+    continuation?: string
 }
 
 export interface HomeFeedSection {
     title: string;
-    type: "trending" | "subscriptions" | "continue_listening" | "pinned_artists" | "pinned_playlists" | "pinned_tracks" | "pinned_new_tracks" | "mixed";
+    type: "trending" | "subscriptions" | "continue_listening" | "recently_played" | "pinned_artists" | "pinned_playlists" | "pinned_tracks" | "pinned_new_tracks" | "mixed";
     items: (Track | Artist | Playlist)[];
     itemType: "track" | "artist" | "playlist";
 }
@@ -359,7 +371,11 @@ export interface UserData {
     youtubeSubscriptionsEtag?: string,
     brokenPins?: Record<string, { at: number, name: string }>,
     homeFeedSections?: { sections: HomeFeedSection[], at: number },
-    windowSize?: { width: number, height: number, isMaximized: boolean }
+    themeMode?: "system" | "light" | "dark",
+    dynamicAccent?: boolean,
+    recentSearches?: string[],
+    windowSize?: { width: number, height: number, isMaximized: boolean },
+    uiState?: { page: string }
 }
 
 export interface System {

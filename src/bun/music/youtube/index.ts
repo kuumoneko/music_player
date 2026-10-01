@@ -1,7 +1,7 @@
 import { INNERTUBE_CLIENT_VERSION, INNERTUBE_USER_AGENT, ANDROID_CLIENT_VERSION, IOS_CLIENT_VERSION } from "../../../shared/constants.ts";
 import { ytSession } from "./session.ts";
 import { MusicType, MusicSource, Track } from "../../../shared/types.ts";
-import { extractSearchContents, ensureHttps } from "./InnerTube/parser.ts";
+import { extractSearchContents, ensureHttps, extractSearchContinuationToken, extractSearchContinuationContents, parseSearchItems } from "./InnerTube/parser.ts";
 import { writeLogs } from "../../db/index.ts";
 
 const INNERTUBE_BASE = "https://www.youtube.com/youtubei/v1";
@@ -189,7 +189,7 @@ export default class Youtube {
         return res.json();
     }
 
-    async searchAll(query: string, type: MusicType): Promise<{ tracks: Track[]; playlists: any[]; artists: any[] }> {
+    async searchAll(query: string, type: MusicType): Promise<{ tracks: Track[]; playlists: any[]; artists: any[]; continuation?: string }> {
         const session = await ytSession.ensure().catch(() => null);
 
         const client: Record<string, unknown> = {
@@ -233,6 +233,62 @@ export default class Youtube {
         const data = await res.json();
         const items = extractSearchContents(data);
 
+        return { ...this.mapSearchItems(items), continuation: extractSearchContinuationToken(data) ?? undefined };
+    }
+
+    // Pagination for search results: InnerTube /next with the token from the previous page.
+    async searchMore(continuation: string): Promise<{ tracks: Track[]; playlists: any[]; artists: any[]; continuation?: string }> {
+        const session = await ytSession.ensure().catch(() => null);
+
+        const client: Record<string, unknown> = {
+            clientName: "WEB",
+            clientVersion: INNERTUBE_CLIENT_VERSION,
+            hl: "en",
+            gl: "US",
+            ...(session?.visitorData ? { visitorData: session.visitorData } : {}),
+        };
+
+        const body: Record<string, unknown> = {
+            continuation,
+            context: { client },
+        };
+
+        const url = new URL(`${INNERTUBE_BASE}/next`);
+        url.searchParams.set("prettyPrint", "false");
+        if (session?.apiKey) url.searchParams.set("key", session.apiKey);
+
+        const headers: Record<string, string> = {
+            "content-type": "application/json",
+            "accept": "application/json",
+            "accept-language": "en-US,en;q=0.9",
+            "user-agent": INNERTUBE_USER_AGENT,
+            "origin": "https://www.youtube.com",
+        };
+        if (session?.cookies) {
+            headers["cookie"] = session.cookies;
+        }
+
+        try {
+            const res = await fetch(url.toString(), {
+                method: "POST",
+                headers,
+                body: JSON.stringify(body),
+                signal: AbortSignal.timeout(10_000),
+            });
+            if (!res.ok) {
+                return { tracks: [], playlists: [], artists: [] };
+            }
+            const data = await res.json();
+            return {
+                ...this.mapSearchItems(parseSearchItems(extractSearchContinuationContents(data))),
+                continuation: extractSearchContinuationToken(data) ?? undefined,
+            };
+        } catch {
+            return { tracks: [], playlists: [], artists: [] };
+        }
+    }
+
+    private mapSearchItems(items: any[]): { tracks: Track[]; playlists: any[]; artists: any[] } {
         const tracks: Track[] = [];
         const playlists: any[] = [];
         const artists: any[] = [];

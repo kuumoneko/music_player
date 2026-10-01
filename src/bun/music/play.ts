@@ -110,6 +110,10 @@ export default class Play extends EventEmitter {
                 this.setRepeat(true);
             }
 
+            const eqEnabled = getUserData("equalizerEnabled") ?? true;
+            const eqBands = getUserData("equalizerBands") ?? [];
+            this.setEqualizer(eqEnabled ? eqBands : []);
+
             this.isReady = true;
             this.emit("ready");
         } catch (e) {
@@ -406,6 +410,53 @@ export default class Play extends EventEmitter {
     }
 
     async addTracks(datas: { url: string; title: string; thumbnail: string }[]) {
+        const resolved = await this.resolveTracks(datas);
+        this.trimPlaylistHead(resolved.length);
+        this.playlistUrls.push(...resolved.map(r => r.original));
+        for (const { url } of resolved) {
+            const ret = this.symbols?.mpv_command_string(this.handle, S(`loadfile "${url.replace(/\\/g, "/")}" append`));
+            if (ret !== undefined && ret < 0) writeLogs([{ type: "error", message: `mpv loadfile append failed: ${this.mpvError(ret)}` }]);
+        }
+        this.updateSMTC();
+    }
+
+    /**
+     * Put tracks directly after the current entry instead of at the end of the playlist.
+     *
+     * mpv's `playlist-move <index1> <index2>` moves entry index1 to the place of entry
+     * index2, and when index1 sits after index2 the moved entry lands exactly on index2.
+     * After the append the new entries are the tail of the playlist, so calling
+     * "move last -> pos+1" once per entry walks them in reverse and leaves them in their
+     * original order right after the current track.
+     */
+    async insertNext(datas: { url: string; title: string; thumbnail: string }[]) {
+        const resolved = await this.resolveTracks(datas);
+        if (resolved.length === 0) return;
+        this.trimPlaylistHead(resolved.length);
+
+        this.playlistUrls.splice(this.playlistIndex + 1, 0, ...resolved.map(r => r.original));
+
+        const before = this.mpvNumber("playlist-count") ?? 0;
+        for (const { url } of resolved) {
+            const ret = this.symbols?.mpv_command_string(this.handle, S(`loadfile "${url.replace(/\\/g, "/")}" append`));
+            if (ret !== undefined && ret < 0) writeLogs([{ type: "error", message: `mpv loadfile append failed: ${this.mpvError(ret)}` }]);
+        }
+        const count = this.mpvNumber("playlist-count");
+        const pos = this.mpvNumber("playlist-pos");
+        if (count !== null && pos !== null && pos >= 0) {
+            const added = count - before;
+            if (added !== resolved.length) {
+                writeLogs([{ type: "error", message: `insertNext: mpv accepted ${added} of ${resolved.length} entries` }]);
+            }
+            for (let i = 0; i < added; i++) {
+                const ret = this.symbols?.mpv_command_string(this.handle, S(`playlist-move ${count - 1} ${pos + 1}`));
+                if (ret !== undefined && ret < 0) writeLogs([{ type: "error", message: `mpv playlist-move failed: ${this.mpvError(ret)}` }]);
+            }
+        }
+        this.updateSMTC();
+    }
+
+    private async resolveTracks(datas: { url: string; title: string; thumbnail: string }[]): Promise<{ url: string; original: string }[]> {
         const resolved: { url: string; original: string }[] = [];
         await Promise.all(
             datas.map(async (data) => {
@@ -417,30 +468,38 @@ export default class Play extends EventEmitter {
                         return;
                     }
                     const reason = result?.error || "unavailable";
-                    writeLogs([{ type: "error", message: `addTracks: failed to resolve ${videoId} (${reason}), skipping` }]);
+                    writeLogs([{ type: "error", message: `resolveTracks: failed to resolve ${videoId} (${reason}), skipping` }]);
                     if (isPermanentUnavailable(reason)) markTracksDeleted([videoId]);
                     return;
                 }
                 resolved.push({ url: data.url, original: data.url });
-            })
+            }),
         );
+        return resolved;
+    }
+
+    private trimPlaylistHead(addCount: number) {
         const MAX_PLAYLIST_URLS = 100;
-        if (this.playlistUrls.length + resolved.length > MAX_PLAYLIST_URLS) {
+        if (this.playlistUrls.length + addCount > MAX_PLAYLIST_URLS) {
             // Drop only already-consumed entries (before the current index) so
             // the app-side queue keeps matching mpv's internal playlist position.
-            const overflow = this.playlistUrls.length + resolved.length - MAX_PLAYLIST_URLS;
+            const overflow = this.playlistUrls.length + addCount - MAX_PLAYLIST_URLS;
             const removable = Math.min(overflow, this.playlistIndex);
             if (removable > 0) {
                 this.playlistUrls.splice(0, removable);
                 this.playlistIndex -= removable;
             }
         }
-        this.playlistUrls.push(...resolved.map(r => r.original));
-        for (const { url } of resolved) {
-            const ret = this.symbols?.mpv_command_string(this.handle, S(`loadfile "${url.replace(/\\/g, "/")}" append`));
-            if (ret !== undefined && ret < 0) writeLogs([{ type: "error", message: `mpv loadfile append failed: ${this.mpvError(ret)}` }]);
-        }
-        this.updateSMTC();
+    }
+
+    private mpvNumber(prop: string): number | null {
+        if (!this.symbols || !this.handle) return null;
+        const ptr = this.symbols.mpv_get_property_string(this.handle, S(prop));
+        if (!ptr) return null;
+        const raw = new CString(ptr).toString();
+        this.symbols.mpv_free(ptr);
+        const value = Number(raw);
+        return Number.isFinite(value) ? value : null;
     }
 
     async next() {
@@ -555,31 +614,14 @@ export default class Play extends EventEmitter {
             writeLogs([{ type: "error", message: "setEqualizer: symbols not ready" }]);
             return;
         }
-        if (!bands || bands.length === 0) {
-            const ret = this.symbols.mpv_set_property_string(this.handle, S("af"), S(""));
-            writeLogs([{
-                type: "info",
-                message: `setEqualizer: cleared rc=${ret}`,
-            }]);
-            return;
-        }
-        const valid = bands.filter(b => Number.isFinite(b.freq) && Number.isFinite(b.gain));
-        if (valid.length === 0) {
-            const ret = this.symbols.mpv_set_property_string(this.handle, S("af"), S(""));
-            writeLogs([{
-                type: "info",
-                message: `setEqualizer: cleared rc=${ret}`,
-            }]);
-            return;
-        }
-        const graph = valid
-            .map(b => `equalizer=f=${b.freq}:t=q:w=1:g=${b.gain}`)
-            .join(",");
-        const val = graph;
+        const valid = (bands ?? []).filter(b => Number.isFinite(b.freq) && Number.isFinite(b.gain));
+        const val = valid.length === 0
+            ? ""
+            : `lavfi=[${valid.map(b => `equalizer=f=${b.freq}:t=q:w=1:g=${b.gain}`).join(",")}]`;
         const ret = this.symbols.mpv_set_property_string(this.handle, S("af"), S(val));
         writeLogs([{
             type: ret < 0 ? "error" : "info",
-            message: `setEqualizer: rc=${ret} bands=${bands.length} val=${val.slice(0, 120)}`,
+            message: `setEqualizer: rc=${ret} bands=${valid.length}${val ? ` val=${val.slice(0, 120)}` : ""}`,
         }]);
     }
 
@@ -599,6 +641,10 @@ export default class Play extends EventEmitter {
                 this.emit("exit");
             }, time * 60 * 1000);
         }
+    }
+
+    getSleep(): SleepMode {
+        return this.sleep;
     }
 
     public updateSMTC(isPlaying?: boolean) {

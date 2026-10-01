@@ -25,9 +25,10 @@ import {
 	seedSystemFromAssets,
 } from "./db/index.ts";
 import { getHash, getPath } from "./lib/hash.ts";
+import { recordPlayed } from "./lib/history.ts";
 import { isValidContextEntry } from "./lib/nextfrom.ts";
 import { isPermanentUnavailable } from "./lib/unavailable.ts";
-import { setHomeEmitDataChanged } from "./controllers/home.ts";
+import { notifyHomeChanged, setHomeEmitDataChanged } from "./controllers/home.ts";
 // --- Config ---
 const APP_ROOT = resolve("./");
 const appArgs = parseAppArgs(process.argv);
@@ -288,6 +289,7 @@ player.player?.on("track-error", (data: any) => {
 	emitToFrontend("currentTrackChanged", { source: "", id: "", title: "", thumbnail: "", artist: "", artistId: "" });
 	const playedTrack = getUserData("playedTrack") ?? [];
 	writeUserData("playedTrack", playedTrack.filter((t: string) => t !== id));
+	notifyHomeChanged();
 	discordRPC.instance?.clearMusic();
 	if (typeof data !== "string" && isPermanentUnavailable(error)) {
 		markTracksDeleted([id]);
@@ -379,6 +381,8 @@ player.player?.on("playing", async (data) => {
 		id: track.id,
 	};
 	writeUserData("currentPlaying", currentPlaying);
+	recordPlayed(isYoutube ? currentPlaying.id : getHash(currentPlaying.id));
+	notifyHomeChanged();
 	player.player?.updateSMTC();
 	emitToFrontend("currentTrackChanged", {
 		...currentPlaying,

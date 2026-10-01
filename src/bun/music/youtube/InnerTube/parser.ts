@@ -23,6 +23,76 @@ export function extractSearchContents(data: any): any[] {
     }
 }
 
+export function parseSearchItems(contents: any[]): any[] {
+    const items: any[] = [];
+    for (const content of contents ?? []) {
+        const parsed = parseSearchItem(content);
+        if (parsed) items.push(parsed);
+    }
+    return items;
+}
+
+function findContinuationToken(items: any[]): string | null {
+    for (const item of items ?? []) {
+        const token = item?.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token;
+        if (token) return token;
+    }
+    return null;
+}
+
+export function extractSearchContinuationToken(data: any): string | null {
+    try {
+        // First page: token sits in the trailing itemSection of the search page.
+        const sectionList = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
+        if (Array.isArray(sectionList)) {
+            for (const section of sectionList) {
+                const contents = section?.itemSectionRenderer?.contents;
+                if (!Array.isArray(contents)) continue;
+                const token = findContinuationToken(contents);
+                if (token) return token;
+            }
+        }
+        // Continuation pages: onResponseReceivedCommands -> appendContinuationItemsAction.
+        const commands = data?.onResponseReceivedCommands;
+        if (Array.isArray(commands)) {
+            for (const command of commands) {
+                const items = command?.appendContinuationItemsAction?.continuationItems;
+                if (!Array.isArray(items)) continue;
+                const token = findContinuationToken(items);
+                if (token) return token;
+            }
+        }
+    } catch {}
+    return null;
+}
+
+export function extractSearchContinuationContents(data: any): any[] {
+    try {
+        const commands = data?.onResponseReceivedCommands;
+        if (Array.isArray(commands)) {
+            for (const command of commands) {
+                const items = command?.appendContinuationItemsAction?.continuationItems;
+                if (!Array.isArray(items)) continue;
+                for (const item of items) {
+                    const contents = item?.itemSectionRenderer?.contents;
+                    if (Array.isArray(contents) && contents.length > 0) return contents;
+                }
+            }
+        }
+        // Some continuations come back in the same shape as the first page.
+        const sectionList = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
+        if (Array.isArray(sectionList)) {
+            const out: any[] = [];
+            for (const section of sectionList) {
+                const contents = section?.itemSectionRenderer?.contents;
+                if (Array.isArray(contents)) out.push(...contents.filter(c => !c?.continuationItemRenderer));
+            }
+            if (out.length > 0) return out;
+        }
+    } catch {}
+    return [];
+}
+
 export function extractPlaylistContents(data: any): any[] {
     try {
         const tabs = data?.contents?.twoColumnBrowseResultsRenderer?.tabs;

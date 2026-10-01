@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import type DiscordRPC from "../discord/index.ts";
 import type Player from "../music/index.ts";
 import DownloadController from "../controllers/download.ts";
-import HomeController, { HomeFeedController, clearHomeCaches, getHomeArtists, getHomePlaylists, getHomeTracks, getHomeNewTracks } from "../controllers/home.ts";
+import HomeController, { HomeFeedController, clearHomeCaches, getHomeArtists, getHomePlaylists, getHomeTracks, getHomeNewTracks, notifyHomeChanged } from "../controllers/home.ts";
 import MusicController from "../controllers/music.ts";
 import formatArtists from "../../shared/utils/formatArtist.ts";
 import { SleepMode, Repeat, Track } from "../../shared/types.ts";
@@ -26,9 +26,12 @@ import {
   getPlaylist,
   getArtistById,
   getArtistByPlaylistId,
+  getTracks,
 } from "../db/index.ts";
+import { YTB_TRACK_START } from "../../shared/constants.ts";
 import { getHash, resolveId, tracksToFront, clearHashes, ensurePopulated } from "../lib/hash.ts";
 import { isValidContextEntry } from "../lib/nextfrom.ts";
+import { recordPlayed } from "../lib/history.ts";
 import db from "../db/setup.ts";
 import { decryptCredential, isEncrypted } from "../lib/crypto.ts";
 import SearchController from "../controllers/search.ts";
@@ -127,6 +130,22 @@ export function createRpcHandlers(ctx: RpcContext) {
 
     searchMusic: withErrorLogEmit("searchMusic", async ({ type, query, source }: { type: MusicType; query: string; source: MusicSource }) =>
       SearchController(player, source, type, query),
+    ),
+
+    searchMore: withErrorLogEmit(
+      "searchMore",
+      async ({ type, query, source, continuation }: { type: MusicType; query: string; source: MusicSource; continuation: string }) => {
+        if (source !== MusicSource.Youtube || !continuation) {
+          return { tracks: [], playlists: [], artists: [] };
+        }
+        if (!query || typeof query !== "string") {
+          throw new Error("Search query is required");
+        }
+        if (query.length > 200) {
+          throw new Error("Search query exceeds maximum length");
+        }
+        return player.youtubeDataAPI.searchMore(query, type, continuation);
+      },
     ),
 
     getHomeData: withRateLimit(
@@ -401,8 +420,9 @@ writeLogs([{
       current.time = 0;
       user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
 
-      user.playedTrack = Array.from(new Set([...user.playedTrack, user.currentPlaying.id]));
+      user.playedTrack = recordPlayed(user.currentPlaying.id);
       writeUserDatas(user);
+      notifyHomeChanged();
       emitToFrontend("currentTrackChanged", {
         source: user.currentPlaying.source,
         id: user.currentPlaying.id,
@@ -438,6 +458,8 @@ writeLogs([{
     },
 
     setSleep: withErrorLogEmit("setSleep", async (mode: SleepMode) => { player.player?.setSleep(mode); }),
+
+    getSleep: async () => player.player?.getSleep() ?? SleepMode.no,
 
     isHasDiscordRPC: async () => {
       if (isDiscord) {
@@ -667,6 +689,25 @@ writeLogs([{
         });
       }
     },
+
+    // Insert straight after the current track instead of at the end of the queue.
+    playNext: withRateLimit(
+      withErrorLogEmit("playNext", async ({ track }: { track: Track }) => {
+        const id = resolveId(track.id);
+        const row = getTracks([id])[0];
+        const source = row?.source ?? track.source;
+        const url = (source === MusicSource.Youtube ? YTB_TRACK_START : "") + (row?.id ?? id);
+        await player.player?.insertNext([{
+          url,
+          title: row?.name ?? track.name,
+          thumbnail: row?.thumbnail ?? track.thumbnail,
+        }]);
+        // Refill runs off the "queue" event, which also notifies the frontend.
+        player.player?.getQueue();
+        return true;
+      }),
+      "playNext",
+    ),
 
     refreshPlaylist: withErrorLogEmit("refreshPlaylist", async ({ id }: { id: string }) => {
       const playlist = await player.youtubeDataAPI.fetchPlaylist(id, false, true);

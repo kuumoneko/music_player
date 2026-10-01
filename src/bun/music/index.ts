@@ -27,16 +27,25 @@ export enum AudioFormat {
 
 const DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024;
 
-async function downloadConcurrent(url: string, outputPath: string, contentLength: number): Promise<void> {
+async function downloadConcurrent(
+    url: string,
+    outputPath: string,
+    contentLength: number,
+    onProgress?: (received: number) => void,
+): Promise<void> {
     const writer = Bun.file(outputPath).writer();
     try {
+        let received = 0;
         for (let start = 0; start < contentLength; start += DOWNLOAD_CHUNK_SIZE) {
             const end = Math.min(start + DOWNLOAD_CHUNK_SIZE - 1, contentLength - 1);
             const res = await fetch(url, {
                 headers: { Range: `bytes=${start}-${end}` },
             });
-            writer.write(new Uint8Array(await res.arrayBuffer()));
+            const bytes = new Uint8Array(await res.arrayBuffer());
+            writer.write(bytes);
             writer.flush();
+            received += bytes.byteLength;
+            onProgress?.(received);
         }
     } finally {
         await writer.end();
@@ -62,10 +71,11 @@ export default class Player {
     public local: Local | undefined;
     public player: Play | undefined;
     public downloadFolder: string = "";
-    public status: { data: string, track: string } = { data: Status.idle, track: "" };
-    public onStatusChange?: (status: { data: string; track: string }) => void;
+    public status: { data: string, track: string, progress?: number } = { data: Status.idle, track: "" };
+    public onStatusChange?: (status: { data: string, track: string, progress?: number }) => void;
     public downloadQueue: DownloadItem[] = [];
     public audioFormat: string = AudioFormat.m4a;
+    private statusOwner = "";
     public folder: string = "";
     public userPath: string = "";
     public googleAuth: GoogleAuth;
@@ -205,9 +215,30 @@ export default class Player {
             rawPath = path.join(this.downloadFolder, `${videoId}.raw`);
             const finalPath = path.join(this.downloadFolder, `${safeName}.m4a`);
 
-            if (resolved.contentLength && resolved.contentLength > 0) {
-                writeLogs([{ type: "info", message: `Downloading ${title} (${(resolved.contentLength / 1024 / 1024).toFixed(1)} MB)...` }]);
-                await downloadConcurrent(resolved.url, rawPath, resolved.contentLength);
+            const contentLength = resolved.contentLength ?? 0;
+            // With CONCURRENCY_LIMIT downloads in flight, `status` is shared - only one task
+            // owns the line at a time so the UI does not flap between tracks.
+            let lastProgressAt = 0;
+            const emitProgress = (received: number) => {
+                if (contentLength <= 0) return;
+                if (this.statusOwner && this.statusOwner !== title) return;
+                this.statusOwner = title;
+                const pct = Math.max(0, Math.min(100, Math.floor((received / contentLength) * 100)));
+                if (pct === this.status.progress && this.status.data === Status.downloading) return;
+                const now = Date.now();
+                if (pct < 100 && now - lastProgressAt < 250) return;
+                lastProgressAt = now;
+                this.status = { data: Status.downloading, track: title, progress: pct };
+                this.onStatusChange?.(this.status);
+            };
+            if (contentLength > 0) {
+                this.status = { data: Status.downloading, track: title, progress: 0 };
+                this.onStatusChange?.(this.status);
+            }
+
+            if (contentLength > 0) {
+                writeLogs([{ type: "info", message: `Downloading ${title} (${(contentLength / 1024 / 1024).toFixed(1)} MB)...` }]);
+                await downloadConcurrent(resolved.url, rawPath, contentLength, emitProgress);
             } else {
                 writeLogs([{ type: "info", message: `Downloading ${title} (single connection)...` }]);
                 const res = await fetch(resolved.url);
@@ -245,6 +276,7 @@ export default class Player {
             this.onStatusChange?.(this.status);
             return 1;
         } finally {
+            if (this.statusOwner === title) this.statusOwner = "";
             if (rawPath) try { unlinkSync(rawPath); } catch { }
         }
     }

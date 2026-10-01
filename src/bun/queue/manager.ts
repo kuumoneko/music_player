@@ -45,7 +45,11 @@ export class QueueManager {
     data: { filename: string; playing: boolean }[],
     emitToFrontend: (message: string, payload: any) => void,
   ) {
-    if (!data) return;
+    if (!data || data.length === 0) return;
+
+    // Captured before the local/YouTube split below, so a mixed playlist still
+    // knows everything that is already waiting in mpv.
+    const pendingUrls = new Set(data.map((item) => item.filename));
 
     let isYTB = false;
     if (data[0].filename.includes(YTB_TRACK_START)) {
@@ -178,19 +182,31 @@ export class QueueManager {
       writeUserData("nextfrom", activeNextfrom);
       resultIds = [...new Set(resultIds)];
       const resolvedIds = resultIds.map((rid) => resolveId(rid));
+      // getTracks has no ORDER BY, so it hands rows back in whatever order SQLite
+      // feels like - put them back in queue order before they reach mpv.
+      const rowsById = new Map(getTracks(resolvedIds).map((item) => [item.id, item]));
       let result: { url: string; thumbnail: string; title: string }[] =
-        getTracks(resolvedIds).map((item) => {
-          return {
+        resolvedIds.flatMap((id) => {
+          const item = rowsById.get(id);
+          if (!item) return [];
+          return [{
             url:
               (item.source === MusicSource.Youtube ? YTB_TRACK_START : "") + item.id,
             thumbnail: item.thumbnail,
             title: item.name,
-          };
+          }];
         });
 
-      result = result.filter((item) => item.url !== currentTrack);
+      // refillQueue runs on every queue event, and anything already sitting after
+      // the current track is still waiting to play - appending it again duplicated
+      // the queue (once per event, until the length guard tripped).
+      result = result.filter(
+        (item) => item.url !== currentTrack && !pendingUrls.has(item.url),
+      );
 
-      await this.player.player?.addTracks(result);
+      if (result.length > 0) {
+        await this.player.player?.addTracks(result);
+      }
       const queueState = getUserDatas([
         "playQueue",
         "nextfrom",

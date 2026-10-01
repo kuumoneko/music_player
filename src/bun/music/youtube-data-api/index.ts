@@ -409,7 +409,8 @@ export class YoutubeDataAPI {
 
             // Persist newly found items so subsequent metadata calls can hit cache first.
             if (result.tracks.length > 0) writeTracks(result.tracks);
-            setSearchCache(cacheKey, result);
+            // Continuation tokens expire - never cache them, so a cached hit just has no Load more.
+            setSearchCache(cacheKey, { tracks: result.tracks, playlists: result.playlists, artists: result.artists });
             return result;
         })().finally(() => {
             this.searchInflight.delete(cacheKey);
@@ -417,6 +418,28 @@ export class YoutubeDataAPI {
 
         this.searchInflight.set(cacheKey, promise);
         return promise;
+    }
+
+    async searchMore(query: string, type: MusicType, continuation: string): Promise<SearchResult> {
+        const empty: SearchResult = { tracks: [], playlists: [], artists: [] };
+        if (!this.youtube) {
+            writeLogs([{ type: "error", message: "DataAPI searchMore: InnerTube resolver unavailable" }]);
+            return empty;
+        }
+        if (!continuation || continuation.length > 4000) {
+            return empty;
+        }
+
+        const page = await withRetries(() => this.youtube!.searchMore(continuation), 2, "InnerTube search continuation");
+        if (!page) {
+            writeLogs([{ type: "info", message: `DataAPI searchMore: continuation failed for "${query}" (${type})` }]);
+            return empty;
+        }
+
+        if (page.tracks.length > 0) writeTracks(page.tracks);
+        const result: SearchResult = { tracks: page.tracks, playlists: page.playlists, artists: page.artists };
+        if (page.continuation) result.continuation = page.continuation;
+        return result;
     }
 
     // ── Fetch playlist ──
