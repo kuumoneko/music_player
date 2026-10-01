@@ -12,7 +12,8 @@ internal sealed class Program
 {
     private static readonly bool IsDev = Environment.GetEnvironmentVariable("KUUMO_DEV") == "1";
     private static readonly string AppUserModelId = IsDev ? "KuumoAvalonia.dev" : "KuumoAvalonia";
-    private static readonly string DisplayName = IsDev ? "KuumoApp" : "Kuumo Avalonia App";
+    // Dev name must not collide with the installed app's "KuumoApp" Start Menu shortcut.
+    private static readonly string DisplayName = IsDev ? "KuumoApp Avalonia Test" : "Kuumo Avalonia App";
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
     private static extern void SetCurrentProcessExplicitAppUserModelID(string appId);
@@ -25,11 +26,29 @@ internal sealed class Program
             try { SetCurrentProcessExplicitAppUserModelID(AppUserModelId); } catch { }
             RegisterAumidInRegistry();
             StartMenuHelper.EnsureShortcut();
-            if (Environment.GetEnvironmentVariable("KUUMO_DEV") != "1")
+            if (IsDev) AppDomain.CurrentDomain.ProcessExit += (_, _) => CleanupDevArtifacts();
+            if (!IsDev)
                 TryRegisterSparsePackage();
         }
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
+
+    // Dev artifacts are ours to remove, but only if we survive long enough to do it:
+    // a hard kill (Stop-Process) never raises ProcessExit, so scripts/avalonia-dev.ts
+    // sweeps the same two items on teardown and at the start of the next run.
+    private static void CleanupDevArtifacts()
+    {
+        if (!IsDev) return;
+        try
+        {
+            StartMenuHelper.RemoveDevArtifacts();
+            Registry.CurrentUser.DeleteSubKeyTree($@"Software\Classes\AppUserModelId\{AppUserModelId}", false);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[dev-cleanup] {ex.Message}");
+        }
     }
 
     private static void RegisterAumidInRegistry()

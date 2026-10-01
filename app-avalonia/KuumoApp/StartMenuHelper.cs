@@ -7,7 +7,8 @@ internal static class StartMenuHelper
 {
     private static readonly bool IsDev = Environment.GetEnvironmentVariable("KUUMO_DEV") == "1";
     private static readonly string AppUserModelId = IsDev ? "KuumoAvalonia.dev" : "KuumoAvalonia";
-    private static readonly string DisplayName = IsDev ? "KuumoApp" : "Kuumo Avalonia App";
+    // Must match DisplayName in Program.cs (dev) and scripts/dev-artifacts.ts.
+    private static readonly string DisplayName = IsDev ? "KuumoApp Avalonia Test" : "Kuumo Avalonia App";
 
     [ComImport]
     [Guid("00021401-0000-0000-c000-000000000046")]
@@ -104,6 +105,10 @@ internal static class StartMenuHelper
     private static readonly PropertyKey AppUserModelIdKey = new(
         new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 5);
 
+    private static string StartMenuDir() => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        @"Microsoft\Windows\Start Menu\Programs");
+
     public static void EnsureShortcut()
     {
         if (!OperatingSystem.IsWindows()) return;
@@ -116,9 +121,7 @@ internal static class StartMenuHelper
                 return;
             }
 
-            var startMenuDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                @"Microsoft\Windows\Start Menu\Programs");
+            var startMenuDir = StartMenuDir();
             var shortcutPath = Path.Combine(startMenuDir, $"{DisplayName}.lnk");
             var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
 
@@ -128,6 +131,13 @@ internal static class StartMenuHelper
 
             if (File.Exists(shortcutPath))
             {
+                if (TryGetShortcutTarget(shortcutPath, out _) && !IsOwnedShortcut(shortcutPath))
+                {
+                    // Somebody else's file happens to sit at our name - leave it alone
+                    // rather than delete it, and let the dev script's post-launch check warn.
+                    AppLog.Write("shortcut", $"skipping foreign shortcut at {shortcutPath}");
+                    return;
+                }
                 var valid = IsShortcutValid(shortcutPath);
                 Console.Error.WriteLine($"[shortcut] existing shortcut valid={valid}");
                 if (valid) return;
@@ -149,6 +159,26 @@ internal static class StartMenuHelper
         }
     }
 
+    // Dev-only, called from AppDomain ProcessExit. Hard-killed processes never get here;
+    // scripts/avalonia-dev.ts removes the same two items as a fallback.
+    public static void RemoveDevArtifacts()
+    {
+        if (!IsDev || !OperatingSystem.IsWindows()) return;
+        try
+        {
+            var shortcutPath = Path.Combine(StartMenuDir(), $"{DisplayName}.lnk");
+            if (File.Exists(shortcutPath))
+            {
+                File.Delete(shortcutPath);
+                Console.Error.WriteLine($"[dev-cleanup] removed {shortcutPath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[dev-cleanup] {ex.Message}");
+        }
+    }
+
     private static void CleanupOldShortcuts(string startMenuDir, string keepPath)
     {
         try
@@ -159,17 +189,75 @@ internal static class StartMenuHelper
                     continue;
 
                 var fileName = Path.GetFileNameWithoutExtension(lnk);
-                if (string.Equals(fileName, "Kuumo App", StringComparison.OrdinalIgnoreCase) ||
-                    HasMatchingAumid(lnk))
+                var legacyName = string.Equals(fileName, "Kuumo App", StringComparison.OrdinalIgnoreCase);
+                var ourAumid = HasMatchingAumid(lnk);
+
+                if (ourAumid || (legacyName && IsOwnedShortcut(lnk)))
                 {
                     AppLog.Write("shortcut", $"deleting stale shortcut: {Path.GetFileName(lnk)}");
                     File.Delete(lnk);
+                }
+                else if (legacyName)
+                {
+                    // Same legacy name, different build (another checkout / install) - not ours to delete.
+                    AppLog.Write("shortcut", $"leaving foreign shortcut: {Path.GetFileName(lnk)}");
                 }
             }
         }
         catch (Exception ex)
         {
             AppLog.Write("shortcut", $"cleanup error: {ex.Message}");
+        }
+    }
+
+    // A shortcut is ours when it points at this build: either the exact exe we are
+    // running, or some file inside this build's directory (covers a checkout that moved).
+    private static bool IsOwnedShortcut(string shortcutPath)
+    {
+        if (!TryGetShortcutTarget(shortcutPath, out var target)) return false;
+        var self = Environment.ProcessPath;
+        if (!string.IsNullOrEmpty(self) &&
+            string.Equals(Path.GetFullPath(target), Path.GetFullPath(self), StringComparison.OrdinalIgnoreCase))
+            return true;
+        return IsUnder(target, AppContext.BaseDirectory);
+    }
+
+    private static bool IsUnder(string path, string root)
+    {
+        try
+        {
+            var full = Path.GetFullPath(path) + Path.DirectorySeparatorChar;
+            var fullRoot = Path.GetFullPath(root) + Path.DirectorySeparatorChar;
+            return full.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool TryGetShortcutTarget(string shortcutPath, out string target)
+    {
+        target = "";
+        object? link = null;
+        try
+        {
+            link = new ShellLink();
+            var persistFile = (IPersistFile)link;
+            persistFile.Load(shortcutPath, 0);
+            var shellLink = (IShellLinkW)link;
+            var sb = new System.Text.StringBuilder(260);
+            shellLink.GetPath(sb, sb.Capacity, IntPtr.Zero, 0);
+            target = sb.ToString();
+            return !string.IsNullOrEmpty(target);
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            if (link != null) Marshal.ReleaseComObject(link);
         }
     }
 

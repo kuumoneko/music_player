@@ -21,7 +21,11 @@ rmSync(binDir, { recursive: true, force: true });
 mkdirSync(binDir, { recursive: true });
 for (const file of readdirSync(resolve(root, "bin")).filter(f => f !== ".git")) {
     copyFileSync(resolve(root, "bin", file), resolve(binDir, file));
+    // The dev backend runs with cwd = build/ (BunHostService.ResolveDevProcessInfo),
+    // and src/bun/index.ts resolves APP_ROOT from the cwd before dlopen'ing
+    // libmpv/avcodec/avformat from it - so the DLLs must sit in build/ itself.
+    copyFileSync(resolve(root, "bin", file), resolve(root, "build", file));
 }
 
-console.info("Backend bundle written to build/backend.js (native DLLs copied to build/bin/).");
+console.info("Backend bundle written to build/backend.js (native DLLs copied to build/bin/ and build/).");
 process.exit(0);
