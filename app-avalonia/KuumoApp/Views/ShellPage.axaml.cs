@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using KuumoApp.Services;
 
 namespace KuumoApp.Views;
@@ -297,10 +298,33 @@ public partial class ShellPage : UserControl
         _suppressSelectionChange = false;
     }
 
+    private bool IsTextEntryFocused()
+    {
+        // AutoCompleteBox, NumericUpDown and other composite inputs focus an inner
+        // TextBox, so walking up from the focused visual covers them as well.
+        var focused = (this.GetVisualRoot() as TopLevel)?.FocusManager?.GetFocusedElement() as Visual;
+        for (var node = focused; node is not null; node = node.GetVisualParent())
+        {
+            if (node is TextBox)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         var ctrl = e.KeyModifiers.HasFlag(KeyModifiers.Control);
         var alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+
+        // Space belongs to the focused text field while the user is typing: a TextBox
+        // does not mark it handled, so without this it would also toggle playback.
+        // Ctrl/Alt chords stay global so shortcuts keep working mid-typing.
+        if (!ctrl && !alt && e.Key == Key.Space && IsTextEntryFocused())
+        {
+            return;
+        }
 
         if (e.Key == Key.Space)
         {

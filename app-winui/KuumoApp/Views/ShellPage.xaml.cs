@@ -55,11 +55,17 @@ public sealed partial class ShellPage : Page
         AddAltAccelerator(VirtualKey.Right, OnForwardAccelerator);
     }
 
-    // Space toggles play/pause only when no focused control consumed the key.
-    // TextBox/Button/etc. mark Space handled during bubbling, so typing in the
-    // search box (or activating a button) never reaches this handler.
+    // Space toggles play/pause and Esc navigates back - but only outside text fields.
+    // Buttons and check boxes mark Space handled while bubbling, but a TextBox does
+    // not: it consumes the key as text input, so typing a space in the search or
+    // filter box would otherwise pause playback (and Esc would leave the page).
     private void OnRootKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (IsTextEntryFocused())
+        {
+            return;
+        }
+
         if (e.Key == VirtualKey.Space)
         {
             e.Handled = true;
@@ -73,6 +79,28 @@ public sealed partial class ShellPage : Page
                 ContentFrame.GoBack();
             }
         }
+    }
+
+    // Walk up from the focused element: AutoSuggestBox, editable ComboBox and
+    // NumberBox all focus an inner TextBox, so the type checks cover them too.
+    private bool IsTextEntryFocused()
+    {
+        var root = XamlRoot;
+        if (root is null)
+        {
+            return false;
+        }
+
+        var node = FocusManager.GetFocusedElement(root) as DependencyObject;
+        while (node is not null)
+        {
+            if (node is TextBox or RichEditBox or PasswordBox)
+            {
+                return true;
+            }
+            node = node is FrameworkElement element ? VisualTreeHelper.GetParent(element) : null;
+        }
+        return false;
     }
 
     private void OnToastActionClick(object sender, RoutedEventArgs e) => ToastService.InvokeAction();
