@@ -22,6 +22,7 @@ public sealed class ThemeService
 {
     private const string ModeKey = "themeMode";
     private const string AccentKey = "dynamicAccent";
+    private const string AmbientKey = "ambientBg";
     private const string DarkBg = "#18181b";
     private const string LightBg = "#f4f4f5";
 
@@ -30,13 +31,21 @@ public sealed class ThemeService
     private readonly DispatcherQueue _dispatcher;
     private ThemeMode _mode = ThemeMode.System;
     private bool _dynamicAccent;
+    private bool _ambient = true;
     private string? _lastUrl;
     private int _accentVersion;
     private bool _isBackground;
 
     public ThemeMode Mode => _mode;
     public bool DynamicAccent => _dynamicAccent;
+    public bool Ambient => _ambient;
     public bool IsBackground => _isBackground;
+
+    /// <summary>
+    /// Raised on the UI thread whenever the ambient background should change:
+    /// (thumbnail data URI, dominant color hex), or (null, null) to hide it.
+    /// </summary>
+    public event Action<string?, string?>? AmbientChanged;
 
     public ThemeService(AppEvents events, RpcClient rpc, DispatcherQueue dispatcher)
     {
@@ -64,6 +73,7 @@ public sealed class ThemeService
                 _ => ThemeMode.System,
             };
             _dynamicAccent = ParseAccentFlag(await App.Services.Api.GetUserDataAsync<JsonElement?>(AccentKey));
+            _ambient = ParseAccentFlag(await App.Services.Api.GetUserDataAsync<JsonElement?>(AmbientKey), true);
             ApplyMode();
             var current = await App.Services.Api.GetCurrentPlayingAsync();
             if (current is not null && !string.IsNullOrEmpty(current.Id))
@@ -91,6 +101,13 @@ public sealed class ThemeService
     public void SetDynamicAccent(bool enabled)
     {
         _dynamicAccent = enabled;
+        _accentVersion++;
+        _ = ApplyAccentAsync();
+    }
+
+    public void SetAmbient(bool enabled)
+    {
+        _ambient = enabled;
         _accentVersion++;
         _ = ApplyAccentAsync();
     }
@@ -146,9 +163,10 @@ public sealed class ThemeService
     private async Task ApplyAccentAsync()
     {
         var version = _accentVersion;
-        if (!_dynamicAccent || string.IsNullOrEmpty(_lastUrl))
+        if (string.IsNullOrEmpty(_lastUrl) || (!_dynamicAccent && !_ambient))
         {
             ResetAccent();
+            RaiseAmbient(null, null);
             return;
         }
         try
@@ -161,6 +179,7 @@ public sealed class ThemeService
             if (string.IsNullOrEmpty(dataUri))
             {
                 ResetAccent();
+                RaiseAmbient(null, null);
                 return;
             }
             var color = await AccentColorUtils.ExtractDominantColorAsync(dataUri);
@@ -169,6 +188,13 @@ public sealed class ThemeService
                 return;
             }
             if (color is null)
+            {
+                ResetAccent();
+                RaiseAmbient(null, null);
+                return;
+            }
+            RaiseAmbient(dataUri, color);
+            if (!_dynamicAccent)
             {
                 ResetAccent();
                 return;
@@ -182,20 +208,45 @@ public sealed class ThemeService
         {
             AppLog.Write("theme", $"accent failed: {ex.Message}");
             ResetAccent();
+            RaiseAmbient(null, null);
         }
     }
 
+    private void RaiseAmbient(string? dataUri, string? colorHex)
+    {
+        if (!_ambient)
+        {
+            dataUri = null;
+            colorHex = null;
+        }
+        _ambientDataUri = dataUri;
+        _ambientColorHex = colorHex;
+        AppLog.Write("theme", dataUri is null ? "ambient hidden" : $"ambient shown ({dataUri.Length} chars, {colorHex})");
+        AmbientChanged?.Invoke(dataUri, colorHex);
+    }
+
+    // Last ambient state, for late subscribers (ShellPage pulls this on load
+    // in case the event fired before it was constructed).
+    private string? _ambientDataUri;
+    private string? _ambientColorHex;
+    public (string? DataUri, string? ColorHex) CurrentAmbient => (_ambientDataUri, _ambientColorHex);
+
     public static bool ParseAccentFlag(JsonElement? el)
+    {
+        return ParseAccentFlag(el, false);
+    }
+
+    public static bool ParseAccentFlag(JsonElement? el, bool fallback)
     {
         if (el is not { } e)
         {
-            return false;
+            return fallback;
         }
         return e.ValueKind switch
         {
             JsonValueKind.True => true,
             JsonValueKind.String => e.GetString() == "true",
-            _ => false,
+            _ => fallback,
         };
     }
 

@@ -1,9 +1,11 @@
+using KuumoApp.Controls;
 using KuumoApp.Models;
 using KuumoApp.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.Foundation;
 using Windows.System;
@@ -34,6 +36,8 @@ public sealed partial class ShellPage : Page
 
     public static Frame? MainFrame { get; private set; }
 
+    public Grid TitleBarDragGrid => TitleBarDragRegion;
+
     public static void SetTitle(string? page)
     {
         if (App.MainWindow is { } window)
@@ -50,6 +54,7 @@ public sealed partial class ShellPage : Page
         Nav.SelectedItem = Nav.MenuItems[0];
         ContentFrame.Navigated += OnNavigated;
         App.Services.ConnectionChanged += OnConnectionChanged;
+        App.Services.Theme.AmbientChanged += OnAmbientChanged;
         KeyDown += OnRootKeyDown;
         AddAltAccelerator(VirtualKey.Left, OnBackAccelerator);
         AddAltAccelerator(VirtualKey.Right, OnForwardAccelerator);
@@ -160,6 +165,87 @@ public sealed partial class ShellPage : Page
         DispatcherQueue.TryEnqueue(() => ConnectionBar.IsOpen = !connected);
     }
 
+    private void OnAmbientChanged(string? dataUri, string? colorHex)
+    {
+        AppLog.Write("shell", $"ambient event: {(dataUri is null ? "hide" : "show")}");
+        _ = ApplyAmbientAsync(dataUri, colorHex);
+    }
+
+    // Ambient background: low-res album art + accent tint behind the glass
+    // panels. dataUri/colorHex are null when there is no art or the setting
+    // is off, which hides the layer.
+    private async Task ApplyAmbientAsync(string? dataUri, string? colorHex)
+    {
+        if (string.IsNullOrEmpty(dataUri) || string.IsNullOrEmpty(colorHex))
+        {
+            AmbientHost.Opacity = 0;
+            return;
+        }
+        var tint = AccentColorUtils.HexToColor(colorHex);
+        tint.A = 0x59;
+        AmbientTint.Background = new SolidColorBrush(tint);
+        var wasVisible = AmbientHost.Opacity > 0.99;
+        await ImageAttach.LoadAsync(AmbientImage, dataUri);
+        if (wasVisible)
+        {
+            return;
+        }
+        var fade = new DoubleAnimation
+        {
+            From = 0,
+            To = 1,
+            Duration = new Duration(TimeSpan.FromMilliseconds(500)),
+        };
+        Storyboard.SetTarget(fade, AmbientHost);
+        Storyboard.SetTargetProperty(fade, "Opacity");
+        var board = new Storyboard();
+        board.Children.Add(fade);
+        board.Begin();
+    }
+
+    private void OnMinimizeClick(object sender, RoutedEventArgs e)
+    {
+        if (App.MainWindow?.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+        {
+            presenter.Minimize();
+        }
+    }
+
+    private void OnMaximizeClick(object sender, RoutedEventArgs e)
+    {
+        if (App.MainWindow?.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+        {
+            if (presenter.State == Microsoft.UI.Windowing.OverlappedPresenterState.Maximized)
+            {
+                presenter.Restore();
+            }
+            else
+            {
+                presenter.Maximize();
+            }
+        }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    private void OnCloseClick(object sender, RoutedEventArgs e)
+    {
+        // Post WM_CLOSE so the close flows through AppWindow.Closing exactly like
+        // the system X button (WindowService close-to-tray / quit-on-close logic).
+        var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
+        PostMessage(hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero);
+    }
+
+    public void UpdateMaximizeGlyph()
+    {
+        var maximized = App.MainWindow?.AppWindow.Presenter
+            is Microsoft.UI.Windowing.OverlappedPresenter { State: Microsoft.UI.Windowing.OverlappedPresenterState.Maximized };
+        MaxGlyph.Glyph = maximized ? "\uE923" : "\uE922";
+        ToolTipService.SetToolTip(MaxButton, maximized ? "Restore" : "Maximize");
+        Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(MaxButton, maximized ? "Restore" : "Maximize");
+    }
+
     private async void OnConnectionRetryClick(object sender, RoutedEventArgs e)
     {
         ConnectionBar.Message = "Retrying...";
@@ -188,6 +274,9 @@ public sealed partial class ShellPage : Page
         try
         {
             await WaitForRpcAsync();
+            // The ambient event may have fired before this page subscribed.
+            var (ambientUri, ambientColor) = App.Services.Theme.CurrentAmbient;
+            await ApplyAmbientAsync(ambientUri, ambientColor);
             var saved = await App.Services.Api.GetUserDataAsync<UiStateDto>(UserDataKeys.UiState);
             if (saved is not null && Pages.ContainsKey(saved.Page))
             {

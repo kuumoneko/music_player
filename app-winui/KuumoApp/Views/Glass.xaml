@@ -1,0 +1,55 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Liquid-glass surface tokens. All brushes are theme-aware; reference them
+         with {ThemeResource} in XAML or Glass.Resolve() from code.
+         WinUI 3's AcrylicBrush has no BackgroundSource: acrylic always blurs
+         whatever is rendered behind the brush in the same window. -->
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+            <!-- Window base behind the ambient album-art layer. -->
+            <SolidColorBrush x:Key="WindowBaseBrush" Color="#0E0E10" />
+            <!-- Frosted panels: nav pane + content, title bar. -->
+            <AcrylicBrush
+                x:Key="GlassPaneBrush"
+                TintColor="#101013"
+                TintOpacity="0.72"
+                FallbackColor="#E6101013" />
+            <!-- Elevated frosted panel: player bar. -->
+            <AcrylicBrush
+                x:Key="GlassElevatedBrush"
+                TintColor="#17171B"
+                TintOpacity="0.82"
+                FallbackColor="#F217171B" />
+            <!-- Hairline stroke around glass cards. -->
+            <SolidColorBrush x:Key="GlassStrokeBrush" Color="#1AFFFFFF" />
+            <!-- Scrim over the ambient art so text stays readable. -->
+            <SolidColorBrush x:Key="GlassContentScrimBrush" Color="#A6000000" />
+            <!-- Subtle card fills used by templates and code-built cards. -->
+            <SolidColorBrush x:Key="GlassCardFillBrush" Color="#14FFFFFF" />
+            <SolidColorBrush x:Key="GlassCardHoverBrush" Color="#26FFFFFF" />
+            <!-- Keep NavigationView's own content background out of the way so
+                 the acrylic pane below it shows through. -->
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+            <SolidColorBrush x:Key="WindowBaseBrush" Color="#F2F2F4" />
+            <AcrylicBrush
+                x:Key="GlassPaneBrush"
+                TintColor="#FFFFFF"
+                TintOpacity="0.65"
+                FallbackColor="#E6FFFFFF" />
+            <AcrylicBrush
+                x:Key="GlassElevatedBrush"
+                TintColor="#FFFFFF"
+                TintOpacity="0.78"
+                FallbackColor="#F2FFFFFF" />
+            <SolidColorBrush x:Key="GlassStrokeBrush" Color="#33000000" />
+            <SolidColorBrush x:Key="GlassContentScrimBrush" Color="#59FFFFFF" />
+            <SolidColorBrush x:Key="GlassCardFillBrush" Color="#80FFFFFF" />
+            <SolidColorBrush x:Key="GlassCardHoverBrush" Color="#CCFFFFFF" />
+            <SolidColorBrush x:Key="NavigationViewContentBackground" Color="Transparent" />
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

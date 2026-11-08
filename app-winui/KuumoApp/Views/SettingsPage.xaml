@@ -24,6 +24,7 @@
                     <RadioButton x:Name="SystemThemeRadio" Content="System" GroupName="ThemeGroup" Checked="OnThemeModeChanged" />
                 </StackPanel>
                 <ToggleSwitch x:Name="DynamicAccentSwitch" Header="Accent from artwork" Toggled="OnDynamicAccentToggled" />
+                <ToggleSwitch x:Name="AmbientBgSwitch" Header="Ambient background from artwork" Toggled="OnAmbientBgToggled" />
             </StackPanel>
 
             <StackPanel Spacing="8">

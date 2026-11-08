@@ -68,10 +68,11 @@ public sealed partial class SettingsPage : Page
             var closeToTrayTask = App.Services.Rpc.CallAsync<JsonElement?>("getUserData", UserDataKeys.CloseToTray);
             var themeTask = App.Services.Api.GetUserDataAsync<string>("themeMode");
             var accentTask = App.Services.Api.GetUserDataAsync<JsonElement?>("dynamicAccent");
+            var ambientTask = App.Services.Api.GetUserDataAsync<JsonElement?>("ambientBg");
             var folderTask = App.Services.Api.GetUserDataAsync<string>(UserDataKeys.Folder);
             var discordTask = App.Services.Api.IsHasDiscordRpcAsync();
 
-            await Task.WhenAll(bandsTask, eqEnabledTask, quitTask, closeToTrayTask, themeTask, accentTask, folderTask, discordTask);
+            await Task.WhenAll(bandsTask, eqEnabledTask, quitTask, closeToTrayTask, themeTask, accentTask, ambientTask, folderTask, discordTask);
 
             EqGraph.SetBands(ParseBands(bandsTask.Result));
             EqualizerSwitch.IsOn = eqEnabledTask.Result;
@@ -90,6 +91,7 @@ public sealed partial class SettingsPage : Page
             LightThemeRadio.IsChecked = themeMode == "light";
             SystemThemeRadio.IsChecked = themeMode != "dark" && themeMode != "light";
             DynamicAccentSwitch.IsOn = ThemeService.ParseAccentFlag(accentTask.Result);
+            AmbientBgSwitch.IsOn = ThemeService.ParseAccentFlag(ambientTask.Result, true);
             var folder = folderTask.Result;
             FolderText.Text = string.IsNullOrEmpty(folder) ? "Not set" : folder;
             DiscordText.Text = discordTask.Result is JsonElement { ValueKind: JsonValueKind.String or JsonValueKind.True }
@@ -247,6 +249,24 @@ public sealed partial class SettingsPage : Page
         {
             AppLog.Write("settings", $"dynamic accent failed: {ex.Message}");
             ToastService.ShowError($"Accent save failed: {ex.Message}");
+        }
+    }
+
+    private async void OnAmbientBgToggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading)
+        {
+            return;
+        }
+        try
+        {
+            await App.Services.Api.SetUserDataAsync("ambientBg", AmbientBgSwitch.IsOn);
+            App.Services.Theme.SetAmbient(AmbientBgSwitch.IsOn);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("settings", $"ambient background failed: {ex.Message}");
+            ToastService.ShowError($"Ambient background save failed: {ex.Message}");
         }
     }
 

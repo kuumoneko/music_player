@@ -8,7 +8,7 @@
             Width="120"
             Margin="0,0,10,10"
             CornerRadius="8"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+            Background="{ThemeResource GlassCardFillBrush}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="120" />
                 <RowDefinition Height="Auto" />

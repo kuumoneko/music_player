@@ -13,6 +13,9 @@ namespace KuumoApp.Controls;
 
 public sealed partial class PlayerBar : UserControl
 {
+    // Matches the seed default in src/bun/lib/env.ts - used when the row is missing or unreadable.
+    private const int DefaultVolume = 50;
+
     private bool _isPlaying;
     private bool _isLive;
     private bool _seekDragging;
@@ -21,7 +24,7 @@ public sealed partial class PlayerBar : UserControl
     private double _pendingSeekSeconds = -1;
     private int _shuffle;
     private int _repeat;
-    private int _lastVolume = 50;
+    private int _lastVolume = DefaultVolume;
     private string _sleepMode = "nosleep";
     private string _nextfrom = "";
     private string _resolvedNextfrom = "";
@@ -57,6 +60,10 @@ public sealed partial class PlayerBar : UserControl
 
     private async Task LoadInitialStateAsync()
     {
+        // Volume loads first and in its own try: a failure in anything below must not leave the
+        // slider/label/icon sitting on the XAML defaults (they would show 50% until the next
+        // settingsChanged push, i.e. until the user touches the volume).
+        await LoadVolumeAsync();
         try
         {
             var playing = await App.Services.Api.GetPlayingDataAsync();
@@ -75,12 +82,6 @@ public sealed partial class PlayerBar : UserControl
             if (current is not null)
             {
                 SetTrack(current);
-            }
-            var volume = await App.Services.Api.GetUserDataAsync<int>("volume");
-            VolumeSlider.Value = volume;
-            if (volume > 0)
-            {
-                _lastVolume = volume;
             }
             var nextfrom = await App.Services.Api.GetUserDataAsync<string>("nextfrom");
             if (!string.IsNullOrEmpty(nextfrom))
@@ -105,6 +106,48 @@ public sealed partial class PlayerBar : UserControl
             AppLog.Write("playerbar", $"getSleep failed: {ex.GetType().Name}: {ex.Message}");
         }
         UpdateSleepUi();
+    }
+
+    /// <summary>
+    /// Reads the stored volume and pushes it through <see cref="ApplyVolumeDisplay"/>. A missing or
+    /// undecodable row arrives as null rather than 0, so a genuinely muted volume (0) is never
+    /// confused with "no value" - the latter falls back to <see cref="DefaultVolume"/> and is logged.
+    /// </summary>
+    private async Task LoadVolumeAsync()
+    {
+        try
+        {
+            var stored = await App.Services.Api.GetUserDataAsync<int?>("volume");
+            if (stored is null)
+            {
+                AppLog.Write("playerbar", "volume row missing or unreadable, falling back to 50");
+                ApplyVolumeDisplay(DefaultVolume);
+                return;
+            }
+            AppLog.Write("playerbar", $"volume: {stored.Value}");
+            ApplyVolumeDisplay(stored.Value);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("playerbar", $"volume load failed: {ex.GetType().Name}: {ex.Message}");
+            ApplyVolumeDisplay(DefaultVolume);
+        }
+    }
+
+    /// <summary>Single writer for slider, label and icon so the three can never disagree.</summary>
+    private void ApplyVolumeDisplay(int value)
+    {
+        if (_volumeDragging)
+        {
+            return;
+        }
+        VolumeSlider.Value = value;
+        VolumeText.Text = $"{value}%";
+        if (value > 0)
+        {
+            _lastVolume = value;
+        }
+        UpdateVolumeIcon();
     }
 
     public void SetTrack(CurrentTrackChangedDto track)
@@ -175,12 +218,7 @@ public sealed partial class PlayerBar : UserControl
         _shuffle = data.Shuffle;
         _repeat = data.Repeat;
         UpdateStateIcons();
-        if (!_volumeDragging)
-        {
-            VolumeSlider.Value = data.Volume;
-        }
-        VolumeText.Text = $"{(int)VolumeSlider.Value}%";
-        UpdateVolumeIcon();
+        ApplyVolumeDisplay(data.Volume);
     }
 
     private void UpdateStateIcons()
@@ -569,12 +607,13 @@ public sealed partial class PlayerBar : UserControl
 
     private void ApplyVolume()
     {
-        _ = SetVolumeAsync((int)VolumeSlider.Value);
+        var value = (int)VolumeSlider.Value;
+        ApplyVolumeDisplay(value);
+        _ = SetVolumeAsync(value);
     }
 
     private async Task SetVolumeAsync(int value)
     {
-        VolumeText.Text = $"{value}%";
         try
         {
             await App.Services.Api.SetUserDataAsync("volume", value);

@@ -22,6 +22,21 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Title = "Kuumo App";
 
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(Shell.TitleBarDragGrid);
+        if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+        {
+            presenter.SetBorderAndTitleBar(true, false);
+        }
+        AppWindow.Changed += (_, args) =>
+        {
+            if (args.DidPresenterChange)
+            {
+                DispatcherQueue.TryEnqueue(Shell.UpdateMaximizeGlyph);
+            }
+        };
+        AppLog.Write("main", $"title bar extended, RightInset={AppWindow.TitleBar.RightInset}, Height={AppWindow.TitleBar.Height}");
+
         var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico");
         if (File.Exists(iconPath))
         {

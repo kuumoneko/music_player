@@ -123,7 +123,7 @@ public static class MediaGrid
         var border = new Border
         {
             CornerRadius = new CornerRadius(8),
-            Background = (Brush)App.Current.Resources["CardBackgroundFillColorDefaultBrush"],
+            Background = Services.Glass.Resolve("GlassCardFillBrush"),
             Child = content,
         };
         var root = new Grid();

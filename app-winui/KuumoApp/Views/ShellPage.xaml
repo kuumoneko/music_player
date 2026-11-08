@@ -19,13 +19,92 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- Ambient layer: low-res album art + accent tint + scrim, behind everything. -->
+        <Grid
+            Grid.Row="0"
+            Grid.RowSpan="4"
+            x:Name="AmbientHost"
+            IsHitTestVisible="False"
+            Opacity="0">
+            <Image
+                x:Name="AmbientImage"
+                Stretch="UniformToFill"
+                Opacity="0.75" />
+            <Grid x:Name="AmbientTint" Background="Transparent" />
+            <Grid Background="{ThemeResource GlassContentScrimBrush}" />
+        </Grid>
+
+        <!-- Custom title bar: nav controls left, drag region center, window controls right. -->
+        <Grid Grid.Row="0" Height="40">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel
+                Orientation="Horizontal"
+                Spacing="4"
+                Margin="4,0,0,0"
+                VerticalAlignment="Center">
+                <Button x:Name="BackButton" Click="OnBackClick"
+                        Style="{StaticResource IconButtonStyle}"
+                        ToolTipService.ToolTip="Back (Alt+Left)"
+                        AutomationProperties.Name="Back"
+                        IsEnabled="False">
+                    <FontIcon Glyph="&#xE72B;" FontSize="14" />
+                </Button>
+                <Button x:Name="ForwardButton" Click="OnForwardClick"
+                        Style="{StaticResource IconButtonStyle}"
+                        ToolTipService.ToolTip="Forward (Alt+Right)"
+                        AutomationProperties.Name="Forward"
+                        IsEnabled="False">
+                    <FontIcon Glyph="&#xE72A;" FontSize="14" />
+                </Button>
+                <Button x:Name="HelpButton" Click="OnHelpClick"
+                        Style="{StaticResource IconButtonStyle}"
+                        ToolTipService.ToolTip="Keyboard shortcuts"
+                        AutomationProperties.Name="Keyboard shortcuts">
+                    <FontIcon Glyph="&#xE897;" FontSize="14" />
+                </Button>
+            </StackPanel>
+
+            <Grid x:Name="TitleBarDragRegion" Grid.Column="1" Background="Transparent" />
+
+            <StackPanel
+                Grid.Column="2"
+                Orientation="Horizontal"
+                Margin="0,0,4,0"
+                VerticalAlignment="Center">
+                <Button x:Name="MinButton" Click="OnMinimizeClick"
+                        Style="{StaticResource IconButtonStyle}"
+                        ToolTipService.ToolTip="Minimize"
+                        AutomationProperties.Name="Minimize">
+                    <FontIcon Glyph="&#xE921;" FontSize="14" />
+                </Button>
+                <Button x:Name="MaxButton" Click="OnMaximizeClick"
+                        Style="{StaticResource IconButtonStyle}"
+                        ToolTipService.ToolTip="Maximize"
+                        AutomationProperties.Name="Maximize">
+                    <FontIcon x:Name="MaxGlyph" Glyph="&#xE922;" FontSize="14" />
+                </Button>
+                <Button x:Name="CloseButton" Click="OnCloseClick"
+                        Style="{StaticResource IconButtonStyle}"
+                        ToolTipService.ToolTip="Close"
+                        AutomationProperties.Name="Close">
+                    <FontIcon Glyph="&#xE8BB;" FontSize="14" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
         <InfoBar
             x:Name="ConnectionBar"
-            Grid.Row="0"
+            Grid.Row="1"
             IsOpen="False"
             IsClosable="False"
             Severity="Warning"
@@ -39,38 +118,21 @@
             </InfoBar.ActionButton>
         </InfoBar>
 
-        <NavigationView
-            Grid.Row="1"
-            x:Name="Nav"
-            IsBackButtonVisible="Collapsed"
-            IsSettingsVisible="True"
-            PaneDisplayMode="Left"
-            ItemInvoked="OnNavItemInvoked"
-            BackRequested="OnNavBackRequested">
-            <NavigationView.PaneHeader>
-                <StackPanel Orientation="Horizontal" Spacing="4" Padding="4,4,4,0">
-                    <Button x:Name="BackButton" Click="OnBackClick"
-                            Style="{StaticResource IconButtonStyle}"
-                            ToolTipService.ToolTip="Back (Alt+Left)"
-                            AutomationProperties.Name="Back"
-                            IsEnabled="False">
-                        <FontIcon Glyph="&#xE72B;" FontSize="14" />
-                    </Button>
-                    <Button x:Name="ForwardButton" Click="OnForwardClick"
-                            Style="{StaticResource IconButtonStyle}"
-                            ToolTipService.ToolTip="Forward (Alt+Right)"
-                            AutomationProperties.Name="Forward"
-                            IsEnabled="False">
-                        <FontIcon Glyph="&#xE72A;" FontSize="14" />
-                    </Button>
-                    <Button x:Name="HelpButton" Click="OnHelpClick"
-                            Style="{StaticResource IconButtonStyle}"
-                            ToolTipService.ToolTip="Keyboard shortcuts"
-                            AutomationProperties.Name="Keyboard shortcuts">
-                        <FontIcon Glyph="&#xE897;" FontSize="14" />
-                    </Button>
-                </StackPanel>
-            </NavigationView.PaneHeader>
+        <Border
+            Grid.Row="2"
+            Margin="8,4,8,6"
+            CornerRadius="12"
+            Background="{ThemeResource GlassPaneBrush}"
+            BorderBrush="{ThemeResource GlassStrokeBrush}"
+            BorderThickness="1">
+            <NavigationView
+                x:Name="Nav"
+                Background="Transparent"
+                IsBackButtonVisible="Collapsed"
+                IsSettingsVisible="True"
+                PaneDisplayMode="Left"
+                ItemInvoked="OnNavItemInvoked"
+                BackRequested="OnNavBackRequested">
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="Home" Tag="home">
                     <NavigationViewItem.Icon>
@@ -100,7 +162,8 @@
             </NavigationView.MenuItems>
 
             <Frame x:Name="ContentFrame" CacheSize="8" />
-        </NavigationView>
+            </NavigationView>
+        </Border>
 
         <Popup x:Name="ToastPopup"
                IsLightDismissEnabled="True"
@@ -132,14 +195,19 @@
             </Border>
         </Popup>
 
-        <Grid
-            Grid.Row="2"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <controls:PlayerBar x:Name="PlayerBar" />
+        <Border
+            Grid.Row="3"
+            Margin="8,0,8,8"
+            CornerRadius="12"
+            Background="{ThemeResource GlassElevatedBrush}"
+            BorderBrush="{ThemeResource GlassStrokeBrush}"
+            BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <controls:PlayerBar x:Name="PlayerBar" />
                 <Grid
                     Grid.Row="1"
                     Padding="12,4">
@@ -150,6 +218,7 @@
                         Opacity="0.7"
                         VerticalAlignment="Center" />
                 </Grid>
-        </Grid>
+            </Grid>
+        </Border>
     </Grid>
 </Page>

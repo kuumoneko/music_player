@@ -6,7 +6,7 @@
     <Grid
         Padding="12,8"
         ColumnSpacing="16"
-        Background="{ThemeResource LayerFillColorDefaultBrush}">
+        Background="Transparent">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="300" />
             <ColumnDefinition Width="Auto" />

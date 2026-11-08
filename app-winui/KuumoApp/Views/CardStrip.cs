@@ -1,4 +1,5 @@
 using KuumoApp.Controls;
+using KuumoApp.Services;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -58,8 +59,9 @@ public static class CardStrip
 
     public static void WireHover(Grid overlayHost, Action<Brush> setBackground, Func<bool>? suppress = null)
     {
-        var baseBrush = (Brush)App.Current.Resources["CardBackgroundFillColorDefaultBrush"];
-        var hoverBrush = (Brush)App.Current.Resources["CardBackgroundFillColorSecondaryBrush"];
+        // Resolved per event so theme switches take effect immediately.
+        Brush BaseBrush() => Glass.Resolve("GlassCardFillBrush", overlayHost);
+        Brush HoverBrush() => Glass.Resolve("GlassCardHoverBrush", overlayHost);
         var overlay = new Border
         {
             CornerRadius = new CornerRadius(8),
@@ -74,18 +76,18 @@ public static class CardStrip
             {
                 return;
             }
-            setBackground(hoverBrush);
+            setBackground(HoverBrush());
         };
         overlayHost.PointerExited += (_, _) =>
         {
-            setBackground(baseBrush);
+            setBackground(BaseBrush());
             overlay.Opacity = 0;
         };
         overlayHost.PointerPressed += (_, _) => overlay.Opacity = 0.35;
         overlayHost.PointerReleased += (_, _) => overlay.Opacity = 0;
         overlayHost.PointerCaptureLost += (_, _) =>
         {
-            setBackground(baseBrush);
+            setBackground(BaseBrush());
             overlay.Opacity = 0;
         };
     }
