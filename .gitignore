@@ -17,4 +17,5 @@ release
 tsconfig.tsbuildinfo
 .vite-dev-url
 /apikeys
-bun.lock
+bun.lock\
+TODO.md
