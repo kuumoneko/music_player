@@ -10,7 +10,7 @@ namespace KuumoApp.Controls;
 
 public static class ImageAttach
 {
-    private const int DefaultDecodeSize = 200;
+    private const int DefaultDecodeSize = 100;
 
     // 2x2 white at 15% alpha: a neutral "no artwork" wash that reads acceptably
     // on both light and dark cards without shipping an asset.

@@ -13,6 +13,7 @@ public sealed partial class HomePage : Page
     private const int MaxRowItems = 10;
     private int _loadVersion;
     private readonly DispatcherQueueTimer _dataChangeTimer;
+    private bool _windowVisible = true;
 
     public HomePage()
     {
@@ -21,7 +22,9 @@ public sealed partial class HomePage : Page
         _dataChangeTimer.Interval = TimeSpan.FromMilliseconds(300);
         _dataChangeTimer.IsRepeating = false;
         _dataChangeTimer.Tick += (_, _) => _ = LoadAsync();
-    }
+        App.Services.Window.WindowHidden += () => _windowVisible = false;
+        App.Services.Window.WindowShown += () => _windowVisible = true;
+    }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
@@ -49,8 +52,11 @@ public sealed partial class HomePage : Page
     {
         if (key is "userPlaylists" or "userSubscriptions" or "homeFeed")
         {
-            _dataChangeTimer.Stop();
-            _dataChangeTimer.Start();
+            if (_windowVisible)
+            {
+                _dataChangeTimer.Stop();
+                _dataChangeTimer.Start();
+            }
         }
     }
 

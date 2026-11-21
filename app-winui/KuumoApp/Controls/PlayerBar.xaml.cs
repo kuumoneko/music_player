@@ -32,6 +32,7 @@ public sealed partial class PlayerBar : UserControl
     private string _currentId = "";
     private string _currentArtistId = "";
     private readonly DispatcherQueueTimer _seekCommitTimer;
+    private bool _windowVisible = true;
 
     public PlayerBar()
     {
@@ -56,7 +57,9 @@ public sealed partial class PlayerBar : UserControl
         App.Services.Rpc.Connected += () => DispatcherQueue.TryEnqueue(() => _ = LoadInitialStateAsync());
         SliderExt.HookThumbDrag(SeekSlider, OnSeekDragStarted, OnSeekDragCompleted);
         SliderExt.HookThumbDrag(VolumeSlider, OnVolumeDragStarted, OnVolumeDragCompleted);
-    }
+        App.Services.Window.WindowHidden += () => _windowVisible = false;
+        App.Services.Window.WindowShown += () => _windowVisible = true;
+    }
 
     private async Task LoadInitialStateAsync()
     {
@@ -174,7 +177,7 @@ public sealed partial class PlayerBar : UserControl
 
     public void SetTime(TimeUpdateDto data)
     {
-        if (_seekDragging)
+        if (_seekDragging || !_windowVisible)
         {
             return;
         }

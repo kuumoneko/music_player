@@ -9,7 +9,7 @@ namespace KuumoApp.Controls;
 
 public static class ImageHelper
 {
-    private const int DefaultDecodeSize = 160;
+    private const int DefaultDecodeSize = 100;
     private const string SourceUrlTagKey = "SourceUrl";
 
     // 2x2 white at 15% alpha: a neutral "no artwork" wash that reads acceptably

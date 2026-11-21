@@ -23,6 +23,7 @@ public sealed partial class SearchPage : Page
     private readonly List<string> _recent = [];
     private int _searchVersion;
     private readonly DispatcherQueueTimer _debounceTimer;
+    private bool _windowVisible = true;
 
     public SearchPage()
     {
@@ -37,7 +38,9 @@ public sealed partial class SearchPage : Page
         TypeTabs.SelectedIndex = 0;
         ItemMenu.AttachMoreButton(ResultList);
         _ = LoadRecentAsync();
-    }
+        App.Services.Window.WindowHidden += () => _windowVisible = false;
+        App.Services.Window.WindowShown += () => _windowVisible = true;
+    }
 
     private async Task LoadRecentAsync()
     {
@@ -187,7 +190,7 @@ public sealed partial class SearchPage : Page
     {
         UpdateRecentVisibility();
         _debounceTimer.Stop();
-        if (SearchBox.Text.Trim().Length > 0)
+        if (SearchBox.Text.Trim().Length > 0 && _windowVisible)
         {
             _debounceTimer.Start();
         }
