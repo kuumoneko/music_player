@@ -1,0 +1,8 @@
+Diagnostic Report
+
+1. The issue is in src/bun/index.ts at line 523 where the endpoint is printed:
+   `const endpointLine = `KUUMO_WS=ws://${rpcServer.hostname}:${rpcServer.port}/ws`;`
+
+2. Root cause: The RpcWsServer.start() method in src/bun/rpc/ws-server.ts uses Bun.serve() which may not immediately set the hostname and port properties before they're accessed. In dev mode, when KUUMO_DEV=1, the backend should bind to localhost but the hostname property from rpcServer might be empty or incorrect.
+
+3. Minimal fix: Modify the endpoint printing logic in index.ts to use "127.0.0.1" directly instead of relying on rpcServer.hostname, since the server is expected to bind to localhost in dev mode.

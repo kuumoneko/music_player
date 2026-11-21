@@ -22,8 +22,11 @@ public sealed partial class HomePage : Page
         _dataChangeTimer.Interval = TimeSpan.FromMilliseconds(300);
         _dataChangeTimer.IsRepeating = false;
         _dataChangeTimer.Tick += (_, _) => _ = LoadAsync();
-        App.Services.Window.WindowHidden += () => _windowVisible = false;
-        App.Services.Window.WindowShown += () => _windowVisible = true;
+        if (App.Services?.Window != null)
+        {
+            App.Services.Window.WindowHidden += () => _windowVisible = false;
+            App.Services.Window.WindowShown += () => _windowVisible = true;
+        }
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)

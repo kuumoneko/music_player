@@ -38,8 +38,11 @@ public sealed partial class SearchPage : Page
         TypeTabs.SelectedIndex = 0;
         ItemMenu.AttachMoreButton(ResultList);
         _ = LoadRecentAsync();
-        App.Services.Window.WindowHidden += () => _windowVisible = false;
-        App.Services.Window.WindowShown += () => _windowVisible = true;
+        if (App.Services?.Window != null)
+        {
+            App.Services.Window.WindowHidden += () => _windowVisible = false;
+            App.Services.Window.WindowShown += () => _windowVisible = true;
+        }
     }
 
     private async Task LoadRecentAsync()

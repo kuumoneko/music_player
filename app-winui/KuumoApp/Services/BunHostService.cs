@@ -101,6 +101,7 @@ public sealed class BunHostService
         var psi = IsDev ? ResolveDevProcessInfo() : ResolveReleaseProcessInfo();
         if (psi is null)
         {
+            Log("Failed to resolve process info for backend");
             return;
         }
 
@@ -115,20 +116,28 @@ public sealed class BunHostService
             psi.ArgumentList.Add("--no-lock");
         }
 
-        _process = Process.Start(psi);
-        if (_process is null)
+        try
         {
-            Log("failed to start bun process");
-            return;
+            _process = Process.Start(psi);
+            if (_process is null)
+            {
+                Log("failed to start bun process");
+                return;
+            }
+            Log($"args: {psi.FileName} {string.Join(' ', psi.ArgumentList)}");
+            _process.EnableRaisingEvents = true;
+            _process.OutputDataReceived += OnOutput;
+            _process.ErrorDataReceived += OnError;
+            _process.Exited += OnExited;
+            _process.BeginOutputReadLine();
+            _process.BeginErrorReadLine();
+            Log($"started (pid={_process.Id}, dir={BackendDir}, dev={IsDev})");
         }
-        Log($"args: {psi.FileName} {string.Join(' ', psi.ArgumentList)}");
-        _process.EnableRaisingEvents = true;
-        _process.OutputDataReceived += OnOutput;
-        _process.ErrorDataReceived += OnError;
-        _process.Exited += OnExited;
-        _process.BeginOutputReadLine();
-        _process.BeginErrorReadLine();
-        Log($"started (pid={_process.Id}, dir={BackendDir}, dev={IsDev})");
+        catch (Exception ex)
+        {
+            Log($"Failed to start backend process: {ex.Message}");
+            throw;
+        }
     }
 
     private void OnOutput(object? sender, DataReceivedEventArgs e)

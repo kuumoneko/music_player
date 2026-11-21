@@ -20,9 +20,9 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType Condition="'$(EnableMsix)' == 'true'">MSIX</WindowsPackageType>
     <WindowsPackageType Condition="'$(EnableMsix)' != 'true'">None</WindowsPackageType>
-    <!-- Framework-dependent Windows App SDK: runtime installed machine-wide (setup.iss ships it).
+    <!-- Self-contained Windows App SDK: all required DLLs copied next to KuumoApp.exe.
          Bootstrap is initialized manually in Program.cs (WindowsAppSdkBootstrapInitialize=false). -->
-    <WindowsAppSDKSelfContained>false</WindowsAppSDKSelfContained>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
     <!-- We provide our own Main in Program.cs (required for DLL redirection to include\). -->
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>

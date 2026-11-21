@@ -49,16 +49,25 @@ public sealed partial class PlayerBar : UserControl
                 ApplySeekTo(target);
             }
         };
-        App.Services.Events.TimeUpdated += data => DispatcherQueue.TryEnqueue(() => SetTime(data));
-        App.Services.Events.PlayerStateChanged += data => DispatcherQueue.TryEnqueue(() => SetPlayerState(data));
-        App.Services.Events.CurrentTrackChanged += data => DispatcherQueue.TryEnqueue(() => SetTrack(data));
-        App.Services.Events.SettingsChanged += data => DispatcherQueue.TryEnqueue(() => SetSettings(data));
-        App.Services.Events.QueueChanged += data => DispatcherQueue.TryEnqueue(() => SetNextFrom(data.Nextfrom));
-        App.Services.Rpc.Connected += () => DispatcherQueue.TryEnqueue(() => _ = LoadInitialStateAsync());
+        if (App.Services?.Events != null)
+        {
+            App.Services.Events.TimeUpdated += data => DispatcherQueue.TryEnqueue(() => SetTime(data));
+            App.Services.Events.PlayerStateChanged += data => DispatcherQueue.TryEnqueue(() => SetPlayerState(data));
+            App.Services.Events.CurrentTrackChanged += data => DispatcherQueue.TryEnqueue(() => SetTrack(data));
+            App.Services.Events.SettingsChanged += data => DispatcherQueue.TryEnqueue(() => SetSettings(data));
+            App.Services.Events.QueueChanged += data => DispatcherQueue.TryEnqueue(() => SetNextFrom(data.Nextfrom));
+        }
+        if (App.Services?.Rpc != null)
+        {
+            App.Services.Rpc.Connected += () => DispatcherQueue.TryEnqueue(() => _ = LoadInitialStateAsync());
+        }
         SliderExt.HookThumbDrag(SeekSlider, OnSeekDragStarted, OnSeekDragCompleted);
         SliderExt.HookThumbDrag(VolumeSlider, OnVolumeDragStarted, OnVolumeDragCompleted);
-        App.Services.Window.WindowHidden += () => _windowVisible = false;
-        App.Services.Window.WindowShown += () => _windowVisible = true;
+        if (App.Services?.Window != null)
+        {
+            App.Services.Window.WindowHidden += () => _windowVisible = false;
+            App.Services.Window.WindowShown += () => _windowVisible = true;
+        }
     }
 
     private async Task LoadInitialStateAsync()

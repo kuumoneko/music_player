@@ -126,8 +126,20 @@ public sealed partial class MainWindow : Window
         });
         App.Services.Rpc.Connected += OnRpcConnected;
 
-        AppWindow.Show();
-        Activate();
+        try
+        {
+            // Start services first, then show window
+            App.Services.Start();
+            AppWindow.Show();
+            Activate();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("main", $"Failed to start app services: {ex}");
+            Shell.SetStatus($"Startup failed: {ex.Message}");
+            // Don't exit immediately - let user see the error
+            throw;
+        }
     }
 
     private async void OnRpcConnected()

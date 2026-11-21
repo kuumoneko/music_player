@@ -50,8 +50,18 @@ public partial class App : Application
         SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread()));
         var aumid = Environment.GetEnvironmentVariable("KUUMO_DEV") == "1" ? "kuumo.app.dev" : "kuumo.app";
         SetCurrentProcessExplicitAppUserModelID(aumid);
-        MainWindow = new MainWindow();
-        Services.Start();
+        
+        try
+        {
+            MainWindow = new MainWindow();
+            Services.Start();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("app", $"Failed to launch app: {ex}");
+            // Log and potentially show an error dialog
+            throw;
+        }
     }
 
     public static void ShutdownApp()

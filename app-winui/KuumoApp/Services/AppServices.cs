@@ -33,14 +33,22 @@ public sealed class AppServices
 
     public void Start()
     {
-        Bun.LogLine += line => AppLog.Write("app", line);
-        Bun.EndpointReady += OnEndpointReady;
-        Bun.SingleInstanceDetected += () => SingleInstanceDetected?.Invoke();
-        Rpc.EventReceived += Events.OnEvent;
-        Rpc.Disconnected += OnRpcDisconnected;
-        Rpc.Connected += () => ConnectionChanged?.Invoke(true);
-        Theme.Start();
-        Bun.Start();
+        try
+        {
+            Bun.LogLine += line => AppLog.Write("app", line);
+            Bun.EndpointReady += OnEndpointReady;
+            Bun.SingleInstanceDetected += () => SingleInstanceDetected?.Invoke();
+            Rpc.EventReceived += Events.OnEvent;
+            Rpc.Disconnected += OnRpcDisconnected;
+            Rpc.Connected += () => ConnectionChanged?.Invoke(true);
+            Theme.Start();
+            Bun.Start();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("app", $"Failed to start services: {ex}");
+            throw;
+        }
     }
 
     private async void OnEndpointReady(string url)
