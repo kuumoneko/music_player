@@ -19,7 +19,7 @@
 - [x] Check that `TrimWorkingSet()` is only called when truly in background mode (only called if window is still hidden and transitionGen matches)
 
 ## Phase 4: Tuning Bun / `libmpv` background demuxer/cache buffers
-- [ ] Review `play.ts` mpv options for background playback optimization
-- [ ] Locate `demuxer-readahead-secs` and `demuxer-max-bytes` settings (currently set to 5s and 8MB)
-- [ ] Investigate if these can be reduced for background playback
-- [ ] Check if `cache-pause` option is properly utilized for background mode
+- [x] Review `play.ts` mpv options for background playback optimization
+- [x] Locate `demuxer-readahead-secs` and `demuxer-max-bytes` settings (currently set to 5s and 8MB)
+- [x] Reduced `demuxer-readahead-secs` from 5s to 2s and `demuxer-max-bytes` from 8MB to 4MB for background playback
+- [x] Verified `cache-pause` option is properly utilized for background mode
