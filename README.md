@@ -4,7 +4,7 @@
 
 ## Version
 
-> 7.0.0
+> 7.1.0
 
 ## Features
 
@@ -48,6 +48,12 @@
 - Close to tray
 - Pinned items on home screen
 
+## What's New in v7.1.0
+
+- **Ultra-low background System Tray RAM footprint**: ~8.4 MB WinUI 3 working set + trimmed `libmpv` demuxer buffers
+- **Automatic WebSocket RPC reconnection**: With fail-fast pending calls when connection is lost
+- **Network-drop playback recovery**: Automatically resumes playback after network interruptions
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -84,7 +90,7 @@ bun run typecheck
 bun run build:prod
 
 # Full package (builds everything, creates installer in artifacts/)
-bun run package
+bun run winui:package
 ```
 
 ## Keyboard Shortcuts
@@ -103,6 +109,18 @@ bun run package
 ## Development
 
 See [AGENTS.md](AGENTS.md) for architecture details, code conventions, and development workflow.
+
+## Running in Development
+
+To run the app in development mode:
+
+```bash
+# Run WinUI frontend with auto-restart on code changes
+bun run winui:dev
+
+# Or run Avalonia frontend with auto-restart on code changes  
+bun run avalonia:dev
+```
 
 ## License
 

@@ -16,7 +16,9 @@
     <Product>Kuumo App</Product>
     <Company>kuumoneko</Company>
     <Description>Kuumo App music player</Description>
-    <Version>6.0.0</Version>
+    <Version>7.1.0</Version>
+    <AssemblyVersion>7.1.0.0</AssemblyVersion>
+    <FileVersion>7.1.0.0</FileVersion>
     <EnableMsixTooling>true</EnableMsixTooling>
     <WindowsPackageType Condition="'$(EnableMsix)' == 'true'">MSIX</WindowsPackageType>
     <WindowsPackageType Condition="'$(EnableMsix)' != 'true'">None</WindowsPackageType>
