@@ -13,10 +13,10 @@
 - [x] Verified `ImageCache.Clear()` is called appropriately during window hiding
 
 ## Phase 3: Safe GC + Win32 `EmptyWorkingSet` trim right after window hide
-- [ ] Examine `UiMemoryManager.cs` for existing memory trimming logic
-- [ ] Confirm `MemoryTrimmer.TrimWorkingSet()` is called after window hide
-- [ ] Validate GC collection strategy in `MemoryTrimmer.cs`
-- [ ] Check that `TrimWorkingSet()` is only called when truly in background mode
+- [x] Examine `UiMemoryManager.cs` for existing memory trimming logic (confirmed working set trimming scheduled after window hide)
+- [x] Confirm `MemoryTrimmer.TrimWorkingSet()` is called after window hide (called in ScheduleTrimAsync method with proper delay and background check)
+- [x] Validate GC collection strategy in `MemoryTrimmer.cs` (uses aggressive GC collection with compaction and WaitForPendingFinalizers)
+- [x] Check that `TrimWorkingSet()` is only called when truly in background mode (only called if window is still hidden and transitionGen matches)
 
 ## Phase 4: Tuning Bun / `libmpv` background demuxer/cache buffers
 - [ ] Review `play.ts` mpv options for background playback optimization
