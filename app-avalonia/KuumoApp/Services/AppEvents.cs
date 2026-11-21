@@ -99,6 +99,13 @@ public sealed class AppEvents
             case "trackUnavailable":
                 if (TrackUnavailable is not null) Dispatcher.UIThread.Post(() => TrackUnavailable());
                 break;
+            case "player-retrying":
+            case "network-retry":
+            case "network-restored":
+                // Playback-level network recovery telemetry: logged only, the
+                // existing player state events keep driving the UI.
+                AppLog.Write("events", $"{name}: {data.GetRawText()}");
+                break;
             case "refetch":
                 if (RefetchRequested is not null) Dispatcher.UIThread.Post(() => RefetchRequested());
                 break;

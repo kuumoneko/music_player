@@ -281,17 +281,36 @@ const playContextStart = async (excludeId?: string): Promise<boolean> => {
 };
 
 // --- Player Events ---
+player.player?.on("player-retrying", (data: any) => {
+	emitToFrontend("player-retrying", data);
+});
+
+player.player?.on("network-retry", (data: any) => {
+	emitToFrontend("network-retry", data);
+});
+
+player.player?.on("network-restored", (data: any) => {
+	emitToFrontend("network-restored", data);
+});
+
 player.player?.on("track-error", (data: any) => {
 	const id = typeof data === "string" ? data : data.id;
 	const error = typeof data === "string" ? "not found" : data.error;
-	emitToFrontend("error", { message: `"${id}" is unavailable (${error}). Skipping to next.` });
-	writeUserData("currentPlaying", { source: MusicSource.Youtube, id: "", title: "", thumbnail: "", artist: "", artistId: "" });
-	emitToFrontend("currentTrackChanged", { source: "", id: "", title: "", thumbnail: "", artist: "", artistId: "" });
-	const playedTrack = getUserData("playedTrack") ?? [];
-	writeUserData("playedTrack", playedTrack.filter((t: string) => t !== id));
+	// Transient outages (recovery window exhausted) must not erase history:
+	// the track itself is fine, the network is not.
+	const transient = typeof data !== "string" && data?.transient === true;
+	emitToFrontend("error", { message: `"${id}" is unavailable (${error}). Skipping to next.`, transient, id });
+	if (!transient) {
+		writeUserData("currentPlaying", { source: MusicSource.Youtube, id: "", title: "", thumbnail: "", artist: "", artistId: "" });
+		emitToFrontend("currentTrackChanged", { source: "", id: "", title: "", thumbnail: "", artist: "", artistId: "" });
+		const playedTrack = getUserData("playedTrack") ?? [];
+		writeUserData("playedTrack", playedTrack.filter((t: string) => t !== id));
+	}
 	notifyHomeChanged();
-	discordRPC.instance?.clearMusic();
-	if (typeof data !== "string" && isPermanentUnavailable(error)) {
+	if (!transient) {
+		discordRPC.instance?.clearMusic();
+	}
+	if (!transient && typeof data !== "string" && isPermanentUnavailable(error)) {
 		markTracksDeleted([id]);
 	}
 	player.player?.next();

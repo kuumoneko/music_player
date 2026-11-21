@@ -12,6 +12,48 @@ public static class ImageAttach
 {
     private const int DefaultDecodeSize = 200;
 
+    // 2x2 white at 15% alpha: a neutral "no artwork" wash that reads acceptably
+    // on both light and dark cards without shipping an asset.
+    private const string PlaceholderPng =
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEUlEQVR4nGP4//+/GggzwBgAdhQMjekj+bYAAAAASUVORK5CYII=";
+
+    private static Task<BitmapImage>? _placeholderTask;
+
+    private static Task<BitmapImage> PlaceholderAsync() => _placeholderTask ??= CreatePlaceholderAsync();
+
+    private static async Task<BitmapImage> CreatePlaceholderAsync()
+    {
+        using var stream = new InMemoryRandomAccessStream();
+        using (var writer = new DataWriter(stream))
+        {
+            writer.WriteBytes(Convert.FromBase64String(PlaceholderPng));
+            await writer.StoreAsync();
+            writer.DetachStream();
+        }
+        stream.Seek(0);
+        var bitmap = new BitmapImage();
+        await bitmap.SetSourceAsync(stream);
+        return bitmap;
+    }
+
+    private static async Task ShowPlaceholderAsync(Image image, string? expectedTag)
+    {
+        BitmapImage? bitmap = null;
+        try
+        {
+            bitmap = await PlaceholderAsync();
+        }
+        catch
+        {
+            // no placeholder, just leave the card background visible
+        }
+        if (expectedTag is not null && image.Tag as string != expectedTag)
+        {
+            return;
+        }
+        image.Source = bitmap;
+    }
+
     public static readonly DependencyProperty SourceUrlProperty = DependencyProperty.RegisterAttached(
         "SourceUrl", typeof(string), typeof(ImageAttach), new PropertyMetadata(null, OnSourceUrlChanged));
 
@@ -37,7 +79,7 @@ public static class ImageAttach
     {
         if (string.IsNullOrEmpty(url))
         {
-            image.Source = null;
+            await ShowPlaceholderAsync(image, image.Tag as string);
             return;
         }
         if (image.Tag as string == url)
@@ -65,7 +107,9 @@ public static class ImageAttach
                 : await App.Services.Api.GetImageDataUriAsync(url) ?? "";
             if (string.IsNullOrEmpty(dataUri))
             {
-                image.Source = null;
+                // Deleted video / unavailable artwork: show the placeholder instead
+                // of an empty slot.
+                await ShowPlaceholderAsync(image, url);
                 return;
             }
             var comma = dataUri.IndexOf(',');

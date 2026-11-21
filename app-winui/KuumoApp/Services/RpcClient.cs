@@ -7,19 +7,31 @@ namespace KuumoApp.Services;
 
 public sealed class RpcClient : IDisposable
 {
+    private const int BaseReconnectDelayMs = 1000;
+    private const int MaxReconnectDelayMs = 30_000;
+    private const int MaxBackoffShift = 5;
+    private const int JitterMaxMs = 500;
+
     public static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
     private static readonly JsonSerializerOptions SendJson = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     private readonly ConcurrentDictionary<long, TaskCompletionSource<JsonElement>> _pending = new();
     private readonly SemaphoreSlim _sendLock = new(1, 1);
     private readonly SemaphoreSlim _connectLock = new(1, 1);
     private readonly CancellationTokenSource _cts = new();
+    private readonly object _reconnectGate = new();
     private ClientWebSocket? _ws;
     private long _nextId;
-    private bool _disposed;
+    private volatile bool _disposed;
+    private int _reconnectionAttempts;
+    private int _isReconnecting;
+    private Timer? _reconnectTimer;
+    private Uri? _lastEndpoint; // Track the last connected endpoint
+    private bool _hasConnectedOnce;
 
     public event Action<string, JsonElement>? EventReceived;
     public event Action? Connected;
     public event Action? Disconnected;
+    public event Action? Reconnected;
 
     public bool IsConnected => _ws?.State == WebSocketState.Open;
 
@@ -29,25 +41,130 @@ public sealed class RpcClient : IDisposable
         {
             return;
         }
-        await _connectLock.WaitAsync();
+
         try
         {
+            await _connectLock.WaitAsync();
+        }
+        catch (ObjectDisposedException)
+        {
+            return;
+        }
+
+        try
+        {
+            if (_disposed || _cts.IsCancellationRequested)
+            {
+                return;
+            }
             if (IsConnected)
             {
                 return;
             }
             DisposeWs();
+
             var ws = new ClientWebSocket();
             ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
-            await ws.ConnectAsync(endpoint, _cts.Token);
+            try
+            {
+                // Remember the endpoint before dialing so a failed retry still knows where to go.
+                _lastEndpoint = endpoint;
+                await ws.ConnectAsync(endpoint, _cts.Token);
+            }
+            catch
+            {
+                ws.Dispose();
+                throw;
+            }
+
             _ws = ws;
             AppLog.Write("rpc", $"connected to {endpoint}");
-            Connected?.Invoke();
+            _reconnectionAttempts = 0; // Reset reconnection attempts on successful connection
+            _lastEndpoint = endpoint; // Store the endpoint for potential reconnects
+
+            bool wasReconnect = _hasConnectedOnce;
+            _hasConnectedOnce = true;
+            RaiseStateEvent(Connected, nameof(Connected));
+            if (wasReconnect)
+            {
+                // Re-hydration hook: subscribers re-sync state and resubscribe after a drop.
+                RaiseStateEvent(Reconnected, nameof(Reconnected));
+            }
+
             _ = ReceiveLoopAsync(ws, _cts.Token);
         }
         finally
         {
             _connectLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Schedules the next reconnect attempt with capped exponential backoff (1s, 2s, 4s ... 30s) plus jitter.
+    /// A single timer instance is reused via <see cref="Timer.Change(int, int)"/> so overlapping
+    /// disconnect paths can never spawn parallel retry loops.
+    /// </summary>
+    private void ScheduleReconnect()
+    {
+        lock (_reconnectGate)
+        {
+            if (_disposed || _cts.IsCancellationRequested || _lastEndpoint == null)
+            {
+                return;
+            }
+
+            _reconnectTimer ??= new Timer(
+                static state => ((RpcClient)state!).OnReconnectTick(),
+                this,
+                Timeout.Infinite,
+                Timeout.Infinite);
+
+            // "Key" is incremented before scheduling, so subtract one for the first ~1000ms delay.
+            int attempt = Math.Max(0, Volatile.Read(ref _reconnectionAttempts) - 1);
+            int delayMs = Math.Min(BaseReconnectDelayMs << Math.Min(attempt, MaxBackoffShift), MaxReconnectDelayMs);
+            delayMs += Random.Shared.Next(0, JitterMaxMs);
+
+            try
+            {
+                _reconnectTimer.Change(delayMs, Timeout.Infinite);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Dispose raced with scheduling; the client is shutting down.
+            }
+        }
+    }
+
+    private async void OnReconnectTick()
+    {
+        // Only one retry loop may run at a time; overlapping disconnects bail out here.
+        if (Interlocked.CompareExchange(ref _isReconnecting, 1, 0) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            var endpoint = _lastEndpoint;
+            if (_disposed || _cts.IsCancellationRequested || endpoint == null || IsConnected)
+            {
+                return;
+            }
+
+            await ConnectAsync(endpoint);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("rpc", $"reconnect attempt failed: {ex.Message}");
+            if (!_disposed && !_cts.IsCancellationRequested)
+            {
+                Interlocked.Increment(ref _reconnectionAttempts);
+                ScheduleReconnect();
+            }
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _isReconnecting, 0);
         }
     }
 
@@ -59,6 +176,11 @@ public sealed class RpcClient : IDisposable
 
     private async Task<T> CallAsync<T>(string method, object? parameters, Func<JsonElement, JsonSerializerOptions, T> convert, int timeoutMs)
     {
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(RpcClient));
+        }
+
         var id = Interlocked.Increment(ref _nextId);
         var tcs = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
         _pending[id] = tcs;
@@ -106,20 +228,34 @@ public sealed class RpcClient : IDisposable
     {
         var buffer = new byte[64 * 1024];
         var sb = new StringBuilder();
+        bool wasConnected = ws.State == WebSocketState.Open;
+
         try
         {
-            while (ws.State == WebSocketState.Open)
+            while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
             {
-                var result = await ws.ReceiveAsync(buffer, ct);
-                if (result.MessageType == WebSocketMessageType.Close)
+                try
                 {
-                    break;
+                    var result = await ws.ReceiveAsync(buffer, ct);
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        break;
+                    }
+                    sb.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                    if (result.EndOfMessage)
+                    {
+                        OnMessage(sb.ToString());
+                        sb.Clear();
+                    }
                 }
-                sb.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
-                if (result.EndOfMessage)
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
-                    OnMessage(sb.ToString());
-                    sb.Clear();
+                    break; // Expected during shutdown
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Write("rpc", $"receive loop ended: {ex.Message}");
+                    break;
                 }
             }
         }
@@ -129,14 +265,32 @@ public sealed class RpcClient : IDisposable
         }
         finally
         {
-            ws.Dispose();
-            FailPending(new IOException("connection closed"));
+            try
+            {
+                ws.Dispose();
+            }
+            catch
+            {
+                // Already faulted; nothing to clean up.
+            }
+
             if (ReferenceEquals(_ws, ws))
             {
                 _ws = null;
+
+                // Fail in-flight callers immediately so none of them hang until their timeout.
+                FailPending(new IOException("connection closed"));
+
                 if (!_disposed)
                 {
-                    Disconnected?.Invoke();
+                    if (wasConnected)
+                    {
+                        RaiseStateEvent(Disconnected, nameof(Disconnected));
+                    }
+
+                    // Schedule automatic reconnect with exponential backoff.
+                    Interlocked.Increment(ref _reconnectionAttempts);
+                    ScheduleReconnect();
                 }
             }
         }
@@ -161,11 +315,11 @@ public sealed class RpcClient : IDisposable
                     {
                         var message = error.TryGetProperty("message", out var m) ? m.GetString() : "RPC error";
                         AppLog.Write("rpc", $"RPC error response for id {id}: '{message}'");
-                        tcs.SetException(new InvalidOperationException(message ?? "RPC error"));
+                        tcs.TrySetException(new InvalidOperationException(message ?? "RPC error"));
                     }
                     else
                     {
-                        tcs.SetResult(root.GetProperty("result").Clone());
+                        tcs.TrySetResult(root.GetProperty("result").Clone());
                     }
                 }
             }
@@ -190,24 +344,70 @@ public sealed class RpcClient : IDisposable
         }
     }
 
+    private static void RaiseStateEvent(Action? handler, string name)
+    {
+        if (handler == null)
+        {
+            return;
+        }
+
+        try
+        {
+            handler();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("rpc", $"{name} handler threw: {ex.Message}");
+        }
+    }
+
     private void DisposeWs()
     {
-        _ws?.Dispose();
-        _ws = null;
+        var ws = Interlocked.Exchange(ref _ws, null);
+        try
+        {
+            ws?.Dispose();
+        }
+        catch
+        {
+            // Socket already faulted.
+        }
     }
 
     public void Dispose()
     {
-        if (_disposed)
+        lock (_reconnectGate)
         {
-            return;
+            if (_disposed)
+            {
+                return;
+            }
+            _disposed = true;
+
+            // Cancel any pending reconnect attempt and release the timer exactly once.
+            try
+            {
+                _reconnectTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Timer callback already disposed it.
+            }
+            _reconnectTimer?.Dispose();
+            _reconnectTimer = null;
         }
-        _disposed = true;
-        _cts.Cancel();
+
+        try
+        {
+            _cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already torn down.
+        }
+
         DisposeWs();
         FailPending(new ObjectDisposedException(nameof(RpcClient)));
-        _sendLock.Dispose();
-        _connectLock.Dispose();
         _cts.Dispose();
     }
 }

@@ -82,7 +82,6 @@ public sealed partial class MainWindow : Window
         });
         App.Services.Events.ErrorReceived += error => DispatcherQueue.TryEnqueue(() =>
         {
-            AppLog.Write("app", $"backend error: {error.Message}");
             Shell.SetStatus($"Error: {error.Message}");
             Services.ToastService.ShowError(error.Message);
         });

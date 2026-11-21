@@ -6,6 +6,13 @@ import { Repeat, SleepMode } from "../../shared/types.ts";
 import { resolve } from "node:path";
 import { INNERTUBE_USER_AGENT } from "../../shared/constants.ts";
 import { isPermanentUnavailable } from "../lib/unavailable.ts";
+import { getNetworkState, reportNetworkFailure, reportNetworkSuccess, waitForNetworkRestored } from "../lib/network.ts";
+
+/** Total wall-clock budget for a single playback recovery loop. */
+const RECOVERY_WINDOW_MS = 60_000;
+/** Exponential backoff between recovery attempts (1s -> 2s -> 4s -> 8s). */
+const RECOVERY_DELAYS = [1_000, 2_000, 4_000, 8_000];
+const RECOVERY_MAX_ATTEMPTS = 8;
 
 const MPV_EVENT_SHUTDOWN = 1;
 const MPV_EVENT_START_FILE = 6;
@@ -42,6 +49,13 @@ export default class Play extends EventEmitter {
     private isLiveStream: boolean = false;
     private fadeTimer: NodeJS.Timeout | null = null;
     private suppressEndFile: boolean = false;
+    private lastTimePos: number = 0;
+    private pendingSeek: number | null = null;
+    private pendingResume: boolean = true;
+    private recoveryToken: number = 0;
+    private recoveryActive: boolean = false;
+    private recoveryTimer: NodeJS.Timeout | null = null;
+    private recoveryWake: (() => void) | null = null;
 
     constructor(appPath: string) {
         super();
@@ -80,16 +94,27 @@ export default class Play extends EventEmitter {
             const opts: [string, string][] = [
                 ["vo", "null"],
                 ["ao", "wasapi"],
-                ["cache-pause", "no"],
+                ["cache", "yes"],
+                ["cache-pause", "yes"],
                 ["demuxer-readahead-secs", "5"],
                 ["demuxer-max-bytes", "8388608"],
                 ["keepaspect", "no"],
                 ["referrer", "https://www.youtube.com/"],
                 ["user-agent", INNERTUBE_USER_AGENT],
+                // P3 network resilience: give slow/again-failing streams time to recover.
+                ["network-timeout", "15"],
+                ["stream-lavf-o", "reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=5"],
             ];
             for (const [k, v] of opts) {
-                const r = this.symbols.mpv_set_option_string(this.handle, S(k), S(v));
-                if (r < 0) writeLogs([{ type: "error", message: `mpv_set_option(${k}) failed: ${this.mpvError(r)}` }]);
+                try {
+                    const r = this.symbols.mpv_set_option_string(this.handle, S(k), S(v));
+                    if (r < 0) {
+                        writeLogs([{ type: "error", message: `mpv option rejected (${k}=${v}): ${this.mpvError(r)}` }]);
+                    }
+                } catch (e) {
+                    const message = e instanceof Error ? e.message : String(e);
+                    writeLogs([{ type: "error", message: `mpv option rejected (${k}=${v}): ${message}` }]);
+                }
             }
 
             const initErr = this.symbols.mpv_initialize(this.handle);
@@ -148,6 +173,7 @@ export default class Play extends EventEmitter {
                     const time = parseFloat(new CString(strPtr).toString());
                     this.symbols.mpv_free(strPtr);
                     if (!isNaN(time)) {
+                        this.lastTimePos = time;
                         this.emit("change-playState", { time });
                     }
                 }
@@ -226,6 +252,24 @@ export default class Play extends EventEmitter {
     private handleFileLoaded() {
         this.suppressEndFile = false;
         this.emit("loading", false);
+        if (this.pendingSeek !== null) {
+            // Recovery reload: seek back to where the interruption happened and
+            // restore the previous play/pause state.
+            const timePos = this.pendingSeek;
+            const resume = this.pendingResume;
+            this.pendingSeek = null;
+            const savedVolume = getUserData("volume") ?? 50;
+            this.setVolume(savedVolume);
+            if (timePos > 0.5) this.command("seek", String(timePos), "absolute");
+            this.symbols?.mpv_set_property_string(this.handle, S("pause"), S(resume ? "no" : "yes"));
+            this.isPlaying = resume;
+            this.lastTimePos = timePos;
+            this.isFirstLoad = false;
+            this.emit("change-playState", { isPlaying: resume, time: timePos });
+            this.updateSMTC(resume);
+            setTimeout(() => this.emitDuration(), 500);
+            return;
+        }
         if (this.isFirstLoad) {
             this.isFirstLoad = false;
             if (this.isLiveStream) {
@@ -294,7 +338,25 @@ export default class Play extends EventEmitter {
             return;
         }
         if (reason === 4) {
-            writeLogs([{ type: "error", message: `mpv file load error: ${this.mpvError(errorCode)}` }]);
+            const errorName = this.mpvError(errorCode);
+            writeLogs([{ type: "error", message: `mpv file load error: ${errorName}` }]);
+            const videoId = this.isYouTubeUrl(this.playlistUrls[this.playlistIndex] ?? "");
+            if (videoId && this.isTransientPlaybackError(errorCode, errorName)) {
+                // Network drop or an expired 403 stream URL mid-playback:
+                // recover transparently instead of signalling "ended".
+                reportNetworkFailure();
+                const timePos = this.lastTimePos;
+                const wasPlaying = this.isPlaying;
+                writeLogs([{ type: "info", message: `mpv end-file: transient failure for ${videoId} at ${timePos.toFixed(1)}s — recovering` }]);
+                void this.recoverPlayback(videoId, timePos, wasPlaying, errorName);
+                return;
+            }
+            if (videoId) {
+                // Permanent load failure — let the app skip and clean up.
+                this.isPlaying = false;
+                this.emit("track-error", { id: videoId, error: errorName, transient: false });
+                return;
+            }
         }
         if (!this.isRepeat) {
             this.playlistIndex = Math.min(this.playlistIndex + 1, this.playlistUrls.length - 1);
@@ -315,6 +377,155 @@ export default class Play extends EventEmitter {
             this.loadedUrl = "";
             this.emit("change-playState", { isPlaying: false, time: 0 });
             this.emit("ended");
+        }
+    }
+
+    /**
+     * Distinguish transient stream/network failures (worth recovering) from
+     * permanent track unavailability.
+     */
+    private isTransientPlaybackError(errorCode: number, errorName: string): boolean {
+        const text = errorName.toLowerCase();
+        if (/network|timed? ?out|timeout|connection|reset|refused|unreachable|temporar|ssl|tls|dns|eof|403|404|410|5\d\d/.test(text)) {
+            return true;
+        }
+        // mpv: -10 property unavailable, -13 loading failed, -16 nothing to play, -20 generic.
+        return errorCode === -10 || errorCode === -13 || errorCode === -16 || errorCode === -20;
+    }
+
+    private cancelRecovery(reason: string) {
+        if (!this.recoveryActive && this.recoveryWake === null) return;
+        this.recoveryToken++;
+        this.recoveryActive = false;
+        this.pendingSeek = null;
+        const wake = this.recoveryWake;
+        this.recoveryWake = null;
+        if (this.recoveryTimer) {
+            clearTimeout(this.recoveryTimer);
+            this.recoveryTimer = null;
+        }
+        writeLogs([{ type: "info", message: `play: playback recovery cancelled (${reason})` }]);
+        wake?.();
+    }
+
+    private waitRecovery(ms: number): Promise<void> {
+        return new Promise<void>((resolve) => {
+            const finish = () => {
+                if (this.recoveryWake === finish) this.recoveryWake = null;
+                if (this.recoveryTimer) {
+                    clearTimeout(this.recoveryTimer);
+                    this.recoveryTimer = null;
+                }
+                resolve();
+            };
+            this.recoveryWake = finish;
+            this.recoveryTimer = setTimeout(finish, Math.max(0, ms));
+        });
+    }
+
+    /**
+     * Re-resolve a fresh stream URL, reload it, then let handleFileLoaded seek
+     * back and restore the play state. Backs off exponentially and gives up
+     * after RECOVERY_WINDOW_MS, emitting `track-error` with the transient flag.
+     */
+    private async recoverPlayback(videoId: string, startPos: number, wasPlaying: boolean, firstError: string) {
+        this.cancelRecovery("restarted");
+        const token = ++this.recoveryToken;
+        this.recoveryActive = true;
+        const deadline = Date.now() + RECOVERY_WINDOW_MS;
+        let attempt = 0;
+        let lastError = firstError;
+        let permanent = false;
+
+        while (this.recoveryToken === token && Date.now() < deadline) {
+            const delayMs = RECOVERY_DELAYS[Math.min(attempt, RECOVERY_DELAYS.length - 1)];
+            attempt++;
+            if (attempt > RECOVERY_MAX_ATTEMPTS) break;
+
+            const info = { id: videoId, attempt, error: lastError, time: startPos };
+            this.emit("player-retrying", info);
+            this.emit("network-retry", { ...info, delayMs });
+            writeLogs([{ type: "info", message: `play: retry ${attempt}/${RECOVERY_MAX_ATTEMPTS} for ${videoId} in ${delayMs}ms (${lastError})` }]);
+
+            if (getNetworkState() === "offline") {
+                // Park until the network monitor says we are back, so attempts
+                // are not wasted on guaranteed failures.
+                const remaining = Math.max(0, deadline - Date.now());
+                await waitForNetworkRestored({ timeoutMs: remaining });
+            } else {
+                await this.waitRecovery(delayMs);
+            }
+            if (this.recoveryToken !== token) return;
+
+            let url: string | null = null;
+            try {
+                const result = await this.resolveYoutubeUrl?.(videoId);
+                url = result?.url ?? null;
+                if (!url) lastError = result?.error || "resolve returned no url";
+            } catch (e) {
+                lastError = e instanceof Error ? e.message : String(e);
+            }
+            if (this.recoveryToken !== token) return;
+
+            if (!url) {
+                if (isPermanentUnavailable(lastError)) {
+                    permanent = true;
+                    break;
+                }
+                continue;
+            }
+
+            this.pendingSeek = startPos;
+            this.pendingResume = wasPlaying;
+            this.suppressEndFile = true;
+            this.command("stop");
+            const ret = this.symbols
+                ? this.symbols.mpv_command_string(this.handle, S(`loadfile "${url.replace(/\\/g, "/")}" replace`))
+                : -1;
+            if (ret < 0) {
+                lastError = this.symbols ? this.mpvError(ret) : "mpv unavailable";
+                this.pendingSeek = null;
+                writeLogs([{ type: "error", message: `play: recovery loadfile failed: ${lastError}` }]);
+                continue;
+            }
+
+            reportNetworkSuccess();
+            this.recoveryActive = false;
+            writeLogs([{ type: "info", message: `play: recovered ${videoId} after ${attempt} attempt(s) at ${startPos.toFixed(1)}s` }]);
+            this.emit("network-restored", { id: videoId, attempt, time: startPos, recovered: true });
+            void this.reappendRemaining(token);
+            return;
+        }
+
+        if (this.recoveryToken !== token) return;
+        this.recoveryActive = false;
+        this.pendingSeek = null;
+        writeLogs([{ type: "error", message: `play: recovery exhausted for ${videoId}: ${lastError}` }]);
+        this.emit("track-error", { id: videoId, error: lastError, transient: !permanent });
+    }
+
+    /**
+     * mpv's playlist was replaced by the recovery load, so re-append the
+     * upcoming entries (resolved best-effort) to keep auto-advance working.
+     */
+    private async reappendRemaining(token: number) {
+        if (!this.symbols || !this.handle) return;
+        const remaining = this.playlistUrls.slice(this.playlistIndex + 1, this.playlistIndex + 11);
+        for (const original of remaining) {
+            if (this.recoveryToken !== token) return;
+            const videoId = this.isYouTubeUrl(original);
+            let url = original;
+            if (videoId) {
+                try {
+                    const result = await this.resolveYoutubeUrl?.(videoId);
+                    if (!result?.url) continue;
+                    url = result.url;
+                } catch {
+                    continue;
+                }
+            }
+            if (this.recoveryToken !== token) return;
+            this.symbols?.mpv_command_string(this.handle, S(`loadfile "${url.replace(/\\/g, "/")}" append`));
         }
     }
 
@@ -345,6 +556,8 @@ export default class Play extends EventEmitter {
     }
 
     async play(urlOrPath: string, _title?: string, _thumbnail?: string) {
+        this.cancelRecovery("play");
+        this.lastTimePos = 0;
         if (!this.symbols || !this.handle) {
             writeLogs([{ type: "error", message: `play: mpv not initialized, cannot play ${urlOrPath}` }]);
             this.emit("track-error", _title || urlOrPath);
@@ -503,6 +716,7 @@ export default class Play extends EventEmitter {
     }
 
     async next() {
+        this.cancelRecovery("next");
         if (this.fadeTimer) {
             clearTimeout(this.fadeTimer);
             this.fadeTimer = null;
@@ -521,6 +735,7 @@ export default class Play extends EventEmitter {
     }
 
     async previous() {
+        this.cancelRecovery("previous");
         if (this.fadeTimer) {
             clearTimeout(this.fadeTimer);
             this.fadeTimer = null;
@@ -674,6 +889,7 @@ export default class Play extends EventEmitter {
     }
 
     public async destroy() {
+        this.cancelRecovery("destroy");
         this.isReady = false;
         if (this.eventTimer) clearTimeout(this.eventTimer);
         if (this.timePosTimer) clearInterval(this.timePosTimer);

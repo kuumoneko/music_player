@@ -27,6 +27,7 @@ import {
   getArtistById,
   getArtistByPlaylistId,
   getTracks,
+  clearThumbnail,
 } from "../db/index.ts";
 import { YTB_TRACK_START } from "../../shared/constants.ts";
 import { getHash, resolveId, tracksToFront, clearHashes, ensurePopulated } from "../lib/hash.ts";
@@ -53,11 +54,105 @@ const rateLimitMap = new Map<string, number>();
 const RATE_LIMIT_MS = 500;
 
 const imageCache = new Map<string, { data: string; at: number }>();
+const imageMisses = new Map<string, number>();
 const IMAGE_TTL_MS = 30 * 60_000;
-const IMAGE_CACHE_MAX = 80;
+const IMAGE_MISS_TTL_MS = 10 * 60_000;
+const IMAGE_CACHE_MAX = 256;
+const IMAGE_MISS_MAX = 512;
+const IMAGE_TIMEOUT_MS = 15_000;
+const IMAGE_RETRIES = 1;
+const IMAGE_CONCURRENCY = 6;
+const IMAGE_FAIL_STREAK_LIMIT = 5;
+const IMAGE_COOLDOWN_MS = 30_000;
+
+let imageActive = 0;
+let imageFailStreak = 0;
+let imageCooldownUntil = 0;
+const imageWaiters: (() => void)[] = [];
 
 function purgeImageCache() {
   imageCache.clear();
+  imageMisses.clear();
+}
+
+function evictOldest<V>(map: Map<string, V>, max: number, timeOf: (value: V) => number) {
+  if (map.size <= max) return;
+  let oldestKey: string | undefined;
+  let oldestAt = Infinity;
+  for (const [key, value] of map) {
+    const at = timeOf(value);
+    if (at < oldestAt) {
+      oldestAt = at;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey !== undefined) map.delete(oldestKey);
+}
+
+async function withImageSlot<T>(fn: () => Promise<T>): Promise<T> {
+  while (imageActive >= IMAGE_CONCURRENCY) {
+    await new Promise<void>((release) => imageWaiters.push(release));
+  }
+  imageActive++;
+  try {
+    return await fn();
+  } finally {
+    imageActive--;
+    const next = imageWaiters.shift();
+    if (next) next();
+  }
+}
+
+function rememberImageMiss(url: string) {
+  imageMisses.set(url, Date.now());
+  evictOldest(imageMisses, IMAGE_MISS_MAX, (at) => at);
+}
+
+function noteImageFailure() {
+  imageFailStreak++;
+  if (imageFailStreak >= IMAGE_FAIL_STREAK_LIMIT) {
+    imageCooldownUntil = Date.now() + IMAGE_COOLDOWN_MS;
+    imageFailStreak = 0;
+  }
+}
+
+type ImageFetchResult =
+  | { bytes: Uint8Array }
+  | { permanent: true }
+  | { skipped: true };
+
+/**
+ * Downloads a thumbnail behind a small concurrency gate: the home feed alone
+ * asks for ~120 images at once, which used to time out in a burst.
+ * Returns `{ permanent: true }` for images the CDN refuses for good (4xx), so a
+ * deleted video's thumbnail is a "no image", not an app error.
+ */
+async function fetchImageBytes(url: string): Promise<ImageFetchResult> {
+  return withImageSlot(async () => {
+    if (Date.now() < imageCooldownUntil) return { skipped: true };
+
+    let lastError: Error = new Error(`getImageDataUri: fetch failed for ${url}`);
+    for (let attempt = 0; attempt <= IMAGE_RETRIES; attempt++) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS) });
+        if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+          imageFailStreak = 0;
+          return { permanent: true };
+        }
+        if (!res.ok) {
+          lastError = new Error(`getImageDataUri: fetch failed with status ${res.status} for ${url}`);
+          continue;
+        }
+        imageFailStreak = 0;
+        return { bytes: new Uint8Array(await res.arrayBuffer()) };
+      } catch (e) {
+        lastError = new Error(`getImageDataUri: ${e instanceof Error ? e.message : String(e)} for ${url}`);
+      }
+    }
+
+    noteImageFailure();
+    throw lastError;
+  });
 }
 
 let uiVisible = true;
@@ -538,12 +633,24 @@ writeLogs([{
       if (cached && Date.now() - cached.at < IMAGE_TTL_MS) {
         return cached.data;
       }
-      const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
-      if (!res.ok) {
-        throw new Error(`getImageDataUri: fetch failed with status ${res.status}`);
+      const missedAt = imageMisses.get(url);
+      if (missedAt !== undefined && Date.now() - missedAt < IMAGE_MISS_TTL_MS) {
+        return null;
       }
-      const buf = await res.arrayBuffer();
-      const bytes = new Uint8Array(buf);
+
+      const result = await fetchImageBytes(url);
+      if ("skipped" in result) {
+        return null;
+      }
+      if ("permanent" in result) {
+        // Deleted video or expired avatar: remember the URL and forget the stale
+        // one in sqlite so it is not requested again on the next run.
+        rememberImageMiss(url);
+        clearThumbnail(url);
+        return null;
+      }
+
+      const bytes = result.bytes;
 
       let ext = "jpeg";
       if (bytes[0] === 0x89 && bytes[1] === 0x50) ext = "png";
@@ -552,18 +659,8 @@ writeLogs([{
 
       const b64 = Buffer.from(bytes).toString("base64");
       const data = `data:image/${ext};base64,${b64}`;
-      if (imageCache.size >= IMAGE_CACHE_MAX) {
-        let oldestKey: string | undefined;
-        let oldestAt = Infinity;
-        for (const [key, entry] of imageCache) {
-          if (entry.at < oldestAt) {
-            oldestAt = entry.at;
-            oldestKey = key;
-          }
-        }
-        if (oldestKey !== undefined) imageCache.delete(oldestKey);
-      }
       imageCache.set(url, { data, at: Date.now() });
+      evictOldest(imageCache, IMAGE_CACHE_MAX, (entry) => entry.at);
       return data;
     }),
 

@@ -13,6 +13,19 @@ const getPlaylistStmt = db.prepare(`
   GROUP BY p.id;
 `);
 
+const playlistMissingSinceStmt = db.prepare(`SELECT missingSince FROM playlists WHERE id = ?;`);
+
+/**
+ * True while a playlist is known to be unavailable (deleted, or private and
+ * therefore invisible to the API key). YouTube answers 404 for those on every
+ * request, so callers skip them until the window expires.
+ */
+export function isPlaylistMissing(id: string, ttlMs: number): boolean {
+    const row = playlistMissingSinceStmt.get(id) as { missingSince: number | null } | null;
+    if (!row?.missingSince) return false;
+    return Date.now() - row.missingSince < ttlMs;
+}
+
 
 export default function getPlaylist(id: string, includeTracks: boolean = true): Playlist | null {
     interface PlaylistRow {

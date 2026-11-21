@@ -92,7 +92,6 @@ public static class ThumbTrim
             {
                 return null;
             }
-            AppLog.Write("thumb", $"trimmed {width}x{height} -> {c.W}x{c.H}");
             return trimmed;
         }
         catch (Exception ex)

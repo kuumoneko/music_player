@@ -1,4 +1,4 @@
-import getPlaylist from "./playlists/get.ts";
+import getPlaylist, { isPlaylistMissing } from "./playlists/get.ts";
 import createPlaylist from "./playlists/create.ts";
 import deletePlaylist from "./playlists/delete.ts";
 import getAllPlaylists from "./playlists/list.ts";
@@ -6,9 +6,9 @@ import addTrackToPlaylist from "./playlists/addTrack.ts";
 import removeTrackFromPlaylist from "./playlists/removeTrack.ts";
 import setupSQLite from "./setup.ts";
 import getTracks, { getTrackByName, getAllTracks } from "./tracks/get.ts";
-import writeTracks, { linkTrackToArtist } from "./tracks/write.ts";
+import writeTracks, { linkTrackToArtist, clearThumbnail } from "./tracks/write.ts";
 import deleteTracks, { deleteStaleTrackArtists, markTracksDeleted } from "./tracks/delete.ts";
-import writePlaylist from './playlists/write.ts';
+import writePlaylist, { deleteInvalidPlaylists, markPlaylistMissing, clearPlaylistMissing } from './playlists/write.ts';
 import { getLocalFileById, getAllLocalFiles, getAllLocalFileIds, searchLocalFiles } from './local/get.ts';
 import writeLocalFiles from './local/write.ts';
 import getArtistById, { getArtistByPlaylistId } from './artists/get.ts';
@@ -19,7 +19,7 @@ import getSystemData, { getSystemDefaults } from './system/get.ts';
 import writeSystemData from './system/write.ts';
 import { seedSystemFromAssets } from './system/seed.ts';
 import writeLogs from './log/write.ts';
-import deleteLogs from './log/delete.ts';
+import deleteLogs, { pruneLogs } from './log/delete.ts';
 import { getSearchCache, purgeExpiredSearchCache } from './cache/get.ts';
 import setSearchCache from './cache/write.ts';
 
@@ -28,8 +28,13 @@ export {
     getTracks,
     writeTracks,
     linkTrackToArtist,
+    clearThumbnail,
     getPlaylist,
+    isPlaylistMissing,
     writePlaylist,
+    deleteInvalidPlaylists,
+    markPlaylistMissing,
+    clearPlaylistMissing,
     createPlaylist,
     deletePlaylist,
     getAllPlaylists,
@@ -58,6 +63,7 @@ export {
     deleteStaleTrackArtists,
     writeLogs,
     deleteLogs,
+    pruneLogs,
     getSearchCache,
     setSearchCache,
     purgeExpiredSearchCache

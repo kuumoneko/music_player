@@ -68,4 +68,27 @@ export function linkTrackToArtist(trackId: string, artistId: string): void {
   linkTrackToArtistStmt.run(trackId, artistId);
 }
 
+const clearTrackThumbnailStmt = db.prepare(`UPDATE tracks SET thumbnail = '' WHERE thumbnail = $thumbnail;`);
+const clearPlaylistThumbnailStmt = db.prepare(`UPDATE playlists SET thumbnail = '' WHERE thumbnail = $thumbnail;`);
+const clearArtistThumbnailStmt = db.prepare(`UPDATE artists SET thumbnail = '' WHERE thumbnail = $thumbnail;`);
+
+/**
+ * Forgets a thumbnail URL that the CDN permanently refuses (deleted/private
+ * video, expired avatar). The stored URL is dropped so future runs don't keep
+ * requesting it; the next successful fetch repopulates it from the API.
+ */
+export function clearThumbnail(thumbnail: string): void {
+  if (!thumbnail) return;
+  const params = { $thumbnail: thumbnail };
+  try {
+    db.transaction(() => {
+      clearTrackThumbnailStmt.run(params);
+      clearPlaylistThumbnailStmt.run(params);
+      clearArtistThumbnailStmt.run(params);
+    })();
+  } catch {
+    // best-effort cleanup, never fail the image request because of it
+  }
+}
+
 export default writeTracks

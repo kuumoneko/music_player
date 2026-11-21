@@ -1,14 +1,29 @@
 import type { Track, Playlist, Artist, SearchResult } from "../../../shared/types.ts";
 import { MusicSource, MusicType } from "../../../shared/types.ts";
-import { getTracks, writeTracks, markTracksDeleted, deleteStaleTrackArtists, getPlaylist, writePlaylist, getArtistById, writeArtist, writeLogs, getSearchCache, setSearchCache, getUserData, writeUserData, linkTrackToArtist } from "../../db/index.ts";
+import { getTracks, writeTracks, markTracksDeleted, deleteStaleTrackArtists, getPlaylist, writePlaylist, getArtistById, writeArtist, writeLogs, getSearchCache, setSearchCache, getUserData, writeUserData, linkTrackToArtist, isPlaylistMissing, markPlaylistMissing, clearPlaylistMissing } from "../../db/index.ts";
 import { Resource, type ResourceState } from "../../cache/resource.ts";
 import type { GoogleAuth } from "../../auth/google.ts";
 import iso8601DurationToMilliseconds from "../../../shared/time.ts";
 import { isPermanentUnavailable } from "../../lib/unavailable.ts";
 import type Youtube from "../youtube/index.ts";
 import { extractPlaylistContents, parsePlaylistItem, itemToTrack } from "../youtube/InnerTube/parser.ts";
+import { withRetry, isNetworkError } from "../../lib/retry.ts";
+
+/** Marker for a failed request that may still succeed on a retry. */
+class DataApiRetryError extends Error {
+    status?: number;
+    constructor(message: string, status?: number) {
+        super(message);
+        this.name = "DataApiRetryError";
+        this.status = status;
+    }
+}
 
 const YT_DATA_API_BASE = "https://www.googleapis.com/youtube/v3";
+
+// A playlist that answered 404 is skipped for a day instead of being retried on
+// every startup (deleted channels, or private playlists an API key can't see).
+const PLAYLIST_MISSING_TTL_MS = 24 * 3600_000;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -139,19 +154,36 @@ export class YoutubeDataAPI {
         return this.apiKeys.length > 0;
     }
 
-    private async fetch<T>(endpoint: string, params: Record<string, string>, useAuth: boolean = false, attempts: number = 2, ifNoneMatch?: string): Promise<{ data: T | null; error?: string; notModified?: boolean; etag?: string }> {
+    private async fetch<T>(endpoint: string, params: Record<string, string>, useAuth: boolean = false, attempts: number = 2, ifNoneMatch?: string): Promise<{ data: T | null; error?: string; notModified?: boolean; etag?: string; status?: number }> {
         let lastError: string | undefined;
-        for (let attempt = 1; attempt <= attempts; attempt++) {
-            const result = await this.fetchOnce<T>(endpoint, params, useAuth, ifNoneMatch);
-            if (result.data !== null) return result;
-            if (result.notModified) return result;
-            lastError = result.error;
-            if (attempt < attempts) await sleep(500 * attempt);
+        let lastStatus: number | undefined;
+        try {
+            return await withRetry(async () => {
+                const result = await this.fetchOnce<T>(endpoint, params, useAuth, ifNoneMatch);
+                if (result.data !== null) return result;
+                if (result.notModified) return result;
+                lastError = result.error;
+                lastStatus = result.status;
+                // 4xx (except a throttle/auth blip) will not change on a retry, and
+                // retrying just doubles the log rows for deleted playlists/tracks.
+                if (lastStatus !== undefined && lastStatus >= 400 && lastStatus < 500 && lastStatus !== 408 && lastStatus !== 429) {
+                    return { data: null, error: lastError, status: lastStatus };
+                }
+                throw new DataApiRetryError(lastError ?? "Data API request failed", lastStatus);
+            }, {
+                attempts,
+                baseDelayMs: 500,
+                factor: 1,
+                jitter: 0,
+                isRetryable: (e) => e instanceof DataApiRetryError || isNetworkError(e),
+            });
+        } catch (e) {
+            const fallback = e instanceof Error ? e.message : String(e);
+            return { data: null, error: lastError ?? fallback, status: lastStatus };
         }
-        return { data: null, error: lastError };
     }
 
-    private async fetchOnce<T>(endpoint: string, params: Record<string, string>, useAuth: boolean = false, ifNoneMatch?: string): Promise<{ data: T | null; error?: string; notModified?: boolean; etag?: string }> {
+    private async fetchOnce<T>(endpoint: string, params: Record<string, string>, useAuth: boolean = false, ifNoneMatch?: string): Promise<{ data: T | null; error?: string; notModified?: boolean; etag?: string; status?: number }> {
         const url = new URL(`${YT_DATA_API_BASE}/${endpoint}`);
         for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
@@ -212,7 +244,7 @@ export class YoutubeDataAPI {
                         if (retryRes.ok) return { data: retryJson as T, etag: retryJson?.etag ?? retryRes.headers.get("etag") ?? undefined };
                     }
                 }
-                return { data: null, error: err };
+                return { data: null, error: err, status: res.status };
             }
 
             return { data: json as T, etag };
@@ -452,6 +484,18 @@ export class YoutubeDataAPI {
             const cached = getPlaylist(id);
             const TTL = 3600_000;
 
+            if (!forceRefresh && isPlaylistMissing(id, PLAYLIST_MISSING_TTL_MS)) {
+                return {
+                    source: MusicSource.Youtube,
+                    name: cached?.name ?? "",
+                    id,
+                    thumbnail: cached?.thumbnail ?? "",
+                    duration: 0,
+                    ids: [],
+                    tracks: [],
+                } as Playlist;
+            }
+
             if (!forceRefresh && !isHomeData && cached && cached.ids?.length && cached.lastFetched && (Date.now() - cached.lastFetched) < TTL) {
                 const tracks = await this.fetchTrack(cached.ids);
                 return {
@@ -534,6 +578,7 @@ export class YoutubeDataAPI {
         let plThumbnail = existing?.thumbnail ?? "";
         let playlistEtag: string | undefined;
         let pageIndex = 0;
+        let playlistNotFound = false;
 
         while (true) {
             const params: Record<string, string> = {
@@ -546,7 +591,7 @@ export class YoutubeDataAPI {
             // Page 1 revalidates with the stored etag — a 304 means the whole
             // playlist is unchanged, so serve the cached rows without fetching
             // the remaining pages or any track metadata.
-            const { data, error, notModified, etag: pageEtag } = await this.fetch<{ items: any[]; nextPageToken?: string }>(
+            const { data, error, notModified, etag: pageEtag, status } = await this.fetch<{ items: any[]; nextPageToken?: string }>(
                 "playlistItems",
                 params,
                 false,
@@ -556,6 +601,7 @@ export class YoutubeDataAPI {
 
             if (notModified) {
                 writeLogs([{ type: "info", message: `DataAPI fetchPlaylistData: ${id} unchanged (304), serving cached playlist` }]);
+                clearPlaylistMissing(id);
                 const tracks = existing?.ids?.length ? await this.fetchTrack(existing.ids, forceRefresh) : [];
                 return {
                     source: MusicSource.Youtube,
@@ -571,10 +617,15 @@ export class YoutubeDataAPI {
             }
 
             if (error || !data?.items) {
-                if (error) writeLogs([{ type: "error", message: `DataAPI playlistItems: ${error}` }]);
+                // The error itself is already logged by fetchOnce; only the
+                // "this playlist is gone" case needs handling here.
+                if (status === 404) playlistNotFound = true;
                 break;
             }
-            if (pageIndex === 0) playlistEtag = pageEtag;
+            if (pageIndex === 0) {
+                playlistEtag = pageEtag;
+                clearPlaylistMissing(id);
+            }
             pageIndex++;
 
             for (const item of data.items) {
@@ -599,6 +650,7 @@ export class YoutubeDataAPI {
 
         if (allTracks.length === 0 && existing?.ids?.length) {
             writeLogs([{ type: "error", message: `DataAPI fetchPlaylistData: ${id} returned no items, falling back to cached playlist` }]);
+            if (playlistNotFound) markPlaylistMissing(id);
             const tracks = await this.fetchTrack(existing.ids);
             return {
                 source: MusicSource.Youtube,
@@ -646,6 +698,16 @@ export class YoutubeDataAPI {
         }
 
         const ordered = trackIds.map(tid => fetched.find(t => t.id === tid)).filter(Boolean) as Track[];
+
+        // Only skip a playlist for a while when it is 404 *and* nothing could be
+        // recovered, so private playlists that InnerTube can still read keep working.
+        if (ordered.length === 0 && fetched.length === 0 && playlistNotFound) {
+            markPlaylistMissing(id);
+            writeLogs([{ type: "info", message: `DataAPI playlist ${id} not found, skipping for 24h` }]);
+        } else if (ordered.length > 0) {
+            clearPlaylistMissing(id);
+        }
+
         const playlist: Playlist = {
             source: MusicSource.Youtube,
             name: plName,

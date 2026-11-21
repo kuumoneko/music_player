@@ -20,6 +20,7 @@ class YtSessionManager {
     private ready = false;
     private persisted = false;
     private inflight: Promise<YtSessionData> | null = null;
+    private resetHooks = new Set<() => void>();
 
     constructor() {
         this.signatureTimestamp = getUserData("ytSignatureTimestamp") ?? 20584;
@@ -116,6 +117,40 @@ class YtSessionManager {
     invalidate() {
         this.ready = false;
         this.visitorData = "";
+    }
+
+    /**
+     * Register a callback that must reset its own cached session state whenever
+     * the shared session is invalidated (e.g. the resolver's `ready` flag).
+     */
+    onReset(cb: () => void): () => void {
+        this.resetHooks.add(cb);
+        return () => {
+            this.resetHooks.delete(cb);
+        };
+    }
+
+    /**
+     * Single entry point for session refresh: invalidate, reset every dependent
+     * cache, then re-acquire the session before the caller retries.
+     */
+    async invalidateAndEnsure(): Promise<YtSessionData | null> {
+        this.invalidate();
+        for (const hook of [...this.resetHooks]) {
+            try {
+                hook();
+            } catch (e) {
+                const message = e instanceof Error ? e.message : String(e);
+                writeLogs([{ type: "error", message: `YtSession reset hook failed: ${message}` }]);
+            }
+        }
+        try {
+            return await this.ensure();
+        } catch (e) {
+            const message = e instanceof Error ? e.message : String(e);
+            writeLogs([{ type: "error", message: `YtSession refresh failed: ${message}` }]);
+            return null;
+        }
     }
 
     private snapshot(): YtSessionData {

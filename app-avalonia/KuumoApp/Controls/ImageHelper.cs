@@ -12,6 +12,28 @@ public static class ImageHelper
     private const int DefaultDecodeSize = 160;
     private const string SourceUrlTagKey = "SourceUrl";
 
+    // 2x2 white at 15% alpha: a neutral "no artwork" wash that reads acceptably
+    // on both light and dark cards without shipping an asset.
+    private const string PlaceholderPng =
+        "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEUlEQVR4nGP4//+/GggzwBgAdhQMjekj+bYAAAAASUVORK5CYII=";
+
+    private static Bitmap? _placeholder;
+
+    private static Bitmap? Placeholder => _placeholder ??= CreatePlaceholder();
+
+    private static Bitmap? CreatePlaceholder()
+    {
+        try
+        {
+            using var stream = new MemoryStream(Convert.FromBase64String(PlaceholderPng));
+            return new Bitmap(stream);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public static void SetSourceUrl(Image image, string? value)
     {
         image.Tag = value;
@@ -24,7 +46,7 @@ public static class ImageHelper
     {
         if (string.IsNullOrEmpty(url))
         {
-            image.Source = null;
+            image.Source = Placeholder;
             return;
         }
         if (image.Tag as string == url && image.Source is not null)
@@ -48,7 +70,7 @@ public static class ImageHelper
                 : await App.Services.Api.GetImageDataUriAsync(url) ?? "";
             if (string.IsNullOrEmpty(dataUri))
             {
-                image.Source = null;
+                image.Source = Placeholder;
                 return;
             }
             var comma = dataUri.IndexOf(',');
@@ -57,12 +79,12 @@ public static class ImageHelper
             var bitmap = DecodeResized(bytes, targetWidth);
             if (bitmap is null)
             {
-                image.Source = null;
+                image.Source = Placeholder;
                 return;
             }
             if (image.Tag as string == url)
             {
-                if (image.Source is Bitmap oldBitmap)
+                if (image.Source is Bitmap oldBitmap && !ReferenceEquals(oldBitmap, Placeholder))
                 {
                     oldBitmap.Dispose();
                 }

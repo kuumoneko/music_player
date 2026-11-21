@@ -3,8 +3,26 @@ import { ytSession } from "./session.ts";
 import { MusicType, MusicSource, Track } from "../../../shared/types.ts";
 import { extractSearchContents, ensureHttps, extractSearchContinuationToken, extractSearchContinuationContents, parseSearchItems } from "./InnerTube/parser.ts";
 import { writeLogs } from "../../db/index.ts";
+import { withRetry } from "../../lib/retry.ts";
+import { isPermanentUnavailable } from "../../lib/unavailable.ts";
 
 const INNERTUBE_BASE = "https://www.youtube.com/youtubei/v1";
+
+/** Player request completed but produced no usable URL (retryable). */
+class ResolveRejected extends Error {
+    constructor(message?: string) {
+        super(message ?? "resolve rejected");
+        this.name = "ResolveRejected";
+    }
+}
+
+/** Video is permanently unavailable — retrying cannot help. */
+class PermanentResolveError extends Error {
+    constructor(message?: string) {
+        super(message ?? "permanently unavailable");
+        this.name = "PermanentResolveError";
+    }
+}
 
 const SEARCH_PARAMS: Record<string, string> = {
     [MusicType.Track]: "EgIQAQ%3D%3D",
@@ -125,35 +143,42 @@ export default class Youtube {
     async resolveStreamUrl(videoId: string): Promise<ResolveResult> {
         const MAX_ATTEMPTS = 3;
         let lastError: string | undefined;
-        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            try {
-                const result = await this.fetchStream(videoId, attempt);
-                if (result.url) return result;
-                lastError = result.error;
-                if (attempt === 2) {
-                    ytSession.invalidate();
-                    try {
-                        await ytSession.ensure();
-                    } catch {
-                        // keep going with whatever session state we have
+        try {
+            return await withRetry<ResolveResult>(async (attempt) => {
+                try {
+                    const result = await this.fetchStream(videoId, attempt);
+                    if (result.url) return result;
+                    lastError = result.error;
+                    if (result.error && isPermanentUnavailable(result.error)) {
+                        throw new PermanentResolveError(result.error);
                     }
-                }
-                if (attempt < MAX_ATTEMPTS) {
                     writeLogs([{ type: "info", message: `resolveStreamUrl [${videoId}] attempt ${attempt} failed, retrying...` }]);
-                    await new Promise(r => setTimeout(r, 1000));
+                    throw new ResolveRejected(result.error);
+                } catch (e) {
+                    if (e instanceof ResolveRejected || e instanceof PermanentResolveError) throw e;
+                    const msg = e instanceof Error ? e.message : String(e);
+                    writeLogs([{ type: "info", message: `resolveStreamUrl [${videoId}] attempt ${attempt} threw: ${msg}` }]);
+                    lastError = msg;
+                    throw e;
                 }
-            } catch (e) {
-                const msg = e instanceof Error ? e.message : String(e);
-                writeLogs([{ type: "info", message: `resolveStreamUrl [${videoId}] attempt ${attempt} threw: ${msg}` }]);
-                lastError = msg;
-                if (attempt < MAX_ATTEMPTS) {
+            }, {
+                attempts: MAX_ATTEMPTS,
+                baseDelayMs: 1000,
+                factor: 1,
+                jitter: 0,
+                isRetryable: (e) => !(e instanceof PermanentResolveError),
+                onRetry: async ({ attempt }) => {
                     writeLogs([{ type: "info", message: `resolveStreamUrl [${videoId}] retrying attempt ${attempt + 1}...` }]);
-                    await new Promise(r => setTimeout(r, 1000));
-                }
-            }
+                    if (attempt >= 2) {
+                        await ytSession.invalidateAndEnsure();
+                    }
+                },
+            });
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            writeLogs([{ type: "error", message: `resolveStreamUrl [${videoId}] all ${MAX_ATTEMPTS} attempts failed` }]);
+            return { url: null, error: lastError ?? msg };
         }
-        writeLogs([{ type: "error", message: `resolveStreamUrl [${videoId}] all ${MAX_ATTEMPTS} attempts failed` }]);
-        return { url: null, error: lastError };
     }
 
     async browse(browseId: string): Promise<any> {

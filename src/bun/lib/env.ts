@@ -1,5 +1,7 @@
 import { Repeat, Shuffle, UserData } from '../../shared/types.ts';
-import { deleteLogs, getUserData, writeUserData } from '../db/index.ts';
+import { deleteInvalidPlaylists, getUserData, pruneLogs, writeLogs, writeUserData } from '../db/index.ts';
+
+const LOG_KEEP_ROWS = 2000;
 
 export default function CheckUserData() {
     const defaultUserData = [
@@ -44,5 +46,10 @@ export default function CheckUserData() {
         }
     }
 
-    deleteLogs();
+    const removed = deleteInvalidPlaylists();
+    if (removed > 0) {
+        writeLogs([{ type: "info", message: `Removed ${removed} invalid playlist row(s)` }]);
+    }
+
+    pruneLogs(LOG_KEEP_ROWS);
 }

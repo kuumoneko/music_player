@@ -1,7 +1,24 @@
 import { writeLogs, getUserData, writeUserData } from "../db";
 import { ytSession } from "./youtube/session.ts";
+import { withRetry } from "../lib/retry.ts";
 
 const YT_API_BASE = "https://www.youtube.com/youtubei/v1";
+
+/** Session data could not be obtained — further retries are pointless. */
+class PermanentResolveError extends Error {
+    constructor(message?: string) {
+        super(message ?? "permanently unavailable");
+        this.name = "PermanentResolveError";
+    }
+}
+
+/** The player call succeeded but yielded no URL (worth one more try). */
+class ResolveNullError extends Error {
+    constructor(message?: string) {
+        super(message ?? "resolve returned null");
+        this.name = "ResolveNullError";
+    }
+}
 
 interface YTFormat {
     url?: string;
@@ -40,6 +57,11 @@ export class YoutubeResolver {
 
     constructor() {
         this.signatureTimestamp = getUserData("ytSignatureTimestamp") ?? 20584;
+        // Keep the resolver cache in lockstep with the shared session: any
+        // invalidation resets `ready`, so a retry never runs on stale data.
+        ytSession.onReset(() => {
+            this.ready = false;
+        });
     }
 
     async ensureSession(): Promise<void> {
@@ -65,25 +87,36 @@ export class YoutubeResolver {
 
     async resolveUrl(videoId: string): Promise<string | null> {
         try {
-            await this.ensureSession();
-            if (!this.visitorData) {
-                writeLogs([{ type: "error", message: `resolveUrl: no visitorData for ${videoId}` }]);
+            return await withRetry<string>(async (attempt) => {
+                if (attempt > 1) {
+                    writeLogs([{ type: "info", message: `resolveUrl: first attempt returned null for ${videoId}, retrying...` }]);
+                    // Unified refresh: resets the shared session AND this
+                    // resolver's `ready` flag before the retry.
+                    await ytSession.invalidateAndEnsure();
+                }
+                await this.ensureSession();
+                if (!this.visitorData) {
+                    writeLogs([{ type: "error", message: `resolveUrl: no visitorData for ${videoId}` }]);
+                    throw new PermanentResolveError("no visitorData");
+                }
+                const url = await this.resolveOnce(videoId);
+                if (!url) {
+                    throw new ResolveNullError(`resolveUrl: attempt ${attempt} returned null`);
+                }
+                return url;
+            }, {
+                attempts: 2,
+                baseDelayMs: 500,
+                factor: 1,
+                jitter: 0,
+                isRetryable: (e) => !(e instanceof PermanentResolveError),
+            });
+        } catch (e) {
+            if (e instanceof PermanentResolveError) return null;
+            if (e instanceof ResolveNullError) {
+                writeLogs([{ type: "error", message: `resolveUrl: both attempts returned null for ${videoId}` }]);
                 return null;
             }
-
-            const result = await this.resolveOnce(videoId);
-            if (result) return result;
-
-            writeLogs([{ type: "info", message: `resolveUrl: first attempt returned null for ${videoId}, retrying...` }]);
-            ytSession.invalidate();
-            this.ready = false;
-            await this.ensureSession();
-            const retryResult = await this.resolveOnce(videoId);
-            if (!retryResult) {
-                writeLogs([{ type: "error", message: `resolveUrl: both attempts returned null for ${videoId}` }]);
-            }
-            return retryResult;
-        } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
             writeLogs([{ type: "error", message: `YoutubeResolver resolveUrl failed: ${message}` }]);
             return null;

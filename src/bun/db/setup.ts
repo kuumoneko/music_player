@@ -95,10 +95,15 @@ const commands = [
   `ALTER TABLE playlist_tracks ADD COLUMN position INTEGER;`,
   `ALTER TABLE playlist_tracks ADD COLUMN addedAt TEXT;`,
   `ALTER TABLE tracks ADD COLUMN deleted INTEGER;`,
+  `ALTER TABLE playlists ADD COLUMN missingSince INTEGER;`,
 ];
 for (const sql of commands) {
   try { db.run(sql); } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    // Re-running a migration is expected: schema drift commands fail on every
+    // start once applied, and those are not worth a log row.
+    const expected = /duplicate column name|no such column/i.test(message);
+    if (expected) continue;
     try {
       db.run("INSERT INTO log (date, type, message) VALUES (datetime('now', 'localtime'), 'error', ?)", [message]);
     } catch { }

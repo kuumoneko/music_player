@@ -219,7 +219,13 @@
             currentTrackChanged: { source: string; id: string; title: string; thumbnail: string; artist: string; artistId: string }
             settingsChanged: { shuffle: Shuffle; repeat: Repeat; volume: number }
             queueChanged: { playQueue: string[]; batchQueue: string[]; nextfrom: string; playedTrack: string[] }
-            error: { message: string; stack?: string }
+            error: { message: string; stack?: string; transient?: boolean; id?: string }
+            /** Playback hit a transient failure and is being recovered. */
+            "player-retrying": { id: string; attempt: number; error?: string; time?: number }
+            /** Backoff tick for an in-flight playback retry. */
+            "network-retry": { id: string; attempt: number; error?: string; time?: number; delayMs?: number }
+            /** Playback recovered after a transient network failure. */
+            "network-restored": { id?: string; attempt?: number; time?: number; recovered: boolean }
         }
 }
 
