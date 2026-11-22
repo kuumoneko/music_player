@@ -34,21 +34,12 @@ public sealed class SmtcService : IDisposable
 
     public void Initialize()
     {
-        try
+        _smtc = GetForWindow();
+        if (_smtc is not null)
         {
-            _smtc = SystemMediaTransportControls.GetForCurrentView();
-            AppLog.Write("smtc", "initialized via GetForCurrentView");
+            AppLog.Write("smtc", "initialized via interop GetForWindow");
         }
-        catch (Exception ex)
-        {
-            AppLog.Write("smtc", $"GetForCurrentView failed: {ex.Message}");
-            _smtc = GetForWindow();
-            if (_smtc is not null)
-            {
-                AppLog.Write("smtc", "initialized via interop GetForWindow");
-            }
-        }
-        if (_smtc is null)
+        else
         {
             AppLog.Write("smtc", "init failed: no instance available");
             return;
@@ -57,6 +48,7 @@ public sealed class SmtcService : IDisposable
         {
             _updater = _smtc.DisplayUpdater;
             _updater.Type = MediaPlaybackType.Music;
+            _updater.AppMediaId = Environment.GetEnvironmentVariable("KUUMO_DEV") == "1" ? "kuumo.app.dev" : "kuumo.app";
             _ = LoadDefaultIconAsync();
             _smtc.IsEnabled = true;
             _smtc.IsPlayEnabled = true;
@@ -274,6 +266,18 @@ public sealed class SmtcService : IDisposable
         _pendingThumbnailUrl = url;
         try
         {
+            if (Uri.TryCreate(url, UriKind.Absolute, out var webUri) &&
+                (webUri.Scheme == Uri.UriSchemeHttp || webUri.Scheme == Uri.UriSchemeHttps))
+            {
+                _thumbnailStream?.Dispose();
+                _thumbnailStream = null;
+                _thumbnailReference = RandomAccessStreamReference.CreateFromUri(webUri);
+                _updater.Thumbnail = _thumbnailReference;
+                _updater.Update();
+                AppLog.Write("smtc", $"thumbnail set via URI: {url}");
+                return;
+            }
+
             var dataUri = await App.Services.Api.GetImageDataUriAsync(url);
             if (version != _thumbnailVersion)
             {

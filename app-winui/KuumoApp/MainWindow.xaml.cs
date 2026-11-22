@@ -10,6 +10,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly WindowService _windowService;
     private readonly SmtcService _smtc;
+    private readonly GlobalHotkeyService _hotkeys;
     private readonly TrayService _tray;
     private readonly UiMemoryManager _memory;
     private bool _smtcInitialized;
@@ -46,6 +47,7 @@ public sealed partial class MainWindow : Window
         _windowService = new WindowService(this, App.Services.Rpc);
         App.Services.Window = _windowService;
         _smtc = new SmtcService(this);
+        _hotkeys = new GlobalHotkeyService(this);
         _tray = new TrayService(this, _windowService, TrayIcon);
         _memory = new UiMemoryManager(this, App.Services.Rpc);
 
@@ -107,11 +109,13 @@ public sealed partial class MainWindow : Window
             {
                 _smtcInitialized = true;
                 _smtc.Initialize();
+                _hotkeys.Initialize();
             }
         };
         Closed += (_, _) =>
         {
             _smtc.Dispose();
+            _hotkeys.Dispose();
             _tray.Dispose();
             AppLog.Stop();
         };
