@@ -1,8 +1,8 @@
 ﻿{
     "name": "kuumoapp",
-    "version": "7.1.0",
+    "version": "7.1.1",
     "type": "module",
-    "description": "KuumoApp music player (WinUI 3 + Avalonia + Bun backend)",
+    "description": "KuumoApp music player (WinUI 3 + Bun backend)",
     "author": {
         "name": "kuumoneko",
         "url": "https://github.com/kuumoneko"
@@ -10,20 +10,15 @@
     "scripts": {
         "dev": "bun ./scripts/dev.ts",
         "winui:dev": "bun run --silent ./scripts/winui-dev.ts",
-        "avalonia:dev": "bun run --silent ./scripts/avalonia-dev.ts",
         "build:prod": "bun ./scripts/build.ts",
         "release": "bun ./scripts/release.ts",
         "winui:package": "bun run ./scripts/package.ts",
-        "avalonia:package": "bun run ./scripts/avalonia-package.ts",
         "encrypt-credentials": "bun ./scripts/encrypt-credentials.ts",
         "install-run": "bun ./scripts/install-run.ts",
         "register-shortcut": "bun ./scripts/register-shortcut.ts",
-        "compare-packaging": "bun run ./scripts/compare-packaging.ts",
-        "build-sparse-package": "bun run ./scripts/build-sparse-package.ts",
         "typecheck:bun": "bunx tsc --noEmit",
         "typecheck:dotnet:winui": "dotnet build app-winui/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:WindowsAppSDKSelfContained=false -clp:ErrorsOnly -nologo",
-        "typecheck:dotnet:avalonia": "dotnet build app-avalonia/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug -clp:ErrorsOnly -nologo",
-        "typecheck:dotnet": "bun run typecheck:dotnet:winui && bun run typecheck:dotnet:avalonia",
+        "typecheck:dotnet": "bun run typecheck:dotnet:winui",
         "typecheck": "bun run typecheck:bun && bun run typecheck:dotnet",
         "test:rpc": "bun run scripts/test-rpc.ts"
     },

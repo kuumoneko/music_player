@@ -115,11 +115,8 @@ See [AGENTS.md](AGENTS.md) for architecture details, code conventions, and devel
 To run the app in development mode:
 
 ```bash
-# Run WinUI frontend with auto-restart on code changes
+# Run the WinUI frontend with auto-restart on code changes
 bun run winui:dev
-
-# Or run Avalonia frontend with auto-restart on code changes  
-bun run avalonia:dev
 ```
 
 ## License
