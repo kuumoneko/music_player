@@ -58,7 +58,11 @@ E:\coding\kuumoapp\
     test-rpc.ts            Manual RPC smoke client
     CheckShortcut/         AUMID .lnk writer/reader (write --aumid <id> --name <title>)
     StampIcon/             Icon stamping tool
-  tests/                   refresh-artist test + sqlite fixture
+  tests/
+    unit/                  bun unit tests (bun/, shared/ mirror src layout)
+    helpers/preload.ts     test preload: isolates the DB data dir before imports
+    fixtures/              sqlite fixtures for manual runs
+    manual/refresh-artist.ts   manual, real-DB integration
   bin/                     Native DLLs (gitignored, do not edit)
   build/                   Bundle/package output (gitignored)
   artifacts/               Installers + update JSON (gitignored)
@@ -78,6 +82,8 @@ E:\coding\kuumoapp\
 | `bun run encrypt-credentials` | Bake encrypted `apikeys/<profile>.json` into `data/system.json` |
 | `bun run dev` | Build + launch the WinUI frontend on this host (alias for `winui:dev`) |
 | `bun run winui:dev` | Same, WinUI only. Flags: `--force`, `--stop`, `--skip-backend`, `--skip-winui` |
+| `bun run test` | `bun test tests/unit` |
+| `bun run test:integration` | manual refresh-artist script |
 
 **Host-side dev loop** (the app runs on this machine, not in a VM):
 
@@ -89,7 +95,7 @@ E:\coding\kuumoapp\
 
 Artifacts removed at the start of each run, on `q`, and on `--stop`: the Start Menu shortcut `KuumoApp WinUI Test`. `scripts/dev-artifacts.ts` owns the removal and refuses to touch shortcuts that don't point back at this checkout.
 
-**Verification.** Typecheck is the main gate; `tests/refresh-artist.test.ts` covers artist refresh; `scripts/test-rpc.ts` is a manual smoke client.
+**Verification.** Typecheck is the main gate; unit tests are `bun test tests/unit`; integration tests are manual and never part of CI.
 
 ## IPC protocol
 
@@ -119,7 +125,7 @@ Artifacts removed at the start of each run, on `q`, and on `--stop`: the Start M
 - **Gitignored runtime dirs — do not edit**: `bin/` (native DLLs), `build/` (bundle/package output), `artifacts/`, `assets/`, `data/`, `apikeys/`, plus every `bin/` + `obj/` under `app-winui/KuumoApp/`, `app-winui/Launcher/`, `scripts/CheckShortcut/`, `scripts/StampIcon/`.
 - **Interlocking version pins — keep in sync**: WinAppSDK 2.3.1 (csproj) ↔ Bootstrap `0x00020003` (`Program.cs`) ↔ WindowsAppRuntime 2.3.1 (`install-prereqs.ps1`) ↔ .NET Desktop Runtime 10.0.9.
 - **PUBLISH_TRIM in `scripts/package.ts`**: only remove DLLs also listed in `setup.iss` `[InstallDelete]`. `Microsoft.InteractiveExperiences.Projection.dll` must NOT be trimmed (0xC000027B crash).
-- `package.json` `dependencies: {"bun": "^1.3.14"}` is a runtime marker placeholder — do not remove.
+- `package.json` `dependencies: {"bun": "^1.4.0"}` is a runtime marker placeholder — do not remove.
 - Dev profile is hardcoded as `"myown"` in `winui-dev.ts` and `test-rpc.ts`.
 - `--seed` mode is installer-only (imports system.json, best-effort exit 0).
 - Windows-only; shell is PowerShell 5.1 — no `&&` in chained commands.

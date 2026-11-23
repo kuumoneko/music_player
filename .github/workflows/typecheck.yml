@@ -1,47 +1,72 @@
-name: Typecheck
+name: Typecheck & Test
 
 on:
-    workflow_dispatch:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-    typecheck-bun:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: oven-sh/setup-bun@v2
-            - name: Cache node_modules
-              uses: actions/cache@v4
-              id: cache-node-modules
-              with:
-                  path: node_modules
-                  key: node-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-                  restore-keys: node-modules-${{ runner.os }}-
-            - name: Install dependencies
-              if: steps.cache-node-modules.outputs.cache-hit != 'true'
-              run: bun install
-            - run: bun run typecheck:bun
-    typecheck-winui3:
-        runs-on: windows-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-dotnet@v4
-              with:
-                  dotnet-version: "10.0.x"
-            - name: Cache NuGet
-              uses: actions/cache@v4
-              with:
-                  path: ~\.nuget\packages
-                  key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
-                  restore-keys: nuget-${{ runner.os }}-
-            - name: Cache MSBuild outputs
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      app-winui/**/obj
-                      app-winui/**/bin
-                  key: msbuild-${{ runner.os }}-${{ hashFiles('app-winui/**/*.cs', 'app-winui/**/*.xaml', 'app-winui/**/*.csproj', 'app-winui/**/*.slnx') }}
-                  restore-keys: |
-                      msbuild-${{ runner.os }}-
-            - run: dotnet restore app-winui/KuumoApp.slnx -p:RestoreUseStaticGraphEvaluation=true --verbosity quiet
-            - run: dotnet build app-winui/KuumoApp.slnx -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:RunAnalyzersDuringBuild=false /p:DisableXbfLineInfo=true /p:WindowsAppSDKSelfContained=false /p:ProduceReferenceAssembly=false /p:EnableXBindDiagnostics=false /p:PRIResourceMerging=false -clp:ErrorsOnly -nologo
+  bun-check-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        id: cache-node-modules
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            node-modules-${{ runner.os }}-
+
+      - name: Install dependencies
+        if: steps.cache-node-modules.outputs.cache-hit != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck Bun
+        run: bun run typecheck:bun
+
+      - name: Run unit tests
+        run: bun test tests/unit
+
+  winui3-typecheck:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/*.slnx') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Cache MSBuild outputs
+        uses: actions/cache@v4
+        with:
+          path: |
+            app-winui/**/obj
+            app-winui/**/bin
+          key: msbuild-${{ runner.os }}-${{ hashFiles('app-winui/**/*.cs', 'app-winui/**/*.xaml', 'app-winui/**/*.csproj', 'app-winui/**/*.slnx') }}
+          restore-keys: |
+            msbuild-${{ runner.os }}-
+
+      - name: Restore solution
+        run: dotnet restore app-winui/KuumoApp.slnx -p:RestoreUseStaticGraphEvaluation=true --verbosity quiet
+
+      - name: Build WinUI 3 solution (typecheck)
+        run: dotnet build app-winui/KuumoApp.slnx -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:RunAnalyzersDuringBuild=false /p:DisableXbfLineInfo=true /p:WindowsAppSDKSelfContained=false /p:ProduceReferenceAssembly=false /p:EnableXBindDiagnostics=false /p:PRIResourceMerging=false -clp:ErrorsOnly -nologo

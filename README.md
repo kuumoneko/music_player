@@ -48,8 +48,9 @@
 - Close to tray
 - Pinned items on home screen
 
-## What's New in v7.1.0
+## What's New in v7.1.1
 
+- **Global hotkeys (system-wide)**: Media keys + `Ctrl+Alt+Space/←/→/↑/↓/M`
 - **Ultra-low background System Tray RAM footprint**: ~8.4 MB WinUI 3 working set + trimmed `libmpv` demuxer buffers
 - **Automatic WebSocket RPC reconnection**: With fail-fast pending calls when connection is lost
 - **Network-drop playback recovery**: Automatically resumes playback after network interruptions
@@ -105,6 +106,17 @@ bun run winui:package
 | `Ctrl+F` | Focus search |
 | `Space` | Play / Pause |
 | `Alt+Left/Right` | Navigate back / forward |
+
+## Global hotkeys (system-wide)
+
+- Media Play/Pause
+- Media Next
+- Media Prev
+- Media Stop
+- Ctrl+Alt+Space play/pause
+- Ctrl+Alt+←/→ prev/next
+- Ctrl+Alt+↑/↓ volume
+- Ctrl+Alt+M mute
 
 ## Development
 

@@ -2,7 +2,7 @@
 ; Staging payload expected at: build\package\
 
 #ifndef MyAppVersion
-  #define MyAppVersion "6.0.0"
+  #define MyAppVersion "7.1.1"
 #endif
 
 #ifndef MyAppBaseName

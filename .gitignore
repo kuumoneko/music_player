@@ -1,6 +1,7 @@
 ﻿node_modules
 .vscode/*
-/tests
+/tests/fixtures/*.sqlite*
+!/tests/fixtures/app_data.sqlite
 /dist
 /public
 /bin
@@ -19,3 +20,4 @@ tsconfig.tsbuildinfo
 /apikeys
 bun.lock\
 TODO.md
+/tests/manual

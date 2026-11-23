@@ -1,50 +1,42 @@
 ﻿{
-    "compilerOptions": {
-        /* Base Language & Environment */
-        "target": "ESNext",
-        "lib": [
-            "ESNext",
-            "DOM",
-            "DOM.Iterable"
-        ],
-        "module": "ESNext",
-        "moduleResolution": "bundler",
-        "moduleDetection": "force",
-        "useDefineForClassFields": true,
-        "types": [
-            "bun"
-        ],
-        "allowJs": true,
-        "resolveJsonModule": true,
-        "noEmit": true,
-        "allowImportingTsExtensions": true,
-        "isolatedModules": true,
-        "verbatimModuleSyntax": false,
-        "allowSyntheticDefaultImports": true,
-        "esModuleInterop": true,
-        /* Strict Type-Checking */
-        "strict": true,
-        "skipLibCheck": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noFallthroughCasesInSwitch": true,
-        "noPropertyAccessFromIndexSignature": true,
-        "paths": {
-            "@/*": [
-                "/src/*"
-            ]
-        }
-    },
-    "include": [
-        "src/**/*",
-        "scripts/**/*",
-        "test/**/*"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist",
-        "build",
-
-        "backup/**/*"
-    ]
+  "compilerOptions": {
+    /* Base Language & Environment */
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "useDefineForClassFields": true,
+    "types": ["bun"],
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    /* Strict Type-Checking */
+    "strict": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "paths": {
+      "@/*": ["/src/*"]
+    }
+  },
+  "include": ["src/**/*", "scripts/**/*", "tests/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "build",
+    "backup/**/*",
+    "artifacts",
+    "bin",
+    "data",
+    "apikeys",
+    "app-winui"
+  ]
 }
