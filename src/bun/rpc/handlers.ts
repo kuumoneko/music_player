@@ -158,6 +158,29 @@ async function fetchImageBytes(url: string): Promise<ImageFetchResult> {
 let uiVisible = true;
 export function isUiVisible() { return uiVisible; }
 
+// Player command queue
+let playerCommandChain: Promise<any> = Promise.resolve();
+let activePlayOperationId: string | null = null;
+
+function enqueuePlayerCommand<T>(label: string, fn: () => T | Promise<T>): Promise<T> {
+  return playerCommandChain = playerCommandChain.then(async () => {
+    try {
+      return await fn();
+    } catch (e) {
+      console.error(`${label} failed:`, e);
+      throw e;
+    }
+  });
+}
+
+function startPlayOperation(id: string): void {
+  activePlayOperationId = id;
+}
+
+function isPlayOperationActive(id: string): boolean {
+  return activePlayOperationId === id;
+}
+
 let downloadInFlight = false;
 
 function withRateLimit<T extends (...args: any[]) => any>(fn: T, name: string): T {
@@ -445,107 +468,134 @@ export function createRpcHandlers(ctx: RpcContext) {
       };
     },
 
-    next: withErrorLogEmit("next", async () => { player.player?.next(); }),
+    next: withErrorLogEmit("next", async () => {
+      await enqueuePlayerCommand("next", () => {
+        player.player?.next();
+      });
+    }),
 
-    previous: withErrorLogEmit("previous", async () => { player.player?.previous(); }),
+    previous: withErrorLogEmit("previous", async () => {
+      await enqueuePlayerCommand("previous", () => {
+        player.player?.previous();
+      });
+    }),
 
     play: async ({ item, source, type, id }: { item: Track; source: MusicSource; type: string; id: string }) => {
-writeLogs([{
-        type: "info",
-        message: JSON.stringify({ item, source, type, id })
-      }]);
-      const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"]) as UserData;
-      user.playQueue = [];
-      player.player?.setRepeat(false);
+      // Create a unique ID for this play operation based on the track info
+      const playId = `${item.id}-${source}-${type}-${id}`;
+      
+      await enqueuePlayerCommand("play", async () => {
+        writeLogs([{
+          type: "info",
+          message: JSON.stringify({ item, source, type, id })
+        }]);
+        const user = getUserDatas(["playQueue", "currentPlaying", "shuffle", "repeat", "playedTrack", "nextfrom"]) as UserData;
+        user.playQueue = [];
+        player.player?.setRepeat(false);
 
-      const trackSource = item?.source ?? source;
+        const trackSource = item?.source ?? source;
 
-      if (trackSource === MusicSource.Youtube) {
-        let tracks = await player.youtubeDataAPI.fetchTrack([item.id]);
+        if (trackSource === MusicSource.Youtube) {
+          let tracks = await player.youtubeDataAPI.fetchTrack([item.id]);
 
-        let track = tracks?.[0];
-        if (!track) {
-          // Track deleted/private — clean pin + notify frontend
-          const pin = getUserData("pin") ?? [];
-          const key = `${source}:${MusicType.Track}:${item.id}`;
-          if (pin.includes(key)) {
-            writeUserData("pin", pin.filter((p: string) => p !== key));
+          let track = tracks?.[0];
+          if (!track) {
+            // Track deleted/private — clean pin + notify frontend
+            const pin = getUserData("pin") ?? [];
+            const key = `${source}:${MusicType.Track}:${item.id}`;
+            if (pin.includes(key)) {
+              writeUserData("pin", pin.filter((p: string) => p !== key));
+            }
+            emitToFrontend("trackUnavailable", { id: item.id, name: item.name });
+            return null;
           }
-          emitToFrontend("trackUnavailable", { id: item.id, name: item.name });
-          return null;
+
+          if (!formatArtists(track.artist)) {
+            const refetched = await player.youtubeDataAPI.refetchTrack(item.id);
+            if (refetched) {
+              track = refetched;
+            }
+          }
+
+          user.currentPlaying = {
+            source: trackSource,
+            id: item.id,
+            title: track.name,
+            thumbnail: track.thumbnail,
+            artist: formatArtists(track.artist),
+            artistId: track.artist?.[0]?.id ?? "",
+          };
+          current.duration = track.duration;
+        } else if (trackSource === MusicSource.Local) {
+          const track = getLocalFileById(resolveId(item.id));
+          if (!track) return null;
+          user.currentPlaying = {
+            source: MusicSource.Local,
+            id: getHash(track.id),
+            title: track.name ?? "",
+            thumbnail: track.thumbnail ?? "",
+            artist: formatArtists(track.artist ?? [{ name: "", id: "" }]),
+            artistId: track.artist?.[0]?.id ?? "",
+          };
+          current.duration = track.duration ?? 0;
+          current.isLived = false;
         }
 
-        if (!formatArtists(track.artist)) {
-          const refetched = await player.youtubeDataAPI.refetchTrack(item.id);
-          if (refetched) {
-            track = refetched;
-          }
+        user.nextfrom = isValidContextEntry(`${source}:${type}:${id}`) ? `${source}:${type}:${id}` : "";
+        writeLogs([{
+          type: "info",
+          message: `play: nextfrom="${user.nextfrom}" (input "${source}:${type}:${id}", item id="${item?.id}")`
+        }]);
+
+        current.time = 0;
+        user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
+
+        user.playedTrack = recordPlayed(user.currentPlaying.id);
+        writeUserDatas(user);
+        notifyHomeChanged();
+        
+        // Only update state if this is still the active play operation
+        if (isPlayOperationActive(playId)) {
+          emitToFrontend("currentTrackChanged", {
+            source: user.currentPlaying.source,
+            id: user.currentPlaying.id,
+            title: user.currentPlaying.title,
+            thumbnail: user.currentPlaying.thumbnail,
+            artist: user.currentPlaying.artist,
+            artistId: user.currentPlaying.artistId,
+          });
+          emitToFrontend("queueChanged", {
+            playQueue: user.playQueue,
+            batchQueue: getUserData("batchQueue"),
+            nextfrom: user.nextfrom,
+            playedTrack: user.playedTrack,
+          });
+          emitToFrontend("settingsChanged", {
+            shuffle: user.shuffle,
+            repeat: user.repeat,
+            volume: getUserData("volume"),
+          });
+          play();
         }
-
-        user.currentPlaying = {
-          source: trackSource,
-          id: item.id,
-          title: track.name,
-          thumbnail: track.thumbnail,
-          artist: formatArtists(track.artist),
-          artistId: track.artist?.[0]?.id ?? "",
-        };
-        current.duration = track.duration;
-      } else if (trackSource === MusicSource.Local) {
-        const track = getLocalFileById(resolveId(item.id));
-        if (!track) return null;
-        user.currentPlaying = {
-          source: MusicSource.Local,
-          id: getHash(track.id),
-          title: track.name ?? "",
-          thumbnail: track.thumbnail ?? "",
-          artist: formatArtists(track.artist ?? [{ name: "", id: "" }]),
-          artistId: track.artist?.[0]?.id ?? "",
-        };
-        current.duration = track.duration ?? 0;
-        current.isLived = false;
-      }
-
-      user.nextfrom = isValidContextEntry(`${source}:${type}:${id}`) ? `${source}:${type}:${id}` : "";
-      writeLogs([{
-        type: "info",
-        message: `play: nextfrom="${user.nextfrom}" (input "${source}:${type}:${id}", item id="${item?.id}")`
-      }]);
-
-      current.time = 0;
-      user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
-
-      user.playedTrack = recordPlayed(user.currentPlaying.id);
-      writeUserDatas(user);
-      notifyHomeChanged();
-      emitToFrontend("currentTrackChanged", {
-        source: user.currentPlaying.source,
-        id: user.currentPlaying.id,
-        title: user.currentPlaying.title,
-        thumbnail: user.currentPlaying.thumbnail,
-        artist: user.currentPlaying.artist,
-        artistId: user.currentPlaying.artistId,
+        
+        // Mark this operation as complete
+        if (activePlayOperationId === playId) {
+          activePlayOperationId = null;
+        }
+        return user.currentPlaying;
       });
-      emitToFrontend("queueChanged", {
-        playQueue: user.playQueue,
-        batchQueue: getUserData("batchQueue"),
-        nextfrom: user.nextfrom,
-        playedTrack: user.playedTrack,
-      });
-      emitToFrontend("settingsChanged", {
-        shuffle: user.shuffle,
-        repeat: user.repeat,
-        volume: getUserData("volume"),
-      });
-      play();
-      return user.currentPlaying;
+      
+      // Start tracking this play operation
+      startPlayOperation(playId);
     },
 
     seekTo: withErrorLogEmit("seekTo", async (time: number) => {
-      current.time = time;
-      player.player?.seekTo(time);
-      emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
-      setDiscordRPC();
+      await enqueuePlayerCommand("seekTo", () => {
+        current.time = time;
+        player.player?.seekTo(time);
+        emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
+        setDiscordRPC();
+      });
     }),
 
     getCurrentPlaying: async () => {
@@ -790,18 +840,20 @@ writeLogs([{
     // Insert straight after the current track instead of at the end of the queue.
     playNext: withRateLimit(
       withErrorLogEmit("playNext", async ({ track }: { track: Track }) => {
-        const id = resolveId(track.id);
-        const row = getTracks([id])[0];
-        const source = row?.source ?? track.source;
-        const url = (source === MusicSource.Youtube ? YTB_TRACK_START : "") + (row?.id ?? id);
-        await player.player?.insertNext([{
-          url,
-          title: row?.name ?? track.name,
-          thumbnail: row?.thumbnail ?? track.thumbnail,
-        }]);
-        // Refill runs off the "queue" event, which also notifies the frontend.
-        player.player?.getQueue();
-        return true;
+        await enqueuePlayerCommand("playNext", () => {
+          const id = resolveId(track.id);
+          const row = getTracks([id])[0];
+          const source = row?.source ?? track.source;
+          const url = (source === MusicSource.Youtube ? YTB_TRACK_START : "") + (row?.id ?? id);
+          player.player?.insertNext([{
+            url,
+            title: row?.name ?? track.name,
+            thumbnail: row?.thumbnail ?? track.thumbnail,
+          }]);
+          // Refill runs off the "queue" event, which also notifies the frontend.
+          player.player?.getQueue();
+          return true;
+        });
       }),
       "playNext",
     ),
