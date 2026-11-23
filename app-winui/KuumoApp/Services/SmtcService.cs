@@ -249,7 +249,6 @@ public sealed class SmtcService : IDisposable
         {
             return;
         }
-        var version = ++_thumbnailVersion;
         if (string.IsNullOrEmpty(url))
         {
             _thumbnailStream?.Dispose();
@@ -259,11 +258,9 @@ public sealed class SmtcService : IDisposable
             _updater.Update();
             return;
         }
-        if (_pendingThumbnailUrl == url)
-        {
-            return;
-        }
-        _pendingThumbnailUrl = url;
+        
+        // For SMTC, we want to ensure that thumbnail updates happen reliably
+        // without version checking interfering with rapid successive requests
         try
         {
             if (Uri.TryCreate(url, UriKind.Absolute, out var webUri) &&
@@ -279,10 +276,6 @@ public sealed class SmtcService : IDisposable
             }
 
             var dataUri = await App.Services.Api.GetImageDataUriAsync(url);
-            if (version != _thumbnailVersion)
-            {
-                return;
-            }
             if (string.IsNullOrEmpty(dataUri))
             {
                 _thumbnailStream?.Dispose();
@@ -303,11 +296,7 @@ public sealed class SmtcService : IDisposable
                 writer.DetachStream();
             }
             stream.Seek(0);
-            if (version != _thumbnailVersion)
-            {
-                stream.Dispose();
-                return;
-            }
+            
             _thumbnailStream?.Dispose();
             _thumbnailStream = stream;
             _thumbnailReference = RandomAccessStreamReference.CreateFromStream(stream);
@@ -317,20 +306,10 @@ public sealed class SmtcService : IDisposable
         }
         catch (Exception ex)
         {
-            if (version == _thumbnailVersion)
-            {
-                AppLog.Write("smtc", $"thumbnail failed: {ex.Message}");
-                _thumbnailReference = null;
-                _updater.Thumbnail = null;
-                _updater.Update();
-            }
-        }
-        finally
-        {
-            if (_pendingThumbnailUrl == url)
-            {
-                _pendingThumbnailUrl = null;
-            }
+            AppLog.Write("smtc", $"thumbnail failed: {ex.Message}");
+            _thumbnailReference = null;
+            _updater.Thumbnail = null;
+            _updater.Update();
         }
     }
 
