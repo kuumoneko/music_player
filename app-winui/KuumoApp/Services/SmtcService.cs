@@ -17,7 +17,6 @@ public sealed class SmtcService : IDisposable
     private InMemoryRandomAccessStream? _thumbnailStream;
     private RandomAccessStreamReference? _thumbnailReference;
     private int _thumbnailVersion;
-    private string? _pendingThumbnailUrl;
     private bool _disposed;
     private bool _isPaused;
 
@@ -157,10 +156,13 @@ public sealed class SmtcService : IDisposable
             _updater.MusicProperties.Artist = data.Artist ?? "";
             _smtc.PlaybackStatus = data.IsPlaying ? MediaPlaybackStatus.Playing : MediaPlaybackStatus.Paused;
             _updater.Update();
-            if (!_isPaused)
-            {
-                _ = LoadThumbnailAsync(data.Thumbnail);
-            }
+
+            // Thumbnails are part of the SMTC contract and must keep updating while the
+            // window is hidden. Rapid track changes bump the version so only the newest
+            // load is allowed to publish, otherwise a slow older download can overwrite
+            // the current track's artwork.
+            var version = ++_thumbnailVersion;
+            _ = LoadThumbnailAsync(data.Thumbnail, version);
         }
         catch (Exception ex)
         {
@@ -197,6 +199,7 @@ public sealed class SmtcService : IDisposable
         try
         {
             _smtc.PlaybackStatus = MediaPlaybackStatus.Closed;
+            _thumbnailVersion++;
             _updater?.ClearAll();
             _thumbnailStream?.Dispose();
             _thumbnailStream = null;
@@ -221,6 +224,7 @@ public sealed class SmtcService : IDisposable
             {
                 return;
             }
+            var version = _thumbnailVersion;
             var bytes = await File.ReadAllBytesAsync(iconPath);
             var stream = new InMemoryRandomAccessStream();
             using (var writer = new DataWriter(stream))
@@ -230,11 +234,12 @@ public sealed class SmtcService : IDisposable
                 writer.DetachStream();
             }
             stream.Seek(0);
-            _thumbnailStream?.Dispose();
-            _thumbnailStream = stream;
-            _thumbnailReference = RandomAccessStreamReference.CreateFromStream(stream);
-            _updater.Thumbnail = _thumbnailReference;
-            _updater.Update();
+            if (version != _thumbnailVersion)
+            {
+                stream.Dispose();
+                return;
+            }
+            ApplyThumbnail(RandomAccessStreamReference.CreateFromStream(stream), stream);
             AppLog.Write("smtc", "default app icon loaded");
         }
         catch (Exception ex)
@@ -243,51 +248,52 @@ public sealed class SmtcService : IDisposable
         }
     }
 
-    private async Task LoadThumbnailAsync(string? url)
+    private async Task LoadThumbnailAsync(string? url, int version)
     {
         if (_updater is null)
         {
             return;
         }
-        if (string.IsNullOrEmpty(url))
-        {
-            _thumbnailStream?.Dispose();
-            _thumbnailStream = null;
-            _thumbnailReference = null;
-            _updater.Thumbnail = null;
-            _updater.Update();
-            return;
-        }
-        
-        // For SMTC, we want to ensure that thumbnail updates happen reliably
-        // without version checking interfering with rapid successive requests
         try
         {
+            if (string.IsNullOrEmpty(url))
+            {
+                if (version == _thumbnailVersion)
+                {
+                    ApplyThumbnail(null, null);
+                }
+                return;
+            }
+
             if (Uri.TryCreate(url, UriKind.Absolute, out var webUri) &&
                 (webUri.Scheme == Uri.UriSchemeHttp || webUri.Scheme == Uri.UriSchemeHttps))
             {
-                _thumbnailStream?.Dispose();
-                _thumbnailStream = null;
-                _thumbnailReference = RandomAccessStreamReference.CreateFromUri(webUri);
-                _updater.Thumbnail = _thumbnailReference;
-                _updater.Update();
+                if (version != _thumbnailVersion)
+                {
+                    return;
+                }
+                ApplyThumbnail(RandomAccessStreamReference.CreateFromUri(webUri), null);
                 AppLog.Write("smtc", $"thumbnail set via URI: {url}");
                 return;
             }
 
             var dataUri = await App.Services.Api.GetImageDataUriAsync(url);
+            if (version != _thumbnailVersion)
+            {
+                return;
+            }
             if (string.IsNullOrEmpty(dataUri))
             {
-                _thumbnailStream?.Dispose();
-                _thumbnailStream = null;
-                _thumbnailReference = null;
-                _updater.Thumbnail = null;
-                _updater.Update();
+                ApplyThumbnail(null, null);
                 return;
             }
             var comma = dataUri.IndexOf(',');
             var bytes = Convert.FromBase64String(dataUri[(comma + 1)..]);
             bytes = await ThumbTrim.TrimAsync(bytes) ?? bytes;
+            if (version != _thumbnailVersion)
+            {
+                return;
+            }
             var stream = new InMemoryRandomAccessStream();
             using (var writer = new DataWriter(stream))
             {
@@ -296,20 +302,38 @@ public sealed class SmtcService : IDisposable
                 writer.DetachStream();
             }
             stream.Seek(0);
-            
-            _thumbnailStream?.Dispose();
-            _thumbnailStream = stream;
-            _thumbnailReference = RandomAccessStreamReference.CreateFromStream(stream);
-            _updater.Thumbnail = _thumbnailReference;
-            _updater.Update();
+            ApplyThumbnail(RandomAccessStreamReference.CreateFromStream(stream), stream);
             AppLog.Write("smtc", $"thumbnail set: {bytes.Length} bytes from {url}");
         }
         catch (Exception ex)
         {
             AppLog.Write("smtc", $"thumbnail failed: {ex.Message}");
-            _thumbnailReference = null;
-            _updater.Thumbnail = null;
-            _updater.Update();
+            if (version == _thumbnailVersion)
+            {
+                ApplyThumbnail(null, null);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Publishes artwork to SMTC and only then releases the stream it replaces, so the
+    /// displayed image is never disposed while the shell may still be reading it.
+    /// </summary>
+    private void ApplyThumbnail(RandomAccessStreamReference? reference, InMemoryRandomAccessStream? stream)
+    {
+        if (_updater is null)
+        {
+            stream?.Dispose();
+            return;
+        }
+        var previous = _thumbnailStream;
+        _thumbnailStream = stream;
+        _thumbnailReference = reference;
+        _updater.Thumbnail = reference;
+        _updater.Update();
+        if (!ReferenceEquals(previous, stream))
+        {
+            previous?.Dispose();
         }
     }
 
