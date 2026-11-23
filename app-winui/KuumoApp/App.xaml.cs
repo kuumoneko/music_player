@@ -5,12 +5,15 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
+using KuumoApp.Controls;
+
 namespace KuumoApp;
 
 public partial class App : Application
 {
     public static Window? MainWindow { get; private set; }
     public static Services.AppServices Services { get; } = new();
+    public static MiniPlayerWindow? MiniPlayer { get; private set; }
 
     [DllImport("shell32.dll")]
     private static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string appID);
@@ -55,6 +58,13 @@ public partial class App : Application
         {
             MainWindow = new MainWindow();
             Services.Start();
+            MiniPlayer = new MiniPlayerWindow();
+            
+            // Show the mini player on startup
+            if (MiniPlayer != null)
+            {
+                MiniPlayer.Show();
+            }
         }
         catch (Exception ex)
         {

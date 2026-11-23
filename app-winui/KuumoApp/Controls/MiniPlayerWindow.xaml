@@ -1,0 +1,40 @@
+<Page
+    x:Class="KuumoApp.Controls.MiniPlayerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:KuumoApp.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="Transparent">
+
+    <!-- Subtle 1px theme-aware stroke instead of the OS frame; sits flush on the taskbar band. -->
+    <Border Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="4"
+            Padding="0">
+        <Grid Margin="6,1,6,1" ColumnDefinitions="Auto, *, Auto, Auto">
+            <Image x:Name="Thumb" Grid.Column="0" Width="28" Height="28" Margin="0,0,8,0"
+                   Stretch="UniformToFill" Tapped="OnThumbTapped" AutomationProperties.Name="Album art"/>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock x:Name="TrackTitle" TextWrapping="NoWrap" MaxLines="1" FontSize="12"
+                           Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+                <TextBlock x:Name="TrackArtist" TextWrapping="NoWrap" MaxLines="1" FontSize="10"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </StackPanel>
+            <TextBlock x:Name="CurrentTime" Grid.Column="2" TextWrapping="NoWrap" MaxLines="1"
+                       FontSize="10" Margin="8,0" VerticalAlignment="Center"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="0:00 / 0:00"/>
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <Button x:Name="PrevButton" Content="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                        Padding="6,2" MinWidth="26" Height="24" AutomationProperties.Name="Previous track" Click="OnPrevClick"/>
+                <Button x:Name="PlayPauseButton" Content="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                        Padding="6,2" MinWidth="26" Height="24" AutomationProperties.Name="Play/Pause" Click="OnPlayPauseClick"/>
+                <Button x:Name="NextButton" Content="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                        Padding="6,2" MinWidth="26" Height="24" AutomationProperties.Name="Next track" Click="OnNextClick"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Page>
