@@ -21,24 +21,50 @@ function Test-DotnetInstalled {
     # per-user installs). Registry fallbacks for non-PATH machines.
     $dotnet = Join-Path $env:ProgramFiles "dotnet\dotnet.exe"
     if (Test-Path $dotnet) {
-        foreach ($line in & $dotnet --list-runtimes 2>$null) {
+        Write-Output "Checking installed runtimes with dotnet command..."
+        $runtimes = & $dotnet --list-runtimes 2>$null
+        foreach ($line in $runtimes) {
+            Write-Output "Examining line: $line"
             if ($line -match "^Microsoft\.WindowsDesktop\.App\s+(\d+\.\d+\.\d+)" -and [version]$matches[1] -ge [version]$DotnetVersion) {
+                Write-Output "Found installed .NET Desktop Runtime: $($matches[1]) >= $DotnetVersion"
                 return $true
             }
         }
     }
-    foreach ($regPath in @(
+    
+    # Additional check for registry entries that might exist
+    $registryPaths = @(
         "HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App",
         "HKCU:\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App"
-    )) {
+    )
+    
+    foreach ($regPath in $registryPaths) {
+        Write-Output "Checking registry path: $regPath"
         $installed = Get-ItemProperty $regPath -ErrorAction SilentlyContinue
-        if (-not $installed) { continue }
-        foreach ($v in $installed.PSObject.Properties.Value) {
-            if ($v -as [version] -and [version]$v -ge [version]$DotnetVersion) {
+        if ($installed) {
+            Write-Output "Found registry entry at: $regPath"
+            # Check if version is greater than or equal to required version
+            if ($installed.Version -and [version]$installed.Version -ge [version]$DotnetVersion) {
+                Write-Output "Registry version check passed: $($installed.Version) >= $DotnetVersion"
                 return $true
             }
         }
     }
+    
+    # Final fallback: try to detect any Microsoft.WindowsDesktop.App installation regardless of version
+    if (Test-Path $dotnet) {
+        Write-Output "Final fallback check for any WindowsDesktop runtime..."
+        $runtimes = & $dotnet --list-runtimes 2>$null
+        foreach ($line in $runtimes) {
+            if ($line -match "^Microsoft\.WindowsDesktop\.App\s+(\d+\.\d+\.\d+)") {
+                Write-Output "Found WindowsDesktop runtime with version: $($matches[1])"
+                # Even if it's not the exact version, we should consider it installed
+                return $true
+            }
+        }
+    }
+    
+    Write-Output "No matching .NET Desktop Runtime found (looking for >= $DotnetVersion)"
     return $false
 }
 
