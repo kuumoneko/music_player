@@ -14,9 +14,6 @@ interface RpcServerOptions {
   onFirstClient?: () => void;
 }
 
-const REQUEST_ID_TTL_MS = 60_000;
-const REQUEST_TIMEOUT_MS = 55_000;
-
 export class RpcWsServer {
   private server: ReturnType<typeof Bun.serve<unknown>> | undefined;
   private clients = new Set<ServerWebSocket<unknown>>();
@@ -24,7 +21,6 @@ export class RpcWsServer {
   private readonly options: RpcServerOptions;
   private hasConnectedClient = false;
   private queues = new WeakMap<ServerWebSocket<unknown>, Promise<void>>();
-  private requests = new WeakMap<ServerWebSocket<unknown>, Map<string, { ts: number; state: "inflight" | "done"; response?: string }>>();
 
   constructor(handlers: RpcHandlers, options: RpcServerOptions = {}) {
     this.handlers = handlers;
@@ -112,69 +108,6 @@ export class RpcWsServer {
     }
     
     const { id, method, params } = request;
-    const idStr = String(id);
-    
-    // Check for duplicate request ID with TTL and replay completed responses
-    const clientRequests = this.requests.get(ws) ?? new Map();
-    this.requests.set(ws, clientRequests);
-    
-    // Prune old entries
-    const now = Date.now();
-    for (const [key, entry] of clientRequests.entries()) {
-      if (now - entry.ts > REQUEST_ID_TTL_MS) {
-        clientRequests.delete(key);
-      }
-    }
-    
-    // Cap at 256 entries per client (remove oldest first)
-    if (clientRequests.size >= 256) {
-      const keys = Array.from(clientRequests.keys());
-      for (let i = 0; i < keys.length - 255; i++) {
-        clientRequests.delete(keys[i]);
-      }
-    }
-    
-    const existingEntry = clientRequests.get(idStr);
-    if (existingEntry) {
-      if (existingEntry.state === "inflight") {
-        // Ignore duplicate inflight requests
-        return;
-      } else if (existingEntry.state === "done") {
-        // Replay completed response
-        ws.send(existingEntry.response!);
-        return;
-      }
-    }
-    
-    // Mark as inflight before dispatching
-    clientRequests.set(idStr, { ts: now, state: "inflight" });
-    
-    let settled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    
-    const respond = (payload: string) => {
-      if (settled) return;
-      settled = true;
-      if (timer) {
-        clearTimeout(timer);
-        timer = undefined;
-      }
-      try {
-        ws.send(payload);
-      } catch (e) {
-        console.error("Error sending response:", e);
-      }
-    };
-    
-    // Set up timeout
-    timer = setTimeout(() => {
-      respond(JSON.stringify({ id, error: { message: "Request timed out" } }));
-    }, REQUEST_TIMEOUT_MS);
-    
-    // Unref the timer to avoid keeping process alive
-    if (typeof timer.unref === 'function') {
-      timer.unref();
-    }
     
     try {
       const handler = this.handlers[method];
@@ -183,15 +116,19 @@ export class RpcWsServer {
       }
       const result = await handler(params);
       const response = JSON.stringify({ id, result: result ?? null });
-      // Mark as done and store the response
-      clientRequests.set(idStr, { ts: now, state: "done", response });
-      respond(response);
+      try {
+        ws.send(response);
+      } catch (e) {
+        console.error("Error sending response:", e);
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       const response = JSON.stringify({ id, error: { message } });
-      // Mark as done and store the error response
-      clientRequests.set(idStr, { ts: now, state: "done", response });
-      respond(response);
+      try {
+        ws.send(response);
+      } catch (e) {
+        console.error("Error sending error response:", e);
+      }
     }
   }
 }

@@ -158,29 +158,6 @@ async function fetchImageBytes(url: string): Promise<ImageFetchResult> {
 let uiVisible = true;
 export function isUiVisible() { return uiVisible; }
 
-// Player command queue
-let playerCommandChain: Promise<any> = Promise.resolve();
-let activePlayOperationId: string | null = null;
-
-function enqueuePlayerCommand<T>(label: string, fn: () => T | Promise<T>): Promise<T> {
-  return playerCommandChain = playerCommandChain.then(async () => {
-    try {
-      return await fn();
-    } catch (e) {
-      console.error(`${label} failed:`, e);
-      throw e;
-    }
-  });
-}
-
-function startPlayOperation(id: string): void {
-  activePlayOperationId = id;
-}
-
-function isPlayOperationActive(id: string): boolean {
-  return activePlayOperationId === id;
-}
-
 let downloadInFlight = false;
 
 function withRateLimit<T extends (...args: any[]) => any>(fn: T, name: string): T {
@@ -355,7 +332,7 @@ export function createRpcHandlers(ctx: RpcContext) {
     togglePlayPause: async () => {
       if (!player.player?.isReady) return;
       try {
-        await player.player.togglePlayPause(!current.isPlaying);
+        await enqueuePlayerCommand("togglePlayPause", () => player.player?.togglePlayPause(!current.isPlaying));
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         writeLogs([{ type: "error", message: `togglePlayPause failed: ${message}` }]);
@@ -469,22 +446,24 @@ export function createRpcHandlers(ctx: RpcContext) {
     },
 
     next: withErrorLogEmit("next", async () => {
+      playIntentSeq++;
       await enqueuePlayerCommand("next", () => {
         player.player?.next();
       });
     }),
 
     previous: withErrorLogEmit("previous", async () => {
+      playIntentSeq++;
       await enqueuePlayerCommand("previous", () => {
         player.player?.previous();
       });
     }),
 
     play: async ({ item, source, type, id }: { item: Track; source: MusicSource; type: string; id: string }) => {
-      // Create a unique ID for this play operation based on the track info
-      const playId = `${item.id}-${source}-${type}-${id}`;
-      
-      await enqueuePlayerCommand("play", async () => {
+      // Capture the intent before any await so a newer selection can supersede this play.
+      const intent = ++playIntentSeq;
+
+      return await enqueuePlayerCommand("play", async () => {
         writeLogs([{
           type: "info",
           message: JSON.stringify({ item, source, type, id })
@@ -497,6 +476,7 @@ export function createRpcHandlers(ctx: RpcContext) {
 
         if (trackSource === MusicSource.Youtube) {
           let tracks = await player.youtubeDataAPI.fetchTrack([item.id]);
+          if (intent !== playIntentSeq) return null;
 
           let track = tracks?.[0];
           if (!track) {
@@ -512,11 +492,13 @@ export function createRpcHandlers(ctx: RpcContext) {
 
           if (!formatArtists(track.artist)) {
             const refetched = await player.youtubeDataAPI.refetchTrack(item.id);
+            if (intent !== playIntentSeq) return null;
             if (refetched) {
               track = refetched;
             }
           }
 
+          if (intent !== playIntentSeq) return null;
           user.currentPlaying = {
             source: trackSource,
             id: item.id,
@@ -529,6 +511,7 @@ export function createRpcHandlers(ctx: RpcContext) {
         } else if (trackSource === MusicSource.Local) {
           const track = getLocalFileById(resolveId(item.id));
           if (!track) return null;
+          if (intent !== playIntentSeq) return null;
           user.currentPlaying = {
             source: MusicSource.Local,
             id: getHash(track.id),
@@ -541,6 +524,8 @@ export function createRpcHandlers(ctx: RpcContext) {
           current.isLived = false;
         }
 
+        if (intent !== playIntentSeq) return null;
+
         user.nextfrom = isValidContextEntry(`${source}:${type}:${id}`) ? `${source}:${type}:${id}` : "";
         writeLogs([{
           type: "info",
@@ -550,43 +535,36 @@ export function createRpcHandlers(ctx: RpcContext) {
         current.time = 0;
         user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
 
+        if (intent !== playIntentSeq) return null;
         user.playedTrack = recordPlayed(user.currentPlaying.id);
         writeUserDatas(user);
         notifyHomeChanged();
         
-        // Only update state if this is still the active play operation
-        if (isPlayOperationActive(playId)) {
-          emitToFrontend("currentTrackChanged", {
-            source: user.currentPlaying.source,
-            id: user.currentPlaying.id,
-            title: user.currentPlaying.title,
-            thumbnail: user.currentPlaying.thumbnail,
-            artist: user.currentPlaying.artist,
-            artistId: user.currentPlaying.artistId,
-          });
-          emitToFrontend("queueChanged", {
-            playQueue: user.playQueue,
-            batchQueue: getUserData("batchQueue"),
-            nextfrom: user.nextfrom,
-            playedTrack: user.playedTrack,
-          });
-          emitToFrontend("settingsChanged", {
-            shuffle: user.shuffle,
-            repeat: user.repeat,
-            volume: getUserData("volume"),
-          });
-          play();
-        }
-        
-        // Mark this operation as complete
-        if (activePlayOperationId === playId) {
-          activePlayOperationId = null;
-        }
+        if (intent !== playIntentSeq) return null;
+
+        emitToFrontend("currentTrackChanged", {
+          source: user.currentPlaying.source,
+          id: user.currentPlaying.id,
+          title: user.currentPlaying.title,
+          thumbnail: user.currentPlaying.thumbnail,
+          artist: user.currentPlaying.artist,
+          artistId: user.currentPlaying.artistId,
+        });
+        emitToFrontend("queueChanged", {
+          playQueue: user.playQueue,
+          batchQueue: getUserData("batchQueue"),
+          nextfrom: user.nextfrom,
+          playedTrack: user.playedTrack,
+        });
+        emitToFrontend("settingsChanged", {
+          shuffle: user.shuffle,
+          repeat: user.repeat,
+          volume: getUserData("volume"),
+        });
+        play();
+
         return user.currentPlaying;
       });
-      
-      // Start tracking this play operation
-      startPlayOperation(playId);
     },
 
     seekTo: withErrorLogEmit("seekTo", async (time: number) => {
@@ -840,6 +818,7 @@ export function createRpcHandlers(ctx: RpcContext) {
     // Insert straight after the current track instead of at the end of the queue.
     playNext: withRateLimit(
       withErrorLogEmit("playNext", async ({ track }: { track: Track }) => {
+        playIntentSeq++;
         await enqueuePlayerCommand("playNext", () => {
           const id = resolveId(track.id);
           const row = getTracks([id])[0];

@@ -37,7 +37,10 @@ public sealed class UiMemoryManager
         }
         ImageCache.Clear();
         AppLog.Write("mem", $"hidden: unloaded {_captured.Count} image(s), image cache cleared");
-        _ = NotifyBackendAsync(false);
+        
+        // Check if either main window or mini player is visible before sending false
+        var anyVisible = App.MiniPlayer?.IsVisible ?? false || (App.Services.Window?.IsWindowVisible ?? false);
+        _ = NotifyBackendAsync(anyVisible);
         _ = ScheduleTrimAsync(gen);
     }
 
@@ -52,6 +55,8 @@ public sealed class UiMemoryManager
             _ = ImageAttach.LoadAsync(image, url);
         }
         AppLog.Write("mem", $"shown: rehydrating {captured.Length} image(s)");
+        
+        // Always notify backend that UI is visible when window is shown
         _ = NotifyBackendAsync(true);
     }
 

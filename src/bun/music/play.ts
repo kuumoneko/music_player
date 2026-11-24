@@ -48,14 +48,13 @@ export default class Play extends EventEmitter {
     private loadedUrl: string = "";
     private isLiveStream: boolean = false;
     private fadeTimer: NodeJS.Timeout | null = null;
+    private fadeSeq = 0;
+    private fadeResolve: (() => void) | null = null;
+    private fadeDelayTimer: NodeJS.Timeout | null = null;
     private suppressEndFile: boolean = false;
     private lastTimePos: number = 0;
     private pendingSeek: number | null = null;
     private pendingResume: boolean = true;
-    private recoveryToken: number = 0;
-    private recoveryActive: boolean = false;
-    private recoveryTimer: NodeJS.Timeout | null = null;
-    private recoveryWake: (() => void) | null = null;
 
     constructor(appPath: string) {
         super();
@@ -192,6 +191,7 @@ export default class Play extends EventEmitter {
                 if (data) this.handlePropertyChange(data);
                 break;
             case MPV_EVENT_START_FILE:
+                this.isLoadingFile = true;
                 this.emit("loading", true);
                 break;
             case MPV_EVENT_FILE_LOADED:
@@ -229,9 +229,16 @@ export default class Play extends EventEmitter {
             }
         } else if (name === "pause" && format === MPV_FORMAT_FLAG) {
             const isPaused = read.i32(dataPtr, 0);
+            // Guard the pause observer while a file is loading
+            if (this.isLoadingFile) {
+                // If a pause arrives from an explicit user action during loading,
+                // record it for later application after load completes
+                this.pendingPauseIntent = !isPaused;
+                return;
+            }
             this.isPlaying = !isPaused;
             this.updateSMTC(this.isPlaying);
-            this.emit("change-playState", { isPlaying: this.isPlaying });
+            this.setPlaybackState(this.isPlaying, { token: this.loadToken });
         } else if (name === "stream-live" && format === MPV_FORMAT_FLAG) {
             const isLive = read.i32(dataPtr, 0);
             if (isLive) this.emit("is-live", true);
@@ -251,24 +258,43 @@ export default class Play extends EventEmitter {
 
     private handleFileLoaded() {
         this.suppressEndFile = false;
+        // Ignore FILE_LOADED for a superseded load: mpv may still deliver the
+        // old file's event after a newer loadfile has been issued.
+        const expected = this.expectedLoadPath;
+        let stale = false;
+        if (expected) {
+            const current = this.mpvString("path") ?? this.loadedUrl;
+            const norm = (p: string) => p.replace(/\\/g, "/").toLowerCase();
+            const base = (p: string) => p.split("/").pop() ?? "";
+            stale = !current || !(norm(current) === norm(expected) || base(current) === base(expected));
+        }
+        if (stale) {
+            writeLogs([{ type: "info", message: `FILE_LOADED ignored: stale load for "${expected}"` }]);
+            return;
+        }
+        this.isLoadingFile = false;
         this.emit("loading", false);
         if (this.pendingSeek !== null) {
             // Recovery reload: seek back to where the interruption happened and
             // restore the previous play/pause state.
+            const token = this.pendingSeekToken;
             const timePos = this.pendingSeek;
             const resume = this.pendingResume;
-            this.pendingSeek = null;
-            const savedVolume = getUserData("volume") ?? 50;
-            this.setVolume(savedVolume);
-            if (timePos > 0.5) this.command("seek", String(timePos), "absolute");
-            this.symbols?.mpv_set_property_string(this.handle, S("pause"), S(resume ? "no" : "yes"));
-            this.isPlaying = resume;
-            this.lastTimePos = timePos;
-            this.isFirstLoad = false;
-            this.emit("change-playState", { isPlaying: resume, time: timePos });
-            this.updateSMTC(resume);
-            setTimeout(() => this.emitDuration(), 500);
-            return;
+            this.clearPendingRecovery();
+            // Only a FILE_LOADED from the current recovery generation may seek
+            // and restore play state; a stale event falls through to the normal
+            // load path without reusing the old position or resume flag.
+            if (token !== null && token === this.recoveryToken && timePos !== null) {
+                const savedVolume = getUserData("volume") ?? 50;
+                this.setVolume(savedVolume);
+                if (timePos > 0.5) this.command("seek", String(timePos), "absolute");
+                this.symbols?.mpv_set_property_string(this.handle, S("pause"), S(resume ? "no" : "yes"));
+                this.setPlaybackState(resume, { time: timePos, token: this.loadToken });
+                this.lastTimePos = timePos;
+                this.isFirstLoad = false;
+                setTimeout(() => this.emitDuration(), 500);
+                return;
+            }
         }
         if (this.isFirstLoad) {
             this.isFirstLoad = false;
@@ -277,16 +303,23 @@ export default class Play extends EventEmitter {
                 this.setVolume(savedVolume);
                 this.command("set", "pause", "no");
             } else {
-                this.command("set", "pause", "yes");
-                this.command("seek", "0", "absolute");
-                const savedVolume = getUserData("volume") ?? 50;
-                this.setVolume(savedVolume);
+                // Apply any pending pause intent that was recorded during loading
+                if (this.pendingPauseIntent !== null) {
+                    const shouldPause = this.pendingPauseIntent;
+                    this.command("set", "pause", shouldPause ? "yes" : "no");
+                    this.setPlaybackState(!shouldPause, { token: this.loadToken });
+                } else {
+                    this.command("set", "pause", "yes");
+                    this.command("seek", "0", "absolute");
+                    const savedVolume = getUserData("volume") ?? 50;
+                    this.setVolume(savedVolume);
+                }
             }
         } else {
             const savedVolume = getUserData("volume") ?? 50;
             this.symbols?.mpv_set_property_string(this.handle, S("volume"), S("0"));
             this.command("set", "pause", "no");
-            this.emit("change-playState", { isPlaying: true });
+            this.setPlaybackState(true, { token: this.loadToken });
             setTimeout(() => this.fadeVolume(0, savedVolume, 450), 50);
         }
         setTimeout(() => this.emitDuration(), 500);
@@ -353,7 +386,7 @@ export default class Play extends EventEmitter {
             }
             if (videoId) {
                 // Permanent load failure — let the app skip and clean up.
-                this.isPlaying = false;
+                this.setPlaybackState(false, { token: this.loadToken });
                 this.emit("track-error", { id: videoId, error: errorName, transient: false });
                 return;
             }
@@ -363,19 +396,27 @@ export default class Play extends EventEmitter {
         }
         if (this.sleep === SleepMode.eot) {
             this.sleep = SleepMode.no;
-            this.isPlaying = false;
             this.isRepeat = false;
             this.playlistUrls = [];
             this.playlistIndex = 0;
             this.suppressEndFile = true;
             this.command("stop");
-            this.emit("change-playState", { isPlaying: false, time: 0 });
+            // Apply any pending pause intent that was recorded during loading
+            if (this.pendingPauseIntent !== null) {
+                this.setPlaybackState(false, { token: this.loadToken });
+            } else {
+                this.emit("change-playState", { isPlaying: false, time: 0 });
+            }
             return;
         }
         if (!this.isRepeat && this.playlistIndex >= this.playlistUrls.length - 1) {
-            this.isPlaying = false;
             this.loadedUrl = "";
-            this.emit("change-playState", { isPlaying: false, time: 0 });
+            // Apply any pending pause intent that was recorded during loading
+            if (this.pendingPauseIntent !== null) {
+                this.setPlaybackState(false, { token: this.loadToken });
+            } else {
+                this.emit("change-playState", { isPlaying: false, time: 0 });
+            }
             this.emit("ended");
         }
     }
@@ -393,18 +434,47 @@ export default class Play extends EventEmitter {
         return errorCode === -10 || errorCode === -13 || errorCode === -16 || errorCode === -20;
     }
 
+    private clearPendingRecovery(): void {
+        this.pendingSeek = null;
+        this.pendingSeekToken = null;
+        this.pendingResume = false;
+    }
+
+    private cancelFade(): void {
+        this.fadeSeq++;
+        if (this.fadeTimer) {
+            clearTimeout(this.fadeTimer);
+            this.fadeTimer = null;
+        }
+        if (this.fadeDelayTimer) {
+            clearTimeout(this.fadeDelayTimer);
+            this.fadeDelayTimer = null;
+        }
+        if (this.fadeResolve) {
+            this.fadeResolve();
+            this.fadeResolve = null;
+        }
+    }
+
     private cancelRecovery(reason: string) {
-        if (!this.recoveryActive && this.recoveryWake === null) return;
+        const hadWork =
+            this.recoveryActive ||
+            this.recoveryWake !== null ||
+            this.recoveryTimer !== null ||
+            this.pendingSeek !== null ||
+            this.pendingSeekToken !== null;
         this.recoveryToken++;
         this.recoveryActive = false;
-        this.pendingSeek = null;
+        this.clearPendingRecovery();
         const wake = this.recoveryWake;
         this.recoveryWake = null;
         if (this.recoveryTimer) {
             clearTimeout(this.recoveryTimer);
             this.recoveryTimer = null;
         }
-        writeLogs([{ type: "info", message: `play: playback recovery cancelled (${reason})` }]);
+        if (hadWork) {
+            writeLogs([{ type: "info", message: `play: playback recovery cancelled (${reason})` }]);
+        }
         wake?.();
     }
 
@@ -477,6 +547,7 @@ export default class Play extends EventEmitter {
 
             this.pendingSeek = startPos;
             this.pendingResume = wasPlaying;
+            this.pendingSeekToken = token;
             this.suppressEndFile = true;
             this.command("stop");
             const ret = this.symbols
@@ -484,7 +555,7 @@ export default class Play extends EventEmitter {
                 : -1;
             if (ret < 0) {
                 lastError = this.symbols ? this.mpvError(ret) : "mpv unavailable";
-                this.pendingSeek = null;
+                this.clearPendingRecovery();
                 writeLogs([{ type: "error", message: `play: recovery loadfile failed: ${lastError}` }]);
                 continue;
             }
@@ -499,7 +570,7 @@ export default class Play extends EventEmitter {
 
         if (this.recoveryToken !== token) return;
         this.recoveryActive = false;
-        this.pendingSeek = null;
+        this.clearPendingRecovery();
         writeLogs([{ type: "error", message: `play: recovery exhausted for ${videoId}: ${lastError}` }]);
         this.emit("track-error", { id: videoId, error: lastError, transient: !permanent });
     }
@@ -557,7 +628,8 @@ export default class Play extends EventEmitter {
 
     async play(urlOrPath: string, _title?: string, _thumbnail?: string) {
         this.cancelRecovery("play");
-        this.lastTimePos = 0;
+        this.clearPendingRecovery();
+        this.cancelFade();
         if (!this.symbols || !this.handle) {
             writeLogs([{ type: "error", message: `play: mpv not initialized, cannot play ${urlOrPath}` }]);
             this.emit("track-error", _title || urlOrPath);
@@ -593,9 +665,16 @@ export default class Play extends EventEmitter {
             }
         }
         this.suppressEndFile = true;
-        this.command("stop");
         const escaped = urlOrPath.replace(/\\/g, "/");
-        writeLogs([{ type: "info", message: `play: loadfile "${escaped}" replace` }]);
+        // Begin a fresh load generation: any FILE_LOADED for a superseded file is ignored.
+        this.loadToken++;
+        const token = this.loadToken;
+        this.isLoadingFile = true;
+        this.expectedLoadPath = escaped;
+        this.lastTimePos = 0;
+        this.pendingPauseIntent = null;
+        this.command("stop");
+        writeLogs([{ type: "info", message: `play: loadfile "${escaped}" replace (loadToken ${token})` }]);
         const loadCmd = `loadfile "${escaped}" replace`;
         const ret = this.symbols!.mpv_command_string(this.handle, S(loadCmd));
         if (ret < 0) writeLogs([{ type: "error", message: `mpv loadfile failed: ${this.mpvError(ret)}` }]);
@@ -715,8 +794,19 @@ export default class Play extends EventEmitter {
         return Number.isFinite(value) ? value : null;
     }
 
+    private mpvString(prop: string): string | null {
+        if (!this.symbols || !this.handle) return null;
+        const ptr = this.symbols.mpv_get_property_string(this.handle, S(prop));
+        if (!ptr) return null;
+        const raw = new CString(ptr).toString();
+        this.symbols.mpv_free(ptr);
+        return raw;
+    }
+
     async next() {
         this.cancelRecovery("next");
+        this.clearPendingRecovery();
+        this.cancelFade();
         if (this.fadeTimer) {
             clearTimeout(this.fadeTimer);
             this.fadeTimer = null;
@@ -736,6 +826,8 @@ export default class Play extends EventEmitter {
 
     async previous() {
         this.cancelRecovery("previous");
+        this.clearPendingRecovery();
+        this.cancelFade();
         if (this.fadeTimer) {
             clearTimeout(this.fadeTimer);
             this.fadeTimer = null;
@@ -755,6 +847,7 @@ export default class Play extends EventEmitter {
     }
 
     async togglePlayPause(isPlay: boolean) {
+        this.cancelFade();
         if (this.fadeTimer) {
             clearTimeout(this.fadeTimer);
             this.fadeTimer = null;
@@ -764,8 +857,12 @@ export default class Play extends EventEmitter {
                 const savedVolume = getUserData("volume") ?? 50;
                 this.symbols?.mpv_set_property_string(this.handle, S("volume"), S("0"));
                 this.symbols?.mpv_set_property_string(this.handle, S("pause"), S("no"));
-                this.isPlaying = true;
-                this.emit("change-playState", { isPlaying: true });
+                // Apply any pending pause intent that was recorded during loading
+                if (this.pendingPauseIntent === false) {
+                    this.setPlaybackState(true, { token: this.loadToken });
+                } else {
+                    this.setPlaybackState(true, { token: this.loadToken });
+                }
                 this.updateSMTC(true);
                 await this.fadeVolume(0, savedVolume, 500);
             } else {
@@ -773,8 +870,12 @@ export default class Play extends EventEmitter {
                 const currentVolume = strPtr ? parseInt(new CString(strPtr).toString()) || 0 : 0;
                 if (strPtr) this.symbols?.mpv_free(strPtr);
                 this.symbols?.mpv_set_property_string(this.handle, S("pause"), S("yes"));
-                this.isPlaying = false;
-                this.emit("change-playState", { isPlaying: false });
+                // Apply any pending pause intent that was recorded during loading
+                if (this.pendingPauseIntent === true) {
+                    this.setPlaybackState(false, { token: this.loadToken });
+                } else {
+                    this.setPlaybackState(false, { token: this.loadToken });
+                }
                 this.updateSMTC(false);
                 await this.fadeVolume(currentVolume, 0, 500);
                 const savedVolume = getUserData("volume") ?? 50;
@@ -783,7 +884,7 @@ export default class Play extends EventEmitter {
         } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
             writeLogs([{ type: "error", message: `togglePlayPause error: ${message}` }]);
-            this.isPlaying = false;
+            this.setPlaybackState(false, { token: this.loadToken });
             this.emit("change-playState", { isPlaying: false });
         }
     }
@@ -794,29 +895,43 @@ export default class Play extends EventEmitter {
 
     private fadeVolume(from: number, to: number, duration: number): Promise<void> {
         return new Promise(resolve => {
+            // Cancel any existing fade to prevent conflicts
+            this.cancelFade();
+            
+            const seq = this.fadeSeq;
+            this.fadeResolve = resolve;
+            
             const start = performance.now();
             const step = () => {
-                if (!this.fadeTimer) {
+                // If the fade sequence has changed, stop and resolve
+                if (seq !== this.fadeSeq) {
                     resolve();
                     return;
                 }
+                
                 const elapsed = performance.now() - start;
                 const progress = Math.min(elapsed / duration, 1);
                 const eased = 1 - Math.pow(1 - progress, 3);
                 const current = Math.round(from + (to - from) * eased);
                 this.symbols?.mpv_set_property_string(this.handle, S("volume"), S(String(current)));
+                
                 if (progress < 1) {
                     this.fadeTimer = setTimeout(step, 16);
                 } else {
-                    this.fadeTimer = null;
+                    // Only clear fadeTimer if it's still the current generation
+                    if (this.fadeTimer && seq === this.fadeSeq) {
+                        this.fadeTimer = null;
+                    }
                     resolve();
                 }
             };
+            
             this.fadeTimer = setTimeout(step, 16);
         });
     }
 
     setVolume(value: number) {
+        this.cancelFade();
         if (this.fadeTimer) {
             clearTimeout(this.fadeTimer);
             this.fadeTimer = null;
@@ -860,6 +975,15 @@ export default class Play extends EventEmitter {
 
     getSleep(): SleepMode {
         return this.sleep;
+    }
+
+    private setPlaybackState(next: boolean, opts: { time?: number; token?: number; force?: boolean } = {}): void {
+        if (opts.token !== undefined && opts.token < this.lastAppliedLoadToken) return;
+        if (!opts.force && opts.time === undefined && next === this.isPlaying) return;
+        this.isPlaying = next;
+        this.lastAppliedLoadToken = opts.token ?? this.loadToken;
+        this.updateSMTC(next);
+        this.emit("change-playState", { isPlaying: next, ...(opts.time !== undefined ? { time: opts.time } : {}), token: opts.token ?? this.loadToken });
     }
 
     public updateSMTC(isPlaying?: boolean) {

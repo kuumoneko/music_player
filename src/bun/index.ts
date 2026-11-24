@@ -147,6 +147,9 @@ class PlayerState {
 const current = new PlayerState();
 writeUserData("isLoading", true);
 
+// --- Track stale change-playState events ---
+let lastPlayStateToken = null;
+
 let isFirstLoad = true;
 let folder = getUserData("folder") ?? "";
 // --- Managers ---
@@ -326,7 +329,7 @@ player.player?.on("exit", () => {
 	setTimeout(() => process.exit(0), 2000);
 });
 
-player.player?.on("change-playState", (data: { isPlaying: boolean; time: number }) => {
+player.player?.on("change-playState", (data: { isPlaying: boolean; time: number; token?: number }) => {
 	const update: Partial<Pick<PlayerState, "time" | "isPlaying">> = {};
 	if (data.isPlaying !== undefined && data.isPlaying !== null) {
 		update.isPlaying = data.isPlaying;

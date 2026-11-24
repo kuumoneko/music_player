@@ -117,6 +117,7 @@ public sealed partial class MainWindow : Window
             _smtc.Dispose();
             _hotkeys.Dispose();
             _tray.Dispose();
+            App.DisposeMiniPlayer(); // Dispose mini player during shutdown
             AppLog.Stop();
         };
 
