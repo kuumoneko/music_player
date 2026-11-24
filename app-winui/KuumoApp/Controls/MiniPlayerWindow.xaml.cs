@@ -62,6 +62,7 @@ public sealed partial class MiniPlayerWindow : Page
         App.Services.Events.CurrentTrackChanged += OnCurrentTrackChanged;
         App.Services.Events.PlayerStateChanged += OnPlayerStateChanged;
         App.Services.Events.TimeUpdated += OnTimeUpdated;
+        App.Services.Rpc.Connected += OnRpcConnected;
 
         // The taskbar re-asserts its own topmost band when clicked or on shell restarts,
         // so keep promoting the mini player above it while visible.
@@ -69,55 +70,63 @@ public sealed partial class MiniPlayerWindow : Page
         _topmostTimer.Interval = TimeSpan.FromSeconds(2);
         _topmostTimer.Tick += (_, _) => ReassertTopmost();
 
-        // Hydrate state on RPC reconnect and connection
-        App.Services.Rpc.Connected += OnRpcConnected;
-        App.Services.Rpc.Reconnected += OnRpcReconnected;
-
-        // Load initial state if already connected
+        // Intentionally NOT closed here: a closed Window has no HWND and AppWindow.Show() becomes a no-op.
+        
+        // Load initial state if RPC is already connected
         if (App.Services.Rpc.IsConnected)
         {
             _ = LoadInitialStateAsync();
         }
+    }
 
-        // Intentionally NOT closed here: a closed Window has no HWND and AppWindow.Show() becomes a no-op.
+    private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
+    {
+        if (args.WindowActivationState != WindowActivationState.Deactivated)
+        {
+            ReassertTopmost();
+        }
+    }
+
+    private void OnWindowClosed(object sender, WindowEventArgs args)
+    {
+        Dispose();
     }
 
     private async void OnRpcConnected()
     {
-        // Hydrate state on RPC connection
-        await LoadInitialStateAsync();
+        try
+        {
+            await LoadInitialStateAsync();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("miniplayer", $"Failed to load initial state on reconnect: {ex.Message}");
+        }
     }
 
-    private async void OnRpcReconnected()
-    {
-        // Hydrate state on RPC reconnection
-        await LoadInitialStateAsync();
-    }
-    
     private async Task LoadInitialStateAsync()
     {
-        if (_initialStateLoaded || _disposed)
+        if (_disposed || _initialStateLoaded)
         {
             return;
         }
 
         try
         {
-            // Get current playing data from backend
             var playingData = await App.Services.Api.GetPlayingDataAsync();
             if (playingData != null)
             {
+                _isPlaying = playingData.IsPlaying;
+                _durationSeconds = playingData.Current.Duration / 1000.0;
+                _positionSeconds = playingData.Current.Time;
+
                 _dispatcherQueue.TryEnqueue(() =>
                 {
-                    _isPlaying = playingData.IsPlaying;
-                    _durationSeconds = playingData.Current?.Duration / 1000.0 ?? 0;
-                    _positionSeconds = playingData.Current?.Time ?? 0;
                     UpdatePlayPauseButton();
                     UpdateTimeText();
                 });
             }
 
-            // Get current track info
             var currentTrack = await App.Services.Api.GetCurrentPlayingAsync();
             if (currentTrack != null)
             {
@@ -137,16 +146,6 @@ public sealed partial class MiniPlayerWindow : Page
         }
     }
 
-    private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
-    {
-        // Handle window activation if needed
-    }
-
-    private void OnWindowClosed(object sender, WindowEventArgs args)
-    {
-        Dispose();
-    }
-
     private void OnCurrentTrackChanged(CurrentTrackChangedDto data)
     {
         _dispatcherQueue.TryEnqueue(() =>
@@ -158,6 +157,9 @@ public sealed partial class MiniPlayerWindow : Page
             // Reset position when track changes
             _positionSeconds = 0;
             UpdateTimeText();
+            
+            // Load the actual position for new track
+            _ = LoadInitialStateAsync();
         });
     }
 
@@ -180,8 +182,12 @@ public sealed partial class MiniPlayerWindow : Page
     {
         _dispatcherQueue.TryEnqueue(() =>
         {
-            // Handle NaN, Infinity, and negative values
-            if (double.IsNaN(data.Time) || double.IsInfinity(data.Time) || data.Time < 0)
+            // Handle NaN and Infinity values
+            if (double.IsNaN(data.Time) || double.IsInfinity(data.Time))
+            {
+                _positionSeconds = 0;
+            }
+            else if (data.Time < 0)
             {
                 _positionSeconds = 0;
             }
@@ -222,12 +228,14 @@ public sealed partial class MiniPlayerWindow : Page
         _isVisible = true;
         _topmostTimer.Start();
         
-        // Notify backend that UI is visible (either main window or mini player)
-        var anyVisible = IsVisible || (App.Services.Window?.IsWindowVisible ?? false);
-        _ = App.Services.Api.SetUiVisibilityAsync(anyVisible);
-
-        // Hydrate state when showing
-        _ = LoadInitialStateAsync();
+        // Load initial state if not already loaded
+        if (!_initialStateLoaded)
+        {
+            _ = LoadInitialStateAsync();
+        }
+        
+        // Update UI visibility for backend
+        UpdateUiVisibility();
     }
 
     public void Hide()
@@ -241,9 +249,23 @@ public sealed partial class MiniPlayerWindow : Page
         _window.AppWindow.Hide();
         _isVisible = false;
         
-        // Notify backend that UI visibility changed
+        // Update UI visibility for backend
+        UpdateUiVisibility();
+    }
+    
+    private void UpdateUiVisibility()
+    {
+        // Compute if any window is visible (main or mini player)
         var anyVisible = IsVisible || (App.Services.Window?.IsWindowVisible ?? false);
-        _ = App.Services.Api.SetUiVisibilityAsync(anyVisible);
+        
+        // Fire-and-forget call to update backend visibility
+        _ = App.Services.Api.SetUiVisibilityAsync(anyVisible).ContinueWith(task =>
+        {
+            if (task.Exception != null)
+            {
+                AppLog.Write("miniplayer", $"Failed to update UI visibility: {task.Exception.Message}");
+            }
+        });
     }
 
     public void Toggle()
@@ -394,32 +416,31 @@ public sealed partial class MiniPlayerWindow : Page
         }
         _disposed = true;
 
-        _isVisible = false;
         _topmostTimer.Stop();
-        // Note: The timer's Tick event was set up with a lambda, so we can't directly unsubscribe it.
-        // We just stop the timer and let it be garbage collected.
-
+        _topmostTimer.Tick -= OnTopmostTimerTick;
         _window.Activated -= OnWindowActivated;
         _window.Closed -= OnWindowClosed;
 
         App.Services.Events.CurrentTrackChanged -= OnCurrentTrackChanged;
         App.Services.Events.PlayerStateChanged -= OnPlayerStateChanged;
         App.Services.Events.TimeUpdated -= OnTimeUpdated;
-        
-        // Unsubscribe RPC connection handlers added in 4.1
         App.Services.Rpc.Connected -= OnRpcConnected;
-        App.Services.Rpc.Reconnected -= OnRpcReconnected;
 
         try
         {
-            // Attempt to hide and close the window
+            // Try to hide and close the window
             _window.AppWindow.Hide();
             _window.Close();
         }
         catch (Exception ex)
         {
-            AppLog.Write("miniplayer", $"Failed to close window during dispose: {ex.Message}");
+            AppLog.Write("miniplayer", $"Failed to dispose window: {ex.Message}");
         }
+    }
+
+    private void OnTopmostTimerTick(object? sender, object e)
+    {
+        ReassertTopmost();
     }
 
     private async void OnPrevClick(object sender, RoutedEventArgs e)

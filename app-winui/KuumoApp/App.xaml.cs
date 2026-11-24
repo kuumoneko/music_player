@@ -76,31 +76,14 @@ public partial class App : Application
 
     public static void ShutdownApp()
     {
-        AppLog.Write("app", $"shutdown requested (stack trace: {Environment.StackTrace})");
-        
         // Dispose the mini player before shutting down services
         DisposeMiniPlayer();
+        AppLog.Write("app", $"shutdown requested (stack trace: {Environment.StackTrace})");
         
         Services.Shutdown();
         if (Current is App app)
         {
             app.Exit();
-        }
-    }
-
-    internal static void DisposeMiniPlayer()
-    {
-        try
-        {
-            MiniPlayer?.Dispose();
-        }
-        catch (Exception ex)
-        {
-            AppLog.Write("app", $"mini player dispose failed: {ex.Message}");
-        }
-        finally
-        {
-            MiniPlayer = null;
         }
     }
 }
