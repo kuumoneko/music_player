@@ -86,4 +86,20 @@ public partial class App : Application
             app.Exit();
         }
     }
+
+    internal static void DisposeMiniPlayer()
+    {
+        try
+        {
+            MiniPlayer?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("app", $"mini player dispose failed: {ex.Message}");
+        }
+        finally
+        {
+            MiniPlayer = null;
+        }
+    }
 }
