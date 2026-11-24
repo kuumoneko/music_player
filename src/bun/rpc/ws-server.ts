@@ -48,11 +48,10 @@ export class RpcWsServer {
           }
         },
         message: (ws, message) => {
-          this.enqueue(ws, () => this.dispatch(ws, message));
+          this.dispatch(ws, message);
         },
         close: (ws) => {
           this.clients.delete(ws);
-          this.queues.delete(ws);
         },
       },
     });
@@ -69,19 +68,6 @@ export class RpcWsServer {
   stop(): void {
     this.server?.stop(true);
     this.clients.clear();
-  }
-
-  private enqueue(ws: ServerWebSocket<unknown>, task: () => Promise<void>): void {
-    const previous = this.queues.get(ws) || Promise.resolve();
-    const next = previous.then(async () => {
-      try {
-        await task();
-      } catch (e) {
-        // Ignore errors to prevent the chain from breaking
-        console.error("Error in queued task:", e);
-      }
-    });
-    this.queues.set(ws, next);
   }
 
   broadcast(event: string, data: unknown): void {
@@ -106,7 +92,6 @@ export class RpcWsServer {
     if (!request || typeof request !== "object" || typeof request.method !== "string" || request.id === undefined) {
       return;
     }
-    
     const { id, method, params } = request;
     
     try {

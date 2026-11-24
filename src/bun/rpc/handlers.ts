@@ -472,23 +472,23 @@ export function createRpcHandlers(ctx: RpcContext) {
         user.playQueue = [];
         player.player?.setRepeat(false);
 
-        const trackSource = item?.source ?? source;
+      const trackSource = item?.source ?? source;
 
         if (trackSource === MusicSource.Youtube) {
           let tracks = await player.youtubeDataAPI.fetchTrack([item.id]);
           if (intent !== playIntentSeq) return null;
 
-          let track = tracks?.[0];
-          if (!track) {
-            // Track deleted/private — clean pin + notify frontend
-            const pin = getUserData("pin") ?? [];
-            const key = `${source}:${MusicType.Track}:${item.id}`;
-            if (pin.includes(key)) {
-              writeUserData("pin", pin.filter((p: string) => p !== key));
-            }
-            emitToFrontend("trackUnavailable", { id: item.id, name: item.name });
-            return null;
+        let track = tracks?.[0];
+        if (!track) {
+          // Track deleted/private — clean pin + notify frontend
+          const pin = getUserData("pin") ?? [];
+          const key = `${source}:${MusicType.Track}:${item.id}`;
+          if (pin.includes(key)) {
+            writeUserData("pin", pin.filter((p: string) => p !== key));
           }
+          emitToFrontend("trackUnavailable", { id: item.id, name: item.name });
+          return null;
+        }
 
           if (!formatArtists(track.artist)) {
             const refetched = await player.youtubeDataAPI.refetchTrack(item.id);
@@ -526,14 +526,14 @@ export function createRpcHandlers(ctx: RpcContext) {
 
         if (intent !== playIntentSeq) return null;
 
-        user.nextfrom = isValidContextEntry(`${source}:${type}:${id}`) ? `${source}:${type}:${id}` : "";
-        writeLogs([{
-          type: "info",
-          message: `play: nextfrom="${user.nextfrom}" (input "${source}:${type}:${id}", item id="${item?.id}")`
-        }]);
+      user.nextfrom = isValidContextEntry(`${source}:${type}:${id}`) ? `${source}:${type}:${id}` : "";
+      writeLogs([{
+        type: "info",
+        message: `play: nextfrom="${user.nextfrom}" (input "${source}:${type}:${id}", item id="${item?.id}")`
+      }]);
 
-        current.time = 0;
-        user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
+      current.time = 0;
+      user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
 
         if (intent !== playIntentSeq) return null;
         user.playedTrack = recordPlayed(user.currentPlaying.id);
@@ -568,12 +568,10 @@ export function createRpcHandlers(ctx: RpcContext) {
     },
 
     seekTo: withErrorLogEmit("seekTo", async (time: number) => {
-      await enqueuePlayerCommand("seekTo", () => {
-        current.time = time;
-        player.player?.seekTo(time);
-        emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
-        setDiscordRPC();
-      });
+      current.time = time;
+      player.player?.seekTo(time);
+      emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
+      setDiscordRPC();
     }),
 
     getCurrentPlaying: async () => {
