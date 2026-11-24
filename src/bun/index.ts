@@ -147,9 +147,6 @@ class PlayerState {
 const current = new PlayerState();
 writeUserData("isLoading", true);
 
-// --- Track stale change-playState events ---
-let lastPlayStateToken = null;
-
 let isFirstLoad = true;
 let folder = getUserData("folder") ?? "";
 // --- Managers ---

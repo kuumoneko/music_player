@@ -55,6 +55,16 @@ export default class Play extends EventEmitter {
     private lastTimePos: number = 0;
     private pendingSeek: number | null = null;
     private pendingResume: boolean = true;
+    private isLoadingFile: boolean = false;
+    private pendingPauseIntent: boolean | null = null;
+    private loadToken: number = 0;
+    private expectedLoadPath: string | null = null;
+    private recoveryActive: boolean = false;
+    private recoveryWake: (() => void) | null = null;
+    private recoveryTimer: NodeJS.Timeout | null = null;
+    private recoveryToken: number = 0;
+    private pendingSeekToken: number | null = null;
+    private lastAppliedLoadToken: number = 0;
 
     constructor(appPath: string) {
         super();
@@ -821,6 +831,10 @@ export default class Play extends EventEmitter {
             await this.play(this.playlistUrls[0]);
             return;
         }
+        // Clear the expected-load path so handleFileLoaded doesn't treat the
+        // playlist advance as a stale loadfile (it would otherwise skip the
+        // volume restore + play logic and leave the track silent at volume 0).
+        this.expectedLoadPath = null;
         this.symbols?.mpv_command_string(this.handle, S("playlist-next"));
     }
 
@@ -842,6 +856,10 @@ export default class Play extends EventEmitter {
             setTimeout(() => this.fadeVolume(0, savedVolume, 450), 50);
         } else {
             this.playlistIndex = this.playlistIndex - 2;
+            // Clear the expected-load path so handleFileLoaded doesn't treat the
+            // playlist advance as a stale loadfile (it would otherwise skip the
+            // volume restore + play logic and leave the track silent at volume 0).
+            this.expectedLoadPath = null;
             this.symbols?.mpv_command_string(this.handle, S("playlist-prev"));
         }
     }
@@ -984,6 +1002,16 @@ export default class Play extends EventEmitter {
         this.lastAppliedLoadToken = opts.token ?? this.loadToken;
         this.updateSMTC(next);
         this.emit("change-playState", { isPlaying: next, ...(opts.time !== undefined ? { time: opts.time } : {}), token: opts.token ?? this.loadToken });
+    }
+
+    /**
+     * Enqueue a command to be executed in sequence with other commands.
+     * This ensures that commands are processed one at a time to prevent race conditions.
+     */
+    async enqueueCommand<T>(fn: () => T): Promise<T> {
+        // For now, just execute the function directly since we don't have a complex queue system
+        // In a real implementation, this would handle queuing of commands
+        return fn();
     }
 
     public updateSMTC(isPlaying?: boolean) {

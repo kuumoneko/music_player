@@ -27,6 +27,18 @@ export class RpcWsServer {
     this.options = options;
   }
 
+  private enqueue(ws: ServerWebSocket<unknown>, task: () => Promise<void>): void {
+    const previous = this.queues.get(ws) || Promise.resolve();
+    const current = previous.then(async () => {
+      try {
+        await task();
+      } catch (e) {
+        console.error("Error in queued task:", e);
+      }
+    });
+    this.queues.set(ws, current);
+  }
+
   start(hostname: string, port: number): void {
     this.server = Bun.serve({
       hostname,
@@ -48,10 +60,11 @@ export class RpcWsServer {
           }
         },
         message: (ws, message) => {
-          this.dispatch(ws, message);
+          this.enqueue(ws, () => this.dispatch(ws, message));
         },
         close: (ws) => {
           this.clients.delete(ws);
+          this.queues.delete(ws);
         },
       },
     });

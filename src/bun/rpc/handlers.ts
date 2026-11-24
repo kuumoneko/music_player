@@ -191,8 +191,19 @@ function withErrorLog<T, A extends unknown[]>(
 
 export function createRpcHandlers(ctx: RpcContext) {
   const { player, current, isLocal, isDiscord, DiscordClientId, emitToFrontend, play, setDiscordRPC } = ctx;
+  
+  // Define missing functions that are referenced in the handler methods
+  let playIntentSeq = 0;
+  
+  function enqueuePlayerCommand<T>(fn: () => T): Promise<T> {
+    // If player is not ready, just execute the function directly
+    if (!player.player?.isReady) {
+      return Promise.resolve(fn());
+    }
+    return player.player.enqueueCommand(fn);
+  }
 
-  const withErrorLogEmit = <T, A extends unknown[]>(label: string, fn: (...args: A) => Promise<T>) => {
+  const withErrorLogEmit = <T, A extends unknown[]>(label: string, fn: (...args: A) => Promise<T | null>) => {
     return withErrorLog(label, fn, (message: string) => {
       emitToFrontend("error", { message });
     });
@@ -332,7 +343,7 @@ export function createRpcHandlers(ctx: RpcContext) {
     togglePlayPause: async () => {
       if (!player.player?.isReady) return;
       try {
-        await enqueuePlayerCommand("togglePlayPause", () => player.player?.togglePlayPause(!current.isPlaying));
+        await enqueuePlayerCommand(() => player.player?.togglePlayPause(!current.isPlaying));
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         writeLogs([{ type: "error", message: `togglePlayPause failed: ${message}` }]);
@@ -447,14 +458,14 @@ export function createRpcHandlers(ctx: RpcContext) {
 
     next: withErrorLogEmit("next", async () => {
       playIntentSeq++;
-      await enqueuePlayerCommand("next", () => {
+      await enqueuePlayerCommand(() => {
         player.player?.next();
       });
     }),
 
     previous: withErrorLogEmit("previous", async () => {
       playIntentSeq++;
-      await enqueuePlayerCommand("previous", () => {
+      await enqueuePlayerCommand(() => {
         player.player?.previous();
       });
     }),
@@ -463,7 +474,7 @@ export function createRpcHandlers(ctx: RpcContext) {
       // Capture the intent before any await so a newer selection can supersede this play.
       const intent = ++playIntentSeq;
 
-      return await enqueuePlayerCommand("play", async () => {
+      return await enqueuePlayerCommand(async () => {
         writeLogs([{
           type: "info",
           message: JSON.stringify({ item, source, type, id })
@@ -817,7 +828,7 @@ export function createRpcHandlers(ctx: RpcContext) {
     playNext: withRateLimit(
       withErrorLogEmit("playNext", async ({ track }: { track: Track }) => {
         playIntentSeq++;
-        await enqueuePlayerCommand("playNext", () => {
+        await enqueuePlayerCommand(() => {
           const id = resolveId(track.id);
           const row = getTracks([id])[0];
           const source = row?.source ?? track.source;
