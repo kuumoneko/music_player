@@ -54,16 +54,16 @@ export default class Play extends EventEmitter {
     private suppressEndFile: boolean = false;
     private lastTimePos: number = 0;
     private pendingSeek: number | null = null;
-    private pendingResume: boolean = true;
+    private pendingResume: boolean = false;
     private isLoadingFile: boolean = false;
     private pendingPauseIntent: boolean | null = null;
     private loadToken: number = 0;
     private expectedLoadPath: string | null = null;
-    private recoveryActive: boolean = false;
+    public recoveryActive: boolean = false;
     private recoveryWake: (() => void) | null = null;
     private recoveryTimer: NodeJS.Timeout | null = null;
-    private recoveryToken: number = 0;
-    private pendingSeekToken: number | null = null;
+    public recoveryToken: number = 0;
+    public pendingSeekToken: number | null = null;
     private lastAppliedLoadToken: number = 0;
 
     constructor(appPath: string) {
@@ -176,6 +176,9 @@ export default class Play extends EventEmitter {
     private startTimePolling() {
         this.timePosTimer = setInterval(() => {
             if (!this.isReady || !this.symbols) return;
+            // While a file is loading, mpv still reports the previous file's
+            // time-pos; do not poll, do not touch lastTimePos, do not emit.
+            if (this.isLoadingFile) return;
             try {
                 const strPtr: Pointer = this.symbols.mpv_get_property_string(this.handle, S("time-pos"));
                 if (strPtr && strPtr !== 0) {
@@ -183,7 +186,7 @@ export default class Play extends EventEmitter {
                     this.symbols.mpv_free(strPtr);
                     if (!isNaN(time)) {
                         this.lastTimePos = time;
-                        this.emit("change-playState", { time });
+                        this.setPlaybackState(this.isPlaying, { time, token: this.loadToken });
                     }
                 }
             } catch (e) {
@@ -239,16 +242,12 @@ export default class Play extends EventEmitter {
             }
         } else if (name === "pause" && format === MPV_FORMAT_FLAG) {
             const isPaused = read.i32(dataPtr, 0);
-            // Guard the pause observer while a file is loading
-            if (this.isLoadingFile) {
-                // If a pause arrives from an explicit user action during loading,
-                // record it for later application after load completes
-                this.pendingPauseIntent = !isPaused;
-                return;
-            }
-            this.isPlaying = !isPaused;
-            this.updateSMTC(this.isPlaying);
-            this.setPlaybackState(this.isPlaying, { token: this.loadToken });
+            // mpv emits pause during its own load sequence; ignore it. Explicit
+            // user intent is recorded by togglePlayPause instead.
+            if (this.isLoadingFile) return;
+            // The helper owns isPlaying and SMTC; never pre-assign isPlaying here
+            // (that would trip its no-op guard and suppress the emit).
+            this.setPlaybackState(!isPaused, { token: this.loadToken });
         } else if (name === "stream-live" && format === MPV_FORMAT_FLAG) {
             const isLive = read.i32(dataPtr, 0);
             if (isLive) this.emit("is-live", true);
@@ -313,11 +312,11 @@ export default class Play extends EventEmitter {
                 this.setVolume(savedVolume);
                 this.command("set", "pause", "no");
             } else {
-                // Apply any pending pause intent that was recorded during loading
-                if (this.pendingPauseIntent !== null) {
-                    const shouldPause = this.pendingPauseIntent;
+                const shouldPause = this.pendingPauseIntent;
+                this.pendingPauseIntent = null;
+                if (shouldPause !== null) {
                     this.command("set", "pause", shouldPause ? "yes" : "no");
-                    this.setPlaybackState(!shouldPause, { token: this.loadToken });
+                    this.setPlaybackState(!shouldPause, { token: this.loadToken, force: true });
                 } else {
                     this.command("set", "pause", "yes");
                     this.command("seek", "0", "absolute");
@@ -327,10 +326,14 @@ export default class Play extends EventEmitter {
             }
         } else {
             const savedVolume = getUserData("volume") ?? 50;
+            const shouldPause = this.pendingPauseIntent;
+            this.pendingPauseIntent = null;
             this.symbols?.mpv_set_property_string(this.handle, S("volume"), S("0"));
-            this.command("set", "pause", "no");
-            this.setPlaybackState(true, { token: this.loadToken });
-            setTimeout(() => this.fadeVolume(0, savedVolume, 450), 50);
+            this.command("set", "pause", shouldPause ? "yes" : "no");
+            this.setPlaybackState(!shouldPause, { token: this.loadToken, force: true });
+            if (!shouldPause) {
+                this.scheduleFade(0, savedVolume, 450, 50);
+            }
         }
         setTimeout(() => this.emitDuration(), 500);
     }
@@ -411,22 +414,14 @@ export default class Play extends EventEmitter {
             this.playlistIndex = 0;
             this.suppressEndFile = true;
             this.command("stop");
-            // Apply any pending pause intent that was recorded during loading
-            if (this.pendingPauseIntent !== null) {
-                this.setPlaybackState(false, { token: this.loadToken });
-            } else {
-                this.emit("change-playState", { isPlaying: false, time: 0 });
-            }
+            this.pendingPauseIntent = null;
+            this.setPlaybackState(false, { time: 0, token: this.loadToken, force: true });
             return;
         }
         if (!this.isRepeat && this.playlistIndex >= this.playlistUrls.length - 1) {
             this.loadedUrl = "";
-            // Apply any pending pause intent that was recorded during loading
-            if (this.pendingPauseIntent !== null) {
-                this.setPlaybackState(false, { token: this.loadToken });
-            } else {
-                this.emit("change-playState", { isPlaying: false, time: 0 });
-            }
+            this.pendingPauseIntent = null;
+            this.setPlaybackState(false, { time: 0, token: this.loadToken, force: true });
             this.emit("ended");
         }
     }
@@ -464,6 +459,21 @@ export default class Play extends EventEmitter {
             this.fadeResolve();
             this.fadeResolve = null;
         }
+    }
+
+    private scheduleFade(from: number, to: number, duration: number, delayMs: number): void {
+        if (this.fadeDelayTimer) {
+            clearTimeout(this.fadeDelayTimer);
+            this.fadeDelayTimer = null;
+        }
+        if (delayMs <= 0) {
+            void this.fadeVolume(from, to, duration);
+            return;
+        }
+        this.fadeDelayTimer = setTimeout(() => {
+            this.fadeDelayTimer = null;
+            void this.fadeVolume(from, to, duration);
+        }, delayMs);
     }
 
     private cancelRecovery(reason: string) {
@@ -817,10 +827,6 @@ export default class Play extends EventEmitter {
         this.cancelRecovery("next");
         this.clearPendingRecovery();
         this.cancelFade();
-        if (this.fadeTimer) {
-            clearTimeout(this.fadeTimer);
-            this.fadeTimer = null;
-        }
         const strPtr = this.symbols?.mpv_get_property_string(this.handle, S("volume"));
         const currentVolume = strPtr ? parseInt(new CString(strPtr).toString()) || 0 : 0;
         if (strPtr) this.symbols?.mpv_free(strPtr);
@@ -842,10 +848,6 @@ export default class Play extends EventEmitter {
         this.cancelRecovery("previous");
         this.clearPendingRecovery();
         this.cancelFade();
-        if (this.fadeTimer) {
-            clearTimeout(this.fadeTimer);
-            this.fadeTimer = null;
-        }
         const strPtr = this.symbols?.mpv_get_property_string(this.handle, S("volume"));
         const currentVolume = strPtr ? parseInt(new CString(strPtr).toString()) || 0 : 0;
         if (strPtr) this.symbols?.mpv_free(strPtr);
@@ -853,7 +855,7 @@ export default class Play extends EventEmitter {
         if (this.playlistIndex <= 0) {
             this.seekTo(0);
             const savedVolume = getUserData("volume") ?? 50;
-            setTimeout(() => this.fadeVolume(0, savedVolume, 450), 50);
+            this.scheduleFade(0, savedVolume, 450, 50);
         } else {
             this.playlistIndex = this.playlistIndex - 2;
             // Clear the expected-load path so handleFileLoaded doesn't treat the
@@ -866,35 +868,23 @@ export default class Play extends EventEmitter {
 
     async togglePlayPause(isPlay: boolean) {
         this.cancelFade();
-        if (this.fadeTimer) {
-            clearTimeout(this.fadeTimer);
-            this.fadeTimer = null;
+        if (this.isLoadingFile) {
+            // true = the track should end up paused once FILE_LOADED arrives.
+            this.pendingPauseIntent = !isPlay;
         }
         try {
             if (isPlay) {
                 const savedVolume = getUserData("volume") ?? 50;
                 this.symbols?.mpv_set_property_string(this.handle, S("volume"), S("0"));
                 this.symbols?.mpv_set_property_string(this.handle, S("pause"), S("no"));
-                // Apply any pending pause intent that was recorded during loading
-                if (this.pendingPauseIntent === false) {
-                    this.setPlaybackState(true, { token: this.loadToken });
-                } else {
-                    this.setPlaybackState(true, { token: this.loadToken });
-                }
-                this.updateSMTC(true);
+                this.setPlaybackState(true, { token: this.loadToken, force: true });
                 await this.fadeVolume(0, savedVolume, 500);
             } else {
                 const strPtr = this.symbols?.mpv_get_property_string(this.handle, S("volume"));
                 const currentVolume = strPtr ? parseInt(new CString(strPtr).toString()) || 0 : 0;
                 if (strPtr) this.symbols?.mpv_free(strPtr);
                 this.symbols?.mpv_set_property_string(this.handle, S("pause"), S("yes"));
-                // Apply any pending pause intent that was recorded during loading
-                if (this.pendingPauseIntent === true) {
-                    this.setPlaybackState(false, { token: this.loadToken });
-                } else {
-                    this.setPlaybackState(false, { token: this.loadToken });
-                }
-                this.updateSMTC(false);
+                this.setPlaybackState(false, { token: this.loadToken, force: true });
                 await this.fadeVolume(currentVolume, 0, 500);
                 const savedVolume = getUserData("volume") ?? 50;
                 this.symbols?.mpv_set_property_string(this.handle, S("volume"), S(String(savedVolume)));
@@ -902,8 +892,7 @@ export default class Play extends EventEmitter {
         } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
             writeLogs([{ type: "error", message: `togglePlayPause error: ${message}` }]);
-            this.setPlaybackState(false, { token: this.loadToken });
-            this.emit("change-playState", { isPlaying: false });
+            this.setPlaybackState(false, { token: this.loadToken, force: true });
         }
     }
 
@@ -940,6 +929,9 @@ export default class Play extends EventEmitter {
                     if (this.fadeTimer && seq === this.fadeSeq) {
                         this.fadeTimer = null;
                     }
+                    if (seq === this.fadeSeq) {
+                        this.fadeResolve = null;
+                    }
                     resolve();
                 }
             };
@@ -950,10 +942,6 @@ export default class Play extends EventEmitter {
 
     setVolume(value: number) {
         this.cancelFade();
-        if (this.fadeTimer) {
-            clearTimeout(this.fadeTimer);
-            this.fadeTimer = null;
-        }
         this.symbols?.mpv_set_property_string(this.handle, S("volume"), S(String(value)));
     }
 

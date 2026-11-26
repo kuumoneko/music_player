@@ -326,7 +326,12 @@ player.player?.on("exit", () => {
 	setTimeout(() => process.exit(0), 2000);
 });
 
+let lastPlayStateToken = -1;
+
 player.player?.on("change-playState", (data: { isPlaying: boolean; time: number; token?: number }) => {
+	const token = typeof data.token === "number" ? data.token : 0;
+	if (token < lastPlayStateToken) return;
+	lastPlayStateToken = token;
 	const update: Partial<Pick<PlayerState, "time" | "isPlaying">> = {};
 	if (data.isPlaying !== undefined && data.isPlaying !== null) {
 		update.isPlaying = data.isPlaying;

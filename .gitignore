@@ -20,4 +20,5 @@ tsconfig.tsbuildinfo
 /apikeys
 bun.lock\
 TODO.md
+sub_TODO.md
 /tests/manual

@@ -195,12 +195,26 @@ export function createRpcHandlers(ctx: RpcContext) {
   // Define missing functions that are referenced in the handler methods
   let playIntentSeq = 0;
   
-  function enqueuePlayerCommand<T>(fn: () => T): Promise<T> {
-    // If player is not ready, just execute the function directly
+  let playerCommandChain: Promise<unknown> = Promise.resolve();
+
+  function enqueuePlayerCommand<T>(label: string, fn: () => T | Promise<T>): Promise<T> {
+    // Fast path when mpv never initialized.
     if (!player.player?.isReady) {
       return Promise.resolve(fn());
     }
-    return player.player.enqueueCommand(fn);
+    const run = playerCommandChain.then(
+      () => fn(),
+      () => fn(),
+    );
+    // Keep the chain alive on both success and failure; the caller still sees `run`.
+    playerCommandChain = run.then(
+      () => undefined,
+      (e) => {
+        const message = e instanceof Error ? e.message : String(e);
+        writeLogs([{ type: "error", message: `player command "${label}" failed: ${message}` }]);
+      },
+    );
+    return run;
   }
 
   const withErrorLogEmit = <T, A extends unknown[]>(label: string, fn: (...args: A) => Promise<T | null>) => {
@@ -343,7 +357,7 @@ export function createRpcHandlers(ctx: RpcContext) {
     togglePlayPause: async () => {
       if (!player.player?.isReady) return;
       try {
-        await enqueuePlayerCommand(() => player.player?.togglePlayPause(!current.isPlaying));
+        await enqueuePlayerCommand("togglePlayPause", () => player.player?.togglePlayPause(!current.isPlaying));
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         writeLogs([{ type: "error", message: `togglePlayPause failed: ${message}` }]);
@@ -458,15 +472,15 @@ export function createRpcHandlers(ctx: RpcContext) {
 
     next: withErrorLogEmit("next", async () => {
       playIntentSeq++;
-      await enqueuePlayerCommand(() => {
-        player.player?.next();
+      await enqueuePlayerCommand("next", async () => {
+        await player.player?.next();
       });
     }),
 
     previous: withErrorLogEmit("previous", async () => {
       playIntentSeq++;
-      await enqueuePlayerCommand(() => {
-        player.player?.previous();
+      await enqueuePlayerCommand("previous", async () => {
+        await player.player?.previous();
       });
     }),
 
@@ -474,7 +488,7 @@ export function createRpcHandlers(ctx: RpcContext) {
       // Capture the intent before any await so a newer selection can supersede this play.
       const intent = ++playIntentSeq;
 
-      return await enqueuePlayerCommand(async () => {
+      return await enqueuePlayerCommand("play", async () => {
         writeLogs([{
           type: "info",
           message: JSON.stringify({ item, source, type, id })
@@ -546,11 +560,13 @@ export function createRpcHandlers(ctx: RpcContext) {
       current.time = 0;
       user.repeat = user.repeat === Repeat.Disable ? Repeat.Disable : Repeat.All;
 
+        // Guard before ANY state mutation: a newer selection supersedes this play.
         if (intent !== playIntentSeq) return null;
         user.playedTrack = recordPlayed(user.currentPlaying.id);
         writeUserDatas(user);
         notifyHomeChanged();
         
+        // Last cheap guard before the side effects the user can observe.
         if (intent !== playIntentSeq) return null;
 
         emitToFrontend("currentTrackChanged", {
@@ -579,10 +595,24 @@ export function createRpcHandlers(ctx: RpcContext) {
     },
 
     seekTo: withErrorLogEmit("seekTo", async (time: number) => {
-      current.time = time;
-      player.player?.seekTo(time);
-      emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
-      setDiscordRPC();
+      await enqueuePlayerCommand("seekTo", () => {
+        // Only apply seek if we're not in a recovery process or if it's for the current recovery
+        const currentRecoveryToken = player.player?.recoveryToken ?? 0;
+        const pendingSeekToken = player.player?.pendingSeekToken ?? null;
+        
+        // If we're in recovery but the seek token doesn't match the current recovery token, skip this seek
+        if (player.player?.recoveryActive && 
+            pendingSeekToken !== null && 
+            pendingSeekToken !== currentRecoveryToken) {
+          // Skip seek if it's for an old recovery attempt
+          return;
+        }
+        
+        current.time = time;
+        player.player?.seekTo(time);
+        emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
+        setDiscordRPC();
+      });
     }),
 
     getCurrentPlaying: async () => {
@@ -828,7 +858,7 @@ export function createRpcHandlers(ctx: RpcContext) {
     playNext: withRateLimit(
       withErrorLogEmit("playNext", async ({ track }: { track: Track }) => {
         playIntentSeq++;
-        await enqueuePlayerCommand(() => {
+        await enqueuePlayerCommand("playNext", () => {
           const id = resolveId(track.id);
           const row = getTracks([id])[0];
           const source = row?.source ?? track.source;
