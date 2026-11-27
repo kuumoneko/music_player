@@ -172,6 +172,16 @@ function withRateLimit<T extends (...args: any[]) => any>(fn: T, name: string): 
   }) as T;
 }
 
+const inflightRequests = new Map<string, Promise<unknown>>();
+
+function withInFlight<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = inflightRequests.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const run = fn().finally(() => inflightRequests.delete(key));
+  inflightRequests.set(key, run);
+  return run;
+}
+
 function withErrorLog<T, A extends unknown[]>(
   label: string,
   fn: (...args: A) => Promise<T>,
@@ -276,13 +286,10 @@ export function createRpcHandlers(ctx: RpcContext) {
       "getHomeData",
     ),
 
-    getHomeFeed: withRateLimit(
-      withErrorLogEmit("getHomeFeed", async () => {
-        const pin = getUserData("pin");
-        return HomeFeedController(player, pin);
-      }),
-      "getHomeFeed",
-    ),
+    getHomeFeed: withErrorLogEmit("getHomeFeed", async () => {
+      const pin = getUserData("pin");
+      return withInFlight(`homeFeed:${JSON.stringify(pin)}`, () => HomeFeedController(player, pin));
+    }),
 
     getHomeArtists: withRateLimit(
       withErrorLogEmit("getHomeArtists", async () => {

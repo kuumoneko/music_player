@@ -14,6 +14,8 @@ public sealed partial class HomePage : Page
     private int _loadVersion;
     private readonly DispatcherQueueTimer _dataChangeTimer;
     private bool _windowVisible = true;
+    private bool _loading;
+    private bool _reloadPending;
 
     public HomePage()
     {
@@ -64,6 +66,31 @@ public sealed partial class HomePage : Page
     }
 
     private async Task LoadAsync()
+    {
+        if (_loading)
+        {
+            _reloadPending = true;
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            await LoadCoreAsync();
+        }
+        finally
+        {
+            _loading = false;
+            if (_reloadPending)
+            {
+                _reloadPending = false;
+                _dataChangeTimer.Stop();
+                _dataChangeTimer.Start();
+            }
+        }
+    }
+
+    private async Task LoadCoreAsync()
     {
         var version = ++_loadVersion;
         LoadingRing.IsActive = true;
