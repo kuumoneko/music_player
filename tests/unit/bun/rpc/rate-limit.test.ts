@@ -7,7 +7,7 @@ import { createRpcHandlers } from "../../../../src/bun/rpc/handlers.ts";
 const RATE_LIMIT_MS = 500;
 
 // The test preload redirects the sqlite data directory to a throwaway folder.
-let clock = 0;
+let clock = Date.now();
 const realNow = Date.now;
 
 // The rate-limit map is module-level and survives between tests, so advance the
