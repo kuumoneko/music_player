@@ -104,6 +104,19 @@ class PlayerState {
 	duration = firstLoadCurrent?.duration ?? 0;
 	isLived = firstLoadCurrent?.isLived ?? false;
 	isPlaying = false;
+	abLoop: { a: number; b: number } | null = null;
+
+	setAbLoop(a: number, b: number) {
+		this.abLoop = { a, b };
+		emitToFrontend("abLoopChanged", { a, b });
+	}
+
+	clearAbLoop(syncMpv = true) {
+		const wasActive = this.abLoop !== null;
+		this.abLoop = null;
+		if (syncMpv) player.player?.clearAbLoop();
+		if (wasActive) emitToFrontend("abLoopChanged", { a: null, b: null });
+	}
 
 	update(partial: Partial<Pick<PlayerState, "time" | "duration" | "isLived" | "isPlaying">>) {
 		Object.assign(this, partial);
@@ -205,6 +218,7 @@ const setDiscordRPC = () => {
 
 const play = async () => {
 	await mpvReady;
+	current.clearAbLoop();
 	const currentPlaying = getUserData("currentPlaying");
 	if (!currentPlaying?.id) {
 		writeUserData("isLoading", false);
@@ -321,7 +335,11 @@ player.player?.on("smtc-update", (data: unknown) => {
 	emitToFrontend("smtc-update", data);
 });
 
-player.player?.on("exit", () => {
+// The backend player cleared a range that drifted out of bounds; mirror it
+// without touching mpv again.
+player.player?.on("ab-loop-cleared", () => {
+	current.clearAbLoop(false);
+});player.player?.on("exit", () => {
 	emitToFrontend("app-exit", null);
 	setTimeout(() => process.exit(0), 2000);
 });
@@ -348,6 +366,8 @@ player.player?.on("change-playState", (data: { isPlaying: boolean; time: number;
 	}
 });
 
+let lastPlayingKey = "";
+
 player.player?.on("playing", async (data) => {
 	if (!data) return;
 
@@ -356,6 +376,14 @@ player.player?.on("playing", async (data) => {
 	if (!id) {
 		id = data;
 		isYoutube = false;
+	}
+	// A-B repeat belongs to the track it was set on: drop it as soon as a
+	// different file starts (auto-advance, repeat-all wrap, queue refill).
+	// Recovery reloads of the same file keep their loop.
+	const playingKey = `${isYoutube ? "y" : "l"}:${id}`;
+	if (playingKey !== lastPlayingKey) {
+		lastPlayingKey = playingKey;
+		current.clearAbLoop();
 	}
 	let track = getTracks([id])[0] ?? null;
 	if (track === null) {

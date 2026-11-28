@@ -82,7 +82,12 @@ function makeHarness(options: { delayMs?: number } = {}): Harness {
 
   const instance = handlers({
     player: player as any,
-    current: { time: 0, duration: 0, isLived: false, isPlaying: false },
+    current: {
+      time: 0, duration: 0, isLived: false, isPlaying: false,
+      abLoop: null,
+      setAbLoop: () => {},
+      clearAbLoop: () => {},
+    },
     isLocal: true,
     isDiscord: false,
     DiscordClientId: "",

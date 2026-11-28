@@ -12,6 +12,7 @@ public sealed class AppEvents
     public event Action<PlayerStateChangeDto>? PlayerStateChanged;
     public event Action<CurrentTrackChangedDto>? CurrentTrackChanged;
     public event Action<SettingsChangedDto>? SettingsChanged;
+    public event Action<AbLoopChangedDto>? AbLoopChanged;
     public event Action<QueueChangedDto>? QueueChanged;
     public event Action<ErrorDto>? ErrorReceived;
     public event Action<DownloadStatusDto>? DownloadStatusChanged;
@@ -53,6 +54,9 @@ public sealed class AppEvents
                 break;
             case "settingsChanged":
                 Raise(SettingsChanged, () => data.Deserialize<SettingsChangedDto>(RpcClient.Json));
+                break;
+            case "abLoopChanged":
+                Raise(AbLoopChanged, () => data.Deserialize<AbLoopChangedDto>(RpcClient.Json));
                 break;
             case "queueChanged":
                 Raise(QueueChanged, () => data.Deserialize<QueueChangedDto>(RpcClient.Json));

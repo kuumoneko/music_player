@@ -33,6 +33,12 @@ public sealed partial class PlayerBar : UserControl
     private string _currentArtistId = "";
     private readonly DispatcherQueueTimer _seekCommitTimer;
     private bool _windowVisible = true;
+    // Matches the Slider's built-in thumb inset closely enough for markers.
+    private const double SeekThumbInset = 12;
+    private double _lastTimeSeconds;
+    private double _abA;
+    private double _abB;
+    private bool _abAArmed;
 
     public PlayerBar()
     {
@@ -55,6 +61,7 @@ public sealed partial class PlayerBar : UserControl
             App.Services.Events.PlayerStateChanged += data => DispatcherQueue.TryEnqueue(() => SetPlayerState(data));
             App.Services.Events.CurrentTrackChanged += data => DispatcherQueue.TryEnqueue(() => SetTrack(data));
             App.Services.Events.SettingsChanged += data => DispatcherQueue.TryEnqueue(() => SetSettings(data));
+            App.Services.Events.AbLoopChanged += data => DispatcherQueue.TryEnqueue(() => SetAbLoop(data));
             App.Services.Events.QueueChanged += data => DispatcherQueue.TryEnqueue(() => SetNextFrom(data.Nextfrom));
         }
         if (App.Services?.Rpc != null)
@@ -63,6 +70,7 @@ public sealed partial class PlayerBar : UserControl
         }
         SliderExt.HookThumbDrag(SeekSlider, OnSeekDragStarted, OnSeekDragCompleted);
         SliderExt.HookThumbDrag(VolumeSlider, OnVolumeDragStarted, OnVolumeDragCompleted);
+        SeekSlider.SizeChanged += (_, _) => UpdateAbMarkers();
         if (App.Services?.Window != null)
         {
             App.Services.Window.WindowHidden += () => _windowVisible = false;
@@ -94,6 +102,11 @@ public sealed partial class PlayerBar : UserControl
             if (current is not null)
             {
                 SetTrack(current);
+            }
+            if (playing is not null)
+            {
+                // Applied after SetTrack, which resets the markers for a new track.
+                SetAbLoop(new AbLoopChangedDto(playing.AbLoop?.A, playing.AbLoop?.B));
             }
             var nextfrom = await App.Services.Api.GetUserDataAsync<string>("nextfrom");
             if (!string.IsNullOrEmpty(nextfrom))
@@ -170,6 +183,11 @@ public sealed partial class PlayerBar : UserControl
         TrackTitle.Text = string.IsNullOrEmpty(track.Title) ? "Nothing playing" : track.Title;
         TrackArtist.Text = track.Artist ?? "";
         _ = LoadThumbnailAsync(track.Thumbnail);
+        // A-B repeat is scoped to one track; never carry markers across a change.
+        _abA = 0;
+        _abB = 0;
+        _abAArmed = false;
+        UpdateAbUi();
     }
 
     private async Task LoadThumbnailAsync(string url)
@@ -186,6 +204,7 @@ public sealed partial class PlayerBar : UserControl
 
     public void SetTime(TimeUpdateDto data)
     {
+        _lastTimeSeconds = data.Time;
         if (_seekDragging || !_windowVisible)
         {
             return;
@@ -223,6 +242,8 @@ public sealed partial class PlayerBar : UserControl
         SeekSlider.Maximum = Math.Max(1, durationMs / 1000.0);
         _suppressSeekValue = false;
         TotalTime.Text = _isLive ? "--:--" : FormatTime(durationMs);
+        AbButton.IsEnabled = !_isLive;
+        UpdateAbMarkers();
     }
 
     public void SetSettings(SettingsChangedDto data)
@@ -245,6 +266,116 @@ public sealed partial class PlayerBar : UserControl
     private void UpdateVolumeIcon()
     {
         VolumeIcon.Glyph = VolumeSlider.Value <= 0 ? "\uE74F" : "\uE767";
+    }
+
+    // --- A-B repeat -------------------------------------------------------
+    // Idle -> click sets A at the playhead (armed) -> click sets B and starts
+    // the loop -> click clears. The backend is authoritative; this mirrors it.
+
+    private void OnAbClick(object sender, RoutedEventArgs e)
+    {
+        if (_isLive)
+        {
+            return;
+        }
+        if (_abB > _abA)
+        {
+            _ = SetAbLoopAsync(null, null);
+            return;
+        }
+        if (_abAArmed)
+        {
+            if (_lastTimeSeconds < _abA + 1)
+            {
+                ToastService.ShowError("B must be at least 1 second after A");
+                return;
+            }
+            _ = SetAbLoopAsync(_abA, _lastTimeSeconds);
+            return;
+        }
+        _abA = _lastTimeSeconds;
+        _abAArmed = true;
+        UpdateAbUi();
+    }
+
+    private async Task SetAbLoopAsync(double? a, double? b)
+    {
+        try
+        {
+            await App.Services.Api.SetAbLoopAsync(a, b);
+            ApplyAbLoop(a, b);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write("playerbar", $"setAbLoop failed: {ex.Message}");
+            ToastService.ShowError($"A-B repeat failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Push event from the backend (set/cleared, including on track change).</summary>
+    public void SetAbLoop(AbLoopChangedDto data)
+    {
+        ApplyAbLoop(data.A, data.B);
+    }
+
+    private void ApplyAbLoop(double? a, double? b)
+    {
+        if (a is double start && b is double end)
+        {
+            _abA = start;
+            _abB = end;
+        }
+        else
+        {
+            _abA = 0;
+            _abB = 0;
+        }
+        _abAArmed = false;
+        UpdateAbUi();
+    }
+
+    private void UpdateAbUi()
+    {
+        var active = _abB > _abA;
+        AbButtonText.Foreground = active || _abAArmed ? AccentBrush() : IdleBrush();
+        ToolTipService.SetToolTip(AbButton, active
+            ? "A-B repeat: click to clear"
+            : _abAArmed ? "A-B repeat: set loop end (B)" : "A-B repeat: set loop start (A)");
+        AbRangeText.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        if (active)
+        {
+            AbRangeText.Text = $"A {FormatTime((int)(_abA * 1000))} · B {FormatTime((int)(_abB * 1000))}";
+        }
+        UpdateAbMarkers();
+    }
+
+    private void UpdateAbMarkers()
+    {
+        var active = _abB > _abA;
+        var hasA = _abAArmed || active;
+        AbMarkerA.Visibility = hasA ? Visibility.Visible : Visibility.Collapsed;
+        AbMarkerB.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        AbRegion.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+
+        var width = SeekSlider.ActualWidth;
+        if (!hasA || width <= SeekThumbInset * 2)
+        {
+            return;
+        }
+        var maximum = Math.Max(1, SeekSlider.Maximum);
+        double X(double seconds) =>
+            SeekThumbInset + Math.Clamp(seconds / maximum, 0, 1) * (width - SeekThumbInset * 2);
+
+        Canvas.SetLeft(AbMarkerA, X(_abA) - 1);
+        if (!active)
+        {
+            return;
+        }
+        var start = X(_abA);
+        var end = X(_abB);
+        Canvas.SetLeft(AbRegion, start);
+        AbRegion.Width = Math.Max(2, end - start);
+        Canvas.SetLeft(AbMarkerB, end - 1);
     }
 
     private static Brush AccentBrush()

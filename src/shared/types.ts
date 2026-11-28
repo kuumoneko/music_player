@@ -71,7 +71,8 @@
                     playedTrack: string[],
                     current: {
                         time: number, duration: number
-                    }
+                    },
+                    abLoop: { a: number, b: number } | null
                 }
             },
             next: {
@@ -84,6 +85,10 @@
             },
             seekTo: {
                 params: number,
+                response: null
+            },
+            setAbLoop: {
+                params: { a: number, b: number } | null,
                 response: null
             },
             setSleep: { params: SleepMode, response: null },
@@ -218,6 +223,8 @@
             playerStateChange: { isPlaying: boolean; isLoading: boolean; duration: number; isLived: boolean }
             currentTrackChanged: { source: string; id: string; title: string; thumbnail: string; artist: string; artistId: string }
             settingsChanged: { shuffle: Shuffle; repeat: Repeat; volume: number }
+            /** A-B loop range for the current track; nulls clear it. */
+            abLoopChanged: { a: number | null; b: number | null }
             queueChanged: { playQueue: string[]; batchQueue: string[]; nextfrom: string; playedTrack: string[] }
             error: { message: string; stack?: string; transient?: boolean; id?: string }
             /** Playback hit a transient failure and is being recovered. */

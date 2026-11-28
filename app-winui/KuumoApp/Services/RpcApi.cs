@@ -33,6 +33,11 @@ public sealed class RpcApi
     public Task NextAsync() => Call<object?>("next");
     public Task PreviousAsync() => Call<object?>("previous");
     public Task SeekToAsync(int seconds) => Call<object?>("seekTo", seconds);
+    public Task SetAbLoopAsync(double? a, double? b)
+    {
+        object? parameters = a is null || b is null ? null : new { a, b };
+        return Call<object?>("setAbLoop", parameters);
+    }
     public Task SetSleepAsync(string mode) => Call<object?>("setSleep", mode);
     public Task<string?> GetSleepAsync() => Call<string?>("getSleep");
     public Task<bool> PlayNextAsync(TrackDto track) => Call<bool>("playNext", new { track });

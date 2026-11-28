@@ -128,9 +128,12 @@ public record PlayingDataDto(
     bool IsPlaying,
     bool IsLoading,
     string[] PlayedTrack,
-    PlayingCurrentDto Current);
+    PlayingCurrentDto Current,
+    AbLoopDto? AbLoop = null);
 
 public record PlayingCurrentDto(double Time, double Duration, bool IsLived, bool IsPlaying);
+
+public record AbLoopDto(double A, double B);
 
 public record DownloadStatusDto(string Data, string Track, double? Progress = null);
 
@@ -151,6 +154,8 @@ public record PlayerStateChangeDto(bool IsPlaying, bool IsLoading, double Durati
 public record CurrentTrackChangedDto(string Source, string Id, string Title, string Thumbnail, string Artist, string ArtistId);
 
 public record SettingsChangedDto(int Shuffle, int Repeat, int Volume);
+
+public record AbLoopChangedDto(double? A, double? B);
 
 public record QueueChangedDto(string[] PlayQueue, string[] BatchQueue, string Nextfrom, string[] PlayedTrack);
 

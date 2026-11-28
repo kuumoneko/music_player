@@ -44,7 +44,12 @@ function makeHandlers() {
 
   const handlers = createRpcHandlers({
     player: player as any,
-    current: { time: 0, duration: 0, isLived: false, isPlaying: false },
+    current: {
+      time: 0, duration: 0, isLived: false, isPlaying: false,
+      abLoop: null,
+      setAbLoop: () => {},
+      clearAbLoop: () => {},
+    },
     isLocal: true,
     isDiscord: false,
     DiscordClientId: "",

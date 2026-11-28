@@ -39,7 +39,15 @@ import SearchController from "../controllers/search.ts";
 
 export interface RpcContext {
   player: Player;
-  current: { time: number; duration: number; isLived: boolean; isPlaying: boolean };
+  current: {
+    time: number;
+    duration: number;
+    isLived: boolean;
+    isPlaying: boolean;
+    abLoop: { a: number; b: number } | null;
+    setAbLoop: (a: number, b: number) => void;
+    clearAbLoop: (syncMpv?: boolean) => void;
+  };
   isLocal: boolean;
   isDiscord: boolean;
   DiscordClientId: string;
@@ -474,6 +482,7 @@ export function createRpcHandlers(ctx: RpcContext) {
         ...result,
         current,
         isPlaying: current.isPlaying,
+        abLoop: current.abLoop,
       };
     },
 
@@ -616,9 +625,39 @@ export function createRpcHandlers(ctx: RpcContext) {
         }
         
         current.time = time;
+        // A deliberate seek outside the range releases it, so playback is
+        // never yanked back to A after the user moved the playhead.
+        const ab = current.abLoop;
+        if (ab && (time < ab.a - 0.25 || time > ab.b + 0.25)) {
+          current.clearAbLoop();
+        }
         player.player?.seekTo(time);
         emitToFrontend("timeUpdate", { time: current.time, isPlaying: current.isPlaying });
         setDiscordRPC();
+      });
+    }),
+
+    setAbLoop: withErrorLogEmit("setAbLoop", async (range: { a: number; b: number } | null) => {
+      await enqueuePlayerCommand("setAbLoop", () => {
+        if (!range) {
+          current.clearAbLoop();
+          return;
+        }
+        const duration = current.duration / 1000;
+        let a = Number(range.a);
+        let b = Number(range.b);
+        if (!Number.isFinite(a) || !Number.isFinite(b) || a < 0) {
+          throw new Error("Invalid A-B range");
+        }
+        if (duration > 0) {
+          b = Math.min(b, duration - 0.25);
+        }
+        if (b - a < 1) {
+          throw new Error("B must be at least 1 second after A");
+        }
+        a = Math.min(a, b - 1);
+        current.setAbLoop(a, b);
+        player.player?.setAbLoop(a, b);
       });
     }),
 

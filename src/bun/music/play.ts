@@ -53,6 +53,7 @@ export default class Play extends EventEmitter {
     private fadeDelayTimer: NodeJS.Timeout | null = null;
     private suppressEndFile: boolean = false;
     private lastTimePos: number = 0;
+    private abLoopEnd: number | null = null;
     private pendingSeek: number | null = null;
     private pendingResume: boolean = false;
     private isLoadingFile: boolean = false;
@@ -187,6 +188,12 @@ export default class Play extends EventEmitter {
                     if (!isNaN(time)) {
                         this.lastTimePos = time;
                         this.setPlaybackState(this.isPlaying, { time, token: this.loadToken });
+                        // mpv owns the loop, but recover from any seek/reload that
+                        // lands past it so the state can never drift out of sync.
+                        if (this.abLoopEnd !== null && time > this.abLoopEnd + 0.5) {
+                            this.clearAbLoop();
+                            this.emit("ab-loop-cleared");
+                        }
                     }
                 }
             } catch (e) {
@@ -719,6 +726,18 @@ export default class Play extends EventEmitter {
     setRepeat(isRepeat: boolean) {
         this.isRepeat = isRepeat;
         this.symbols?.mpv_set_property_string(this.handle, S("loop-file"), S(isRepeat ? "inf" : "no"));
+    }
+
+    setAbLoop(a: number, b: number) {
+        this.abLoopEnd = b;
+        this.symbols?.mpv_set_property_string(this.handle, S("ab-loop-a"), S(String(a)));
+        this.symbols?.mpv_set_property_string(this.handle, S("ab-loop-b"), S(String(b)));
+    }
+
+    clearAbLoop() {
+        this.abLoopEnd = null;
+        this.symbols?.mpv_set_property_string(this.handle, S("ab-loop-a"), S("no"));
+        this.symbols?.mpv_set_property_string(this.handle, S("ab-loop-b"), S("no"));
     }
 
     async addTracks(datas: { url: string; title: string; thumbnail: string }[]) {
