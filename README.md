@@ -88,10 +88,10 @@ The installer will:
 bun run typecheck
 
 # Build backend bundle
-bun run build:prod
+bun run build
 
 # Full package (builds everything, creates installer in artifacts/)
-bun run winui:package
+bun run package
 ```
 
 ## Keyboard Shortcuts
@@ -128,7 +128,7 @@ To run the app in development mode:
 
 ```bash
 # Run the WinUI frontend with auto-restart on code changes
-bun run winui:dev
+bun run dev
 ```
 
 ## License
