@@ -1,6 +1,6 @@
 // Start Menu / AUMID leftovers created by the host dev loop.
 //
-// winui-dev.ts  creates %APPDATA%\...\Programs\<WINUI_DEV_SHORTCUT>.lnk (AUMID kuumo.app.dev)
+// dev.ts        creates %APPDATA%\...\Programs\<WINUI_DEV_SHORTCUT>.lnk (AUMID kuumo.app.dev)
 //               via scripts/CheckShortcut, so the script also removes it.
 //
 // Every removal here is *guarded*: it only ever deletes a shortcut whose target resolves
@@ -86,7 +86,7 @@ export function removeRepoShortcut(shortcutName: string): boolean {
     return true;
 }
 
-/** Removes the WinUI dev artifacts (shortcut created by winui-dev.ts). */
+/** Removes the WinUI dev artifacts (shortcut created by dev.ts). */
 export function removeWinuiDevArtifacts(): void {
     removeRepoShortcut(WINUI_DEV_SHORTCUT);
 }

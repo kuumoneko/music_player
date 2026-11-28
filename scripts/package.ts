@@ -1,26 +1,3 @@
-// Builds the WinUI + Bun payload, assembles a setup.exe with Inno Setup,
-// and writes the update manifest that scripts/release.ts reads.
-//
-// Pipeline (per profile):
-//   encrypt-credentials --profile X -> data/system.json with profile X's keys
-//   bun run build:prod              -> build/backend.js + build/*.dll
-//   copy bun.exe + backend.js       -> build/package/app/backend/ (shared Bun runtime + JS bundle)
-//   dotnet publish                  -> WinUI publish output (framework-dependent WinAppSDK)
-//   dotnet publish launcher         -> build/launcher/ (single-file root launcher exe)
-//   assemble                        -> build/package/ (launcher KuumoApp.exe + app/ payload)
-//   ISCC.exe setup.iss              -> artifacts/kuumoapp[_<profile>]_{version}-setup.exe
-//   update manifest                 -> artifacts/stable-win-x64-update.json
-//
-// Runtime prerequisites (.NET Desktop Runtime + Windows App SDK runtime) are
-// NOT bundled — setup.iss downloads and installs them at install time via
-// scripts/install-prereqs.ps1.
-//
-// Usage:
-//   bun run package                 -> builds ALL profiles found in apikeys/ (myown first, release last)
-//   bun run package --profile myown -> builds only that profile (dev testing)
-//   bun run package --cached        -> skips profile-independent builds if outputs exist (CI)
-//   bun run package --skip-winui   -> skips dotnet publish (backend-only testing)
-//   bun run package --skip-inno    -> assembles payload only, skips ISCC.exe
 import { spawnSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -140,7 +117,7 @@ const launcherDir = resolve(buildDir, "launcher");
 if (useCache && existsSync(backendJs)) {
     console.log("\n Skipping backend build (--cached, output exists)");
 } else {
-    run("bun", ["run", "build:prod"]);
+    run("bun", ["run", "build"]);
     requireDir(buildDir, "backend build output");
 }
 

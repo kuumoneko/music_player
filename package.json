@@ -3,26 +3,17 @@
     "version": "7.3.0",
     "type": "module",
     "description": "KuumoApp music player (WinUI 3 + Bun backend)",
-    "author": {
-        "name": "kuumoneko",
-        "url": "https://github.com/kuumoneko"
-    },
     "scripts": {
-        "dev": "bun ./scripts/dev.ts",
-        "winui:dev": "bun run --silent ./scripts/winui-dev.ts",
-        "build:prod": "bun ./scripts/build.ts",
+        "dev": "bun run --silent ./scripts/dev.ts",
+        "build": "bun ./scripts/build.ts",
+        "package": "bun run ./scripts/package.ts",
         "release": "bun ./scripts/release.ts",
-        "winui:package": "bun run ./scripts/package.ts",
         "encrypt-credentials": "bun ./scripts/encrypt-credentials.ts",
-        "install-run": "bun ./scripts/install-run.ts",
-        "register-shortcut": "bun ./scripts/register-shortcut.ts",
         "typecheck:bun": "bunx tsc --noEmit",
-        "typecheck:dotnet:winui": "dotnet build app-winui/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:WindowsAppSDKSelfContained=false -clp:ErrorsOnly -nologo",
-        "typecheck:dotnet": "bun run typecheck:dotnet:winui",
+        "typecheck:dotnet": "dotnet build app-winui/KuumoApp/KuumoApp.csproj -m --no-restore -c Debug /p:GenerateAppxPackageOnBuild=false /p:WindowsAppSDKSelfContained=false -clp:ErrorsOnly -nologo",
         "typecheck": "bun run typecheck:bun && bun run typecheck:dotnet",
         "test": "bun test tests/unit",
         "test:integration": "bun tests/manual/refresh-artist.ts",
-        "test:watch": "bun test --watch tests/unit",
         "test:rpc": "bun run scripts/test-rpc.ts"
     },
     "dependencies": {
